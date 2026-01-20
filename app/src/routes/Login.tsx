@@ -1,30 +1,66 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../hooks/useAuth";
 
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
+  const { login, isAuthenticated, user, isLoading } = useAuth();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (!isLoading && isAuthenticated && user) {
+      redirectByRole(user.role);
+    }
+  }, [isAuthenticated, user, isLoading]);
+
+  function redirectByRole(role: string) {
+    switch (role) {
+      case "FOUNDER":
+      case "ADMIN":
+        navigate("/admin");
+        break;
+      case "EMPLOYEE":
+        navigate("/office");
+        break;
+      case "CLIENT":
+        navigate("/client/portal");
+        break;
+      default:
+        navigate("/admin");
+    }
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
 
-    // Mock login - in production, this would call the auth API
-    if (email && password) {
-      // Determine role based on email domain for demo
-      if (email.includes("admin")) {
-        navigate("/admin");
-      } else if (email.includes("client")) {
-        navigate("/client/demo-case");
-      } else {
-        navigate("/office");
-      }
-    } else {
+    if (!email || !password) {
       setError("Please enter your email and password.");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      await login(email, password);
+      // Navigation handled by useEffect after user state updates
+    } catch (err: any) {
+      setError(err.message || "Invalid email or password");
+    } finally {
+      setIsSubmitting(false);
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
@@ -71,9 +107,10 @@ export default function Login() {
 
           <button
             type="submit"
-            className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium rounded transition-colors"
+            disabled={isSubmitting}
+            className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 disabled:bg-emerald-800 disabled:cursor-not-allowed text-white text-sm font-medium rounded transition-colors"
           >
-            Sign In
+            {isSubmitting ? "Signing in..." : "Sign In"}
           </button>
 
           <p className="mt-4 text-xs text-slate-500 text-center">
