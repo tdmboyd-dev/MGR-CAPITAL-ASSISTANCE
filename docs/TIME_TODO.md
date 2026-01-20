@@ -400,6 +400,12 @@ All completed work is logged here with timestamps.
 | 2026-01-20 | API | Added /employees/leaderboard endpoint | ✅ |
 | 2026-01-20 | API | Fixed publicAccessToken field reference in client routes | ✅ |
 | 2026-01-20 | API | Fixed employeeTier field references throughout employees routes | ✅ |
+| 2026-01-20 | Frontend | Fixed AdminLayout navigation - changed <a> to React Router <Link> | ✅ |
+| 2026-01-20 | Frontend | Fixed AdminCases to fetch real data from /cases API | ✅ |
+| 2026-01-20 | Frontend | Created AdminTraining.tsx for training module management | ✅ |
+| 2026-01-20 | Frontend | Created AdminIngestion.tsx for data import management | ✅ |
+| 2026-01-20 | Frontend | Added Training Modules and Data Ingestion links to sidebar | ✅ |
+| 2026-01-20 | Routes | Added /admin/training and /admin/ingestion routes to App.tsx | ✅ |
 
 ---
 
