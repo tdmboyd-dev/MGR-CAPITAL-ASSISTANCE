@@ -8,10 +8,17 @@ import { Router, Request, Response } from "express";
 import { PrismaClient, IngestionSourceType } from "@prisma/client";
 import { authMiddleware, AuthRequest } from "../middleware/authMiddleware.js";
 import { roleGuard } from "../middleware/roleGuard.js";
+import { asyncHandler, Errors } from "../middleware/errorHandler.js";
 import { ingestionService } from "../services/ingestionService.js";
+import { sanitizeString } from "../utils/security.js";
 
 const router = Router();
 const prisma = new PrismaClient();
+
+// Configuration limits
+const MAX_BATCH_SIZE = 10000; // Maximum records per batch
+const MAX_CSV_SIZE_MB = 50; // Maximum CSV content size in MB
+const MAX_URL_LENGTH = 2000;
 
 // ============================================
 // ALL ROUTES ARE FOUNDER ONLY
@@ -31,7 +38,8 @@ router.get("/sources", authMiddleware, roleGuard(["ADMIN"]), async (req: Request
       data: sources
     });
   } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
+    console.error("Ingestion error:", error);
+    res.status(500).json({ success: false, error: "An error occurred. Please try again." });
   }
 });
 
@@ -74,7 +82,8 @@ router.post("/sources", authMiddleware, roleGuard(["ADMIN"]), async (req: AuthRe
       data: { id: sourceId }
     });
   } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
+    console.error("Ingestion error:", error);
+    res.status(500).json({ success: false, error: "An error occurred. Please try again." });
   }
 });
 
@@ -106,91 +115,160 @@ router.get("/batches", authMiddleware, roleGuard(["ADMIN"]), async (req: Request
       data: batches
     });
   } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
+    console.error("Ingestion error:", error);
+    res.status(500).json({ success: false, error: "An error occurred. Please try again." });
   }
 });
 
 /**
  * POST /api/ingestion/batches - Create new batch and process data
  */
-router.post("/batches", authMiddleware, roleGuard(["ADMIN"]), async (req: AuthRequest, res: Response) => {
-  try {
-    const { sourceId, fileName, fileUrl, data, parserConfig } = req.body;
+router.post("/batches", authMiddleware, roleGuard(["ADMIN"]), asyncHandler(async (req: AuthRequest, res: Response) => {
+  const { sourceId, fileName, fileUrl, data, parserConfig } = req.body;
 
-    if (!sourceId || !data || !Array.isArray(data)) {
-      return res.status(400).json({ success: false, error: "sourceId and data array required" });
-    }
-
-    // Create batch
-    const batchId = await ingestionService.createBatch(sourceId, fileName, fileUrl);
-
-    // Process the batch
-    const result = await ingestionService.processBatch(batchId, data, parserConfig);
-
-    // Log audit
-    await prisma.auditLog.create({
-      data: {
-        userId: req.user!.id,
-        action: "INGESTION_BATCH_PROCESSED",
-        entityType: "INGESTION_BATCH",
-        entityId: batchId,
-        details: {
-          processed: result.processed,
-          created: result.created,
-          skipped: result.skipped,
-          errors: result.errors.length
-        }
-      }
-    });
-
-    res.json({
-      success: true,
-      data: {
-        batchId,
-        ...result
-      }
-    });
-  } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
+  // Validate required fields
+  if (!sourceId) {
+    throw Errors.badRequest("sourceId is required");
   }
-});
+
+  if (!data || !Array.isArray(data)) {
+    throw Errors.badRequest("data must be an array of records");
+  }
+
+  // Validate batch size
+  if (data.length > MAX_BATCH_SIZE) {
+    throw Errors.badRequest(`Batch size exceeds maximum of ${MAX_BATCH_SIZE} records`);
+  }
+
+  if (data.length === 0) {
+    throw Errors.badRequest("data array cannot be empty");
+  }
+
+  // Sanitize optional fields
+  const sanitizedFileName = fileName ? sanitizeString(fileName) : undefined;
+  const sanitizedFileUrl = fileUrl ? fileUrl.slice(0, MAX_URL_LENGTH) : undefined;
+
+  // Verify source exists
+  const source = await prisma.ingestionSource.findUnique({
+    where: { id: sourceId }
+  });
+
+  if (!source) {
+    throw Errors.notFound("Ingestion source");
+  }
+
+  // Create batch
+  const batchId = await ingestionService.createBatch(sourceId, sanitizedFileName, sanitizedFileUrl);
+
+  // Process the batch
+  const result = await ingestionService.processBatch(batchId, data, parserConfig);
+
+  // Log audit
+  await prisma.auditLog.create({
+    data: {
+      userId: req.user!.id,
+      action: "INGESTION_BATCH_PROCESSED",
+      entityType: "INGESTION_BATCH",
+      entityId: batchId,
+      details: {
+        sourceId,
+        processed: result.processed,
+        created: result.created,
+        skipped: result.skipped,
+        errors: result.errors.length
+      }
+    }
+  });
+
+  res.json({
+    success: true,
+    data: {
+      batchId,
+      ...result
+    }
+  });
+}));
 
 /**
  * POST /api/ingestion/csv - Parse and process CSV content
  */
-router.post("/csv", authMiddleware, roleGuard(["ADMIN"]), async (req: AuthRequest, res: Response) => {
-  try {
-    const { sourceId, fileName, csvContent, parserConfig } = req.body;
+router.post("/csv", authMiddleware, roleGuard(["ADMIN"]), asyncHandler(async (req: AuthRequest, res: Response) => {
+  const { sourceId, fileName, csvContent, parserConfig } = req.body;
 
-    if (!sourceId || !csvContent) {
-      return res.status(400).json({ success: false, error: "sourceId and csvContent required" });
-    }
-
-    // Parse CSV
-    const records = ingestionService.parseCSV(csvContent, parserConfig);
-
-    if (records.length === 0) {
-      return res.status(400).json({ success: false, error: "No records found in CSV" });
-    }
-
-    // Create batch
-    const batchId = await ingestionService.createBatch(sourceId, fileName);
-
-    // Process the batch
-    const result = await ingestionService.processBatch(batchId, records, parserConfig);
-
-    res.json({
-      success: true,
-      data: {
-        batchId,
-        recordsParsed: records.length,
-        ...result
-      }
-    });
-  } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
+  // Validate required fields
+  if (!sourceId) {
+    throw Errors.badRequest("sourceId is required");
   }
-});
+
+  if (!csvContent || typeof csvContent !== "string") {
+    throw Errors.badRequest("csvContent is required and must be a string");
+  }
+
+  // Validate CSV size (prevent memory exhaustion)
+  const csvSizeBytes = Buffer.byteLength(csvContent, "utf8");
+  const csvSizeMB = csvSizeBytes / (1024 * 1024);
+
+  if (csvSizeMB > MAX_CSV_SIZE_MB) {
+    throw Errors.badRequest(`CSV content exceeds maximum size of ${MAX_CSV_SIZE_MB}MB (got ${csvSizeMB.toFixed(2)}MB)`);
+  }
+
+  // Verify source exists
+  const source = await prisma.ingestionSource.findUnique({
+    where: { id: sourceId }
+  });
+
+  if (!source) {
+    throw Errors.notFound("Ingestion source");
+  }
+
+  // Parse CSV
+  const records = ingestionService.parseCSV(csvContent, parserConfig);
+
+  if (records.length === 0) {
+    throw Errors.badRequest("No records found in CSV");
+  }
+
+  // Validate parsed record count
+  if (records.length > MAX_BATCH_SIZE) {
+    throw Errors.badRequest(`CSV contains ${records.length} records, exceeds maximum of ${MAX_BATCH_SIZE}`);
+  }
+
+  // Sanitize fileName
+  const sanitizedFileName = fileName ? sanitizeString(fileName) : undefined;
+
+  // Create batch
+  const batchId = await ingestionService.createBatch(sourceId, sanitizedFileName);
+
+  // Process the batch
+  const result = await ingestionService.processBatch(batchId, records, parserConfig);
+
+  // Log audit
+  await prisma.auditLog.create({
+    data: {
+      userId: req.user!.id,
+      action: "INGESTION_CSV_PROCESSED",
+      entityType: "INGESTION_BATCH",
+      entityId: batchId,
+      details: {
+        sourceId,
+        csvSizeMB: csvSizeMB.toFixed(2),
+        recordsParsed: records.length,
+        processed: result.processed,
+        created: result.created,
+        skipped: result.skipped
+      }
+    }
+  });
+
+  res.json({
+    success: true,
+    data: {
+      batchId,
+      recordsParsed: records.length,
+      ...result
+    }
+  });
+}));
 
 /**
  * GET /api/ingestion/records - List ingestion records
@@ -224,7 +302,8 @@ router.get("/records", authMiddleware, roleGuard(["ADMIN"]), async (req: Request
       data: records
     });
   } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
+    console.error("Ingestion error:", error);
+    res.status(500).json({ success: false, error: "An error occurred. Please try again." });
   }
 });
 
@@ -242,7 +321,8 @@ router.get("/high-value", authMiddleware, roleGuard(["ADMIN"]), async (req: Requ
       data: opportunities
     });
   } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
+    console.error("Ingestion error:", error);
+    res.status(500).json({ success: false, error: "An error occurred. Please try again." });
   }
 });
 
@@ -258,7 +338,8 @@ router.get("/stats", authMiddleware, roleGuard(["ADMIN"]), async (_req: Request,
       data: stats
     });
   } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
+    console.error("Ingestion error:", error);
+    res.status(500).json({ success: false, error: "An error occurred. Please try again." });
   }
 });
 
@@ -276,7 +357,8 @@ router.get("/prioritized", authMiddleware, roleGuard(["ADMIN"]), async (req: Req
       data: cases
     });
   } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
+    console.error("Ingestion error:", error);
+    res.status(500).json({ success: false, error: "An error occurred. Please try again." });
   }
 });
 
@@ -292,7 +374,8 @@ router.get("/suggestions", authMiddleware, roleGuard(["ADMIN"]), async (_req: Re
       data: suggestions
     });
   } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
+    console.error("Ingestion error:", error);
+    res.status(500).json({ success: false, error: "An error occurred. Please try again." });
   }
 });
 

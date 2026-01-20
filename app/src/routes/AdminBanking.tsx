@@ -10,13 +10,17 @@ import { api } from "../lib/api";
 interface PendingPayout {
   caseId: string;
   internalCode: string;
-  clientName: string;
+  client: { name: string; email: string };
+  employee: { id: string; name: string; employeeTier: string } | null;
   surplusAmountCents: number;
-  companyFeeCents: number;
-  employeeCommissionCents: number;
-  founderShareCents: number;
-  employeeName: string;
-  employeeTier: string;
+  calculation: {
+    feeAmountCents: number;
+    clientPayoutCents: number;
+    employeeCommissionCents: number;
+    employeeDisplayedCommissionCents: number;
+    founderShareCents: number;
+    companyFeeCents: number;
+  };
 }
 
 interface LedgerEntry {
@@ -72,7 +76,7 @@ export default function AdminBanking() {
   async function processPayout(caseId: string) {
     setProcessingId(caseId);
     try {
-      const response = await api.post<any>(`/payouts/${caseId}/process`, {});
+      const response = await api.post<any>(`/payouts/process/${caseId}`, {});
       if (response.data.success) {
         // Refresh data
         fetchBankingData();
@@ -88,9 +92,9 @@ export default function AdminBanking() {
 
   // Calculate totals
   const totalPending = pendingPayouts.reduce((sum, p) => sum + p.surplusAmountCents, 0);
-  const totalFees = pendingPayouts.reduce((sum, p) => sum + p.companyFeeCents, 0);
-  const totalCommissions = pendingPayouts.reduce((sum, p) => sum + p.employeeCommissionCents, 0);
-  const totalFounderShare = pendingPayouts.reduce((sum, p) => sum + p.founderShareCents, 0);
+  const totalFees = pendingPayouts.reduce((sum, p) => sum + (p.calculation?.companyFeeCents || 0), 0);
+  const totalCommissions = pendingPayouts.reduce((sum, p) => sum + (p.calculation?.employeeCommissionCents || 0), 0);
+  const totalFounderShare = pendingPayouts.reduce((sum, p) => sum + (p.calculation?.founderShareCents || 0), 0);
 
   if (loading) {
     return (
@@ -170,24 +174,24 @@ export default function AdminBanking() {
                 pendingPayouts.map((payout) => (
                   <tr key={payout.caseId} className="border-b border-slate-800 hover:bg-slate-800/30">
                     <td className="px-4 py-3 font-mono text-emerald-400">{payout.internalCode}</td>
-                    <td className="px-4 py-3">{payout.clientName}</td>
+                    <td className="px-4 py-3">{payout.client?.name || "Unknown"}</td>
                     <td className="px-4 py-3">
                       <div>
-                        <p>{payout.employeeName}</p>
-                        <p className="text-xs text-slate-400">{payout.employeeTier}</p>
+                        <p>{payout.employee?.name || "Unassigned"}</p>
+                        <p className="text-xs text-slate-400">{payout.employee?.employeeTier?.replace(/TIER_\d_/, "") || ""}</p>
                       </div>
                     </td>
                     <td className="px-4 py-3 text-right font-semibold">
                       {formatCurrency(payout.surplusAmountCents)}
                     </td>
                     <td className="px-4 py-3 text-right text-emerald-400">
-                      {formatCurrency(payout.companyFeeCents)}
+                      {formatCurrency(payout.calculation?.companyFeeCents || 0)}
                     </td>
                     <td className="px-4 py-3 text-right text-blue-400">
-                      {formatCurrency(payout.employeeCommissionCents)}
+                      {formatCurrency(payout.calculation?.employeeCommissionCents || 0)}
                     </td>
                     <td className="px-4 py-3 text-right text-amber-400">
-                      {formatCurrency(payout.founderShareCents)}
+                      {formatCurrency(payout.calculation?.founderShareCents || 0)}
                     </td>
                     <td className="px-4 py-3 text-right">
                       <button

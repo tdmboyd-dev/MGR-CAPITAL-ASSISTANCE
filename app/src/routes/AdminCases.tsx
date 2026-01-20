@@ -4,6 +4,7 @@
 // ============================================
 
 import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import AdminLayout from "../components/layout/AdminLayout";
 import { api } from "../lib/api";
 
@@ -246,12 +247,18 @@ export default function AdminCases() {
                         </span>
                       </td>
                       <td className="px-4 py-3 text-right">
-                        <button className="px-3 py-1 text-xs bg-slate-700 hover:bg-slate-600 rounded mr-2">
+                        <Link
+                          to={`/admin/cases/${caseData.id}`}
+                          className="px-3 py-1 text-xs bg-slate-700 hover:bg-slate-600 rounded mr-2 inline-block"
+                        >
                           View
-                        </button>
-                        <button className="px-3 py-1 text-xs bg-emerald-700 hover:bg-emerald-600 rounded">
+                        </Link>
+                        <Link
+                          to={`/admin/cases/${caseData.id}/edit`}
+                          className="px-3 py-1 text-xs bg-emerald-700 hover:bg-emerald-600 rounded inline-block"
+                        >
                           Edit
-                        </button>
+                        </Link>
                       </td>
                     </tr>
                   );

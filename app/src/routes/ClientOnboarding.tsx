@@ -6,6 +6,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import ClientLayout from "../components/layout/ClientLayout";
+import { API_BASE_URL } from "../lib/api";
 
 interface ClientInfo {
   name: string;
@@ -55,7 +56,7 @@ export default function ClientOnboarding() {
       setLoading(true);
       setError(null);
 
-      const response = await fetch(`http://localhost:4000/api/clients/portal/${token}`);
+      const response = await fetch(`${API_BASE_URL}/clients/portal/${token}`);
       const data = await response.json();
 
       if (data.success) {
@@ -87,7 +88,7 @@ export default function ClientOnboarding() {
     setSaving(true);
 
     try {
-      const response = await fetch(`http://localhost:4000/api/clients/portal/${token}/info`, {
+      const response = await fetch(`${API_BASE_URL}/clients/portal/${token}/info`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
@@ -117,7 +118,7 @@ export default function ClientOnboarding() {
       const formDataUpload = new FormData();
       formDataUpload.append("file", file);
 
-      const response = await fetch(`http://localhost:4000/api/clients/portal/${token}/id-upload`, {
+      const response = await fetch(`${API_BASE_URL}/clients/portal/${token}/id-upload`, {
         method: "POST",
         body: formDataUpload,
       });

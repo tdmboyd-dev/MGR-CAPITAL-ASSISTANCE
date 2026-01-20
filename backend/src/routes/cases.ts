@@ -7,10 +7,276 @@ import { Router, Request, Response } from "express";
 import { PrismaClient, CaseStatus, DocumentType } from "@prisma/client";
 import { authMiddleware, AuthRequest } from "../middleware/authMiddleware.js";
 import { roleGuard } from "../middleware/roleGuard.js";
+import { asyncHandler, AppError, Errors } from "../middleware/errorHandler.js";
 import { legalService } from "../services/legalService.js";
+import {
+  isValidTransition,
+  validateTransition,
+  getAutoUpdateFields,
+  getValidNextStatuses
+} from "../utils/caseLifecycle.js";
 
 const router = Router();
 const prisma = new PrismaClient();
+
+// ============================================
+// EMPLOYEE ROUTES — Limited Access
+// IMPORTANT: These must come BEFORE /:id routes
+// ============================================
+
+/**
+ * GET /api/cases/my - Employee's assigned cases
+ */
+router.get("/my", authMiddleware, roleGuard(["EMPLOYEE"]), async (req: AuthRequest, res: Response) => {
+  try {
+    const cases = await prisma.case.findMany({
+      where: {
+        assignedEmployeeId: req.user!.id
+      },
+      select: {
+        id: true,
+        internalCode: true,
+        status: true,
+        propertyAddress: true,
+        county: true,
+        state: true,
+        createdAt: true,
+        client: {
+          select: {
+            name: true,
+            phone: true,
+            email: true
+          }
+        }
+      },
+      orderBy: [
+        { priority: "desc" },
+        { createdAt: "desc" }
+      ]
+    });
+
+    // Add next action for each case (safe for employees)
+    const casesWithActions = cases.map(c => ({
+      ...c,
+      nextAction: legalService.getNextAction(c.status as CaseStatus)
+    }));
+
+    res.json({
+      success: true,
+      count: cases.length,
+      data: casesWithActions
+    });
+  } catch (error: any) {
+    console.error("Employee cases error:", error);
+    res.status(500).json({ success: false, error: "Failed to load cases" });
+  }
+});
+
+/**
+ * POST /api/cases/my/:id/status - Employee updates case status (limited transitions)
+ * Employees can only: NEW → CONTACTED → DOCS_PENDING
+ * FILED, AWAITING_FUNDS, PAID transitions require FOUNDER
+ */
+router.post("/my/:id/status", authMiddleware, roleGuard(["EMPLOYEE"]), asyncHandler(async (req: AuthRequest, res: Response) => {
+  const { id } = req.params;
+  const { status, notes } = req.body;
+
+  // Employee-allowed transitions
+  const EMPLOYEE_ALLOWED_STATUSES: CaseStatus[] = ["CONTACTED", "DOCS_PENDING"];
+
+  if (!EMPLOYEE_ALLOWED_STATUSES.includes(status)) {
+    throw Errors.forbidden();
+  }
+
+  // Verify case is assigned to this employee
+  const caseData = await prisma.case.findFirst({
+    where: {
+      id,
+      assignedEmployeeId: req.user!.id
+    },
+    select: {
+      id: true,
+      internalCode: true,
+      status: true
+    }
+  });
+
+  if (!caseData) {
+    throw Errors.notFound("Case");
+  }
+
+  const currentStatus = caseData.status as CaseStatus;
+  const newStatus = status as CaseStatus;
+
+  // Validate the transition
+  if (!isValidTransition(currentStatus, newStatus)) {
+    throw Errors.badRequest(
+      `Cannot transition from ${currentStatus} to ${newStatus}. ` +
+      `Valid next statuses: ${getValidNextStatuses(currentStatus).join(", ")}`
+    );
+  }
+
+  // Get auto-update fields
+  const autoFields = getAutoUpdateFields(newStatus);
+
+  const updatedCase = await prisma.case.update({
+    where: { id },
+    data: {
+      status: newStatus,
+      ...autoFields
+    },
+    select: {
+      id: true,
+      internalCode: true,
+      status: true
+    }
+  });
+
+  // Log the change
+  await prisma.auditLog.create({
+    data: {
+      userId: req.user!.id,
+      action: "EMPLOYEE_STATUS_UPDATE",
+      entityType: "CASE",
+      entityId: id,
+      details: {
+        previousStatus: currentStatus,
+        newStatus: newStatus,
+        notes,
+        employeeId: req.user!.id
+      }
+    }
+  });
+
+  res.json({
+    success: true,
+    data: updatedCase,
+    message: `Case ${caseData.internalCode} moved to ${newStatus}`
+  });
+}));
+
+/**
+ * GET /api/cases/my/:id - Employee view of single case
+ */
+router.get("/my/:id", authMiddleware, roleGuard(["EMPLOYEE"]), async (req: AuthRequest, res: Response) => {
+  try {
+    const caseData = await prisma.case.findFirst({
+      where: {
+        id: req.params.id,
+        assignedEmployeeId: req.user!.id
+      },
+      select: {
+        id: true,
+        internalCode: true,
+        status: true,
+        propertyAddress: true,
+        county: true,
+        state: true,
+        createdAt: true,
+        client: {
+          select: {
+            name: true,
+            phone: true,
+            email: true,
+            address: true,
+            city: true,
+            state: true,
+            zipCode: true
+          }
+        },
+        documents: {
+          select: {
+            id: true,
+            type: true,
+            status: true,
+            signedAt: true
+          }
+        }
+      }
+    });
+
+    if (!caseData) {
+      return res.status(404).json({ success: false, error: "Case not found or not assigned to you" });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        ...caseData,
+        nextAction: legalService.getNextAction(caseData.status as CaseStatus)
+      }
+    });
+  } catch (error: any) {
+    console.error("Employee case detail error:", error);
+    res.status(500).json({ success: false, error: "Failed to load case" });
+  }
+});
+
+// ============================================
+// CLIENT ROUTES — Public/Token Access
+// IMPORTANT: These must come BEFORE /:id routes
+// ============================================
+
+/**
+ * GET /api/cases/client/:token - Client view of their case
+ */
+router.get("/client/:token", async (req: Request, res: Response) => {
+  try {
+    const { token } = req.params;
+
+    // Find case by public token
+    const caseData = await prisma.case.findFirst({
+      where: {
+        publicAccessToken: token
+      },
+      select: {
+        id: true,
+        status: true,
+        propertyAddress: true,
+        county: true,
+        state: true,
+        documents: {
+          where: {
+            status: { in: ["PENDING_SIGNATURE", "SIGNED"] }
+          },
+          select: {
+            id: true,
+            type: true,
+            status: true,
+            signedAt: true
+          }
+        }
+      }
+    });
+
+    if (!caseData) {
+      return res.status(404).json({ success: false, error: "Case not found" });
+    }
+
+    // Return client-safe status
+    const clientStatus = getClientFriendlyStatus(caseData.status as CaseStatus);
+
+    res.json({
+      success: true,
+      data: {
+        propertyAddress: caseData.propertyAddress,
+        county: caseData.county,
+        state: caseData.state,
+        status: clientStatus.status,
+        statusMessage: clientStatus.message,
+        documents: caseData.documents.map(d => ({
+          id: d.id,
+          type: d.type,
+          needsSignature: d.status === "PENDING_SIGNATURE",
+          signed: !!d.signedAt
+        }))
+      }
+    });
+  } catch (error: any) {
+    console.error("Client case error:", error);
+    res.status(500).json({ success: false, error: "Unable to load case information" });
+  }
+});
 
 // ============================================
 // FOUNDER/ADMIN ROUTES — Full Access
@@ -61,7 +327,8 @@ router.get("/", authMiddleware, roleGuard(["ADMIN"]), async (_req: Request, res:
       data: cases
     });
   } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
+    console.error("List cases error:", error);
+    res.status(500).json({ success: false, error: "Failed to load cases" });
   }
 });
 
@@ -134,7 +401,8 @@ router.get("/stats", authMiddleware, roleGuard(["ADMIN"]), async (_req: Request,
       }))
     });
   } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
+    console.error("Case stats error:", error);
+    res.status(500).json({ success: false, error: "Failed to load statistics" });
   }
 });
 
@@ -152,12 +420,14 @@ router.get("/deadlines", authMiddleware, roleGuard(["ADMIN"]), async (req: Reque
       data: deadlines
     });
   } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
+    console.error("Deadlines error:", error);
+    res.status(500).json({ success: false, error: "Failed to load deadlines" });
   }
 });
 
 /**
  * GET /api/cases/:id - Get single case details (FOUNDER ONLY)
+ * NOTE: This route must come AFTER /my, /my/:id, /client/:token, /stats, /deadlines
  */
 router.get("/:id", authMiddleware, roleGuard(["ADMIN"]), async (req: Request, res: Response) => {
   try {
@@ -196,7 +466,8 @@ router.get("/:id", authMiddleware, roleGuard(["ADMIN"]), async (req: Request, re
       }
     });
   } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
+    console.error("Cases error:", error);
+    res.status(500).json({ success: false, error: "An error occurred. Please try again." });
   }
 });
 
@@ -268,7 +539,8 @@ router.post("/", authMiddleware, roleGuard(["ADMIN"]), async (req: AuthRequest, 
       data: newCase
     });
   } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
+    console.error("Cases error:", error);
+    res.status(500).json({ success: false, error: "An error occurred. Please try again." });
   }
 });
 
@@ -309,55 +581,94 @@ router.patch("/:id", authMiddleware, roleGuard(["ADMIN"]), async (req: AuthReque
       data: updatedCase
     });
   } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
+    console.error("Cases error:", error);
+    res.status(500).json({ success: false, error: "An error occurred. Please try again." });
   }
 });
 
 /**
  * POST /api/cases/:id/status - Update case status (FOUNDER ONLY)
+ * Validates transitions using state machine
  */
-router.post("/:id/status", authMiddleware, roleGuard(["ADMIN"]), async (req: AuthRequest, res: Response) => {
-  try {
-    const { id } = req.params;
-    const { status, notes } = req.body;
+router.post("/:id/status", authMiddleware, roleGuard(["ADMIN"]), asyncHandler(async (req: AuthRequest, res: Response) => {
+  const { id } = req.params;
+  const { status, notes, forceTransition } = req.body;
 
-    const validStatuses: CaseStatus[] = [
-      "NEW", "CONTACTED", "DOCS_PENDING", "DOCS_SIGNED",
-      "FILED", "AWAITING_FUNDS", "PAID", "CLOSED", "REJECTED"
-    ];
+  const validStatuses: CaseStatus[] = [
+    "NEW", "CONTACTED", "DOCS_PENDING", "DOCS_SIGNED",
+    "FILED", "AWAITING_FUNDS", "PAID", "CLOSED", "REJECTED"
+  ];
 
-    if (!validStatuses.includes(status)) {
-      return res.status(400).json({ success: false, error: "Invalid status" });
-    }
-
-    const updatedCase = await prisma.case.update({
-      where: { id },
-      data: {
-        status,
-        filedAt: status === "FILED" ? new Date() : undefined,
-        fundsDisbursedAt: status === "PAID" ? new Date() : undefined
-      }
-    });
-
-    // Log status change
-    await prisma.auditLog.create({
-      data: {
-        userId: req.user!.id,
-        action: "STATUS_CHANGED",
-        entityType: "CASE",
-        entityId: id,
-        details: { newStatus: status, notes }
-      }
-    });
-
-    res.json({
-      success: true,
-      data: updatedCase
-    });
-  } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
+  if (!validStatuses.includes(status)) {
+    throw Errors.badRequest(`Invalid status: ${status}`);
   }
-});
+
+  // Get current case with documents for validation
+  const currentCase = await prisma.case.findUnique({
+    where: { id },
+    include: {
+      documents: {
+        select: { id: true, type: true, status: true }
+      }
+    }
+  });
+
+  if (!currentCase) {
+    throw Errors.notFound("Case");
+  }
+
+  const currentStatus = currentCase.status as CaseStatus;
+  const newStatus = status as CaseStatus;
+
+  // Validate the transition
+  const validation = validateTransition(currentStatus, newStatus, currentCase);
+
+  // If invalid transition and not forcing (FOUNDER only can force)
+  if (!validation.valid) {
+    if (!forceTransition || req.user!.role !== "FOUNDER") {
+      throw Errors.badRequest(
+        `Invalid status transition: ${validation.errors.join(". ")}. ` +
+        `Valid next statuses: ${getValidNextStatuses(currentStatus).join(", ")}`
+      );
+    }
+    // FOUNDER is forcing - log warning but allow
+    console.warn(`[FORCED TRANSITION] User ${req.user!.id} forcing ${currentStatus} -> ${newStatus} for case ${id}`);
+  }
+
+  // Get auto-update fields for this transition
+  const autoFields = getAutoUpdateFields(newStatus);
+
+  const updatedCase = await prisma.case.update({
+    where: { id },
+    data: {
+      status: newStatus,
+      ...autoFields
+    }
+  });
+
+  // Log status change with validation warnings
+  await prisma.auditLog.create({
+    data: {
+      userId: req.user!.id,
+      action: "STATUS_CHANGED",
+      entityType: "CASE",
+      entityId: id,
+      details: {
+        previousStatus: currentStatus,
+        newStatus: newStatus,
+        notes,
+        warnings: validation.warnings,
+        forced: !validation.valid && forceTransition
+      }
+    }
+  });
+
+  res.json({
+    success: true,
+    data: updatedCase,
+    warnings: validation.warnings.length > 0 ? validation.warnings : undefined
+  });
+}));
 
 /**
  * POST /api/cases/:id/documents - Generate documents (FOUNDER ONLY)
@@ -383,7 +694,8 @@ router.post("/:id/documents", authMiddleware, roleGuard(["ADMIN"]), async (req: 
       data: result
     });
   } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
+    console.error("Cases error:", error);
+    res.status(500).json({ success: false, error: "An error occurred. Please try again." });
   }
 });
 
@@ -406,178 +718,8 @@ router.post("/:id/rejection", authMiddleware, roleGuard(["ADMIN"]), async (req: 
       data: analysis
     });
   } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-// ============================================
-// EMPLOYEE ROUTES — Limited Access
-// ============================================
-
-/**
- * GET /api/cases/my - Employee's assigned cases
- */
-router.get("/my", authMiddleware, roleGuard(["EMPLOYEE"]), async (req: AuthRequest, res: Response) => {
-  try {
-    const cases = await prisma.case.findMany({
-      where: {
-        assignedEmployeeId: req.user!.id
-      },
-      select: {
-        id: true,
-        internalCode: true,
-        status: true,
-        propertyAddress: true,
-        county: true,
-        state: true,
-        createdAt: true,
-        client: {
-          select: {
-            name: true,
-            phone: true,
-            email: true
-          }
-        }
-      },
-      orderBy: [
-        { priority: "desc" },
-        { createdAt: "desc" }
-      ]
-    });
-
-    // Add next action for each case (safe for employees)
-    const casesWithActions = cases.map(c => ({
-      ...c,
-      nextAction: legalService.getNextAction(c.status as CaseStatus)
-    }));
-
-    res.json({
-      success: true,
-      count: cases.length,
-      data: casesWithActions
-    });
-  } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-/**
- * GET /api/cases/my/:id - Employee view of single case
- */
-router.get("/my/:id", authMiddleware, roleGuard(["EMPLOYEE"]), async (req: AuthRequest, res: Response) => {
-  try {
-    const caseData = await prisma.case.findFirst({
-      where: {
-        id: req.params.id,
-        assignedEmployeeId: req.user!.id
-      },
-      select: {
-        id: true,
-        internalCode: true,
-        status: true,
-        propertyAddress: true,
-        county: true,
-        state: true,
-        createdAt: true,
-        client: {
-          select: {
-            name: true,
-            phone: true,
-            email: true,
-            address: true,
-            city: true,
-            state: true,
-            zipCode: true
-          }
-        },
-        documents: {
-          select: {
-            id: true,
-            type: true,
-            status: true,
-            signedAt: true
-          }
-        }
-      }
-    });
-
-    if (!caseData) {
-      return res.status(404).json({ success: false, error: "Case not found or not assigned to you" });
-    }
-
-    res.json({
-      success: true,
-      data: {
-        ...caseData,
-        nextAction: legalService.getNextAction(caseData.status as CaseStatus)
-      }
-    });
-  } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-// ============================================
-// CLIENT ROUTES — Public/Token Access
-// ============================================
-
-/**
- * GET /api/cases/client/:token - Client view of their case
- */
-router.get("/client/:token", async (req: Request, res: Response) => {
-  try {
-    const { token } = req.params;
-
-    // Find case by public token
-    const caseData = await prisma.case.findFirst({
-      where: {
-        publicAccessToken: token
-      },
-      select: {
-        id: true,
-        status: true,
-        propertyAddress: true,
-        county: true,
-        state: true,
-        documents: {
-          where: {
-            status: { in: ["PENDING_SIGNATURE", "SIGNED"] }
-          },
-          select: {
-            id: true,
-            type: true,
-            status: true,
-            signedAt: true
-          }
-        }
-      }
-    });
-
-    if (!caseData) {
-      return res.status(404).json({ success: false, error: "Case not found" });
-    }
-
-    // Return client-safe status
-    const clientStatus = getClientFriendlyStatus(caseData.status as CaseStatus);
-
-    res.json({
-      success: true,
-      data: {
-        propertyAddress: caseData.propertyAddress,
-        county: caseData.county,
-        state: caseData.state,
-        status: clientStatus.status,
-        statusMessage: clientStatus.message,
-        documents: caseData.documents.map(d => ({
-          id: d.id,
-          type: d.type,
-          needsSignature: d.status === "PENDING_SIGNATURE",
-          signed: !!d.signedAt
-        }))
-      }
-    });
-  } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
+    console.error("Cases error:", error);
+    res.status(500).json({ success: false, error: "An error occurred. Please try again." });
   }
 });
 

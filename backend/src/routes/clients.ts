@@ -4,11 +4,18 @@
 // ============================================
 
 import { Router, Request, Response } from "express";
-import { PrismaClient, DocumentStatus } from "@prisma/client";
+import { PrismaClient, DocumentStatus, DocumentType } from "@prisma/client";
 import { authMiddleware, AuthRequest } from "../middleware/authMiddleware.js";
 import { roleGuard } from "../middleware/roleGuard.js";
+import { asyncHandler, Errors } from "../middleware/errorHandler.js";
 import { clientService } from "../services/clientService.js";
 import { legalService } from "../services/legalService.js";
+import {
+  isValidDocumentTransition,
+  validateDocumentTransition,
+  getDocumentAutoUpdateFields,
+  getValidNextDocumentStatuses
+} from "../utils/documentLifecycle.js";
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -47,7 +54,8 @@ router.get("/", authMiddleware, roleGuard(["ADMIN"]), async (_req: Request, res:
       data: clients
     });
   } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
+    console.error("Client error:", error);
+    res.status(500).json({ success: false, error: "An error occurred. Please try again." });
   }
 });
 
@@ -90,7 +98,8 @@ router.get("/:id", authMiddleware, roleGuard(["ADMIN"]), async (req: Request, re
       }
     });
   } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
+    console.error("Client error:", error);
+    res.status(500).json({ success: false, error: "An error occurred. Please try again." });
   }
 });
 
@@ -151,9 +160,91 @@ router.post("/", authMiddleware, roleGuard(["ADMIN"]), async (req: AuthRequest, 
       data: client
     });
   } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
+    console.error("Client error:", error);
+    res.status(500).json({ success: false, error: "An error occurred. Please try again." });
   }
 });
+
+/**
+ * POST /api/clients/documents/:documentId/status - Update document status (FOUNDER ONLY)
+ * Uses document lifecycle state machine
+ */
+router.post("/documents/:documentId/status", authMiddleware, roleGuard(["ADMIN"]), asyncHandler(async (req: AuthRequest, res: Response) => {
+  const { documentId } = req.params;
+  const { status, notes, forceTransition } = req.body;
+
+  const validStatuses: DocumentStatus[] = [
+    "DRAFT", "PENDING_SIGNATURE", "SIGNED", "SUBMITTED", "APPROVED", "REJECTED"
+  ];
+
+  if (!validStatuses.includes(status)) {
+    throw Errors.badRequest(`Invalid status: ${status}`);
+  }
+
+  // Get current document
+  const document = await prisma.document.findUnique({
+    where: { id: documentId },
+    include: {
+      case: { select: { id: true, internalCode: true } }
+    }
+  });
+
+  if (!document) {
+    throw Errors.notFound("Document");
+  }
+
+  const currentStatus = document.status as DocumentStatus;
+  const newStatus = status as DocumentStatus;
+
+  // Validate the transition
+  const validation = validateDocumentTransition(currentStatus, newStatus, document);
+
+  // If invalid transition and not forcing (FOUNDER only can force)
+  if (!validation.valid) {
+    if (!forceTransition || req.user!.role !== "FOUNDER") {
+      throw Errors.badRequest(
+        `Invalid status transition: ${validation.errors.join(". ")}. ` +
+        `Valid next statuses: ${getValidNextDocumentStatuses(currentStatus).join(", ")}`
+      );
+    }
+    console.warn(`[FORCED TRANSITION] User ${req.user!.id} forcing document ${documentId} from ${currentStatus} to ${newStatus}`);
+  }
+
+  // Get auto-update fields
+  const autoFields = getDocumentAutoUpdateFields(newStatus);
+
+  const updatedDocument = await prisma.document.update({
+    where: { id: documentId },
+    data: {
+      status: newStatus,
+      ...autoFields
+    }
+  });
+
+  // Log the change
+  await prisma.auditLog.create({
+    data: {
+      userId: req.user!.id,
+      action: "DOCUMENT_STATUS_CHANGED",
+      entityType: "DOCUMENT",
+      entityId: documentId,
+      details: {
+        previousStatus: currentStatus,
+        newStatus: newStatus,
+        caseId: document.caseId,
+        notes,
+        warnings: validation.warnings,
+        forced: !validation.valid && forceTransition
+      }
+    }
+  });
+
+  res.json({
+    success: true,
+    data: updatedDocument,
+    warnings: validation.warnings.length > 0 ? validation.warnings : undefined
+  });
+}));
 
 /**
  * PATCH /api/clients/:id - Update client (FOUNDER ONLY)
@@ -203,7 +294,8 @@ router.patch("/:id", authMiddleware, roleGuard(["ADMIN"]), async (req: AuthReque
       data: client
     });
   } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
+    console.error("Client error:", error);
+    res.status(500).json({ success: false, error: "An error occurred. Please try again." });
   }
 });
 
@@ -387,10 +479,17 @@ router.post("/portal/:token/sign/:documentId", async (req: Request, res: Respons
     const { token, documentId } = req.params;
     const { signatureData } = req.body;
 
+    if (!signatureData) {
+      return res.status(400).json({
+        success: false,
+        error: "Signature data is required."
+      });
+    }
+
     // Verify case and document
     const caseData = await prisma.case.findFirst({
       where: { publicAccessToken: token },
-      select: { id: true }
+      select: { id: true, clientId: true }
     });
 
     if (!caseData) {
@@ -416,13 +515,37 @@ router.post("/portal/:token/sign/:documentId", async (req: Request, res: Respons
       });
     }
 
-    // Record signature
+    // Validate the transition using lifecycle
+    const currentStatus = document.status as DocumentStatus;
+    const newStatus: DocumentStatus = "SIGNED";
+
+    if (!isValidDocumentTransition(currentStatus, newStatus)) {
+      return res.status(400).json({
+        success: false,
+        error: `This document cannot be signed in its current state.`
+      });
+    }
+
+    // Record signature with auto-update fields
+    const autoFields = getDocumentAutoUpdateFields(newStatus);
+
     await prisma.document.update({
       where: { id: documentId },
       data: {
-        status: "SIGNED",
-        signedAt: new Date(),
-        signatureUrl: signatureData // Store signature data as URL/base64
+        status: newStatus,
+        signatureUrl: signatureData,
+        ...autoFields
+      }
+    });
+
+    // Log the signing action
+    await prisma.auditLog.create({
+      data: {
+        userId: caseData.clientId,
+        action: "DOCUMENT_SIGNED",
+        entityType: "DOCUMENT",
+        entityId: documentId,
+        details: { documentType: document.type, caseId: caseData.id }
       }
     });
 
@@ -440,6 +563,16 @@ router.post("/portal/:token/sign/:documentId", async (req: Request, res: Respons
       await prisma.case.update({
         where: { id: caseData.id },
         data: { status: "DOCS_SIGNED" }
+      });
+
+      await prisma.auditLog.create({
+        data: {
+          userId: caseData.clientId,
+          action: "ALL_DOCUMENTS_SIGNED",
+          entityType: "CASE",
+          entityId: caseData.id,
+          details: { autoTransitioned: true }
+        }
       });
     }
 

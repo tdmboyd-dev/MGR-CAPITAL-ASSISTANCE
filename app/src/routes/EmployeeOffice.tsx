@@ -4,6 +4,7 @@
 // ============================================
 
 import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import EmployeeLayout from "../components/layout/EmployeeLayout";
 import { api } from "../lib/api";
 
@@ -27,8 +28,8 @@ interface EmployeeProfile {
   id: string;
   name: string;
   email: string;
-  tier: string;
-  commissionRate: string;
+  employeeTier: string;
+  displayedRatePercent: number;
 }
 
 interface EmployeeEarnings {
@@ -119,9 +120,11 @@ export default function EmployeeOffice() {
         <div className="bg-slate-900 border border-slate-800 rounded-lg p-4">
           <p className="text-sm text-slate-400">Commission Rate</p>
           <p className="text-2xl font-semibold text-emerald-400">
-            {profile?.commissionRate || "20%"}
+            {profile?.displayedRatePercent ? `${profile.displayedRatePercent}%` : "20%"}
           </p>
-          <p className="text-xs text-slate-500 mt-1">{profile?.tier || "Associate"}</p>
+          <p className="text-xs text-slate-500 mt-1">
+            {profile?.employeeTier?.replace(/TIER_\d_/, "").replace(/_/g, " ") || "Associate"}
+          </p>
         </div>
         <div className="bg-slate-900 border border-slate-800 rounded-lg p-4">
           <p className="text-sm text-slate-400">Lifetime Earnings</p>
@@ -205,9 +208,12 @@ export default function EmployeeOffice() {
                           {caseData.nextAction || "Follow up with client"}
                         </td>
                         <td className="px-4 py-3 text-right">
-                          <button className="px-3 py-1 text-xs bg-emerald-700 hover:bg-emerald-600 rounded">
+                          <Link
+                            to={`/office/cases/${caseData.id}`}
+                            className="px-3 py-1 text-xs bg-emerald-700 hover:bg-emerald-600 rounded inline-block"
+                          >
                             Work Case
-                          </button>
+                          </Link>
                         </td>
                       </tr>
                     );

@@ -16,6 +16,269 @@ const router = Router();
 const prisma = new PrismaClient();
 
 // ============================================
+// EMPLOYEE SELF-SERVICE ROUTES
+// IMPORTANT: These must come BEFORE /:id routes
+// ============================================
+
+/**
+ * GET /api/employees/me - Get own profile (EMPLOYEE)
+ */
+router.get("/me", authMiddleware, roleGuard(["EMPLOYEE"]), async (req: AuthRequest, res: Response) => {
+  try {
+    const employee = await prisma.user.findUnique({
+      where: { id: req.user!.id },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        phone: true,
+        employeeTier: true,
+        createdAt: true,
+        _count: {
+          select: { assignedCases: true }
+        }
+      }
+    });
+
+    if (!employee) {
+      return res.status(404).json({ success: false, error: "Profile not found" });
+    }
+
+    // Get DISPLAYED commission rate (shadow accounting)
+    const tierData = bankingService.getTier(employee.employeeTier || "TIER_1_ASSOCIATE");
+
+    res.json({
+      success: true,
+      data: {
+        ...employee,
+        tier: getTierDisplayName(employee.employeeTier || "TIER_1_ASSOCIATE"),
+        commissionRate: tierData ? `${tierData.displayedRatePercent}%` : "20%" // DISPLAYED, not actual
+      }
+    });
+  } catch (error: any) {
+    console.error("Employee profile error:", error);
+    res.status(500).json({ success: false, error: "Failed to load profile" });
+  }
+});
+
+/**
+ * GET /api/employees/me/earnings - Get own earnings (EMPLOYEE)
+ * Shows DISPLAYED earnings, not actual - SHADOW ACCOUNTING ENFORCED
+ */
+router.get("/me/earnings", authMiddleware, roleGuard(["EMPLOYEE"]), async (req: AuthRequest, res: Response) => {
+  try {
+    const earnings = await bankingService.getEmployeeEarnings(req.user!.id);
+
+    // CRITICAL: Only return displayed amounts, NEVER actual amounts
+    // This enforces shadow accounting - employees see inflated numbers
+    res.json({
+      success: true,
+      data: {
+        lifetimeEarningsCents: earnings.displayedLifetimeCents,
+        thisMonthCents: earnings.displayedMonthCents,
+        pendingCents: earnings.displayedPendingCents
+        // actualLifetimeCents and actualMonthCents are NEVER exposed
+      }
+    });
+  } catch (error: any) {
+    console.error("Employee earnings error:", error);
+    res.status(500).json({ success: false, error: "Failed to load earnings" });
+  }
+});
+
+/**
+ * GET /api/employees/me/scripts/:caseId - Get call script for a case (EMPLOYEE)
+ */
+router.get("/me/scripts/:caseId", authMiddleware, roleGuard(["EMPLOYEE"]), async (req: AuthRequest, res: Response) => {
+  try {
+    const { caseId } = req.params;
+
+    // Verify case is assigned to this employee
+    const caseData = await prisma.case.findFirst({
+      where: {
+        id: caseId,
+        assignedEmployeeId: req.user!.id
+      },
+      include: {
+        client: {
+          select: { name: true }
+        }
+      }
+    });
+
+    if (!caseData) {
+      return res.status(404).json({ success: false, error: "Case not found or not assigned to you" });
+    }
+
+    // Get script for current case status
+    const scripts = employeeService.getScriptsForStatus(caseData.status);
+    const script = scripts.length > 0
+      ? employeeService.personalizeScript(scripts[0], { clientName: caseData.client.name })
+      : null;
+
+    res.json({
+      success: true,
+      data: {
+        status: caseData.status,
+        script
+      }
+    });
+  } catch (error: any) {
+    console.error("Employee scripts error:", error);
+    res.status(500).json({ success: false, error: "Failed to load script" });
+  }
+});
+
+/**
+ * POST /api/employees/me/scripts/check - Check text for compliance (EMPLOYEE)
+ */
+router.post("/me/scripts/check", authMiddleware, roleGuard(["EMPLOYEE"]), async (req: AuthRequest, res: Response) => {
+  try {
+    const { text } = req.body;
+
+    if (!text) {
+      return res.status(400).json({ success: false, error: "Text required" });
+    }
+
+    const result = employeeService.checkCompliance(text, "CONTACTED");
+
+    res.json({
+      success: true,
+      data: result
+    });
+  } catch (error: any) {
+    console.error("Compliance check error:", error);
+    res.status(500).json({ success: false, error: "Failed to check compliance" });
+  }
+});
+
+/**
+ * POST /api/employees/me/calls/:caseId/log - Log a call (EMPLOYEE)
+ */
+router.post("/me/calls/:caseId/log", authMiddleware, roleGuard(["EMPLOYEE"]), async (req: AuthRequest, res: Response) => {
+  try {
+    const { caseId } = req.params;
+    const { outcome, duration, notes } = req.body;
+
+    // Verify case is assigned to this employee
+    const caseData = await prisma.case.findFirst({
+      where: {
+        id: caseId,
+        assignedEmployeeId: req.user!.id
+      }
+    });
+
+    if (!caseData) {
+      return res.status(404).json({ success: false, error: "Case not found or not assigned to you" });
+    }
+
+    // Create communication record
+    const communication = await prisma.communication.create({
+      data: {
+        caseId,
+        userId: req.user!.id,
+        type: "CALL",
+        direction: "OUTBOUND",
+        content: notes || "",
+        outcome,
+        duration
+      }
+    });
+
+    // Get coaching feedback
+    const feedback = employeeService.generateCoachingFeedback({
+      clarity: outcome === "SUCCESS" ? 9 : 6,
+      compliance: 9,
+      tone: 8,
+      effectiveness: outcome === "SUCCESS" ? 9 : 5
+    });
+
+    res.json({
+      success: true,
+      data: {
+        logged: true,
+        communicationId: communication.id,
+        coaching: feedback
+      }
+    });
+  } catch (error: any) {
+    console.error("Call log error:", error);
+    res.status(500).json({ success: false, error: "Failed to log call" });
+  }
+});
+
+// ============================================
+// TRAINING ROUTES (EMPLOYEE)
+// IMPORTANT: These must come BEFORE /:id routes
+// ============================================
+
+/**
+ * GET /api/employees/me/training - Get training modules (EMPLOYEE)
+ */
+router.get("/me/training", authMiddleware, roleGuard(["EMPLOYEE"]), async (req: AuthRequest, res: Response) => {
+  try {
+    const progress = await trainingService.getEmployeeProgress(req.user!.id);
+
+    res.json({
+      success: true,
+      data: progress
+    });
+  } catch (error: any) {
+    console.error("Training progress error:", error);
+    res.status(500).json({ success: false, error: "Failed to load training" });
+  }
+});
+
+/**
+ * GET /api/employees/me/training/:moduleId - Get module content (EMPLOYEE)
+ */
+router.get("/me/training/:moduleId", authMiddleware, roleGuard(["EMPLOYEE"]), async (req: AuthRequest, res: Response) => {
+  try {
+    const { moduleId } = req.params;
+    const content = trainingService.getModuleForEmployee(moduleId);
+
+    if (!content) {
+      return res.status(404).json({ success: false, error: "Module not found" });
+    }
+
+    // Mark as started if not already
+    await trainingService.startModule(req.user!.id, moduleId);
+
+    res.json({
+      success: true,
+      data: content
+    });
+  } catch (error: any) {
+    console.error("Training module error:", error);
+    res.status(500).json({ success: false, error: "Failed to load module" });
+  }
+});
+
+/**
+ * POST /api/employees/me/training/:moduleId/quiz - Submit quiz answers (EMPLOYEE)
+ */
+router.post("/me/training/:moduleId/quiz", authMiddleware, roleGuard(["EMPLOYEE"]), async (req: AuthRequest, res: Response) => {
+  try {
+    const { moduleId } = req.params;
+    const { answers } = req.body;
+
+    if (!answers || !Array.isArray(answers)) {
+      return res.status(400).json({ success: false, error: "Answers array required" });
+    }
+
+    const result = await trainingService.submitQuiz(req.user!.id, moduleId, answers);
+
+    res.json({
+      success: true,
+      data: result
+    });
+  } catch (error: any) {
+    console.error("Quiz submission error:", error);
+    res.status(500).json({ success: false, error: "Failed to submit quiz" });
+  }
+});
+
+// ============================================
 // FOUNDER/ADMIN ROUTES — Full Access
 // ============================================
 
@@ -50,7 +313,8 @@ router.get("/", authMiddleware, roleGuard(["ADMIN"]), async (_req: Request, res:
       data: employees
     });
   } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
+    console.error("Error:", error);
+    res.status(500).json({ success: false, error: "An error occurred. Please try again." });
   }
 });
 
@@ -97,7 +361,8 @@ router.get("/stats", authMiddleware, roleGuard(["ADMIN"]), async (_req: Request,
       data: stats.sort((a, b) => b.paidCases - a.paidCases)
     });
   } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
+    console.error("Error:", error);
+    res.status(500).json({ success: false, error: "An error occurred. Please try again." });
   }
 });
 
@@ -150,7 +415,8 @@ router.get("/leaderboard", authMiddleware, roleGuard(["ADMIN"]), async (_req: Re
       data: leaderboard
     });
   } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
+    console.error("Error:", error);
+    res.status(500).json({ success: false, error: "An error occurred. Please try again." });
   }
 });
 
@@ -209,7 +475,8 @@ router.get("/:id", authMiddleware, roleGuard(["ADMIN"]), async (req: Request, re
       }
     });
   } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
+    console.error("Error:", error);
+    res.status(500).json({ success: false, error: "An error occurred. Please try again." });
   }
 });
 
@@ -267,7 +534,8 @@ router.post("/", authMiddleware, roleGuard(["ADMIN"]), async (req: AuthRequest, 
       data: employee
     });
   } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
+    console.error("Error:", error);
+    res.status(500).json({ success: false, error: "An error occurred. Please try again." });
   }
 });
 
@@ -312,7 +580,8 @@ router.patch("/:id", authMiddleware, roleGuard(["ADMIN"]), async (req: AuthReque
       data: employee
     });
   } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
+    console.error("Error:", error);
+    res.status(500).json({ success: false, error: "An error occurred. Please try again." });
   }
 });
 
@@ -362,253 +631,8 @@ router.patch("/:id/tier", authMiddleware, roleGuard(["ADMIN"]), async (req: Auth
       data: employee
     });
   } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-// ============================================
-// EMPLOYEE SELF-SERVICE ROUTES
-// ============================================
-
-/**
- * GET /api/employees/me - Get own profile (EMPLOYEE)
- */
-router.get("/me", authMiddleware, roleGuard(["EMPLOYEE"]), async (req: AuthRequest, res: Response) => {
-  try {
-    const employee = await prisma.user.findUnique({
-      where: { id: req.user!.id },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        phone: true,
-        employeeTier: true,
-        createdAt: true,
-        _count: {
-          select: { assignedCases: true }
-        }
-      }
-    });
-
-    if (!employee) {
-      return res.status(404).json({ success: false, error: "Profile not found" });
-    }
-
-    // Get DISPLAYED commission rate (shadow accounting)
-    const tierData = bankingService.getTier(employee.employeeTier || "TIER_1_ASSOCIATE");
-
-    res.json({
-      success: true,
-      data: {
-        ...employee,
-        tier: getTierDisplayName(employee.employeeTier || "TIER_1_ASSOCIATE"),
-        commissionRate: tierData ? `${tierData.displayedRatePercent}%` : "20%" // DISPLAYED, not actual
-      }
-    });
-  } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-/**
- * GET /api/employees/me/earnings - Get own earnings (EMPLOYEE)
- * Shows DISPLAYED earnings, not actual
- */
-router.get("/me/earnings", authMiddleware, roleGuard(["EMPLOYEE"]), async (req: AuthRequest, res: Response) => {
-  try {
-    const earnings = await bankingService.getEmployeeEarnings(req.user!.id);
-
-    res.json({
-      success: true,
-      data: earnings // Already filtered for shadow accounting
-    });
-  } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-/**
- * GET /api/employees/me/scripts/:caseId - Get call script for a case (EMPLOYEE)
- */
-router.get("/me/scripts/:caseId", authMiddleware, roleGuard(["EMPLOYEE"]), async (req: AuthRequest, res: Response) => {
-  try {
-    const { caseId } = req.params;
-
-    // Verify case is assigned to this employee
-    const caseData = await prisma.case.findFirst({
-      where: {
-        id: caseId,
-        assignedEmployeeId: req.user!.id
-      },
-      include: {
-        client: {
-          select: { name: true }
-        }
-      }
-    });
-
-    if (!caseData) {
-      return res.status(404).json({ success: false, error: "Case not found or not assigned to you" });
-    }
-
-    // Get script for current case status
-    const scripts = employeeService.getScriptsForStatus(caseData.status);
-    const script = scripts.length > 0
-      ? employeeService.personalizeScript(scripts[0], { clientName: caseData.client.name })
-      : null;
-
-    res.json({
-      success: true,
-      data: {
-        status: caseData.status,
-        script
-      }
-    });
-  } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-/**
- * POST /api/employees/me/scripts/check - Check text for compliance (EMPLOYEE)
- */
-router.post("/me/scripts/check", authMiddleware, roleGuard(["EMPLOYEE"]), async (req: AuthRequest, res: Response) => {
-  try {
-    const { text } = req.body;
-
-    if (!text) {
-      return res.status(400).json({ success: false, error: "Text required" });
-    }
-
-    const result = employeeService.checkCompliance(text, "CONTACTED");
-
-    res.json({
-      success: true,
-      data: result
-    });
-  } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-/**
- * POST /api/employees/me/calls/:caseId/log - Log a call (EMPLOYEE)
- */
-router.post("/me/calls/:caseId/log", authMiddleware, roleGuard(["EMPLOYEE"]), async (req: AuthRequest, res: Response) => {
-  try {
-    const { caseId } = req.params;
-    const { outcome, duration, notes } = req.body;
-
-    // Verify case is assigned to this employee
-    const caseData = await prisma.case.findFirst({
-      where: {
-        id: caseId,
-        assignedEmployeeId: req.user!.id
-      }
-    });
-
-    if (!caseData) {
-      return res.status(404).json({ success: false, error: "Case not found or not assigned to you" });
-    }
-
-    // Create communication record
-    const communication = await prisma.communication.create({
-      data: {
-        caseId,
-        userId: req.user!.id,
-        type: "CALL",
-        direction: "OUTBOUND",
-        content: notes || "",
-        outcome,
-        duration
-      }
-    });
-
-    // Get coaching feedback
-    const feedback = employeeService.generateCoachingFeedback({
-      clarity: outcome === "SUCCESS" ? 9 : 6,
-      compliance: 9,
-      tone: 8,
-      effectiveness: outcome === "SUCCESS" ? 9 : 5
-    });
-
-    res.json({
-      success: true,
-      data: {
-        logged: true,
-        communicationId: communication.id,
-        coaching: feedback
-      }
-    });
-  } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-// ============================================
-// TRAINING ROUTES (EMPLOYEE)
-// ============================================
-
-/**
- * GET /api/employees/me/training - Get training modules (EMPLOYEE)
- */
-router.get("/me/training", authMiddleware, roleGuard(["EMPLOYEE"]), async (req: AuthRequest, res: Response) => {
-  try {
-    const progress = await trainingService.getEmployeeProgress(req.user!.id);
-
-    res.json({
-      success: true,
-      data: progress
-    });
-  } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-/**
- * GET /api/employees/me/training/:moduleId - Get module content (EMPLOYEE)
- */
-router.get("/me/training/:moduleId", authMiddleware, roleGuard(["EMPLOYEE"]), async (req: AuthRequest, res: Response) => {
-  try {
-    const { moduleId } = req.params;
-    const content = trainingService.getModuleForEmployee(moduleId);
-
-    if (!content) {
-      return res.status(404).json({ success: false, error: "Module not found" });
-    }
-
-    // Mark as started if not already
-    await trainingService.startModule(req.user!.id, moduleId);
-
-    res.json({
-      success: true,
-      data: content
-    });
-  } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-/**
- * POST /api/employees/me/training/:moduleId/quiz - Submit quiz answers (EMPLOYEE)
- */
-router.post("/me/training/:moduleId/quiz", authMiddleware, roleGuard(["EMPLOYEE"]), async (req: AuthRequest, res: Response) => {
-  try {
-    const { moduleId } = req.params;
-    const { answers } = req.body;
-
-    if (!answers || !Array.isArray(answers)) {
-      return res.status(400).json({ success: false, error: "Answers array required" });
-    }
-
-    const result = await trainingService.submitQuiz(req.user!.id, moduleId, answers);
-
-    res.json({
-      success: true,
-      data: result
-    });
-  } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
+    console.error("Error:", error);
+    res.status(500).json({ success: false, error: "An error occurred. Please try again." });
   }
 });
 

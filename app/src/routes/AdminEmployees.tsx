@@ -4,6 +4,7 @@
 // ============================================
 
 import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import AdminLayout from "../components/layout/AdminLayout";
 import { api } from "../lib/api";
 
@@ -11,20 +12,23 @@ interface Employee {
   id: string;
   name: string;
   email: string;
-  employeeTier: string;
+  phone: string | null;
+  employeeTier: string | null;
   isActive: boolean;
-  hireDate: string;
-  totalCases: number;
-  totalEarnings: number;
-  displayedEarnings: number;
+  createdAt: string;
+  lastLoginAt: string | null;
+  _count: {
+    assignedCases: number;
+  };
 }
 
-const TIER_INFO: Record<string, { displayRate: string; actualRate: string; color: string }> = {
-  ASSOCIATE: { displayRate: "20%", actualRate: "10%", color: "text-slate-400" },
-  SPECIALIST: { displayRate: "40%", actualRate: "20%", color: "text-blue-400" },
-  SENIOR_SPECIALIST: { displayRate: "60%", actualRate: "30%", color: "text-purple-400" },
-  TEAM_LEADER: { displayRate: "80%", actualRate: "40%", color: "text-amber-400" },
-  EXECUTIVE_PARTNER: { displayRate: "100%", actualRate: "50%", color: "text-emerald-400" },
+// Maps to API tier values (TIER_1_ASSOCIATE, TIER_2_SPECIALIST, etc.)
+const TIER_INFO: Record<string, { displayName: string; displayRate: string; actualRate: string; color: string }> = {
+  TIER_1_ASSOCIATE: { displayName: "Associate", displayRate: "20%", actualRate: "10%", color: "text-slate-400" },
+  TIER_2_SPECIALIST: { displayName: "Specialist", displayRate: "40%", actualRate: "20%", color: "text-blue-400" },
+  TIER_3_SENIOR_SPECIALIST: { displayName: "Senior Specialist", displayRate: "60%", actualRate: "30%", color: "text-purple-400" },
+  TIER_4_TEAM_LEADER: { displayName: "Team Leader", displayRate: "80%", actualRate: "40%", color: "text-amber-400" },
+  TIER_5_EXECUTIVE_PARTNER: { displayName: "Executive Partner", displayRate: "100%", actualRate: "50%", color: "text-emerald-400" },
 };
 
 function formatCurrency(cents: number): string {
@@ -94,7 +98,7 @@ export default function AdminEmployees() {
           {Object.entries(TIER_INFO).map(([tier, info]) => (
             <div key={tier} className="text-center">
               <div className={`font-semibold ${info.color}`}>
-                {tier.replace(/_/g, " ")}
+                {info.displayName}
               </div>
               <div className="text-xs text-slate-500">
                 Shows: {info.displayRate} | Actual: {info.actualRate}
@@ -111,23 +115,23 @@ export default function AdminEmployees() {
             <tr className="text-left text-slate-400 border-b border-slate-700 bg-slate-800/50">
               <th className="px-4 py-3 font-medium">Employee</th>
               <th className="px-4 py-3 font-medium">Tier</th>
+              <th className="px-4 py-3 font-medium">Commission Rate</th>
               <th className="px-4 py-3 font-medium">Status</th>
               <th className="px-4 py-3 font-medium text-right">Cases</th>
-              <th className="px-4 py-3 font-medium text-right">Displayed Earnings</th>
-              <th className="px-4 py-3 font-medium text-right">Actual Earnings</th>
               <th className="px-4 py-3 font-medium text-right">Actions</th>
             </tr>
           </thead>
           <tbody>
             {employees.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-slate-400">
+                <td colSpan={6} className="px-4 py-8 text-center text-slate-400">
                   No employees found. Add your first employee to get started.
                 </td>
               </tr>
             ) : (
               employees.map((emp) => {
-                const tierInfo = TIER_INFO[emp.employeeTier] || TIER_INFO.ASSOCIATE;
+                const tierKey = emp.employeeTier || "TIER_1_ASSOCIATE";
+                const tierInfo = TIER_INFO[tierKey] || TIER_INFO.TIER_1_ASSOCIATE;
                 return (
                   <tr key={emp.id} className="border-b border-slate-800 hover:bg-slate-800/30">
                     <td className="px-4 py-3">
@@ -138,8 +142,15 @@ export default function AdminEmployees() {
                     </td>
                     <td className="px-4 py-3">
                       <span className={`font-medium ${tierInfo.color}`}>
-                        {emp.employeeTier.replace(/_/g, " ")}
+                        {tierInfo.displayName}
                       </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="text-xs">
+                        <span className="text-slate-400">Shows: {tierInfo.displayRate}</span>
+                        <span className="mx-2 text-slate-600">|</span>
+                        <span className="text-emerald-400">Actual: {tierInfo.actualRate}</span>
+                      </div>
                     </td>
                     <td className="px-4 py-3">
                       <span className={`px-2 py-1 rounded text-xs ${
@@ -150,20 +161,20 @@ export default function AdminEmployees() {
                         {emp.isActive ? "Active" : "Inactive"}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-right">{emp.totalCases || 0}</td>
-                    <td className="px-4 py-3 text-right text-slate-400">
-                      {formatCurrency(emp.displayedEarnings || 0)}
-                    </td>
-                    <td className="px-4 py-3 text-right font-semibold text-emerald-400">
-                      {formatCurrency(emp.totalEarnings || 0)}
-                    </td>
+                    <td className="px-4 py-3 text-right">{emp._count?.assignedCases || 0}</td>
                     <td className="px-4 py-3 text-right">
-                      <button className="px-3 py-1 text-xs bg-slate-700 hover:bg-slate-600 rounded mr-2">
-                        Edit
-                      </button>
-                      <button className="px-3 py-1 text-xs bg-slate-700 hover:bg-slate-600 rounded">
+                      <Link
+                        to={`/admin/employees/${emp.id}`}
+                        className="px-3 py-1 text-xs bg-slate-700 hover:bg-slate-600 rounded mr-2 inline-block"
+                      >
                         View
-                      </button>
+                      </Link>
+                      <Link
+                        to={`/admin/employees/${emp.id}/edit`}
+                        className="px-3 py-1 text-xs bg-emerald-700 hover:bg-emerald-600 rounded inline-block"
+                      >
+                        Edit
+                      </Link>
                     </td>
                   </tr>
                 );
@@ -197,7 +208,7 @@ function AddEmployeeModal({ onClose, onSuccess }: AddEmployeeModalProps) {
     name: "",
     email: "",
     password: "",
-    employeeTier: "ASSOCIATE",
+    employeeTier: "TIER_1_ASSOCIATE",
   });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -273,11 +284,11 @@ function AddEmployeeModal({ onClose, onSuccess }: AddEmployeeModalProps) {
               onChange={(e) => setFormData({ ...formData, employeeTier: e.target.value })}
               className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded text-white text-sm"
             >
-              <option value="ASSOCIATE">Associate (20% displayed / 10% actual)</option>
-              <option value="SPECIALIST">Specialist (40% / 20%)</option>
-              <option value="SENIOR_SPECIALIST">Senior Specialist (60% / 30%)</option>
-              <option value="TEAM_LEADER">Team Leader (80% / 40%)</option>
-              <option value="EXECUTIVE_PARTNER">Executive Partner (100% / 50%)</option>
+              <option value="TIER_1_ASSOCIATE">Associate (20% displayed / 10% actual)</option>
+              <option value="TIER_2_SPECIALIST">Specialist (40% / 20%)</option>
+              <option value="TIER_3_SENIOR_SPECIALIST">Senior Specialist (60% / 30%)</option>
+              <option value="TIER_4_TEAM_LEADER">Team Leader (80% / 40%)</option>
+              <option value="TIER_5_EXECUTIVE_PARTNER">Executive Partner (100% / 50%)</option>
             </select>
           </div>
 

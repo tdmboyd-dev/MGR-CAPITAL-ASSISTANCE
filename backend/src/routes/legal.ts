@@ -32,7 +32,8 @@ router.get("/states", authMiddleware, roleGuard(["ADMIN"]), async (_req: Request
       data: states
     });
   } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
+    console.error("Legal error:", error);
+    res.status(500).json({ success: false, error: "An error occurred. Please try again." });
   }
 });
 
@@ -53,7 +54,8 @@ router.get("/states/:code", authMiddleware, roleGuard(["ADMIN"]), async (req: Re
       data: stateRule
     });
   } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
+    console.error("Legal error:", error);
+    res.status(500).json({ success: false, error: "An error occurred. Please try again." });
   }
 });
 
@@ -75,7 +77,8 @@ router.post("/deadlines/calculate", authMiddleware, roleGuard(["ADMIN"]), async 
       data: deadlines
     });
   } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
+    console.error("Legal error:", error);
+    res.status(500).json({ success: false, error: "An error occurred. Please try again." });
   }
 });
 
@@ -93,7 +96,8 @@ router.get("/deadlines", authMiddleware, roleGuard(["ADMIN"]), async (req: Reque
       data: deadlines
     });
   } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
+    console.error("Legal error:", error);
+    res.status(500).json({ success: false, error: "An error occurred. Please try again." });
   }
 });
 
@@ -110,7 +114,8 @@ router.get("/deadlines/urgent", authMiddleware, roleGuard(["ADMIN"]), async (_re
       data: urgentDeadlines
     });
   } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
+    console.error("Legal error:", error);
+    res.status(500).json({ success: false, error: "An error occurred. Please try again." });
   }
 });
 
@@ -127,7 +132,8 @@ router.get("/compliance/:caseId", authMiddleware, roleGuard(["ADMIN"]), async (r
       data: compliance
     });
   } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
+    console.error("Legal error:", error);
+    res.status(500).json({ success: false, error: "An error occurred. Please try again." });
   }
 });
 
@@ -145,7 +151,8 @@ router.get("/recommendations/:caseId", authMiddleware, roleGuard(["ADMIN"]), asy
       data: recommendations
     });
   } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
+    console.error("Legal error:", error);
+    res.status(500).json({ success: false, error: "An error occurred. Please try again." });
   }
 });
 
@@ -184,7 +191,8 @@ router.post("/documents/generate", authMiddleware, roleGuard(["ADMIN"]), async (
       data: result
     });
   } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
+    console.error("Legal error:", error);
+    res.status(500).json({ success: false, error: "An error occurred. Please try again." });
   }
 });
 
@@ -220,7 +228,8 @@ router.post("/documents/generate-all", authMiddleware, roleGuard(["ADMIN"]), asy
       data: result
     });
   } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
+    console.error("Legal error:", error);
+    res.status(500).json({ success: false, error: "An error occurred. Please try again." });
   }
 });
 
@@ -242,7 +251,8 @@ router.post("/rejection/analyze", authMiddleware, roleGuard(["ADMIN"]), async (r
       data: analysis
     });
   } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
+    console.error("Legal error:", error);
+    res.status(500).json({ success: false, error: "An error occurred. Please try again." });
   }
 });
 
@@ -268,7 +278,8 @@ router.get("/templates", authMiddleware, roleGuard(["ADMIN"]), async (_req: Requ
       data: templates
     });
   } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
+    console.error("Legal error:", error);
+    res.status(500).json({ success: false, error: "An error occurred. Please try again." });
   }
 });
 
@@ -333,7 +344,8 @@ router.get("/stats", authMiddleware, roleGuard(["ADMIN"]), async (_req: Request,
       }
     });
   } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
+    console.error("Legal error:", error);
+    res.status(500).json({ success: false, error: "An error occurred. Please try again." });
   }
 });
 

@@ -4,6 +4,7 @@
 // ============================================
 
 import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import AdminLayout from "../components/layout/AdminLayout";
 import SimpleStatCard from "../components/charts/SimpleStatCard";
 import { api } from "../lib/api";
@@ -36,9 +37,17 @@ interface TopPerformer {
 interface PendingPayout {
   caseId: string;
   internalCode: string;
-  clientName: string;
+  client: { name: string; email: string };
+  employee: { id: string; name: string; employeeTier: string } | null;
   surplusAmountCents: number;
-  employeeName: string;
+  calculation: {
+    feeAmountCents: number;
+    clientPayoutCents: number;
+    employeeCommissionCents: number;
+    employeeDisplayedCommissionCents: number;
+    founderShareCents: number;
+    companyFeeCents: number;
+  };
 }
 
 interface Anomaly {
@@ -277,12 +286,12 @@ export default function AdminDashboard() {
       <div className="bg-slate-900 border border-slate-800 rounded-lg p-4 mb-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold">Pending Payouts</h2>
-          <a
-            href="/admin/payouts"
+          <Link
+            to="/admin/banking"
             className="text-sm text-emerald-400 hover:text-emerald-300"
           >
             View All
-          </a>
+          </Link>
         </div>
         {pendingPayouts.length === 0 ? (
           <p className="text-sm text-slate-400">No pending payouts</p>
@@ -302,18 +311,18 @@ export default function AdminDashboard() {
                 {pendingPayouts.map((payout) => (
                   <tr key={payout.caseId} className="border-b border-slate-800">
                     <td className="py-3 font-mono text-emerald-400">{payout.internalCode}</td>
-                    <td className="py-3">{payout.clientName}</td>
-                    <td className="py-3">{payout.employeeName}</td>
+                    <td className="py-3">{payout.client?.name || "—"}</td>
+                    <td className="py-3">{payout.employee?.name || "Unassigned"}</td>
                     <td className="py-3 text-right font-semibold">
                       {formatCurrency(payout.surplusAmountCents)}
                     </td>
                     <td className="py-3 text-right">
-                      <a
-                        href={`/admin/cases/${payout.caseId}/payout`}
+                      <Link
+                        to={`/admin/cases/${payout.caseId}`}
                         className="px-3 py-1 text-xs bg-emerald-600 hover:bg-emerald-700 rounded"
                       >
-                        Process
-                      </a>
+                        View
+                      </Link>
                     </td>
                   </tr>
                 ))}

@@ -7,6 +7,10 @@ import express from "express";
 import cors from "cors";
 import { config } from "./config/env.js";
 
+// Middleware imports
+import { globalErrorHandler, notFoundHandler } from "./middleware/errorHandler.js";
+import { auditLogMiddleware } from "./middleware/auditLogger.js";
+
 // Route imports
 import authRoutes from "./routes/auth.js";
 import casesRoutes from "./routes/cases.js";
@@ -16,6 +20,7 @@ import payoutsRoutes from "./routes/payouts.js";
 import legalRoutes from "./routes/legal.js";
 import ingestionRoutes from "./routes/ingestion.js";
 import trainingRoutes from "./routes/training.js";
+import settingsRoutes from "./routes/settings.js";
 
 const app = express();
 
@@ -36,6 +41,9 @@ app.use((req, _res, next) => {
   next();
 });
 
+// Audit logging middleware (after auth routes)
+app.use(auditLogMiddleware);
+
 // ============================================
 // ROUTES
 // ============================================
@@ -53,6 +61,7 @@ app.use("/api/payouts", payoutsRoutes);
 app.use("/api/legal", legalRoutes);
 app.use("/api/ingestion", ingestionRoutes);
 app.use("/api/training", trainingRoutes);
+app.use("/api/settings", settingsRoutes);
 
 // ============================================
 // HEALTH CHECK
@@ -71,22 +80,12 @@ app.get("/api/health", (_req, res) => {
 // ERROR HANDLING
 // ============================================
 
-// 404 handler
-app.use((_req, res) => {
-  res.status(404).json({
-    success: false,
-    error: "Endpoint not found"
-  });
-});
+// 404 handler for undefined routes
+app.use(notFoundHandler);
 
-// Global error handler
-app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
-  console.error("Server error:", err);
-  res.status(err.status || 500).json({
-    success: false,
-    error: config.nodeEnv === "production" ? "Internal server error" : err.message
-  });
-});
+// Global error handler - masks internal errors, logs privately
+// FOUNDER sees full details, employees/clients see safe messages
+app.use(globalErrorHandler);
 
 // ============================================
 // SERVER START

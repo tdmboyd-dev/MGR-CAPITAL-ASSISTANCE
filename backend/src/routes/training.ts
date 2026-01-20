@@ -94,7 +94,8 @@ router.get("/", authMiddleware, roleGuard(["EMPLOYEE"]), async (req: AuthRequest
       data: safeModules
     });
   } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
+    console.error("Training modules error:", error);
+    res.status(500).json({ success: false, error: "Failed to load training modules" });
   }
 });
 
@@ -110,7 +111,8 @@ router.get("/progress", authMiddleware, roleGuard(["EMPLOYEE"]), async (req: Aut
       data: progress
     });
   } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
+    console.error("Training progress error:", error);
+    res.status(500).json({ success: false, error: "Failed to load training progress" });
   }
 });
 
@@ -134,7 +136,8 @@ router.get("/:moduleId", authMiddleware, roleGuard(["EMPLOYEE"]), async (req: Au
       data: module
     });
   } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
+    console.error("Training module error:", error);
+    res.status(500).json({ success: false, error: "Failed to load training module" });
   }
 });
 
@@ -157,7 +160,8 @@ router.post("/:moduleId/quiz", authMiddleware, roleGuard(["EMPLOYEE"]), async (r
       data: result
     });
   } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
+    console.error("Quiz submission error:", error);
+    res.status(500).json({ success: false, error: "Failed to submit quiz" });
   }
 });
 

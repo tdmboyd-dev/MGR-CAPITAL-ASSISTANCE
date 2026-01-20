@@ -4,8 +4,9 @@
 // ============================================
 
 import { useState, useEffect } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import ClientLayout from "../components/layout/ClientLayout";
+import { API_BASE_URL } from "../lib/api";
 
 interface CaseData {
   propertyAddress: string;
@@ -63,7 +64,7 @@ export default function ClientPortal() {
       setLoading(true);
       setError(null);
 
-      const response = await fetch(`http://localhost:4000/api/cases/client/${token}`);
+      const response = await fetch(`${API_BASE_URL}/cases/client/${token}`);
       const data = await response.json();
 
       if (data.success) {
@@ -73,7 +74,7 @@ export default function ClientPortal() {
       }
 
       // Also fetch client info
-      const clientRes = await fetch(`http://localhost:4000/api/clients/portal/${token}`);
+      const clientRes = await fetch(`${API_BASE_URL}/clients/portal/${token}`);
       const clientData = await clientRes.json();
       if (clientData.success) {
         setClientInfo(clientData.data);
@@ -95,7 +96,7 @@ export default function ClientPortal() {
       const formData = new FormData();
       formData.append("file", file);
 
-      const response = await fetch(`http://localhost:4000/api/clients/portal/${token}/id-upload`, {
+      const response = await fetch(`${API_BASE_URL}/clients/portal/${token}/id-upload`, {
         method: "POST",
         body: formData,
       });
@@ -119,7 +120,7 @@ export default function ClientPortal() {
 
     try {
       const response = await fetch(
-        `http://localhost:4000/api/clients/portal/${token}/sign/${documentId}`,
+        `${API_BASE_URL}/clients/portal/${token}/sign/${documentId}`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -280,9 +281,9 @@ export default function ClientPortal() {
       <div className="mt-6 text-center">
         <p className="text-xs text-slate-400">
           Have questions?{" "}
-          <a href={`/client/${token}/faq`} className="text-emerald-600 hover:underline">
+          <Link to={`/client/${token}/faq`} className="text-emerald-600 hover:underline">
             View FAQ
-          </a>{" "}
+          </Link>{" "}
           or contact us at support@mgrcapital.com
         </p>
       </div>
