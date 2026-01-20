@@ -1,0 +1,760 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// ENUMS
+// ============================================
+
+enum UserRole {
+  FOUNDER
+  ADMIN
+  EMPLOYEE
+  CLIENT
+}
+
+enum CaseStatus {
+  NEW
+  CONTACTED
+  DOCS_PENDING
+  DOCS_SIGNED
+  FILED
+  AWAITING_FUNDS
+  PAID
+  CLOSED
+  REJECTED
+}
+
+enum EmployeeTier {
+  TIER_1_ASSOCIATE
+  TIER_2_SPECIALIST
+  TIER_3_SENIOR_SPECIALIST
+  TIER_4_TEAM_LEADER
+  TIER_5_EXECUTIVE_PARTNER
+}
+
+enum DocumentType {
+  CLIENT_SERVICE_AGREEMENT
+  LIMITED_POA
+  AFFIDAVIT
+  MOTION
+  COVER_LETTER
+  FILING_PACKET
+  EVIDENCE_PACKET
+  FOLLOW_UP_LETTER
+  VERIFICATION_LETTER
+  PAYMENT_INSTRUCTIONS
+  CLIENT_ID
+  PROPERTY_DEED
+  TAX_RECORD
+  OTHER
+}
+
+enum DocumentStatus {
+  DRAFT
+  PENDING_SIGNATURE
+  SIGNED
+  SUBMITTED
+  APPROVED
+  REJECTED
+}
+
+enum LedgerEntryType {
+  COMMISSION
+  EMPLOYEE_COMMISSION
+  OVERRIDE
+  FOUNDER_SHARE
+  CLIENT_PAYOUT
+  COMPANY_FEE
+  ADJUSTMENT
+  REFUND
+  FEE
+}
+
+enum CommunicationType {
+  CALL
+  TEXT
+  EMAIL
+  PORTAL_MESSAGE
+}
+
+enum CommunicationDirection {
+  INBOUND
+  OUTBOUND
+}
+
+enum TrainingModuleStatus {
+  LOCKED
+  AVAILABLE
+  IN_PROGRESS
+  COMPLETED
+}
+
+enum IngestionSourceType {
+  TAX_SALE_LIST
+  SURPLUS_PDF
+  AUCTION_RESULT
+  COUNTY_WEBSITE
+  MANUAL_ENTRY
+}
+
+// ============================================
+// USER & AUTHENTICATION
+// ============================================
+
+model User {
+  id                  String       @id @default(cuid())
+  email               String       @unique
+  passwordHash        String
+  role                UserRole
+  name                String
+  phone               String?
+  address             String?
+  city                String?
+  state               String?
+  zipCode             String?
+  isActive            Boolean      @default(true)
+  emailVerified       Boolean      @default(false)
+  lastLoginAt         DateTime?
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+
+  // Employee-specific fields
+  employeeTier        EmployeeTier?
+  hireDate            DateTime?
+  teamLeaderId        String?
+  teamLeader          User?        @relation("TeamMembers", fields: [teamLeaderId], references: [id])
+  teamMembers         User[]       @relation("TeamMembers")
+  trainingCompleted   Boolean      @default(false)
+
+  // Client-specific fields
+  ssn4                String?      // Last 4 digits only, encrypted
+  dateOfBirth         DateTime?
+
+  // Relations
+  assignedCases       Case[]       @relation("AssignedEmployee")
+  clientCases         Case[]       @relation("ClientCases")
+  ledgerEntries       LedgerEntry[]
+  communications      Communication[]
+  documents           Document[]   @relation("UploadedBy")
+  trainingProgress    EmployeeTrainingProgress[]
+  callScores          CallScore[]
+  sessions            UserSession[]
+  auditLogs           AuditLog[]
+
+  @@index([email])
+  @@index([role])
+  @@index([employeeTier])
+}
+
+model UserSession {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token        String   @unique
+  ipAddress    String?
+  userAgent    String?
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+
+  @@index([userId])
+  @@index([token])
+}
+
+// ============================================
+// CASE MANAGEMENT
+// ============================================
+
+model Case {
+  id                    String       @id @default(cuid())
+  internalCode          String       @unique
+  publicAccessToken     String       @unique @default(cuid())
+  status                CaseStatus   @default(NEW)
+
+  // Client info
+  clientId              String
+  client                User         @relation("ClientCases", fields: [clientId], references: [id])
+
+  // Assigned employee
+  assignedEmployeeId    String?
+  assignedEmployee      User?        @relation("AssignedEmployee", fields: [assignedEmployeeId], references: [id])
+
+  // Property info
+  state                 String
+  county                String
+  propertyAddress       String
+  parcelNumber          String?
+  saleDate              DateTime?
+  previousOwner         String?
+
+  // Financials (all in cents to avoid floating point)
+  surplusAmountCents    Int          // FOUNDER ONLY - Never expose
+  feePercent            Int          // Company fee percentage (e.g., 30 = 30%)
+  estimatedFeeCents     Int?         // Calculated fee amount
+  actualFeeCents        Int?         // Final fee received
+  clientPayoutCents     Int?         // Amount paid to client
+
+  // Legal tracking
+  redemptionDeadline    DateTime?
+  filingDeadline        DateTime?
+  claimNumber           String?
+  courtCaseNumber       String?
+
+  // Status timestamps
+  contactedAt           DateTime?
+  docsRequestedAt       DateTime?
+  docsSignedAt          DateTime?
+  filedAt               DateTime?
+  fundsReceivedAt       DateTime?
+  fundsDisbursedAt      DateTime?
+  paidAt                DateTime?
+  closedAt              DateTime?
+
+  // Metadata
+  source                String?      // Where lead came from
+  priority              Int          @default(0) // Higher = more priority
+  notes                 String?      // Internal notes (founder only)
+  rejectionReason       String?
+
+  createdAt             DateTime     @default(now())
+  updatedAt             DateTime     @updatedAt
+
+  // Relations
+  documents             Document[]
+  communications        Communication[]
+  ledgerEntries         LedgerEntry[]
+  deadlines             Deadline[]
+  stateRule             StateRule?   @relation(fields: [state], references: [stateCode])
+  countyRule            CountyRule?  @relation(fields: [state, county], references: [stateCode, countyName])
+
+  @@index([status])
+  @@index([state])
+  @@index([county])
+  @@index([assignedEmployeeId])
+  @@index([clientId])
+  @@index([publicAccessToken])
+}
+
+model Deadline {
+  id            String    @id @default(cuid())
+  caseId        String
+  case          Case      @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  title         String
+  description   String?
+  dueDate       DateTime
+  reminderSent  Boolean   @default(false)
+  completedAt   DateTime?
+  createdAt     DateTime  @default(now())
+
+  @@index([caseId])
+  @@index([dueDate])
+}
+
+// ============================================
+// DOCUMENTS
+// ============================================
+
+model Document {
+  id              String         @id @default(cuid())
+  caseId          String
+  case            Case           @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  type            DocumentType
+  status          DocumentStatus @default(DRAFT)
+
+  // File info
+  fileName        String
+  fileUrl         String
+  fileSize        Int
+  mimeType        String
+
+  // Generation info
+  templateId      String?
+  template        DocumentTemplate? @relation(fields: [templateId], references: [id])
+  generatedContent String?        @db.Text
+
+  // Signatures
+  signatureRequired Boolean      @default(false)
+  signedAt          DateTime?
+  signatureUrl      String?
+
+  // Tracking
+  uploadedById    String
+  uploadedBy      User           @relation("UploadedBy", fields: [uploadedById], references: [id])
+  submittedAt     DateTime?
+  approvedAt      DateTime?
+  rejectedAt      DateTime?
+  rejectionReason String?
+
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  @@index([caseId])
+  @@index([type])
+  @@index([status])
+}
+
+model DocumentTemplate {
+  id              String       @id @default(cuid())
+  type            DocumentType @unique
+  name            String
+  description     String?
+  content         String       @db.Text  // Template with placeholders
+  requiredFields  String[]     // List of required placeholder fields
+  stateSpecific   Boolean      @default(false)
+  state           String?      // If state-specific
+  isActive        Boolean      @default(true)
+  version         Int          @default(1)
+
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  documents       Document[]
+
+  @@index([type])
+  @@index([state])
+}
+
+// ============================================
+// LEGAL RULES ENGINE
+// ============================================
+
+model StateRule {
+  id                      String       @id @default(cuid())
+  stateCode               String       @unique  // e.g., "TN", "GA"
+  stateName               String
+
+  // Surplus fund rules
+  surplusFundLaw          String       @db.Text  // Statute reference
+  claimPeriodDays         Int          // How long to file claim
+  redemptionPeriodDays    Int?         // Redemption period if applicable
+  interestRate            Float?       // Interest rate on surplus
+
+  // Filing requirements
+  requiredDocuments       DocumentType[]
+  filingFee               Int?         // In cents
+  filingMethod            String       // "mail", "electronic", "in-person"
+  filingAddress           String?
+
+  // Deadlines
+  deadlineCalculation     String       @db.Text  // How to calculate deadlines
+
+  // Special rules
+  specialRequirements     String?      @db.Text
+  restrictions            String?      @db.Text
+
+  // Metadata
+  lastVerified            DateTime?
+  sourceUrl               String?
+  notes                   String?      @db.Text
+
+  isActive                Boolean      @default(true)
+  createdAt               DateTime     @default(now())
+  updatedAt               DateTime     @updatedAt
+
+  counties                CountyRule[]
+  cases                   Case[]
+
+  @@index([stateCode])
+}
+
+model CountyRule {
+  id                      String       @id @default(cuid())
+  stateCode               String
+  state                   StateRule    @relation(fields: [stateCode], references: [stateCode])
+  countyName              String
+
+  // County-specific overrides
+  clerkName               String?
+  clerkPhone              String?
+  clerkEmail              String?
+  clerkAddress            String?
+
+  // Filing specifics
+  localFilingFee          Int?         // Override state fee if different
+  localFilingMethod       String?      // Override state method
+  localRequirements       String?      @db.Text
+
+  // Deadlines
+  localDeadlineVariation  Int?         // Days +/- from state deadline
+
+  // Special notes
+  notes                   String?      @db.Text
+
+  isActive                Boolean      @default(true)
+  createdAt               DateTime     @default(now())
+  updatedAt               DateTime     @updatedAt
+
+  cases                   Case[]
+
+  @@unique([stateCode, countyName])
+  @@index([stateCode])
+}
+
+// ============================================
+// FINANCIAL / LEDGER
+// ============================================
+
+enum LedgerEntryStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+model LedgerEntry {
+  id                    String            @id @default(cuid())
+  caseId                String
+  case                  Case              @relation(fields: [caseId], references: [id])
+  userId                String?
+  user                  User?             @relation(fields: [userId], references: [id])
+
+  type                  LedgerEntryType
+  amountCents           Int
+  displayedAmountCents  Int?              // For shadow accounting - what employee sees
+  description           String
+  status                LedgerEntryStatus @default(PENDING)
+
+  // For commission entries
+  tierAtTime            EmployeeTier?     // Employee tier when earned
+  displayedRate         Int?              // What employee sees (e.g., 60)
+  actualRate            Int?              // Real rate (e.g., 30)
+
+  // Payout tracking
+  isPaid                Boolean           @default(false)
+  paidAt                DateTime?
+  paymentMethod         String?
+  paymentRef            String?
+
+  // Completion tracking
+  completedAt           DateTime?
+  reference             String?           // External reference (check #, wire ref, etc.)
+  notes                 String?           // Admin notes
+
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+
+  @@index([caseId])
+  @@index([userId])
+  @@index([type])
+  @@index([isPaid])
+  @@index([status])
+}
+
+model CommissionPlan {
+  id                    String       @id @default(cuid())
+  tier                  EmployeeTier @unique
+  tierDisplayName       String       // "Tier 1 — Associate"
+
+  // Shadow accounting
+  displayedRatePercent  Int          // What employee sees (e.g., 20, 40, 60, 80, 100)
+  actualRatePercent     Int          // What they actually get (e.g., 10, 20, 30, 40, 50)
+
+  // Override for team leaders
+  overridePercent       Int?         // Override on team members' deals
+
+  // Promotion requirements
+  casesRequired         Int?         // Cases needed for next tier
+  revenueRequired       Int?         // Revenue in cents needed
+  trainingRequired      Boolean      @default(true)
+
+  isActive              Boolean      @default(true)
+  createdAt             DateTime     @default(now())
+  updatedAt             DateTime     @updatedAt
+}
+
+// ============================================
+// COMMUNICATION
+// ============================================
+
+model Communication {
+  id              String                 @id @default(cuid())
+  caseId          String
+  case            Case                   @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  userId          String
+  user            User                   @relation(fields: [userId], references: [id])
+
+  type            CommunicationType
+  direction       CommunicationDirection
+
+  // Content
+  subject         String?
+  content         String                 @db.Text
+
+  // For calls
+  duration        Int?                   // In seconds
+  recordingUrl    String?
+
+  // For emails/texts
+  toAddress       String?
+  fromAddress     String?
+
+  // Script used (if applicable)
+  scriptId        String?
+  script          Script?                @relation(fields: [scriptId], references: [id])
+
+  // Outcome
+  outcome         String?
+  nextAction      String?
+
+  createdAt       DateTime               @default(now())
+
+  @@index([caseId])
+  @@index([userId])
+  @@index([type])
+}
+
+model Script {
+  id              String            @id @default(cuid())
+  name            String
+  type            CommunicationType
+  caseStatus      CaseStatus        // Which stage this script is for
+
+  content         String            @db.Text
+
+  // Compliance
+  complianceNotes String?           @db.Text
+  prohibitedWords String[]          // Words that should never be used
+  requiredPhrases String[]          // Phrases that must be included
+
+  isActive        Boolean           @default(true)
+  version         Int               @default(1)
+
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  communications  Communication[]
+
+  @@index([type])
+  @@index([caseStatus])
+}
+
+model CallScore {
+  id              String   @id @default(cuid())
+  employeeId      String
+  employee        User     @relation(fields: [employeeId], references: [id])
+
+  // Scoring
+  clarityScore    Int      // 1-10
+  complianceScore Int      // 1-10
+  toneScore       Int      // 1-10
+  effectivenessScore Int   // 1-10
+  overallScore    Int      // Calculated average
+
+  // Feedback
+  feedback        String?  @db.Text
+  coachingNotes   String?  @db.Text
+
+  // Recording reference
+  recordingUrl    String?
+
+  createdAt       DateTime @default(now())
+
+  @@index([employeeId])
+}
+
+// ============================================
+// TRAINING
+// ============================================
+
+model TrainingModule {
+  id              String    @id @default(cuid())
+  title           String
+  description     String    @db.Text
+  content         String    @db.Text  // Full training content
+
+  // Ordering
+  orderIndex      Int
+
+  // Requirements
+  requiredForTier EmployeeTier?  // Minimum tier that needs this
+  prerequisites   String[]       // IDs of modules that must be completed first
+
+  // Assessment
+  hasQuiz         Boolean   @default(false)
+  passingScore    Int?      // Percentage needed to pass
+
+  isActive        Boolean   @default(true)
+  version         Int       @default(1)
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  progress        EmployeeTrainingProgress[]
+  questions       TrainingQuestion[]
+
+  @@index([orderIndex])
+}
+
+model TrainingQuestion {
+  id              String          @id @default(cuid())
+  moduleId        String
+  module          TrainingModule  @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+
+  question        String          @db.Text
+  options         String[]        // Multiple choice options
+  correctAnswer   Int             // Index of correct option
+  explanation     String?         @db.Text
+
+  orderIndex      Int
+
+  createdAt       DateTime        @default(now())
+
+  @@index([moduleId])
+}
+
+model EmployeeTrainingProgress {
+  id              String                @id @default(cuid())
+  employeeId      String
+  employee        User                  @relation(fields: [employeeId], references: [id])
+  moduleId        String
+  module          TrainingModule        @relation(fields: [moduleId], references: [id])
+
+  status          TrainingModuleStatus  @default(LOCKED)
+  progress        Int                   @default(0)  // Percentage complete
+
+  // Quiz results
+  quizAttempts    Int                   @default(0)
+  bestScore       Int?
+  passedAt        DateTime?
+
+  startedAt       DateTime?
+  completedAt     DateTime?
+
+  @@unique([employeeId, moduleId])
+  @@index([employeeId])
+  @@index([moduleId])
+}
+
+// ============================================
+// INGESTION
+// ============================================
+
+model IngestionSource {
+  id              String              @id @default(cuid())
+  name            String
+  type            IngestionSourceType
+
+  // Source details
+  state           String
+  county          String?
+  url             String?
+
+  // Parsing config
+  parserConfig    Json?               // Configuration for parsing this source
+
+  // Schedule
+  frequency       String?             // "daily", "weekly", "monthly"
+  lastFetched     DateTime?
+  nextFetch       DateTime?
+
+  isActive        Boolean             @default(true)
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  batches         IngestionBatch[]
+
+  @@index([state])
+  @@index([type])
+}
+
+model IngestionBatch {
+  id              String           @id @default(cuid())
+  sourceId        String
+  source          IngestionSource  @relation(fields: [sourceId], references: [id])
+
+  // File info
+  fileName        String?
+  fileUrl         String?
+
+  // Processing
+  status          String           @default("pending") // pending, processing, completed, failed
+  totalRecords    Int              @default(0)
+  processedRecords Int             @default(0)
+  createdCases    Int              @default(0)
+  errors          String?          @db.Text
+
+  processedAt     DateTime?
+  createdAt       DateTime         @default(now())
+
+  records         IngestionRecord[]
+
+  @@index([sourceId])
+  @@index([status])
+}
+
+model IngestionRecord {
+  id              String          @id @default(cuid())
+  batchId         String
+  batch           IngestionBatch  @relation(fields: [batchId], references: [id], onDelete: Cascade)
+
+  // Raw data
+  rawData         Json
+
+  // Parsed data
+  ownerName       String?
+  propertyAddress String?
+  parcelNumber    String?
+  saleDate        DateTime?
+  saleAmount      Int?            // In cents
+  surplusAmount   Int?            // In cents
+
+  // Processing
+  status          String          @default("pending") // pending, processed, skipped, error
+  caseId          String?         // If a case was created
+  errorMessage    String?
+
+  // Founder flags
+  isHighValue     Boolean         @default(false)
+  priority        Int             @default(0)
+
+  createdAt       DateTime        @default(now())
+
+  @@index([batchId])
+  @@index([status])
+  @@index([isHighValue])
+}
+
+// ============================================
+// AUDIT & LOGGING
+// ============================================
+
+model AuditLog {
+  id              String   @id @default(cuid())
+  userId          String?
+  user            User?    @relation(fields: [userId], references: [id])
+
+  action          String   // "CREATE", "UPDATE", "DELETE", "VIEW", "LOGIN", etc.
+  entityType      String   // "Case", "Document", "User", etc.
+  entityId        String?
+
+  // Change tracking
+  oldValues       Json?
+  newValues       Json?
+  details         Json?    // Additional context/metadata
+
+  // Request info
+  ipAddress       String?
+  userAgent       String?
+
+  createdAt       DateTime @default(now())
+
+  @@index([userId])
+  @@index([entityType])
+  @@index([action])
+  @@index([createdAt])
+}
+
+model SystemConfig {
+  id              String   @id @default(cuid())
+  key             String   @unique
+  value           String   @db.Text
+  description     String?
+
+  updatedAt       DateTime @updatedAt
+}
