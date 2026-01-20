@@ -8,6 +8,12 @@ export function roleGuard(allowedRoles: string[]) {
       return;
     }
 
+    // FOUNDER has all permissions (superuser)
+    if (req.user.role === "FOUNDER") {
+      next();
+      return;
+    }
+
     if (!allowedRoles.includes(req.user.role)) {
       res.status(403).json({ error: "Insufficient permissions" });
       return;
