@@ -50,3 +50,6 @@ credentials.json
 *.pem
 *.key
 service-account.json
+
+# Claude Code settings (may contain tokens)
+.claude/
