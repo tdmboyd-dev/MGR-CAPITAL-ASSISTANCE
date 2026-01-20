@@ -207,7 +207,7 @@ export class IngestionService {
    */
   parseRecord(rawRecord: Record<string, any>, config?: ParserConfig): ParsedRecord {
     // Default field mappings
-    const mapping = config?.columnMapping || {
+    const defaultMapping: Record<string, string[]> = {
       ownerName: ["owner", "owner_name", "owner name", "name", "property_owner", "taxpayer"],
       propertyAddress: ["address", "property_address", "property address", "location", "property_location", "situs"],
       parcelNumber: ["parcel", "parcel_number", "parcel number", "apn", "pin", "property_id"],
@@ -219,6 +219,14 @@ export class IngestionService {
       county: ["county", "county_name"],
       zipCode: ["zip", "zip_code", "zipcode", "postal"]
     };
+
+    // Merge custom mapping with defaults (convert single strings to arrays)
+    const mapping: Record<string, string[]> = { ...defaultMapping };
+    if (config?.columnMapping) {
+      for (const [key, value] of Object.entries(config.columnMapping)) {
+        mapping[key] = [value];
+      }
+    }
 
     const findValue = (fieldNames: string[]): any => {
       for (const field of fieldNames) {

@@ -42,7 +42,7 @@ router.post("/sources", authMiddleware, roleGuard(["ADMIN"]), async (req: AuthRe
   try {
     const { name, type, state, county, url, parserConfig, frequency } = req.body;
 
-    const validTypes: IngestionSourceType[] = ["TAX_SALE_LIST", "AUCTION_RESULT", "COUNTY_WEBSITE", "MANUAL_UPLOAD"];
+    const validTypes: IngestionSourceType[] = ["TAX_SALE_LIST", "SURPLUS_PDF", "AUCTION_RESULT", "COUNTY_WEBSITE", "MANUAL_ENTRY"];
 
     if (!validTypes.includes(type)) {
       return res.status(400).json({ success: false, error: "Invalid source type" });

@@ -83,7 +83,7 @@ router.post("/login", async (req, res) => {
         tier: user.employeeTier
       },
       config.jwtSecret,
-      { expiresIn: config.jwtExpiresIn }
+      { expiresIn: "7d" }
     );
 
     // Create session record

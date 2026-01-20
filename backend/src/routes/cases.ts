@@ -541,7 +541,7 @@ router.get("/client/:token", async (req: Request, res: Response) => {
         state: true,
         documents: {
           where: {
-            status: { in: ["SENT_FOR_SIGNATURE", "SIGNED"] }
+            status: { in: ["PENDING_SIGNATURE", "SIGNED"] }
           },
           select: {
             id: true,
@@ -571,7 +571,7 @@ router.get("/client/:token", async (req: Request, res: Response) => {
         documents: caseData.documents.map(d => ({
           id: d.id,
           type: d.type,
-          needsSignature: d.status === "SENT_FOR_SIGNATURE",
+          needsSignature: d.status === "PENDING_SIGNATURE",
           signed: !!d.signedAt
         }))
       }

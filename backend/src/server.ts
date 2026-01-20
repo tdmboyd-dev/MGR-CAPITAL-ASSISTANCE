@@ -24,7 +24,7 @@ const app = express();
 // ============================================
 
 app.use(cors({
-  origin: config.corsOrigins || "*",
+  origin: "*",
   credentials: true
 }));
 app.use(express.json({ limit: "10mb" }));

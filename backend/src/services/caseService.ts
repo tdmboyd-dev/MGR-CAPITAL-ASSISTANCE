@@ -1,4 +1,4 @@
-import { Case } from "../models/Case";
+import { Case } from "../models/Case.js";
 
 export class CaseService {
   async listAll(): Promise<Case[]> {

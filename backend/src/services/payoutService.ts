@@ -1,4 +1,4 @@
-import { commissionService } from "./commissionService";
+import { commissionService } from "./commissionService.js";
 
 export class PayoutService {
   async calculatePayouts(params: {

@@ -46,7 +46,7 @@ router.get("/", authMiddleware, roleGuard(["ADMIN"]), async (req: Request, res: 
           }
         },
         user: {
-          select: { name: true, email: true, tier: true }
+          select: { name: true, email: true, employeeTier: true }
         }
       },
       orderBy: { createdAt: "desc" },
@@ -83,7 +83,7 @@ router.get("/pending", authMiddleware, roleGuard(["ADMIN"]), async (_req: Reques
       },
       include: {
         client: { select: { name: true, email: true } },
-        assignedEmployee: { select: { id: true, name: true, tier: true } }
+        assignedEmployee: { select: { id: true, name: true, employeeTier: true } }
       }
     });
 
@@ -91,7 +91,7 @@ router.get("/pending", authMiddleware, roleGuard(["ADMIN"]), async (_req: Reques
       const calculation = bankingService.calculatePayout({
         surplusAmountCents: caseData.surplusAmountCents,
         feePercent: caseData.feePercent,
-        employeeTier: caseData.assignedEmployee?.tier || "TIER_1_ASSOCIATE"
+        employeeTier: caseData.assignedEmployee?.employeeTier || "TIER_1_ASSOCIATE"
       });
 
       return {
@@ -171,7 +171,7 @@ router.post("/process/:caseId", authMiddleware, roleGuard(["ADMIN"]), async (req
     const calculation = bankingService.calculatePayout({
       surplusAmountCents: caseData.surplusAmountCents,
       feePercent: caseData.feePercent,
-      employeeTier: caseData.assignedEmployee?.tier || "TIER_1_ASSOCIATE"
+      employeeTier: caseData.assignedEmployee?.employeeTier || "TIER_1_ASSOCIATE"
     });
 
     // Create ledger entries
@@ -448,7 +448,7 @@ router.get("/my", authMiddleware, roleGuard(["EMPLOYEE"]), async (req: AuthReque
 router.get("/my/summary", authMiddleware, roleGuard(["EMPLOYEE"]), async (req: AuthRequest, res: Response) => {
   try {
     // Get displayed earnings from employee service
-    const earnings = await employeeService.getEmployeeEarnings(req.user!.id);
+    const earnings = await bankingService.getEmployeeEarnings(req.user!.id);
 
     res.json({
       success: true,

@@ -4,11 +4,16 @@ import { config } from "../config/env.js";
 
 export interface AuthenticatedRequest extends Request {
   user?: {
+    id: string;
     userId: string;
     email: string;
     role: string;
+    tier?: string;
   };
 }
+
+// Alias for backwards compatibility
+export type AuthRequest = AuthenticatedRequest;
 
 export function authMiddleware(
   req: AuthenticatedRequest,
@@ -29,8 +34,15 @@ export function authMiddleware(
       userId: string;
       email: string;
       role: string;
+      tier?: string;
     };
-    req.user = decoded;
+    req.user = {
+      id: decoded.userId,
+      userId: decoded.userId,
+      email: decoded.email,
+      role: decoded.role,
+      tier: decoded.tier
+    };
     next();
   } catch {
     res.status(401).json({ error: "Invalid token" });

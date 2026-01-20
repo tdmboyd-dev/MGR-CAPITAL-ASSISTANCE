@@ -21,7 +21,7 @@ const prisma = new PrismaClient();
  */
 router.get("/modules", authMiddleware, roleGuard(["ADMIN"]), async (_req: Request, res: Response) => {
   try {
-    const modules = await trainingService.getAvailableModules();
+    const modules = trainingService.getAllModules();
 
     res.json({
       success: true,
@@ -34,116 +34,19 @@ router.get("/modules", authMiddleware, roleGuard(["ADMIN"]), async (_req: Reques
 });
 
 /**
- * POST /api/training/modules - Create new training module (ADMIN)
+ * GET /api/training/modules/:id - Get specific module (ADMIN)
  */
-router.post("/modules", authMiddleware, roleGuard(["ADMIN"]), async (req: AuthRequest, res: Response) => {
+router.get("/modules/:id", authMiddleware, roleGuard(["ADMIN"]), async (req: Request, res: Response) => {
   try {
-    const { name, description, content, quizQuestions, passingScore, isRequired, orderIndex } = req.body;
+    const module = trainingService.getModule(req.params.id);
 
-    const module = await prisma.trainingModule.create({
-      data: {
-        name,
-        description,
-        content,
-        quizQuestions,
-        passingScore: passingScore || 80,
-        isRequired: isRequired || false,
-        orderIndex: orderIndex || 0,
-        isActive: true
-      }
-    });
-
-    // Log audit
-    await prisma.auditLog.create({
-      data: {
-        userId: req.user!.id,
-        action: "TRAINING_MODULE_CREATED",
-        entityType: "TRAINING_MODULE",
-        entityId: module.id,
-        details: { name, isRequired }
-      }
-    });
-
-    res.status(201).json({
-      success: true,
-      data: module
-    });
-  } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-/**
- * PATCH /api/training/modules/:id - Update training module (ADMIN)
- */
-router.patch("/modules/:id", authMiddleware, roleGuard(["ADMIN"]), async (req: AuthRequest, res: Response) => {
-  try {
-    const { id } = req.params;
-    const updateData = req.body;
-
-    const module = await prisma.trainingModule.update({
-      where: { id },
-      data: updateData
-    });
-
-    // Log audit
-    await prisma.auditLog.create({
-      data: {
-        userId: req.user!.id,
-        action: "TRAINING_MODULE_UPDATED",
-        entityType: "TRAINING_MODULE",
-        entityId: id,
-        details: { updatedFields: Object.keys(updateData) }
-      }
-    });
-
-    res.json({
-      success: true,
-      data: module
-    });
-  } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-/**
- * GET /api/training/progress - Get all employee progress (ADMIN)
- */
-router.get("/progress", authMiddleware, roleGuard(["ADMIN"]), async (_req: Request, res: Response) => {
-  try {
-    const progress = await prisma.trainingProgress.findMany({
-      include: {
-        employee: {
-          select: { id: true, name: true, email: true, tier: true }
-        },
-        module: {
-          select: { id: true, name: true, isRequired: true }
-        }
-      },
-      orderBy: { updatedAt: "desc" }
-    });
-
-    // Group by employee
-    const byEmployee: Record<string, any> = {};
-    for (const p of progress) {
-      if (!byEmployee[p.employeeId]) {
-        byEmployee[p.employeeId] = {
-          employee: p.employee,
-          modules: []
-        };
-      }
-      byEmployee[p.employeeId].modules.push({
-        module: p.module,
-        status: p.status,
-        score: p.quizScore,
-        startedAt: p.startedAt,
-        completedAt: p.completedAt
-      });
+    if (!module) {
+      return res.status(404).json({ success: false, error: "Module not found" });
     }
 
     res.json({
       success: true,
-      data: Object.values(byEmployee)
+      data: module
     });
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message });
@@ -151,12 +54,56 @@ router.get("/progress", authMiddleware, roleGuard(["ADMIN"]), async (_req: Reque
 });
 
 /**
- * GET /api/training/progress/:employeeId - Get specific employee progress (ADMIN)
+ * GET /api/training/stats - Training statistics (ADMIN)
  */
-router.get("/progress/:employeeId", authMiddleware, roleGuard(["ADMIN"]), async (req: Request, res: Response) => {
+router.get("/stats", authMiddleware, roleGuard(["ADMIN"]), async (_req: Request, res: Response) => {
   try {
-    const { employeeId } = req.params;
-    const progress = await trainingService.getEmployeeProgress(employeeId);
+    const stats = await trainingService.getTrainingStatistics();
+
+    res.json({
+      success: true,
+      data: stats
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ============================================
+// EMPLOYEE ROUTES — Self-service training
+// ============================================
+
+/**
+ * GET /api/training - Get available modules for employee
+ */
+router.get("/", authMiddleware, roleGuard(["EMPLOYEE"]), async (req: AuthRequest, res: Response) => {
+  try {
+    const modules = trainingService.getAllModules();
+
+    // Map to employee-safe view
+    const safeModules = modules.map(m => ({
+      id: m.id,
+      title: m.title,
+      description: m.description,
+      orderIndex: m.orderIndex,
+      hasQuiz: m.hasQuiz
+    }));
+
+    res.json({
+      success: true,
+      data: safeModules
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * GET /api/training/progress - Get employee's training progress
+ */
+router.get("/progress", authMiddleware, roleGuard(["EMPLOYEE"]), async (req: AuthRequest, res: Response) => {
+  try {
+    const progress = await trainingService.getEmployeeProgress(req.user!.id);
 
     res.json({
       success: true,
@@ -168,28 +115,23 @@ router.get("/progress/:employeeId", authMiddleware, roleGuard(["ADMIN"]), async 
 });
 
 /**
- * POST /api/training/enroll/:employeeId/:moduleId - Enroll employee in module (ADMIN)
+ * GET /api/training/:moduleId - Get module content for employee
  */
-router.post("/enroll/:employeeId/:moduleId", authMiddleware, roleGuard(["ADMIN"]), async (req: AuthRequest, res: Response) => {
+router.get("/:moduleId", authMiddleware, roleGuard(["EMPLOYEE"]), async (req: AuthRequest, res: Response) => {
   try {
-    const { employeeId, moduleId } = req.params;
+    const { moduleId } = req.params;
+    const module = trainingService.getModuleForEmployee(moduleId);
 
-    await trainingService.enrollEmployee(employeeId, moduleId);
+    if (!module) {
+      return res.status(404).json({ success: false, error: "Module not found" });
+    }
 
-    // Log audit
-    await prisma.auditLog.create({
-      data: {
-        userId: req.user!.id,
-        action: "EMPLOYEE_ENROLLED",
-        entityType: "TRAINING_PROGRESS",
-        entityId: `${employeeId}-${moduleId}`,
-        details: { employeeId, moduleId }
-      }
-    });
+    // Mark as started
+    await trainingService.startModule(req.user!.id, moduleId);
 
     res.json({
       success: true,
-      message: "Employee enrolled successfully"
+      data: module
     });
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message });
@@ -197,104 +139,51 @@ router.post("/enroll/:employeeId/:moduleId", authMiddleware, roleGuard(["ADMIN"]
 });
 
 /**
- * POST /api/training/enroll-all/:employeeId - Enroll employee in all required modules (ADMIN)
+ * POST /api/training/:moduleId/quiz - Submit quiz answers
  */
-router.post("/enroll-all/:employeeId", authMiddleware, roleGuard(["ADMIN"]), async (req: AuthRequest, res: Response) => {
+router.post("/:moduleId/quiz", authMiddleware, roleGuard(["EMPLOYEE"]), async (req: AuthRequest, res: Response) => {
+  try {
+    const { moduleId } = req.params;
+    const { answers } = req.body;
+
+    if (!answers || !Array.isArray(answers)) {
+      return res.status(400).json({ success: false, error: "Answers array required" });
+    }
+
+    const result = await trainingService.submitQuiz(req.user!.id, moduleId, answers);
+
+    res.json({
+      success: true,
+      data: result
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * POST /api/training/reset - Reset employee's training progress (ADMIN)
+ */
+router.post("/reset/:employeeId", authMiddleware, roleGuard(["ADMIN"]), async (req: AuthRequest, res: Response) => {
   try {
     const { employeeId } = req.params;
 
-    const modules = await trainingService.getAvailableModules();
-    const requiredModules = modules.filter(m => m.isRequired);
-
-    for (const module of requiredModules) {
-      await trainingService.enrollEmployee(employeeId, module.id);
-    }
+    await trainingService.resetProgress(employeeId);
 
     // Log audit
     await prisma.auditLog.create({
       data: {
         userId: req.user!.id,
-        action: "EMPLOYEE_ENROLLED_ALL",
+        action: "TRAINING_RESET",
         entityType: "USER",
         entityId: employeeId,
-        details: { moduleCount: requiredModules.length }
+        details: { resetBy: req.user!.id }
       }
     });
 
     res.json({
       success: true,
-      message: `Employee enrolled in ${requiredModules.length} required modules`
-    });
-  } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-/**
- * GET /api/training/stats - Get training statistics (ADMIN)
- */
-router.get("/stats", authMiddleware, roleGuard(["ADMIN"]), async (_req: Request, res: Response) => {
-  try {
-    const [
-      totalModules,
-      totalEnrollments,
-      completedEnrollments,
-      avgScore
-    ] = await Promise.all([
-      prisma.trainingModule.count({ where: { isActive: true } }),
-      prisma.trainingProgress.count(),
-      prisma.trainingProgress.count({ where: { status: "COMPLETED" } }),
-      prisma.trainingProgress.aggregate({
-        where: { quizScore: { not: null } },
-        _avg: { quizScore: true }
-      })
-    ]);
-
-    // Get completion by module
-    const byModule = await prisma.trainingProgress.groupBy({
-      by: ["moduleId", "status"],
-      _count: true
-    });
-
-    res.json({
-      success: true,
-      data: {
-        totalModules,
-        totalEnrollments,
-        completedEnrollments,
-        completionRate: totalEnrollments > 0
-          ? ((completedEnrollments / totalEnrollments) * 100).toFixed(1)
-          : "0",
-        averageScore: avgScore._avg.quizScore?.toFixed(1) || "N/A",
-        byModule
-      }
-    });
-  } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-/**
- * POST /api/training/seed - Seed default training modules (ADMIN)
- */
-router.post("/seed", authMiddleware, roleGuard(["ADMIN"]), async (req: AuthRequest, res: Response) => {
-  try {
-    await trainingService.seedTrainingModules();
-
-    // Log audit
-    await prisma.auditLog.create({
-      data: {
-        userId: req.user!.id,
-        action: "TRAINING_MODULES_SEEDED",
-        entityType: "TRAINING_MODULE",
-        entityId: "all",
-        details: { seeded: true }
-      }
-    });
-
-    res.json({
-      success: true,
-      message: "Training modules seeded successfully"
+      message: "Training progress reset successfully"
     });
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message });

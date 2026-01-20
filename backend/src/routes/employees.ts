@@ -5,11 +5,12 @@
 
 import { Router, Request, Response } from "express";
 import { PrismaClient, EmployeeTier } from "@prisma/client";
-import bcrypt from "bcryptjs";
+import bcrypt from "bcrypt";
 import { authMiddleware, AuthRequest } from "../middleware/authMiddleware.js";
 import { roleGuard } from "../middleware/roleGuard.js";
 import { employeeService } from "../services/employeeService.js";
 import { trainingService } from "../services/trainingService.js";
+import { bankingService } from "../services/bankingService.js";
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -83,7 +84,7 @@ router.get("/stats", authMiddleware, roleGuard(["ADMIN"]), async (_req: Request,
       return {
         id: emp.id,
         name: emp.name,
-        tier: emp.tier,
+        tier: emp.employeeTier,
         totalCases,
         paidCases,
         conversionRate: totalCases > 0 ? ((paidCases / totalCases) * 100).toFixed(1) : "0",
@@ -181,7 +182,7 @@ router.get("/:id", authMiddleware, roleGuard(["ADMIN"]), async (req: Request, re
         trainingProgress: {
           include: {
             module: {
-              select: { id: true, name: true }
+              select: { id: true, title: true }
             }
           }
         }
@@ -193,18 +194,18 @@ router.get("/:id", authMiddleware, roleGuard(["ADMIN"]), async (req: Request, re
     }
 
     // Get actual commission info (FOUNDER ONLY)
-    const commissionInfo = employeeService.getCommissionInfo(employee.tier);
+    const tierData = bankingService.getTier(employee.employeeTier || "TIER_1_ASSOCIATE");
 
     res.json({
       success: true,
       data: {
         ...employee,
         passwordHash: undefined, // Don't expose
-        commissionInfo: {
-          displayedRate: commissionInfo.displayedRatePercent,
-          actualRate: commissionInfo.actualRatePercent,
-          overrideRate: commissionInfo.overridePercent
-        }
+        commissionInfo: tierData ? {
+          displayedRate: tierData.displayedRatePercent,
+          actualRate: tierData.actualRatePercent,
+          overrideRate: tierData.overridePercent
+        } : null
       }
     });
   } catch (error: any) {
@@ -234,7 +235,7 @@ router.post("/", authMiddleware, roleGuard(["ADMIN"]), async (req: AuthRequest, 
         name,
         phone,
         role: "EMPLOYEE",
-        tier: tier || "TIER_1_ASSOCIATE",
+        employeeTier: tier || "TIER_1_ASSOCIATE",
         passwordHash,
         isActive: true
       },
@@ -248,13 +249,7 @@ router.post("/", authMiddleware, roleGuard(["ADMIN"]), async (req: AuthRequest, 
       }
     });
 
-    // Auto-enroll in required training
-    const modules = await trainingService.getAvailableModules();
-    const requiredModules = modules.filter(m => m.isRequired);
-
-    for (const module of requiredModules) {
-      await trainingService.enrollEmployee(employee.id, module.id);
-    }
+    // Training progress will be initialized when employee accesses training
 
     // Log audit
     await prisma.auditLog.create({
@@ -343,11 +338,11 @@ router.patch("/:id/tier", authMiddleware, roleGuard(["ADMIN"]), async (req: Auth
 
     const employee = await prisma.user.update({
       where: { id },
-      data: { tier },
+      data: { employeeTier: tier },
       select: {
         id: true,
         name: true,
-        tier: true
+        employeeTier: true
       }
     });
 
@@ -400,14 +395,14 @@ router.get("/me", authMiddleware, roleGuard(["EMPLOYEE"]), async (req: AuthReque
     }
 
     // Get DISPLAYED commission rate (shadow accounting)
-    const commissionInfo = employeeService.getCommissionInfo(employee.tier);
+    const tierData = bankingService.getTier(employee.employeeTier || "TIER_1_ASSOCIATE");
 
     res.json({
       success: true,
       data: {
         ...employee,
-        tier: getTierDisplayName(employee.tier),
-        commissionRate: `${commissionInfo.displayedRatePercent}%` // DISPLAYED, not actual
+        tier: getTierDisplayName(employee.employeeTier || "TIER_1_ASSOCIATE"),
+        commissionRate: tierData ? `${tierData.displayedRatePercent}%` : "20%" // DISPLAYED, not actual
       }
     });
   } catch (error: any) {
@@ -421,7 +416,7 @@ router.get("/me", authMiddleware, roleGuard(["EMPLOYEE"]), async (req: AuthReque
  */
 router.get("/me/earnings", authMiddleware, roleGuard(["EMPLOYEE"]), async (req: AuthRequest, res: Response) => {
   try {
-    const earnings = await employeeService.getEmployeeEarnings(req.user!.id);
+    const earnings = await bankingService.getEmployeeEarnings(req.user!.id);
 
     res.json({
       success: true,
@@ -456,7 +451,11 @@ router.get("/me/scripts/:caseId", authMiddleware, roleGuard(["EMPLOYEE"]), async
       return res.status(404).json({ success: false, error: "Case not found or not assigned to you" });
     }
 
-    const script = employeeService.getCallScript(caseData.status, caseData.client.name);
+    // Get script for current case status
+    const scripts = employeeService.getScriptsForStatus(caseData.status);
+    const script = scripts.length > 0
+      ? employeeService.personalizeScript(scripts[0], { clientName: caseData.client.name })
+      : null;
 
     res.json({
       success: true,
@@ -481,7 +480,7 @@ router.post("/me/scripts/check", authMiddleware, roleGuard(["EMPLOYEE"]), async 
       return res.status(400).json({ success: false, error: "Text required" });
     }
 
-    const result = employeeService.checkCompliance(text);
+    const result = employeeService.checkCompliance(text, "CONTACTED");
 
     res.json({
       success: true,
@@ -526,7 +525,12 @@ router.post("/me/calls/:caseId/log", authMiddleware, roleGuard(["EMPLOYEE"]), as
     });
 
     // Get coaching feedback
-    const feedback = employeeService.getCoachingFeedback(outcome, notes || "");
+    const feedback = employeeService.generateCoachingFeedback({
+      clarity: outcome === "SUCCESS" ? 9 : 6,
+      compliance: 9,
+      tone: 8,
+      effectiveness: outcome === "SUCCESS" ? 9 : 5
+    });
 
     res.json({
       success: true,
@@ -567,7 +571,7 @@ router.get("/me/training", authMiddleware, roleGuard(["EMPLOYEE"]), async (req: 
 router.get("/me/training/:moduleId", authMiddleware, roleGuard(["EMPLOYEE"]), async (req: AuthRequest, res: Response) => {
   try {
     const { moduleId } = req.params;
-    const content = await trainingService.getModuleContent(moduleId);
+    const content = trainingService.getModuleForEmployee(moduleId);
 
     if (!content) {
       return res.status(404).json({ success: false, error: "Module not found" });

@@ -35,7 +35,7 @@ router.get("/", authMiddleware, roleGuard(["ADMIN"]), async (_req: Request, res:
         zipCode: true,
         createdAt: true,
         _count: {
-          select: { cases: true }
+          select: { clientCases: true }
         }
       },
       orderBy: { createdAt: "desc" }
@@ -62,7 +62,7 @@ router.get("/:id", authMiddleware, roleGuard(["ADMIN"]), async (req: Request, re
         role: "CLIENT"
       },
       include: {
-        cases: {
+        clientCases: {
           select: {
             id: true,
             internalCode: true,
@@ -221,7 +221,7 @@ router.get("/portal/:token", async (req: Request, res: Response) => {
 
     // Find case by public token
     const caseData = await prisma.case.findFirst({
-      where: { publicToken: token },
+      where: { publicAccessToken: token },
       include: {
         client: {
           select: {
@@ -232,7 +232,7 @@ router.get("/portal/:token", async (req: Request, res: Response) => {
         },
         documents: {
           where: {
-            status: { in: ["SENT_FOR_SIGNATURE", "SIGNED", "UPLOADED"] }
+            status: { in: ["PENDING_SIGNATURE", "SIGNED", "SUBMITTED"] }
           },
           select: {
             id: true,
@@ -253,7 +253,7 @@ router.get("/portal/:token", async (req: Request, res: Response) => {
     }
 
     // Get client-safe portal data
-    const portalData = clientService.getPortalData(caseData.id);
+    const portalData = await clientService.getPortalData(token);
 
     // Determine current step
     const steps = getOnboardingSteps(caseData);
@@ -265,11 +265,10 @@ router.get("/portal/:token", async (req: Request, res: Response) => {
         propertyAddress: caseData.propertyAddress,
         county: caseData.county,
         state: caseData.state,
-        status: portalData.status,
-        statusMessage: portalData.statusMessage,
+        status: portalData.data?.status || { title: "In Progress", description: "Your case is being processed." },
         steps,
         currentStep: steps.findIndex(s => !s.completed),
-        documents: caseData.documents.map(d => ({
+        documents: caseData.documents.map((d: any) => ({
           id: d.id,
           type: getDocumentFriendlyName(d.type),
           needsSignature: d.signatureRequired && !d.signedAt,
@@ -292,7 +291,7 @@ router.patch("/portal/:token/info", async (req: Request, res: Response) => {
 
     // Find case
     const caseData = await prisma.case.findFirst({
-      where: { publicToken: token },
+      where: { publicAccessToken: token },
       select: { clientId: true }
     });
 
@@ -336,7 +335,7 @@ router.post("/portal/:token/id-upload", async (req: Request, res: Response) => {
 
     // Find case
     const caseData = await prisma.case.findFirst({
-      where: { publicToken: token },
+      where: { publicAccessToken: token },
       select: { id: true, clientId: true }
     });
 
@@ -361,7 +360,7 @@ router.post("/portal/:token/id-upload", async (req: Request, res: Response) => {
       data: {
         caseId: caseData.id,
         type: "CLIENT_ID",
-        status: "UPLOADED",
+        status: "SUBMITTED",
         fileName,
         fileUrl,
         fileSize,
@@ -390,7 +389,7 @@ router.post("/portal/:token/sign/:documentId", async (req: Request, res: Respons
 
     // Verify case and document
     const caseData = await prisma.case.findFirst({
-      where: { publicToken: token },
+      where: { publicAccessToken: token },
       select: { id: true }
     });
 
@@ -423,7 +422,7 @@ router.post("/portal/:token/sign/:documentId", async (req: Request, res: Respons
       data: {
         status: "SIGNED",
         signedAt: new Date(),
-        signatureData
+        signatureUrl: signatureData // Store signature data as URL/base64
       }
     });
 
@@ -458,7 +457,7 @@ router.post("/portal/:token/sign/:documentId", async (req: Request, res: Respons
  */
 router.get("/portal/:token/faq", async (req: Request, res: Response) => {
   try {
-    const faqs = clientService.getFAQs();
+    const faqs = clientService.getAllFAQ();
 
     res.json({
       success: true,
@@ -504,8 +503,8 @@ router.post("/portal/:token/contact", async (req: Request, res: Response) => {
 
     // Find case
     const caseData = await prisma.case.findFirst({
-      where: { publicToken: token },
-      select: { id: true }
+      where: { publicAccessToken: token },
+      select: { id: true, clientId: true }
     });
 
     if (!caseData) {
@@ -519,6 +518,7 @@ router.post("/portal/:token/contact", async (req: Request, res: Response) => {
     await prisma.communication.create({
       data: {
         caseId: caseData.id,
+        userId: caseData.clientId,
         type: "PORTAL_MESSAGE",
         direction: "INBOUND",
         content: message

@@ -1,4 +1,4 @@
-import { CommissionPlan } from "../models/CommissionPlan";
+import { CommissionPlan } from "../models/CommissionPlan.js";
 
 export class CommissionService {
   // In real build, fetch from DB
