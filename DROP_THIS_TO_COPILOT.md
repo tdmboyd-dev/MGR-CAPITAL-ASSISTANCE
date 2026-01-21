@@ -518,6 +518,36 @@ VITE_API_URL=http://localhost:4000/api
 
 ## SESSION HISTORY
 
+### Session 8 (2026-01-21) - Master Spec Final Expansion
+- **Finalized MGR_CAPITAL_ASSISTANCE_MASTER_SPEC_V1.md** - Now 2988 lines with ALL 14 sections FULLY EXPANDED
+- **Expanded Section 11 (Training Intelligence Blueprint):**
+  - Module requirements by role (HR, COMPLIANCE, TEAM_LEAD)
+  - Module requirements by tier (TIER_1 through TIER_5)
+  - Complete TrainingBot functions: identifyGaps(), correlatePerformance(), notifyHROverdue()
+  - AssessmentQuestion interface with scoring
+  - HR/Compliance panel integration triggers
+- **Expanded Section 12 (Ingestion Intelligence Blueprint):**
+  - Full parseTaxSaleCSV() implementation with column mapping
+  - Full parseSurplusPDF() implementation with state-specific patterns
+  - detectDuplicates() algorithm
+  - ScraperService configs for Harris County TX, Miami-Dade FL, Los Angeles CA
+  - WatchService for rule change detection (statutes, thresholds, deadlines)
+  - flagHighValueRecords() implementation
+  - processIngestionBatch() complete flow
+- **Expanded Section 13 (Backups Playbook):**
+  - Complete bash scripts: backup_db.sh, backup_vault.sh, restore_db.sh
+  - Full cron schedule (hourly, 6-hour, daily, weekly, monthly)
+  - GPG encryption for at-rest backup security
+  - Disaster recovery procedures with RTO/RPO objectives
+  - Air-gapped backup rules
+- **Expanded Section 14 (Phase Summary for Copilot):**
+  - 6 key design decisions documented
+  - 5 ambiguities resolved with code examples
+  - 5 risks identified with mitigations
+  - Complete list of what's done vs NOT done
+  - Architecture reminders for Phase 2/3
+- **Committed and pushed to GitHub** - commit 108e9d7
+
 ### Session 7 (2026-01-21) - Server Maintenance & Verification
 - **Verified Master Spec completeness** - All 14 sections present (2702 lines)
   - Sections 1-6: Overview, Immutable Rules, Roles, Database, Flows, OPS Architecture
