@@ -4888,6 +4888,131 @@ interface TrainingAudit {
 }
 ```
 
+### 11.9 Training Intelligence Purpose & Concepts
+
+The Training Intelligence layer turns training from a checkbox into a live control system for performance, integrity, and scale. It connects:
+- Employee tiers and promotion paths
+- Training modules and assets
+- Case performance and OPS insights
+- Compliance and HR enforcement
+
+All logic is internal-only—employees see simple "modules, due dates, and completion," never the scoring math or OPS correlations.
+
+**Core Concepts:**
+- **Training Module:** A defined unit of learning (e.g., "Intro to Surplus Recovery", "Deadline Discipline", "Shadow Accounting Boundaries")
+- **Training Track:** A curated sequence of modules for a specific tier or role
+- **Training Asset:** A concrete artifact (PDF, video, checklist, quiz) attached to a module
+- **Training Signal:** Any measurable outcome tied to training (case speed, error rate, compliance flags, OPS insights)
+
+### 11.10 Extended Database Models
+
+**TrainingAsset Model:**
+
+```prisma
+model TrainingAsset {
+  id              String   @id @default(cuid())
+  moduleId        String
+  module          TrainingModule @relation(fields: [moduleId], references: [id])
+
+  type            String   // "PDF", "VIDEO", "CHECKLIST", "QUIZ"
+  title           String
+  description     String?
+  filePath        String?  // For Document Vault–backed assets
+  url             String?  // For internal-only video server or local URL
+  orderIndex      Int      @default(0)
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+```
+
+**TrainingAssignment Model:**
+
+```prisma
+model TrainingAssignment {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id])
+
+  moduleId        String
+  module          TrainingModule @relation(fields: [moduleId], references: [id])
+
+  status          TrainingStatus @default(PENDING)
+  assignedAt      DateTime       @default(now())
+  startedAt       DateTime?
+  completedAt     DateTime?
+  dueAt           DateTime?
+  score           Int?           // 0–100, internal-only
+  attempts        Int            @default(0)
+  notes           String?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+```
+
+### 11.11 TrainingBot Intelligence Functions
+
+**Bot:** TrainingBot
+**Scope:** HR + OPS brain for training
+
+**Key Functions:**
+
+1. **identifyGaps()**
+   - Scans:
+     - Employees with overdue modules
+     - Employees with low scores on critical modules
+     - Employees with high error rates or compliance flags but incomplete training
+   - Writes OpsInsight records:
+     - `insightType: "TRAINING_GAP"`
+     - `priority`: based on tier, case volume, and risk
+     - `data: { userId, missingModules, overdueCount, relatedCases }`
+
+2. **correlatePerformance()**
+   - Correlates:
+     - Training completion vs. average processing days
+     - Training completion vs. rejection rates
+     - Training completion vs. integrity scores
+   - Writes OpsInsight:
+     - `insightType: "TRAINING_PERFORMANCE_CORRELATION"`
+
+3. **suggestModules()**
+   - For each employee:
+     - Looks at case types, jurisdictions, and errors
+     - Suggests modules (e.g., "TX Deadlines Deep Dive" for repeated TX deadline issues)
+   - Writes OpsInsight:
+     - `insightType: "TRAINING_RECOMMENDATION"`
+
+### 11.12 HR Panel vs Employee View
+
+**HR View:**
+- Per-employee training dashboard:
+  - Assigned modules, status, due dates
+  - Scores (internal-only)
+  - Flags (e.g., "Overdue critical module", "Low score on compliance module")
+- Track completion by tier and role
+
+**Employee View:**
+- Simple list:
+  - "Required modules"
+  - "Due dates"
+  - "Completed"
+- **No access to:**
+  - Scoring formulas
+  - OPS correlations
+  - Integrity scoring logic
+
+### 11.13 Training Security & Shadow Rules
+
+- Training data can influence integrity scores and OPS insights, but employees never see the math
+- **Only FOUNDER and HR can see:**
+  - Scores
+  - Correlations
+  - OPS training insights
+- **TEAM_LEAD can see:**
+  - Completion status and overdue flags for their team
+  - **Not** the underlying OPS intelligence
+
 ---
 
 ## 12. INGESTION INTELLIGENCE BLUEPRINT
@@ -5814,6 +5939,123 @@ async function processIngestionBatch(
 }
 ```
 
+### 12.10 Ingestion Intelligence Purpose
+
+Ingestion Intelligence ensures that every external data source (CSV, PDF, web, manual) is:
+- **Traceable** (batches, sources, errors)
+- **Deduplicated**
+- **Monitored** for health and drift
+- **Connected** to OPS insights and Watch alerts
+
+### 12.11 ScraperService Concrete Behavior
+
+**Service:** `scraperService`
+
+**Responsibilities:**
+- Run scrapers for configured sources
+- Normalize raw content into `ScrapedItem`
+- Attach each run to an `IngestionBatch`
+- Report errors to `WatchAlert` and `SystemError` (if defined)
+
+**Key Functions:**
+
+1. **runScraperForSource(sourceKey: string): Promise\<IngestionBatch\>**
+   - Loads scraper config (URL, type, parser)
+   - Creates `IngestionBatch` with `status = "RUNNING"`
+   - Fetches data (HTML, CSV, PDF text)
+   - Creates `ScrapedItem` records
+   - Updates batch counts and status
+
+2. **runAllScrapers(): Promise\<IngestionCycleResult\>**
+   - Iterates all configured sources
+   - Aggregates: `sourcesProcessed`, `newRecords`, `errors`
+   - Used by `/api/ops/watch/cycle`
+
+### 12.12 WatchService Concrete Behavior
+
+**Service:** `watchService`
+
+**Responsibilities:**
+- Monitor external sources for:
+  - Rule changes
+  - Structure changes
+  - Availability
+- Generate `WatchAlert` and `OpsInsight` records
+
+**WatchTarget Model (recap):**
+
+```prisma
+model WatchTarget {
+  id              String   @id @default(cuid())
+  name            String   // "Harris County Surplus Page"
+  url             String
+  type            String   // "HTML_PAGE", "CSV_ENDPOINT", "PDF_LISTING"
+  state           String?
+  county          String?
+  lastChecksum    String?
+  lastStatusCode  Int?
+  lastCheckedAt   DateTime?
+  isActive        Boolean  @default(true)
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+```
+
+**Key Functions:**
+
+1. **checkTargets(): Promise\<WatchCheckResult\>**
+   - For each active `WatchTarget`:
+     - Fetch URL
+     - Compute checksum of relevant content
+     - Compare with `lastChecksum`
+     - If changed: Create `WatchAlert` with `type = RULE_CHANGE` or `SOURCE_OFFLINE`
+     - Update `lastChecksum`, `lastStatusCode`, `lastCheckedAt`
+
+2. **recordScrapeError(sourceName, error)**
+   - Creates `WatchAlert` with:
+     - `type = SCRAPE_ERROR`
+     - `severity` based on source importance
+   - Optionally writes `SystemError`
+
+### 12.13 IngestionBot Intelligence Functions
+
+**Bot:** IngestionBot
+
+**Key Functions:**
+
+1. **analyzeIngestionPatterns()**
+   - Looks at:
+     - `IngestionBatch` history
+     - Frequency per source
+     - Success/failure ratios
+   - Writes OpsInsight:
+     - `insightType = "INGESTION_HEALTH"`
+     - `data` includes per-source stats
+
+2. **detectDuplicates()**
+   - Compares new `ScrapedItem.parsedData` against existing Cases:
+     - Same parcel + sale date + county
+   - Flags potential duplicates:
+     - Either as `ScrapedItemReviewStatus = DUPLICATE`
+     - Or as OpsInsight with `insightType = "DUPLICATE_RISK"`
+
+3. **assessSourceHealth()**
+   - Combines:
+     - `WatchTarget` status
+     - `IngestionBatch` failures
+     - Scrape errors
+   - Produces OpsInsight:
+     - `insightType = "SOURCE_HEALTH"`
+     - `priority` based on impact (e.g., high-value counties)
+
+### 12.14 Security & Sovereignty
+
+- No external SaaS ingestion pipelines
+- All scraping and parsing runs inside the sovereign backend
+- No public endpoints exposing ingestion internals
+- OPS and FOUNDER see full ingestion health; employees see only resulting cases
+
 ---
 
 ## 13. BACKUPS PLAYBOOK
@@ -6099,6 +6341,79 @@ For maximum security, monthly and annual backups should be stored air-gapped:
 4. **Verification**: Quarterly test of offsite restore capability
 5. **Rotation**: New media every 2 years, secure destruction of old media
 
+### 13.11 Backup Objectives
+
+Backups are designed to:
+- Protect database, Document Vault, and configuration
+- Support air-gapped restore
+- Maintain **RPO ≤ 24h** and **RTO ≤ 8h** (default targets; configurable)
+
+### 13.12 BackupJob Model
+
+```prisma
+model BackupJob {
+  id              String   @id @default(cuid())
+  type            String   // "FULL_DB", "INCREMENTAL_DB", "DOC_VAULT", "CONFIG"
+  status          String   // "PENDING", "RUNNING", "COMPLETED", "FAILED"
+  startedAt       DateTime?
+  completedAt     DateTime?
+  durationSeconds Int?
+  sizeBytes       Int?
+  location        String?  // Path or device label
+  errorMessage    String?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+```
+
+### 13.13 Backup Service
+
+**Service:** `backupService`
+
+**Key Functions:**
+
+1. **runDatabaseBackup(type: "FULL_DB" | "INCREMENTAL_DB"): Promise\<BackupJob\>**
+   - Executes pg_dump or equivalent
+   - Compresses output
+   - Records `BackupJob`
+
+2. **runDocumentVaultBackup(): Promise\<BackupJob\>**
+   - Uses rsync-style or file-copy strategy
+   - Optionally encrypts archive
+   - Records `BackupJob`
+
+3. **runConfigBackup(): Promise\<BackupJob\>**
+   - Copies config files to backup location
+   - Records `BackupJob`
+
+### 13.14 Restore Playbook (High-Level)
+
+1. Stop application services
+2. Restore database from selected `BackupJob`:
+   - Drop and recreate DB (or restore into new DB and switch connection)
+3. Restore Document Vault from matching snapshot
+4. Restore configuration files
+5. Start application and run:
+   - Health checks
+   - OPS metrics sanity checks
+   - Spot-check cases and documents
+
+All restore steps are **manual and founder-controlled**—no auto-restore that could be exploited.
+
+### 13.15 OPS Integration for Backups
+
+**OPS Dashboard shows:**
+- Last successful backup per type
+- Failed backup jobs
+- Warnings if:
+  - No `FULL_DB` backup in last N days
+  - No `DOC_VAULT` backup in last N days
+
+**WatchAlert:**
+- `type = "ANOMALY_DETECTED"` or `SYSTEM_ERROR` (if defined)
+- Triggered when backup failures persist
+
 ---
 
 ## 14. PHASE SUMMARY FOR COPILOT
@@ -6340,6 +6655,86 @@ Trigger Event → NotificationService → Template Render → SMTP Send → Noti
 Upload → Validation → DocumentVaultService → Filesystem → Document Record
 Generate → PDFService → Buffer → DocumentVaultService → Document Record
 ```
+
+### 14.8 Operational Modes for Copilot
+
+This section defines how Copilot (and any AI agent) should operate against the spec with zero ambiguity.
+
+#### 14.8.1 Load Mode
+
+**Goal:** Ingest and internalize the entire spec as the single source of truth.
+
+**Behavior:**
+- Do not invent new models, enums, or routes unless:
+  - The spec explicitly calls them "missing" and asks for regeneration, or
+  - The founder explicitly commands a new addition
+- Respect all **Immutable Rules:**
+  - No placeholders
+  - No TODOs
+  - No mock language
+- After loading, respond with a short confirmation and wait for explicit build commands
+
+#### 14.8.2 Build Mode
+
+**Goal:** Generate production-ready artifacts strictly aligned with the spec.
+
+**Artifacts may include:**
+- TypeScript services
+- Express route handlers
+- React components
+- Prisma schema updates
+- PDF generation code
+- Training content scaffolds
+
+**Constraints:**
+- Must obey:
+  - Shadow accounting secrecy
+  - Role boundaries
+  - Sovereign stack rules
+- Must not:
+  - Expose OPS logic to non-FOUNDER roles
+  - Leak surplus amounts, actual rates, or founder share to employees/clients
+
+### 14.9 Command Pattern for Copilot
+
+The founder will use explicit commands. Copilot must treat them as **orders**, not suggestions.
+
+**Examples:**
+```
+BUILD: backend/src/services/bankingService.ts (full implementation)
+BUILD: React FounderConsole OPS dashboard (metrics + focus feed)
+BUILD: Prisma migration for new Training models
+AUDIT: Verify all /api/ops routes enforce FOUNDER-only access
+```
+
+**Copilot must:**
+1. Confirm understanding in 1–2 sentences
+2. Generate complete, runnable code or spec—no TODOs
+3. Call out any ambiguity and propose a concrete resolution
+
+### 14.10 Safety & Guardrails for Copilot
+
+**Never:**
+- Reveal internal formulas (focus feed scoring, integrity scoring, payout math) to roles below FOUNDER
+- Suggest adding SaaS dependencies (Stripe, Twilio, etc.)
+- Loosen role guards or OPS access
+
+**Always:**
+- Keep money in cents (`Int`), UTC timestamps, and sovereign stack
+- Respect Document Vault access matrices
+- Keep OPS layer founder-only
+
+### 14.11 Phase Checklist
+
+**When the founder says "Load the spec", Copilot should internally:**
+1. Mark spec as loaded and locked
+2. Acknowledge any known missing or previously patched sections as now integrated
+3. Wait for a `BUILD`, `AUDIT`, or `EXTEND` command
+
+**When the founder says "Regenerate only missing sections", Copilot should:**
+1. Identify gaps relative to the ToC and prior drops
+2. Generate only the missing or incomplete sections, in full spec language
+3. Keep numbering and headings consistent with the master spec
 
 ---
 
