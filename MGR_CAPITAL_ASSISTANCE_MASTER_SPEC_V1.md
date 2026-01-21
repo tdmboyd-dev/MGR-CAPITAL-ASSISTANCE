@@ -1154,34 +1154,127 @@ Generated PDFs are automatically stored in Document Vault:
 
 ## 11. TRAINING INTELLIGENCE BLUEPRINT
 
-### 11.1 Module Structure
+### 11.1 Training Module Architecture
 
-| Module ID | Title | Target Roles | Required Tiers |
-|-----------|-------|--------------|----------------|
-| M001 | Introduction to MGR Capital | ALL EMPLOYEES | All |
-| M002 | Client Communication Basics | EMPLOYEE, TEAM_LEAD | TIER_1, TIER_2 |
-| M003 | Compliance & Boundaries | ALL EMPLOYEES | All |
-| M004 | Case Processing Procedures | EMPLOYEE, TEAM_LEAD | All |
-| M005 | Advanced Negotiation | TEAM_LEAD | TIER_3+ |
-| M006 | Team Leadership Essentials | TEAM_LEAD | TIER_4+ |
-| M007 | HR Onboarding Procedures | HR | N/A |
-| M008 | Compliance Monitoring | COMPLIANCE | N/A |
+The Training Intelligence system provides automated module generation, progress tracking, gap detection, and performance correlation for all employee roles and tiers.
 
-### 11.2 Training Progress Model
+**Core Components:**
+- TrainingModule: Base module definitions
+- TrainingModuleDetail: AI-generated detailed content per role/tier
+- TrainingAssetPlan: Production plans for videos, documents, quizzes
+- TrainingProgress: Per-employee completion tracking
+- TrainingBot: Automated gap detection and recommendations
+
+### 11.2 Module Structure
+
+| Module ID | Title | Target Roles | Required Tiers | Duration | Quiz Questions |
+|-----------|-------|--------------|----------------|----------|----------------|
+| M001 | Introduction to MGR Capital | ALL EMPLOYEES | All | 30 min | 10 |
+| M002 | Client Communication Basics | EMPLOYEE, TEAM_LEAD | TIER_1, TIER_2 | 45 min | 15 |
+| M003 | Compliance & Boundaries | ALL EMPLOYEES | All | 60 min | 20 |
+| M004 | Case Processing Procedures | EMPLOYEE, TEAM_LEAD | All | 90 min | 25 |
+| M005 | Advanced Negotiation | TEAM_LEAD | TIER_3+ | 60 min | 15 |
+| M006 | Team Leadership Essentials | TEAM_LEAD | TIER_4+ | 90 min | 20 |
+| M007 | HR Onboarding Procedures | HR | N/A | 120 min | 30 |
+| M008 | Compliance Monitoring | COMPLIANCE | N/A | 120 min | 30 |
+| M009 | Shadow Accounting (FOUNDER ONLY) | FOUNDER | N/A | 60 min | 0 |
+
+### 11.3 Role-Specific Module Rules
+
+```typescript
+// backend/src/services/trainingService.ts
+
+const moduleRequirements: Record<UserRole, string[]> = {
+  FOUNDER: ['M001', 'M009'],
+  ADMIN: ['M001', 'M003', 'M004'],
+  HR: ['M001', 'M003', 'M007'],
+  COMPLIANCE: ['M001', 'M003', 'M008'],
+  TEAM_LEAD: ['M001', 'M002', 'M003', 'M004', 'M005', 'M006'],
+  EMPLOYEE: ['M001', 'M002', 'M003', 'M004'],
+  CLIENT: []
+};
+
+const tierProgression: Record<EmployeeTier, string[]> = {
+  TIER_1_ASSOCIATE: ['M001', 'M002', 'M003'],
+  TIER_2_SPECIALIST: ['M001', 'M002', 'M003', 'M004'],
+  TIER_3_SENIOR_SPECIALIST: ['M001', 'M002', 'M003', 'M004', 'M005'],
+  TIER_4_TEAM_LEADER: ['M001', 'M002', 'M003', 'M004', 'M005', 'M006'],
+  TIER_5_EXECUTIVE_PARTNER: ['M001', 'M002', 'M003', 'M004', 'M005', 'M006']
+};
+```
+
+### 11.4 Training Progress Model
 
 ```prisma
+model TrainingModule {
+  id              String   @id @default(cuid())
+  moduleId        String   @unique  // M001, M002, etc.
+  title           String
+  description     String
+  targetRoles     UserRole[]
+  targetTiers     EmployeeTier[]
+  durationMinutes Int
+  isRequired      Boolean  @default(true)
+  isActive        Boolean  @default(true)
+  version         Int      @default(1)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  progress        TrainingProgress[]
+  details         TrainingModuleDetail[]
+  assets          TrainingAssetPlan[]
+}
+
 model TrainingProgress {
-  id          String   @id @default(cuid())
+  id          String         @id @default(cuid())
   userId      String
   moduleId    String
   status      TrainingStatus @default(NOT_STARTED)
   startedAt   DateTime?
   completedAt DateTime?
-  quizScore   Int?
-  attempts    Int      @default(0)
+  quizScore   Int?           // Percentage (0-100)
+  quizPassed  Boolean?
+  attempts    Int            @default(0)
+  timeSpent   Int            @default(0)  // Minutes
+  lastAccess  DateTime?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
 
-  user        User     @relation(fields: [userId], references: [id])
+  user        User           @relation(fields: [userId], references: [id])
   module      TrainingModule @relation(fields: [moduleId], references: [id])
+
+  @@unique([userId, moduleId])
+}
+
+model TrainingModuleDetail {
+  id             String        @id @default(cuid())
+  moduleId       String
+  role           UserRole
+  tier           EmployeeTier?
+  outline        Json          // Structured outline
+  scripts        Json          // Call scripts, talking points
+  keyPoints      Json          // Key learning points
+  videoBlueprint Json?         // Video production plan
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  module         TrainingModule @relation(fields: [moduleId], references: [id])
+
+  @@unique([moduleId, role, tier])
+}
+
+model TrainingAssetPlan {
+  id             String            @id @default(cuid())
+  moduleId       String
+  assetType      TrainingAssetType
+  title          String
+  description    String
+  specifications Json?
+  status         AssetPlanStatus   @default(PLANNED)
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  module         TrainingModule    @relation(fields: [moduleId], references: [id])
 }
 
 enum TrainingStatus {
@@ -1189,184 +1282,639 @@ enum TrainingStatus {
   IN_PROGRESS
   COMPLETED
   FAILED
+  EXPIRED
+}
+
+enum TrainingAssetType {
+  VIDEO
+  DOCUMENT
+  QUIZ
+  SCRIPT
+  INTERACTIVE
+}
+
+enum AssetPlanStatus {
+  PLANNED
+  IN_PRODUCTION
+  REVIEW
+  PUBLISHED
+  ARCHIVED
 }
 ```
 
-### 11.3 TrainingBot Functions
+### 11.5 TrainingBot Functions
 
-| Function | Purpose | Output |
-|----------|---------|--------|
-| `identifyGaps()` | Find employees missing required modules | `{ employeeId, missingModules[], priority }[]` |
-| `correlatePerformance()` | Link training completion to case metrics | Performance correlation report |
-| `suggestModules()` | Recommend next modules based on role/tier | `{ employeeId, suggestedModules[], reason }[]` |
-| `generateAnalytics()` | Training completion metrics | Dashboard data |
-| `detectStaleProgress()` | Find abandoned in-progress modules | List of stale progress records |
+| Function | Purpose | Input | Output |
+|----------|---------|-------|--------|
+| `identifyGaps()` | Find employees missing required modules | None | `TrainingGap[]` |
+| `correlatePerformance()` | Link training to case performance | `employeeId` | `PerformanceCorrelation` |
+| `suggestModules()` | Recommend next modules | `employeeId` | `ModuleSuggestion[]` |
+| `generateAnalytics()` | Training dashboard data | `timeRange` | `TrainingAnalytics` |
+| `detectStaleProgress()` | Find abandoned modules | `staleDays` | `StaleProgress[]` |
+| `generateModuleOutline()` | Create module content | `moduleId, role, tier` | `TrainingModuleDetail` |
+| `generateAssessment()` | Create quiz questions | `moduleId` | `AssessmentQuestion[]` |
 
-### 11.4 Module Content Generation
-
-TrainingBot generates detailed module content stored in `TrainingModuleDetail`:
+#### identifyGaps() Implementation
 
 ```typescript
-interface TrainingModuleDetail {
-  moduleId: string;
+// backend/src/bots/trainingBot.ts
+
+interface TrainingGap {
+  employeeId: string;
+  employeeName: string;
   role: UserRole;
-  tier?: EmployeeTier;
-  outline: {
-    sections: {
-      title: string;
-      duration: string;
-      content: string;
-      keyPoints: string[];
-    }[];
-  };
-  scripts: {
-    [scenario: string]: string;
-  };
-  keyPoints: string[];
-  videoBlueprint?: {
-    scenes: {
-      title: string;
-      duration: string;
-      visualDescription: string;
-      narration: string;
-    }[];
+  tier: EmployeeTier;
+  missingModules: {
+    moduleId: string;
+    title: string;
+    isRequired: boolean;
+    priority: 'HIGH' | 'MEDIUM' | 'LOW';
+  }[];
+  overallCompliancePercent: number;
+}
+
+async function identifyGaps(): Promise<TrainingGap[]> {
+  const employees = await prisma.user.findMany({
+    where: {
+      role: { in: ['EMPLOYEE', 'TEAM_LEAD', 'HR', 'COMPLIANCE'] },
+      isActive: true
+    },
+    include: {
+      trainingProgress: true
+    }
+  });
+
+  const gaps: TrainingGap[] = [];
+
+  for (const employee of employees) {
+    const requiredModules = getRequiredModules(employee.role, employee.employeeTier);
+    const completedModules = employee.trainingProgress
+      .filter(p => p.status === 'COMPLETED')
+      .map(p => p.moduleId);
+
+    const missing = requiredModules.filter(m => !completedModules.includes(m));
+
+    if (missing.length > 0) {
+      gaps.push({
+        employeeId: employee.id,
+        employeeName: employee.name,
+        role: employee.role,
+        tier: employee.employeeTier,
+        missingModules: missing.map(moduleId => ({
+          moduleId,
+          title: getModuleTitle(moduleId),
+          isRequired: true,
+          priority: getPriority(moduleId, employee.employeeTier)
+        })),
+        overallCompliancePercent: Math.round(
+          (completedModules.length / requiredModules.length) * 100
+        )
+      });
+    }
+  }
+
+  return gaps.sort((a, b) => a.overallCompliancePercent - b.overallCompliancePercent);
+}
+```
+
+#### correlatePerformance() Implementation
+
+```typescript
+interface PerformanceCorrelation {
+  employeeId: string;
+  trainingScore: number;       // 0-100
+  caseSuccessRate: number;     // 0-100
+  avgProcessingDays: number;
+  correlationStrength: 'STRONG' | 'MODERATE' | 'WEAK' | 'NONE';
+  insights: string[];
+}
+
+async function correlatePerformance(employeeId: string): Promise<PerformanceCorrelation> {
+  const progress = await prisma.trainingProgress.findMany({
+    where: { userId: employeeId, status: 'COMPLETED' }
+  });
+
+  const cases = await prisma.case.findMany({
+    where: { assignedToId: employeeId }
+  });
+
+  const avgQuizScore = progress.length > 0
+    ? progress.reduce((sum, p) => sum + (p.quizScore || 0), 0) / progress.length
+    : 0;
+
+  const closedCases = cases.filter(c => c.status === 'PAID' || c.status === 'CLOSED');
+  const successRate = cases.length > 0
+    ? (closedCases.length / cases.length) * 100
+    : 0;
+
+  const avgDays = calculateAvgProcessingDays(cases);
+
+  const correlation = calculateCorrelation(avgQuizScore, successRate);
+
+  return {
+    employeeId,
+    trainingScore: avgQuizScore,
+    caseSuccessRate: successRate,
+    avgProcessingDays: avgDays,
+    correlationStrength: correlation,
+    insights: generateInsights(avgQuizScore, successRate, avgDays)
   };
 }
 ```
 
-### 11.5 Assessment Questions
-
-Each module includes quiz questions:
+### 11.6 Assessment Generation
 
 ```typescript
 interface AssessmentQuestion {
   id: string;
   moduleId: string;
+  questionType: 'MULTIPLE_CHOICE' | 'TRUE_FALSE' | 'SCENARIO';
   question: string;
   options: string[];
   correctAnswer: number;
   explanation: string;
+  difficulty: 'EASY' | 'MEDIUM' | 'HARD';
+  points: number;
 }
 
-// Example for M001:
-const questions: AssessmentQuestion[] = [
+// Example assessment for M002 (Client Communication Basics)
+const m002Assessment: AssessmentQuestion[] = [
   {
-    id: 'M001_Q1',
-    moduleId: 'M001',
-    question: 'What is the primary service MGR Capital provides?',
+    id: 'M002_Q1',
+    moduleId: 'M002',
+    questionType: 'MULTIPLE_CHOICE',
+    question: 'When a client asks about the status of their case, you should:',
     options: [
-      'Tax preparation',
-      'Tax surplus recovery',
-      'Real estate sales',
-      'Legal representation'
+      'Tell them the exact surplus amount',
+      'Provide a general status update without financial details',
+      'Transfer them to the founder',
+      'Ask them to check the portal'
     ],
     correctAnswer: 1,
-    explanation: 'MGR Capital specializes in recovering unclaimed surplus funds from tax sales for property owners.'
+    explanation: 'Employees should never reveal financial details. Provide general status updates and direct them to the portal for more information.',
+    difficulty: 'MEDIUM',
+    points: 10
+  },
+  {
+    id: 'M002_Q2',
+    moduleId: 'M002',
+    questionType: 'SCENARIO',
+    question: 'A client says "This sounds too good to be true. How do I know you\'re legitimate?" What is the best response?',
+    options: [
+      'Explain our fee structure and how we get paid',
+      'Get defensive and end the call',
+      'Acknowledge their concern, explain our process briefly, and offer to send written information',
+      'Tell them to Google us'
+    ],
+    correctAnswer: 2,
+    explanation: 'Acknowledging concerns builds trust. Offering written information provides legitimacy without revealing internal details.',
+    difficulty: 'HARD',
+    points: 15
   }
 ];
 ```
 
-### 11.6 HR/Compliance Integration
+### 11.7 HR Panel Integration
 
-- **HR Panel**: View training compliance, send reminders, track completion rates
-- **Compliance Panel**: Audit training records, verify certifications, flag overdue training
-- **Reporting**: Generate training compliance reports by role, tier, team
+```typescript
+// GET /api/hr/training-compliance
+interface TrainingComplianceDashboard {
+  overallCompliance: number;  // Percentage
+  byRole: {
+    role: UserRole;
+    compliance: number;
+    totalEmployees: number;
+    fullyCompliant: number;
+  }[];
+  byTier: {
+    tier: EmployeeTier;
+    compliance: number;
+    totalEmployees: number;
+  }[];
+  overdueTraining: {
+    employeeId: string;
+    employeeName: string;
+    modules: string[];
+    daysSinceRequired: number;
+  }[];
+  recentCompletions: {
+    employeeId: string;
+    employeeName: string;
+    moduleId: string;
+    completedAt: Date;
+    score: number;
+  }[];
+}
+```
+
+### 11.8 Compliance Panel Integration
+
+```typescript
+// GET /api/compliance/training-audit
+interface TrainingAudit {
+  auditDate: Date;
+  totalEmployees: number;
+  compliantEmployees: number;
+  nonCompliantEmployees: number;
+  complianceRate: number;
+  flags: {
+    employeeId: string;
+    employeeName: string;
+    flagType: 'OVERDUE' | 'FAILED_QUIZ' | 'INCOMPLETE' | 'EXPIRED';
+    details: string;
+    severity: 'HIGH' | 'MEDIUM' | 'LOW';
+  }[];
+  recommendations: string[];
+}
+```
 
 ---
 
 ## 12. INGESTION INTELLIGENCE BLUEPRINT
 
-### 12.1 Data Sources
+### 12.1 Ingestion Architecture Overview
 
-| Source Type | Format | Frequency | Priority States |
-|-------------|--------|-----------|-----------------|
-| County Tax Sale Lists | CSV/Excel | Weekly | TX, FL, CA, GA, NC |
-| Surplus Fund Notices | PDF | Daily | All active states |
-| State Unclaimed Property | Web scrape | Monthly | All states |
-| Foreclosure Lists | CSV | Weekly | High-volume counties |
+The Ingestion Intelligence system handles all data acquisition from external sources, including manual file uploads, automated web scraping, and API integrations.
 
-### 12.2 Parsing Functions
+**Core Components:**
+- IngestionBatch: Tracks each ingestion job
+- ScrapedItem: Individual records from scrapers
+- IngestionBot: Automated analysis and recommendations
+- ScraperService: Web scraping engine
+- WatchService: Rule change monitoring
+
+### 12.2 Data Sources
+
+| Source Type | Format | Frequency | Priority States | Estimated Volume |
+|-------------|--------|-----------|-----------------|------------------|
+| County Tax Sale Lists | CSV/Excel | Weekly | TX, FL, CA, GA, NC | 500-5000 records/week |
+| Surplus Fund Notices | PDF | Daily | All active states | 50-200 records/day |
+| State Unclaimed Property | Web scrape | Monthly | All 50 states | 10000+ records/month |
+| Foreclosure Lists | CSV | Weekly | High-volume counties | 200-1000 records/week |
+| Probate Records | PDF | Weekly | Select counties | 50-100 records/week |
+
+### 12.3 Parsing Functions
 
 #### parseTaxSaleCSV()
+
 ```typescript
+// backend/src/services/ingestionService.ts
+
 interface TaxSaleRecord {
   parcelNumber: string;
   ownerName: string;
+  ownerAddress?: string;
   propertyAddress: string;
   saleDate: Date;
   saleAmount: number;
   surplusAmount?: number;
   county: string;
   state: string;
+  source: string;
+  rawData: Record<string, any>;
+}
+
+interface SourceConfig {
+  id: string;
+  name: string;
+  state: string;
+  county: string;
+  columns: {
+    parcel: string;
+    owner: string;
+    ownerAddress?: string;
+    address: string;
+    saleDate: string;
+    saleAmount: string;
+    surplus?: string;
+  };
+  dateFormat: string;
+  currencyFormat: 'USD' | 'CENTS';
+  skipRows?: number;
+  encoding?: string;
 }
 
 async function parseTaxSaleCSV(
   file: Buffer,
   config: SourceConfig
-): Promise<TaxSaleRecord[]> {
-  // 1. Detect encoding (UTF-8, Latin-1, Windows-1252)
-  const encoding = detectEncoding(file);
+): Promise<{ records: TaxSaleRecord[]; errors: string[]; stats: ParseStats }> {
+  const errors: string[] = [];
+  const stats: ParseStats = { total: 0, valid: 0, invalid: 0, duplicates: 0 };
+
+  // 1. Detect and convert encoding
+  const encoding = config.encoding || detectEncoding(file);
   const content = iconv.decode(file, encoding);
 
   // 2. Parse CSV with headers
-  const records = Papa.parse(content, { header: true });
+  const parseResult = Papa.parse(content, {
+    header: true,
+    skipEmptyLines: true,
+    transformHeader: (h) => h.trim().toLowerCase()
+  });
 
-  // 3. Map columns to standard fields
-  const mapped = records.data.map(row => ({
-    parcelNumber: row[config.columns.parcel],
-    ownerName: row[config.columns.owner],
-    propertyAddress: row[config.columns.address],
-    saleDate: parseDate(row[config.columns.saleDate]),
-    saleAmount: parseCurrency(row[config.columns.saleAmount]),
-    surplusAmount: parseCurrency(row[config.columns.surplus]),
-    county: config.county,
-    state: config.state
-  }));
+  if (parseResult.errors.length > 0) {
+    errors.push(...parseResult.errors.map(e => `Row ${e.row}: ${e.message}`));
+  }
 
-  // 4. Validate required fields
-  const valid = mapped.filter(validateTaxSaleRecord);
+  stats.total = parseResult.data.length;
 
-  // 5. Return normalized records
-  return valid;
+  // 3. Map and validate each row
+  const records: TaxSaleRecord[] = [];
+
+  for (let i = 0; i < parseResult.data.length; i++) {
+    const row = parseResult.data[i] as Record<string, string>;
+
+    try {
+      const record: TaxSaleRecord = {
+        parcelNumber: normalizeParcelNumber(row[config.columns.parcel]),
+        ownerName: normalizeOwnerName(row[config.columns.owner]),
+        ownerAddress: config.columns.ownerAddress ? row[config.columns.ownerAddress] : undefined,
+        propertyAddress: normalizeAddress(row[config.columns.address]),
+        saleDate: parseDate(row[config.columns.saleDate], config.dateFormat),
+        saleAmount: parseCurrency(row[config.columns.saleAmount], config.currencyFormat),
+        surplusAmount: config.columns.surplus
+          ? parseCurrency(row[config.columns.surplus], config.currencyFormat)
+          : undefined,
+        county: config.county,
+        state: config.state,
+        source: config.id,
+        rawData: row
+      };
+
+      // Validate required fields
+      const validation = validateTaxSaleRecord(record);
+      if (validation.valid) {
+        records.push(record);
+        stats.valid++;
+      } else {
+        errors.push(`Row ${i + 1}: ${validation.errors.join(', ')}`);
+        stats.invalid++;
+      }
+    } catch (err) {
+      errors.push(`Row ${i + 1}: Parse error - ${err.message}`);
+      stats.invalid++;
+    }
+  }
+
+  return { records, errors, stats };
 }
 ```
 
 #### parseSurplusPDF()
+
 ```typescript
-async function parseSurplusPDF(file: Buffer): Promise<TaxSaleRecord[]> {
-  // 1. Extract text using pdf-parse
+async function parseSurplusPDF(
+  file: Buffer,
+  config: PDFConfig
+): Promise<{ records: TaxSaleRecord[]; errors: string[]; stats: ParseStats }> {
+  const errors: string[] = [];
+  const stats: ParseStats = { total: 0, valid: 0, invalid: 0, duplicates: 0 };
+
+  // 1. Extract text from PDF
   const pdfData = await pdfParse(file);
   const text = pdfData.text;
 
-  // 2. Identify table structures using regex
-  const tablePattern = /(\d{2,}-\d{2,}-\d{2,})\s+(.+?)\s+\$?([\d,]+\.?\d*)/g;
+  // 2. Split into pages/sections
+  const pages = text.split(/\f|\n{3,}/);
 
-  // 3. Extract records
+  // 3. Apply state-specific parsing patterns
+  const patterns = getPDFPatterns(config.state);
   const records: TaxSaleRecord[] = [];
-  let match;
-  while ((match = tablePattern.exec(text)) !== null) {
-    records.push({
-      parcelNumber: match[1],
-      ownerName: match[2].trim(),
-      surplusAmount: parseCurrency(match[3])
-    });
+
+  for (const page of pages) {
+    // Try table extraction first
+    const tableRecords = extractTableRecords(page, patterns.table);
+    if (tableRecords.length > 0) {
+      records.push(...tableRecords);
+      continue;
+    }
+
+    // Fall back to line-by-line extraction
+    const lines = page.split('\n');
+    for (const line of lines) {
+      const match = line.match(patterns.line);
+      if (match) {
+        try {
+          const record = parseMatchedRecord(match, config);
+          if (validateTaxSaleRecord(record).valid) {
+            records.push(record);
+            stats.valid++;
+          }
+        } catch (err) {
+          errors.push(`Parse error: ${err.message}`);
+          stats.invalid++;
+        }
+      }
+    }
   }
 
-  return records;
+  stats.total = records.length + stats.invalid;
+  return { records, errors, stats };
+}
+
+// State-specific PDF patterns
+const pdfPatterns: Record<string, PDFPatterns> = {
+  TX: {
+    table: /(\d{2,}-\d{2,}-\d{2,}-\d{2,})\s+(.+?)\s+\$?([\d,]+\.\d{2})/g,
+    line: /^(\d{2,}-\d{2,}-\d{2,}-\d{2,})\s+(.+?)\s+\$?([\d,]+\.\d{2})$/
+  },
+  FL: {
+    table: /([A-Z0-9]{10,})\s+(.+?)\s+\$?([\d,]+\.\d{2})/g,
+    line: /^([A-Z0-9]{10,})\s+(.+?)\s+\$?([\d,]+\.\d{2})$/
+  },
+  CA: {
+    table: /(\d{3}-\d{3}-\d{3})\s+(.+?)\s+\$?([\d,]+\.\d{2})/g,
+    line: /^(\d{3}-\d{3}-\d{3})\s+(.+?)\s+\$?([\d,]+\.\d{2})$/
+  }
+};
+```
+
+#### parseProbateListCSV()
+
+```typescript
+interface ProbateRecord {
+  caseNumber: string;
+  decedentName: string;
+  filingDate: Date;
+  estatValue?: number;
+  propertyAddresses: string[];
+  county: string;
+  state: string;
+}
+
+async function parseProbateListCSV(
+  file: Buffer,
+  config: SourceConfig
+): Promise<{ records: ProbateRecord[]; errors: string[] }> {
+  // Similar to parseTaxSaleCSV but with probate-specific fields
+  // ... implementation
 }
 ```
 
-### 12.3 IngestionBot Functions
+### 12.4 IngestionBot Functions
 
-| Function | Purpose |
-|----------|---------|
-| `analyzeIngestionPatterns()` | Detect changes in data source formats |
-| `detectDuplicates()` | Find records matching existing cases |
-| `assessSourceHealth()` | Monitor source reliability and availability |
-| `prioritizeRecords()` | Flag high-value records (>$10,000) for immediate processing |
-| `generateSourceReport()` | Per-source ingestion statistics |
+| Function | Purpose | Input | Output |
+|----------|---------|-------|--------|
+| `analyzeIngestionPatterns()` | Detect format changes in sources | `sourceId` | `PatternAnalysis` |
+| `detectDuplicates()` | Find records matching existing cases | `records[]` | `DuplicateReport` |
+| `assessSourceHealth()` | Monitor source reliability | `sourceId` | `SourceHealthReport` |
+| `prioritizeRecords()` | Flag high-value records for immediate processing | `records[]` | `PrioritizedRecords` |
+| `generateSourceReport()` | Per-source ingestion statistics | `timeRange` | `SourceReport` |
+| `detectAnomalies()` | Find unusual patterns in data | `batchId` | `AnomalyReport` |
 
-### 12.4 Scraper Service
+#### analyzeIngestionPatterns() Implementation
+
+```typescript
+interface PatternAnalysis {
+  sourceId: string;
+  lastIngestion: Date;
+  formatChanges: {
+    field: string;
+    oldPattern: string;
+    newPattern: string;
+    confidence: number;
+  }[];
+  columnChanges: {
+    added: string[];
+    removed: string[];
+    renamed: { old: string; new: string }[];
+  };
+  recommendations: string[];
+}
+
+async function analyzeIngestionPatterns(sourceId: string): Promise<PatternAnalysis> {
+  // Get last 5 ingestion batches for this source
+  const batches = await prisma.ingestionBatch.findMany({
+    where: { sourceId },
+    orderBy: { createdAt: 'desc' },
+    take: 5
+  });
+
+  if (batches.length < 2) {
+    return { sourceId, lastIngestion: new Date(), formatChanges: [], columnChanges: { added: [], removed: [], renamed: [] }, recommendations: [] };
+  }
+
+  const latest = batches[0];
+  const previous = batches[1];
+
+  // Compare column structures
+  const latestColumns = new Set(Object.keys(latest.sampleRecord || {}));
+  const previousColumns = new Set(Object.keys(previous.sampleRecord || {}));
+
+  const added = [...latestColumns].filter(c => !previousColumns.has(c));
+  const removed = [...previousColumns].filter(c => !latestColumns.has(c));
+
+  // Detect renamed columns (similar data patterns)
+  const renamed: { old: string; new: string }[] = [];
+  for (const oldCol of removed) {
+    for (const newCol of added) {
+      if (detectSimilarData(previous.sampleRecord[oldCol], latest.sampleRecord[newCol])) {
+        renamed.push({ old: oldCol, new: newCol });
+      }
+    }
+  }
+
+  const recommendations: string[] = [];
+  if (added.length > 0) recommendations.push(`New columns detected: ${added.join(', ')}. Update source config.`);
+  if (removed.length > 0) recommendations.push(`Columns removed: ${removed.join(', ')}. Verify source config.`);
+
+  return {
+    sourceId,
+    lastIngestion: latest.createdAt,
+    formatChanges: [],
+    columnChanges: { added, removed, renamed },
+    recommendations
+  };
+}
+```
+
+#### detectDuplicates() Implementation
+
+```typescript
+interface DuplicateReport {
+  totalChecked: number;
+  duplicatesFound: number;
+  duplicates: {
+    newRecord: TaxSaleRecord;
+    existingCaseId: string;
+    matchType: 'EXACT' | 'PROBABLE' | 'POSSIBLE';
+    matchScore: number;
+    matchedFields: string[];
+  }[];
+}
+
+async function detectDuplicates(records: TaxSaleRecord[]): Promise<DuplicateReport> {
+  const duplicates: DuplicateReport['duplicates'] = [];
+
+  for (const record of records) {
+    // Check for exact parcel match
+    const exactMatch = await prisma.case.findFirst({
+      where: {
+        parcelNumber: record.parcelNumber,
+        state: record.state,
+        county: record.county
+      }
+    });
+
+    if (exactMatch) {
+      duplicates.push({
+        newRecord: record,
+        existingCaseId: exactMatch.id,
+        matchType: 'EXACT',
+        matchScore: 100,
+        matchedFields: ['parcelNumber', 'state', 'county']
+      });
+      continue;
+    }
+
+    // Check for address match
+    const addressMatch = await prisma.case.findFirst({
+      where: {
+        propertyAddress: { contains: record.propertyAddress, mode: 'insensitive' },
+        state: record.state
+      }
+    });
+
+    if (addressMatch) {
+      duplicates.push({
+        newRecord: record,
+        existingCaseId: addressMatch.id,
+        matchType: 'PROBABLE',
+        matchScore: 85,
+        matchedFields: ['propertyAddress', 'state']
+      });
+      continue;
+    }
+
+    // Check for owner name + county match
+    const ownerMatch = await prisma.client.findFirst({
+      where: {
+        name: { contains: record.ownerName, mode: 'insensitive' }
+      },
+      include: { cases: true }
+    });
+
+    if (ownerMatch && ownerMatch.cases.some(c => c.county === record.county)) {
+      const matchedCase = ownerMatch.cases.find(c => c.county === record.county);
+      duplicates.push({
+        newRecord: record,
+        existingCaseId: matchedCase!.id,
+        matchType: 'POSSIBLE',
+        matchScore: 60,
+        matchedFields: ['ownerName', 'county']
+      });
+    }
+  }
+
+  return {
+    totalChecked: records.length,
+    duplicatesFound: duplicates.length,
+    duplicates
+  };
+}
+```
+
+### 12.5 Scraper Service
 
 ```typescript
 // backend/src/services/scraperService.ts
@@ -1378,14 +1926,24 @@ interface ScraperConfig {
   county: string;
   url: string;
   frequency: 'daily' | 'weekly' | 'monthly';
+  isActive: boolean;
+  lastRun?: Date;
+  lastSuccess?: Date;
+  errorCount: number;
   selectors: {
     table: string;
     row: string;
+    pagination?: string;
     fields: Record<string, string>;
   };
   transforms: Record<string, (val: string) => any>;
+  headers?: Record<string, string>;
+  cookies?: Record<string, string>;
+  waitFor?: string;  // CSS selector to wait for
+  javascript?: boolean;  // Requires headless browser
 }
 
+// Priority state scraper configurations
 const scraperConfigs: ScraperConfig[] = [
   {
     id: 'harris_county_tx',
@@ -1394,119 +1952,505 @@ const scraperConfigs: ScraperConfig[] = [
     county: 'Harris',
     url: 'https://www.hctax.net/Property/TaxSales',
     frequency: 'weekly',
+    isActive: true,
+    errorCount: 0,
     selectors: {
-      table: '.tax-sale-table',
-      row: 'tr.record',
+      table: '#taxSaleTable',
+      row: 'tbody tr',
+      pagination: '.pagination a.next',
       fields: {
-        parcel: 'td.parcel-id',
-        address: 'td.property-address',
-        amount: 'td.surplus-amount'
+        parcel: 'td:nth-child(1)',
+        address: 'td:nth-child(2)',
+        owner: 'td:nth-child(3)',
+        saleDate: 'td:nth-child(4)',
+        amount: 'td:nth-child(5)'
+      }
+    },
+    transforms: {
+      amount: parseCurrency,
+      saleDate: (v) => parseDate(v, 'MM/DD/YYYY')
+    },
+    javascript: true
+  },
+  {
+    id: 'miami_dade_fl',
+    name: 'Miami-Dade County, FL Surplus',
+    state: 'FL',
+    county: 'Miami-Dade',
+    url: 'https://www.miamidade.gov/finance/surplus-funds.asp',
+    frequency: 'weekly',
+    isActive: true,
+    errorCount: 0,
+    selectors: {
+      table: '.surplus-table',
+      row: 'tr.data-row',
+      fields: {
+        folio: 'td.folio',
+        address: 'td.address',
+        owner: 'td.owner',
+        surplus: 'td.amount'
+      }
+    },
+    transforms: {
+      surplus: parseCurrency
+    },
+    javascript: false
+  },
+  {
+    id: 'los_angeles_ca',
+    name: 'Los Angeles County, CA Tax Sale',
+    state: 'CA',
+    county: 'Los Angeles',
+    url: 'https://ttc.lacounty.gov/excess-proceeds/',
+    frequency: 'weekly',
+    isActive: true,
+    errorCount: 0,
+    selectors: {
+      table: '#excess-proceeds-table',
+      row: 'tbody tr',
+      fields: {
+        ain: 'td:nth-child(1)',
+        address: 'td:nth-child(2)',
+        owner: 'td:nth-child(3)',
+        amount: 'td:nth-child(4)'
       }
     },
     transforms: {
       amount: parseCurrency
-    }
+    },
+    javascript: true,
+    waitFor: '#excess-proceeds-table'
   }
 ];
 
-async function runScraper(configId: string): Promise<ScrapedItem[]> {
+async function runScraper(configId: string): Promise<ScraperResult> {
   const config = scraperConfigs.find(c => c.id === configId);
   if (!config) throw new Error(`Unknown scraper: ${configId}`);
+  if (!config.isActive) throw new Error(`Scraper ${configId} is disabled`);
 
-  // 1. Fetch page
-  const response = await fetch(config.url);
-  const html = await response.text();
+  const startTime = Date.now();
+  const result: ScraperResult = {
+    configId,
+    startedAt: new Date(),
+    records: [],
+    errors: [],
+    pagesProcessed: 0,
+    success: false
+  };
 
-  // 2. Parse with cheerio
-  const $ = cheerio.load(html);
+  try {
+    let page: string;
 
-  // 3. Extract records
-  const records: ScrapedItem[] = [];
-  $(config.selectors.table).find(config.selectors.row).each((i, row) => {
-    const record: any = {};
-    for (const [field, selector] of Object.entries(config.selectors.fields)) {
-      let value = $(row).find(selector).text().trim();
-      if (config.transforms[field]) {
-        value = config.transforms[field](value);
+    if (config.javascript) {
+      // Use Puppeteer for JavaScript-rendered pages
+      const browser = await puppeteer.launch({ headless: 'new' });
+      const browserPage = await browser.newPage();
+
+      if (config.headers) {
+        await browserPage.setExtraHTTPHeaders(config.headers);
       }
-      record[field] = value;
-    }
-    records.push({
-      sourceType: 'TAX_SALE',
-      sourceUrl: config.url,
-      state: config.state,
-      county: config.county,
-      rawContent: $(row).html(),
-      parsedData: record,
-      reviewStatus: 'PENDING'
-    });
-  });
 
-  return records;
+      await browserPage.goto(config.url, { waitUntil: 'networkidle2' });
+
+      if (config.waitFor) {
+        await browserPage.waitForSelector(config.waitFor, { timeout: 30000 });
+      }
+
+      page = await browserPage.content();
+      await browser.close();
+    } else {
+      // Use simple fetch for static pages
+      const response = await fetch(config.url, {
+        headers: config.headers || {}
+      });
+      page = await response.text();
+    }
+
+    // Parse with cheerio
+    const $ = cheerio.load(page);
+
+    $(config.selectors.table).find(config.selectors.row).each((i, row) => {
+      try {
+        const record: Partial<ScrapedItem> = {
+          sourceType: 'TAX_SALE',
+          sourceUrl: config.url,
+          state: config.state,
+          county: config.county,
+          rawContent: $(row).html() || '',
+          parsedData: {},
+          reviewStatus: 'PENDING'
+        };
+
+        for (const [field, selector] of Object.entries(config.selectors.fields)) {
+          let value = $(row).find(selector).text().trim();
+          if (config.transforms[field]) {
+            value = config.transforms[field](value);
+          }
+          (record.parsedData as any)[field] = value;
+        }
+
+        result.records.push(record as ScrapedItem);
+      } catch (err) {
+        result.errors.push(`Row ${i}: ${err.message}`);
+      }
+    });
+
+    result.pagesProcessed = 1;
+    result.success = true;
+    result.completedAt = new Date();
+    result.duration = Date.now() - startTime;
+
+    // Update config stats
+    await updateScraperStats(configId, true);
+
+  } catch (err) {
+    result.errors.push(`Scraper error: ${err.message}`);
+    result.success = false;
+    result.completedAt = new Date();
+    result.duration = Date.now() - startTime;
+
+    // Update error count
+    await updateScraperStats(configId, false);
+  }
+
+  return result;
 }
 ```
 
-### 12.5 Watch Service (Rule Change Detection)
+### 12.6 Watch Service (Rule Change Detection)
 
 ```typescript
 // backend/src/services/watchService.ts
 
 interface WatchTarget {
   id: string;
+  name: string;
   state: string;
   county?: string;
   url: string;
+  targetType: 'RULES_PAGE' | 'DEADLINE_PAGE' | 'FEE_SCHEDULE' | 'FORM_LIBRARY';
   contentHash?: string;
   lastChecked?: Date;
+  lastChanged?: Date;
   checkFrequency: 'daily' | 'weekly';
+  isActive: boolean;
+  selectors?: {
+    content: string;  // CSS selector for monitored content
+    ignore?: string[];  // Selectors to ignore (ads, dates, etc.)
+  };
 }
 
-async function checkForChanges(target: WatchTarget): Promise<WatchAlert | null> {
-  // 1. Fetch current content
-  const response = await fetch(target.url);
-  const content = await response.text();
+// Watch targets for priority jurisdictions
+const watchTargets: WatchTarget[] = [
+  {
+    id: 'tx_surplus_rules',
+    name: 'Texas Surplus Rules',
+    state: 'TX',
+    url: 'https://comptroller.texas.gov/taxes/property-tax/excess-proceeds/',
+    targetType: 'RULES_PAGE',
+    checkFrequency: 'weekly',
+    isActive: true,
+    selectors: {
+      content: '.content-main',
+      ignore: ['.date-modified', '.social-share']
+    }
+  },
+  {
+    id: 'fl_redemption_deadlines',
+    name: 'Florida Redemption Deadlines',
+    state: 'FL',
+    url: 'https://floridarevenue.com/property/',
+    targetType: 'DEADLINE_PAGE',
+    checkFrequency: 'weekly',
+    isActive: true
+  }
+];
 
-  // 2. Calculate hash
-  const currentHash = crypto.createHash('md5').update(content).digest('hex');
+async function checkForChanges(targetId: string): Promise<WatchAlert | null> {
+  const target = watchTargets.find(t => t.id === targetId);
+  if (!target || !target.isActive) return null;
 
-  // 3. Compare with stored hash
-  if (target.contentHash && target.contentHash !== currentHash) {
-    // Content changed - create alert
-    return {
-      type: 'RULE_CHANGE',
-      severity: 'HIGH',
-      title: `Content changed: ${target.state}${target.county ? ' ' + target.county : ''}`,
-      message: `The monitored page at ${target.url} has changed. Please review for rule updates.`,
-      state: target.state,
-      county: target.county
-    };
+  try {
+    // 1. Fetch current content
+    const response = await fetch(target.url);
+    const html = await response.text();
+
+    // 2. Extract relevant content
+    const $ = cheerio.load(html);
+    let content: string;
+
+    if (target.selectors?.content) {
+      content = $(target.selectors.content).text();
+      // Remove ignored sections
+      if (target.selectors.ignore) {
+        for (const ignore of target.selectors.ignore) {
+          $(ignore).remove();
+        }
+        content = $(target.selectors.content).text();
+      }
+    } else {
+      content = $('body').text();
+    }
+
+    // Normalize whitespace
+    content = content.replace(/\s+/g, ' ').trim();
+
+    // 3. Calculate hash
+    const currentHash = crypto.createHash('sha256').update(content).digest('hex');
+
+    // 4. Compare with stored hash
+    const stored = await prisma.watchTarget.findUnique({ where: { id: targetId } });
+
+    if (stored?.contentHash && stored.contentHash !== currentHash) {
+      // Content changed - create alert
+      const alert = await prisma.watchAlert.create({
+        data: {
+          type: 'RULE_CHANGE',
+          severity: 'HIGH',
+          title: `Rules changed: ${target.name}`,
+          message: `The monitored page "${target.name}" at ${target.url} has changed. Please review for rule updates that may affect case processing.`,
+          state: target.state,
+          county: target.county,
+          relatedId: targetId,
+          relatedType: 'WatchTarget'
+        }
+      });
+
+      // Update stored hash and lastChanged
+      await prisma.watchTarget.update({
+        where: { id: targetId },
+        data: {
+          contentHash: currentHash,
+          lastChecked: new Date(),
+          lastChanged: new Date()
+        }
+      });
+
+      return alert;
+    }
+
+    // 5. Update lastChecked (no change)
+    await prisma.watchTarget.update({
+      where: { id: targetId },
+      data: {
+        contentHash: currentHash,
+        lastChecked: new Date()
+      }
+    });
+
+    return null;
+
+  } catch (err) {
+    // Create error alert
+    await prisma.watchAlert.create({
+      data: {
+        type: 'SCRAPE_ERROR',
+        severity: 'MEDIUM',
+        title: `Watch check failed: ${target.name}`,
+        message: `Failed to check ${target.url}: ${err.message}`,
+        state: target.state,
+        county: target.county
+      }
+    });
+
+    return null;
+  }
+}
+
+async function runWatchCycle(): Promise<WatchCycleResult> {
+  const activeTargets = watchTargets.filter(t => t.isActive);
+  const results: WatchCycleResult = {
+    startedAt: new Date(),
+    targetsChecked: 0,
+    changesDetected: 0,
+    errors: 0,
+    alerts: []
+  };
+
+  for (const target of activeTargets) {
+    // Check if due based on frequency
+    const stored = await prisma.watchTarget.findUnique({ where: { id: target.id } });
+    if (stored?.lastChecked) {
+      const hoursSince = (Date.now() - stored.lastChecked.getTime()) / (1000 * 60 * 60);
+      const threshold = target.checkFrequency === 'daily' ? 24 : 168;
+      if (hoursSince < threshold) continue;
+    }
+
+    const alert = await checkForChanges(target.id);
+    results.targetsChecked++;
+
+    if (alert) {
+      results.changesDetected++;
+      results.alerts.push(alert);
+    }
   }
 
-  // 4. Update stored hash
-  await updateTargetHash(target.id, currentHash);
-
-  return null;
+  results.completedAt = new Date();
+  return results;
 }
 ```
 
-### 12.6 High-Value Detection
+### 12.7 High-Value Case Detection
 
 ```typescript
-async function flagHighValueRecords(records: TaxSaleRecord[]): Promise<void> {
-  const highValue = records.filter(r => r.surplusAmount && r.surplusAmount > 1000000); // > $10,000
+const HIGH_VALUE_THRESHOLD_CENTS = 1000000; // $10,000
+const VERY_HIGH_VALUE_THRESHOLD_CENTS = 5000000; // $50,000
+const EXTREME_VALUE_THRESHOLD_CENTS = 10000000; // $100,000
 
-  for (const record of highValue) {
-    await prisma.watchAlert.create({
+async function flagHighValueRecords(records: TaxSaleRecord[]): Promise<HighValueReport> {
+  const report: HighValueReport = {
+    total: records.length,
+    highValue: [],
+    veryHighValue: [],
+    extremeValue: []
+  };
+
+  for (const record of records) {
+    if (!record.surplusAmount) continue;
+
+    if (record.surplusAmount >= EXTREME_VALUE_THRESHOLD_CENTS) {
+      report.extremeValue.push(record);
+      await createHighValueAlert(record, 'CRITICAL');
+    } else if (record.surplusAmount >= VERY_HIGH_VALUE_THRESHOLD_CENTS) {
+      report.veryHighValue.push(record);
+      await createHighValueAlert(record, 'HIGH');
+    } else if (record.surplusAmount >= HIGH_VALUE_THRESHOLD_CENTS) {
+      report.highValue.push(record);
+      await createHighValueAlert(record, 'MEDIUM');
+    }
+  }
+
+  return report;
+}
+
+async function createHighValueAlert(
+  record: TaxSaleRecord,
+  severity: 'CRITICAL' | 'HIGH' | 'MEDIUM'
+): Promise<WatchAlert> {
+  const formattedAmount = (record.surplusAmount! / 100).toLocaleString('en-US', {
+    style: 'currency',
+    currency: 'USD'
+  });
+
+  return prisma.watchAlert.create({
+    data: {
+      type: 'HIGH_VALUE_CASE',
+      severity,
+      title: `High-value surplus: ${formattedAmount}`,
+      message: [
+        `Property: ${record.propertyAddress}`,
+        `Owner: ${record.ownerName}`,
+        `County: ${record.county}, ${record.state}`,
+        `Surplus: ${formattedAmount}`,
+        `Sale Date: ${record.saleDate?.toISOString().split('T')[0] || 'Unknown'}`
+      ].join('\n'),
+      state: record.state,
+      county: record.county
+    }
+  });
+}
+```
+
+### 12.8 Batch Processing Flow
+
+```typescript
+interface IngestionBatchResult {
+  batchId: string;
+  source: string;
+  startedAt: Date;
+  completedAt: Date;
+  status: 'COMPLETED' | 'PARTIAL' | 'FAILED';
+  stats: {
+    totalRecords: number;
+    newCases: number;
+    duplicates: number;
+    errors: number;
+    highValue: number;
+  };
+  errors: string[];
+}
+
+async function processIngestionBatch(
+  file: Buffer,
+  sourceConfig: SourceConfig
+): Promise<IngestionBatchResult> {
+  // 1. Create batch record
+  const batch = await prisma.ingestionBatch.create({
+    data: {
+      sourceId: sourceConfig.id,
+      status: 'PROCESSING',
+      startedAt: new Date()
+    }
+  });
+
+  const result: IngestionBatchResult = {
+    batchId: batch.id,
+    source: sourceConfig.id,
+    startedAt: batch.startedAt,
+    completedAt: new Date(),
+    status: 'COMPLETED',
+    stats: { totalRecords: 0, newCases: 0, duplicates: 0, errors: 0, highValue: 0 },
+    errors: []
+  };
+
+  try {
+    // 2. Parse file based on type
+    const parseResult = await parseTaxSaleCSV(file, sourceConfig);
+    result.stats.totalRecords = parseResult.stats.total;
+    result.errors.push(...parseResult.errors);
+
+    // 3. Detect duplicates
+    const dupReport = await detectDuplicates(parseResult.records);
+    result.stats.duplicates = dupReport.duplicatesFound;
+
+    // 4. Filter out duplicates
+    const newRecords = parseResult.records.filter(
+      r => !dupReport.duplicates.some(d => d.newRecord.parcelNumber === r.parcelNumber)
+    );
+
+    // 5. Flag high-value records
+    const hvReport = await flagHighValueRecords(newRecords);
+    result.stats.highValue = hvReport.highValue.length + hvReport.veryHighValue.length + hvReport.extremeValue.length;
+
+    // 6. Create cases for new records
+    for (const record of newRecords) {
+      try {
+        await createCaseFromRecord(record, batch.id);
+        result.stats.newCases++;
+      } catch (err) {
+        result.errors.push(`Failed to create case for ${record.parcelNumber}: ${err.message}`);
+        result.stats.errors++;
+      }
+    }
+
+    // 7. Update batch status
+    await prisma.ingestionBatch.update({
+      where: { id: batch.id },
       data: {
-        type: 'HIGH_VALUE_CASE',
-        severity: 'HIGH',
-        title: `High-value surplus detected: $${(record.surplusAmount / 100).toLocaleString()}`,
-        message: `Property: ${record.propertyAddress}\nOwner: ${record.ownerName}\nCounty: ${record.county}, ${record.state}`,
-        state: record.state,
-        county: record.county
+        status: result.stats.errors > 0 ? 'PARTIAL' : 'COMPLETED',
+        completedAt: new Date(),
+        recordCount: result.stats.totalRecords,
+        successCount: result.stats.newCases,
+        errorCount: result.stats.errors
+      }
+    });
+
+  } catch (err) {
+    result.status = 'FAILED';
+    result.errors.push(`Batch processing failed: ${err.message}`);
+
+    await prisma.ingestionBatch.update({
+      where: { id: batch.id },
+      data: {
+        status: 'FAILED',
+        completedAt: new Date(),
+        errorMessage: err.message
       }
     });
   }
+
+  result.completedAt = new Date();
+  return result;
 }
 ```
 
@@ -1514,124 +2458,286 @@ async function flagHighValueRecords(records: TaxSaleRecord[]): Promise<void> {
 
 ## 13. BACKUPS PLAYBOOK
 
-### 13.1 Components to Backup
+### 13.1 Backup Architecture Overview
 
-| Component | Location | Method | Frequency |
-|-----------|----------|--------|-----------|
-| PostgreSQL Database | localhost:5432 | pg_dump | Every 6 hours |
-| Document Vault | backend/storage/documents/ | rsync | Hourly |
-| Configuration | .env, secrets | Manual/encrypted | On change |
-| Prisma Schema | backend/prisma/schema.prisma | Git | On change |
+The backup system follows the 3-2-1 rule:
+- **3** copies of data (production + 2 backups)
+- **2** different storage media (local disk + remote)
+- **1** offsite copy (air-gapped or remote location)
 
-### 13.2 PostgreSQL Backup Commands
+**Components:**
+- PostgreSQL database (critical)
+- Document Vault files (critical)
+- Application configuration (important)
+- Audit logs (compliance requirement)
+
+### 13.2 Components to Backup
+
+| Component | Location | Method | Frequency | Retention | Priority |
+|-----------|----------|--------|-----------|-----------|----------|
+| PostgreSQL Database | localhost:5432 | pg_dump | Every 6 hours | 90 days rolling | CRITICAL |
+| Document Vault | backend/storage/documents/ | rsync | Hourly | 1 year | CRITICAL |
+| Configuration | .env, secrets | Manual/encrypted | On change | Forever | HIGH |
+| Prisma Schema | backend/prisma/schema.prisma | Git | On change | Forever | HIGH |
+| Audit Logs | Database + files | pg_dump + rsync | Daily | 7 years (legal) | HIGH |
+| Application Logs | /var/log/mgr/ | logrotate | Daily | 30 days | MEDIUM |
+
+### 13.3 PostgreSQL Backup Commands
 
 ```bash
-# Full database dump (custom format, compressed)
-pg_dump -h localhost -U postgres -d mgr_capital \
-  -F c -Z 9 \
-  -f /backups/db/mgr_capital_$(date +%Y%m%d_%H%M%S).dump.gz
+#!/bin/bash
+# /opt/mgr/scripts/backup_db.sh
 
-# Schema only (for documentation)
-pg_dump -h localhost -U postgres -d mgr_capital \
+set -euo pipefail
+
+# Configuration
+DB_HOST="localhost"
+DB_PORT="5432"
+DB_USER="postgres"
+DB_NAME="mgr_capital"
+BACKUP_DIR="/backups/db"
+TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+BACKUP_FILE="${BACKUP_DIR}/mgr_capital_${TIMESTAMP}.dump.gz"
+
+# Ensure backup directory exists
+mkdir -p "${BACKUP_DIR}"
+
+# Full database dump (custom format, maximum compression)
+echo "[$(date)] Starting database backup..."
+pg_dump \
+  -h "${DB_HOST}" \
+  -p "${DB_PORT}" \
+  -U "${DB_USER}" \
+  -d "${DB_NAME}" \
+  -F c \
+  -Z 9 \
+  -v \
+  -f "${BACKUP_FILE}"
+
+# Verify backup
+echo "[$(date)] Verifying backup..."
+pg_restore --list "${BACKUP_FILE}" > /dev/null 2>&1
+if [ $? -eq 0 ]; then
+  echo "[$(date)] Backup verified successfully: ${BACKUP_FILE}"
+  echo "[$(date)] Size: $(du -h "${BACKUP_FILE}" | cut -f1)"
+else
+  echo "[$(date)] ERROR: Backup verification failed!"
+  exit 1
+fi
+
+# Schema-only backup (for documentation)
+echo "[$(date)] Creating schema backup..."
+pg_dump \
+  -h "${DB_HOST}" \
+  -U "${DB_USER}" \
+  -d "${DB_NAME}" \
   --schema-only \
-  -f /backups/schema/schema_$(date +%Y%m%d).sql
+  -f "${BACKUP_DIR}/schema_${TIMESTAMP}.sql"
 
-# Data only (for data migration)
-pg_dump -h localhost -U postgres -d mgr_capital \
-  --data-only -F c \
-  -f /backups/data/data_$(date +%Y%m%d_%H%M%S).dump
-
-# Critical tables only
-pg_dump -h localhost -U postgres -d mgr_capital \
-  -t "User" -t "Case" -t "Client" -t "LedgerEntry" -t "Document" \
-  -F c -f /backups/critical/critical_$(date +%Y%m%d_%H%M%S).dump
+echo "[$(date)] Database backup completed successfully"
 ```
 
-### 13.3 Restore Commands
+### 13.4 Document Vault Backup
 
 ```bash
-# Full restore (drop existing, restore all)
-pg_restore -h localhost -U postgres -d mgr_capital \
-  -c -F c /backups/db/mgr_capital_YYYYMMDD_HHMMSS.dump.gz
+#!/bin/bash
+# /opt/mgr/scripts/backup_vault.sh
 
-# Restore to new database
-createdb -h localhost -U postgres mgr_capital_restored
-pg_restore -h localhost -U postgres -d mgr_capital_restored \
-  -F c /backups/db/mgr_capital_YYYYMMDD_HHMMSS.dump.gz
+set -euo pipefail
 
-# Restore specific tables
-pg_restore -h localhost -U postgres -d mgr_capital \
-  -t "Case" -F c /backups/db/backup_file.dump
+SOURCE_DIR="/app/storage/documents"
+BACKUP_BASE="/backups/documents"
+TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+
+# Hourly incremental to local
+rsync -av --delete \
+  --backup \
+  --backup-dir="${BACKUP_BASE}/incremental/${TIMESTAMP}" \
+  "${SOURCE_DIR}/" \
+  "${BACKUP_BASE}/current/"
+
+echo "[$(date)] Document vault backup completed"
+echo "[$(date)] Source size: $(du -sh "${SOURCE_DIR}" | cut -f1)"
+echo "[$(date)] Backup size: $(du -sh "${BACKUP_BASE}/current" | cut -f1)"
 ```
 
-### 13.4 Cron Schedule
+### 13.5 Restore Commands
+
+```bash
+#!/bin/bash
+# /opt/mgr/scripts/restore_db.sh
+
+set -euo pipefail
+
+if [ $# -lt 1 ]; then
+  echo "Usage: $0 <backup_file> [target_database]"
+  exit 1
+fi
+
+BACKUP_FILE="$1"
+TARGET_DB="${2:-mgr_capital}"
+DB_HOST="localhost"
+DB_USER="postgres"
+
+# Safety check
+if [ "${TARGET_DB}" == "mgr_capital" ]; then
+  echo "WARNING: This will replace the production database!"
+  read -p "Type 'RESTORE' to confirm: " confirm
+  if [ "${confirm}" != "RESTORE" ]; then
+    echo "Aborted."
+    exit 1
+  fi
+fi
+
+# Stop application
+echo "[$(date)] Stopping application..."
+systemctl stop mgr-backend || true
+
+# Create restore point
+echo "[$(date)] Creating restore point..."
+pg_dump -h "${DB_HOST}" -U "${DB_USER}" -d "${TARGET_DB}" \
+  -F c -f "/backups/db/pre_restore_$(date +%Y%m%d_%H%M%S).dump" || true
+
+# Restore
+echo "[$(date)] Restoring database from ${BACKUP_FILE}..."
+pg_restore \
+  -h "${DB_HOST}" \
+  -U "${DB_USER}" \
+  -d "${TARGET_DB}" \
+  -c \
+  -F c \
+  -v \
+  "${BACKUP_FILE}"
+
+# Verify
+echo "[$(date)] Verifying restore..."
+psql -h "${DB_HOST}" -U "${DB_USER}" -d "${TARGET_DB}" \
+  -c "SELECT COUNT(*) FROM \"User\"; SELECT COUNT(*) FROM \"Case\";"
+
+# Restart application
+echo "[$(date)] Restarting application..."
+systemctl start mgr-backend
+
+echo "[$(date)] Restore completed successfully"
+```
+
+### 13.6 Cron Schedule
 
 ```cron
 # /etc/cron.d/mgr-backups
+# MGR Capital Assistance Backup Schedule
+
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
+MAILTO=alerts@mgrcapital.internal
 
 # Hourly: Document vault incremental
-0 * * * * root rsync -av --delete /app/storage/documents/ /backups/documents/hourly/
+0 * * * * root /opt/mgr/scripts/backup_vault.sh >> /var/log/mgr/backup-vault.log 2>&1
 
-# Every 6 hours: Database snapshot
-0 */6 * * * root /opt/mgr/scripts/backup_db.sh >> /var/log/mgr-backup.log 2>&1
+# Every 6 hours: Database snapshot (0:00, 6:00, 12:00, 18:00)
+0 */6 * * * root /opt/mgr/scripts/backup_db.sh >> /var/log/mgr/backup-db.log 2>&1
 
-# Daily at 2 AM: Full database dump
-0 2 * * * root /opt/mgr/scripts/daily_backup.sh >> /var/log/mgr-backup.log 2>&1
+# Daily at 2 AM: Full database dump + verification
+0 2 * * * root /opt/mgr/scripts/daily_backup.sh >> /var/log/mgr/backup-daily.log 2>&1
 
-# Weekly on Sunday at 3 AM: Full archive
-0 3 * * 0 root /opt/mgr/scripts/weekly_backup.sh >> /var/log/mgr-backup.log 2>&1
+# Daily at 3 AM: Cleanup old backups
+0 3 * * * root /opt/mgr/scripts/cleanup_backups.sh >> /var/log/mgr/backup-cleanup.log 2>&1
 
-# Monthly on 1st at 4 AM: Long-term archive
-0 4 1 * * root /opt/mgr/scripts/monthly_archive.sh >> /var/log/mgr-backup.log 2>&1
+# Weekly on Sunday at 4 AM: Full archive + offsite sync
+0 4 * * 0 root /opt/mgr/scripts/weekly_backup.sh >> /var/log/mgr/backup-weekly.log 2>&1
+
+# Monthly on 1st at 5 AM: Long-term archive
+0 5 1 * * root /opt/mgr/scripts/monthly_archive.sh >> /var/log/mgr/backup-monthly.log 2>&1
+
+# Quarterly: Test restore procedure (manual trigger required)
+# 0 6 1 1,4,7,10 * root /opt/mgr/scripts/test_restore.sh >> /var/log/mgr/backup-test.log 2>&1
 ```
 
-### 13.5 Retention Policy
+### 13.7 Retention Policy
 
-| Backup Type | Frequency | Retention |
-|-------------|-----------|-----------|
-| Hourly | Every hour | 24 hours |
-| 6-hour | Every 6 hours | 7 days |
-| Daily | Daily at 2 AM | 30 days |
-| Weekly | Sunday at 3 AM | 90 days |
-| Monthly | 1st of month | 1 year |
-| Annual | January 1st | 7 years (legal) |
+| Backup Type | Frequency | Retention | Storage Location | Encrypted |
+|-------------|-----------|-----------|------------------|-----------|
+| Hourly vault | Every hour | 24 hours | Local SSD | No |
+| 6-hour DB | Every 6 hours | 7 days | Local SSD | No |
+| Daily DB | Daily at 2 AM | 30 days | Local HDD | Yes |
+| Weekly archive | Sunday at 4 AM | 90 days | Local HDD + Remote | Yes |
+| Monthly archive | 1st of month | 1 year | Local HDD + Remote + Offsite | Yes |
+| Annual archive | January 1st | 7 years | Remote + Offsite | Yes |
 
-### 13.6 Encryption Guidance
+### 13.8 Encryption Guidance
 
 ```bash
-# Encrypt backup with GPG (symmetric)
-gpg --cipher-algo AES256 --symmetric \
-  --batch --passphrase-file /etc/mgr/backup-key \
-  -o /backups/db/backup.dump.gz.gpg \
-  /backups/db/backup.dump.gz
+#!/bin/bash
+# /opt/mgr/scripts/encrypt_backup.sh
 
-# Remove unencrypted version
-shred -u /backups/db/backup.dump.gz
+set -euo pipefail
 
-# Decrypt for restore
-gpg --decrypt --batch --passphrase-file /etc/mgr/backup-key \
-  -o /tmp/restore.dump.gz \
-  /backups/db/backup.dump.gz.gpg
+BACKUP_FILE="$1"
+KEY_FILE="/etc/mgr/backup.key"
+OUTPUT_FILE="${BACKUP_FILE}.gpg"
+
+# Verify key file exists
+if [ ! -f "${KEY_FILE}" ]; then
+  echo "ERROR: Encryption key not found at ${KEY_FILE}"
+  exit 1
+fi
+
+# Encrypt with AES-256
+gpg --cipher-algo AES256 \
+    --symmetric \
+    --batch \
+    --yes \
+    --passphrase-file "${KEY_FILE}" \
+    --output "${OUTPUT_FILE}" \
+    "${BACKUP_FILE}"
+
+# Verify encryption
+gpg --batch --passphrase-file "${KEY_FILE}" \
+    --decrypt "${OUTPUT_FILE}" 2>/dev/null | head -c 1000 > /dev/null
+
+if [ $? -eq 0 ]; then
+  echo "Encryption verified: ${OUTPUT_FILE}"
+  # Securely delete unencrypted file
+  shred -n 3 -z -u "${BACKUP_FILE}"
+else
+  echo "ERROR: Encryption verification failed!"
+  rm -f "${OUTPUT_FILE}"
+  exit 1
+fi
 ```
 
-### 13.7 Disaster Recovery
+### 13.9 Disaster Recovery
 
-| Scenario | RPO (Max Data Loss) | RTO (Time to Recover) |
-|----------|---------------------|----------------------|
-| Database corruption | 6 hours | 2 hours |
-| Full server failure | 6 hours | 4 hours |
-| Ransomware attack | 24 hours | 8 hours |
-| Natural disaster | 24 hours | 24 hours |
+| Scenario | RPO (Max Data Loss) | RTO (Time to Recover) | Procedure |
+|----------|---------------------|----------------------|-----------|
+| Database corruption | 6 hours | 2 hours | Restore from latest verified backup |
+| Full server failure | 6 hours | 4 hours | Provision new server, restore all |
+| Ransomware attack | 24 hours | 8 hours | Isolate, restore from offsite backup |
+| Data center failure | 24 hours | 24 hours | Activate DR site, restore from offsite |
+| Natural disaster | 24 hours | 48 hours | Restore from air-gapped offsite backup |
 
-**Recovery Steps:**
-1. Assess the situation and determine scope
-2. Isolate affected systems
-3. Select appropriate recovery point
-4. Restore database from backup
-5. Restore Document Vault from backup
-6. Verify data integrity
-7. Test system functionality
-8. Document incident and update procedures
+**Recovery Procedure:**
+
+1. **ASSESS**: Determine scope and cause of incident
+2. **ISOLATE**: Disconnect affected systems from network
+3. **NOTIFY**: Alert founder and key personnel
+4. **SELECT**: Choose appropriate recovery point
+5. **PROVISION**: Prepare recovery environment (if needed)
+6. **RESTORE DATABASE**: Execute restore script
+7. **RESTORE VAULT**: Sync document vault from backup
+8. **VERIFY**: Run integrity checks on restored data
+9. **TEST**: Verify application functionality
+10. **DOCUMENT**: Create incident report and update procedures
+
+### 13.10 Air-Gapped Backup Rules
+
+For maximum security, monthly and annual backups should be stored air-gapped:
+
+1. **Physical media**: Encrypted USB drives or external HDDs
+2. **Storage location**: Secure offsite location (bank safe deposit, secure facility)
+3. **Access control**: FOUNDER only
+4. **Verification**: Quarterly test of offsite restore capability
+5. **Rotation**: New media every 2 years, secure destruction of old media
 
 ---
 
@@ -1639,89 +2745,244 @@ gpg --decrypt --batch --passphrase-file /etc/mgr/backup-key \
 
 ### 14.1 Key Design Decisions
 
-1. **Shadow Accounting**: Employees see 2x their actual commission rate. This is intentional and must never leak.
+1. **Shadow Accounting Architecture**
+   - Employees see `displayedRatePercent` (2x their actual rate)
+   - Database stores both `amountCents` and `displayedAmountCents`
+   - UI components for employees ONLY access displayed values
+   - Commission calculation happens in `commissionService.ts`
+   - NEVER log actual amounts to employee-visible logs
 
-2. **7-Role System**: FOUNDER > ADMIN > HR/COMPLIANCE > TEAM_LEAD > EMPLOYEE > CLIENT. Each role has strictly defined access.
+2. **7-Role Hierarchical System**
+   - FOUNDER (100) > ADMIN (80) > HR/COMPLIANCE (60) > TEAM_LEAD (40) > EMPLOYEE (20) > CLIENT (10)
+   - roleGuard middleware enforces at route level
+   - Frontend routes protected by ProtectedRoute component
+   - FOUNDER bypasses all permission checks
 
-3. **OPS Layer Isolation**: The entire OPS layer (bots, insights, watch alerts, scraped data) is FOUNDER-ONLY. No exceptions.
+3. **OPS Layer Isolation**
+   - All OPS routes under `/api/ops/*`
+   - founderOnly middleware applied to all OPS routes
+   - Bots write to OpsInsight table (FOUNDER visibility only)
+   - WatchAlert, SystemError, ScrapedItem all FOUNDER-only
+   - FounderConsole is the only UI for OPS data
 
-4. **Sovereign Stack**: No paid SaaS. Everything self-hosted. SMTP for email, local filesystem for documents, PostgreSQL for data.
+4. **Sovereign Stack Principles**
+   - No paid SaaS dependencies
+   - SMTP via self-controlled mail server
+   - Document Vault on local filesystem
+   - PostgreSQL self-hosted
+   - All backups under direct control
+   - Can operate air-gapped if needed
 
-5. **Cents for Money**: All monetary values in cents (integers). Never use floats for money.
+5. **Money as Cents**
+   - All monetary fields: `*Cents` or `*AmountCents`
+   - Integer type in database (no floats)
+   - Division by 100 only at display layer
+   - formatCurrency() helper for display
 
-6. **UTC Everywhere**: All timestamps in UTC. Convert to local only at display time.
+6. **UTC Timestamp Standard**
+   - All `DateTime` fields stored in UTC
+   - createdAt, updatedAt auto-managed by Prisma
+   - Date display conversion in frontend only
+   - Server processes all dates in UTC
 
 ### 14.2 Ambiguities Resolved
 
-1. **Commission Calculation**: Fee is taken from surplus first, then employee commission from fee, then founder keeps remainder.
+1. **Commission Calculation Order**
+   ```
+   1. surplusCents × (feePercent/100) = feeAmountCents
+   2. feeAmountCents × (actualRatePercent/100) = employeeCommissionCents
+   3. feeAmountCents × (displayedRatePercent/100) = employeeDisplayedCommissionCents
+   4. feeAmountCents - employeeCommissionCents = founderShareCents
+   5. surplusCents - feeAmountCents = clientPayoutCents
+   ```
 
-2. **Document Access**: Matrix-based. FOUNDER sees all, others see based on role + case ownership.
+2. **Document Access Resolution**
+   - Matrix-based (see Section 8)
+   - FOUNDER: Full access to all documents
+   - ADMIN: Full access except delete (needs FOUNDER)
+   - COMPLIANCE: Read-only access for auditing
+   - TEAM_LEAD: Access to team member case documents
+   - EMPLOYEE: Access to own assigned case documents
+   - CLIENT: Access to own case documents (limited types)
 
-3. **Bot Orchestration**: CoordinatorBot runs all bots in sequence, aggregates insights, generates executive summary.
+3. **Bot Orchestration Sequence**
+   ```
+   CoordinatorBot.runFullCycle():
+     1. IngestionBot.analyze()
+     2. PayoutBot.analyze()
+     3. ComplianceBot.analyze()
+     4. TrainingBot.analyze()
+     5. OutreachBot.analyze()
+     6. DocketBot.analyze()
+     7. CoordinatorBot.aggregateInsights()
+     8. CoordinatorBot.generateExecutiveSummary()
+   ```
 
-4. **Client Portal**: Clients see simplified status only. No financial details, no employee names, no backend logic.
+4. **Client Portal Simplification**
+   - Status shown as simple text (e.g., "Documents received, processing your claim")
+   - No numerical amounts ever shown
+   - No employee names shown
+   - No internal IDs shown (only publicAccessToken)
+   - FAQ answers pre-written, not dynamic
 
-5. **Training Requirements**: Module requirements vary by role and tier. Not all modules apply to all employees.
+5. **Training Module Assignment**
+   - Base requirements by role (moduleRequirements)
+   - Additional requirements by tier (tierProgression)
+   - Union of both determines required modules
+   - Compliance: all required modules must be COMPLETED
 
 ### 14.3 Risks Identified
 
-1. **Scraper Brittleness**: County websites change frequently. Scrapers need regular maintenance.
+1. **Scraper Brittleness** (HIGH)
+   - County websites change without notice
+   - Mitigation: WatchService monitors for changes, alerts on detection
+   - Mitigation: Scraper configs stored in database for easy updates
+   - Recommendation: Build admin UI for scraper config management
 
-2. **State Rule Variations**: Each state has different redemption periods, filing requirements, document formats.
+2. **State Rule Variations** (HIGH)
+   - 50 states with different redemption periods, forms, deadlines
+   - Mitigation: State rules stored in database, not hardcoded
+   - Mitigation: PDF templates parameterized by state
+   - Recommendation: Start with TX, FL, CA, GA, NC (priority states)
 
-3. **Shadow Accounting Leaks**: UI must be carefully designed to never show actual rates to employees.
+3. **Shadow Accounting Leaks** (CRITICAL)
+   - Any display of actual rates to employees is catastrophic
+   - Mitigation: Separate API endpoints for FOUNDER vs EMPLOYEE data
+   - Mitigation: UI components explicitly select displayed values
+   - Recommendation: Automated tests verifying no actual values in employee responses
 
-4. **High-Value Case Security**: Cases with large surplus amounts need extra protection and audit trails.
+4. **High-Value Case Security** (HIGH)
+   - Cases with >$50,000 surplus are high-value targets
+   - Mitigation: Audit logging on all access
+   - Mitigation: WatchAlert for high-value case creation
+   - Recommendation: Additional verification steps for high-value payouts
 
-5. **Document Vault Growth**: Need retention policies and archival strategy as vault grows.
+5. **Document Vault Growth** (MEDIUM)
+   - 10MB per file × thousands of cases = significant storage
+   - Mitigation: Document retention policy (archive after 7 years)
+   - Mitigation: Compression for archived documents
+   - Recommendation: Monitor storage usage, plan for expansion
 
 ### 14.4 What's Complete (100%)
 
-- Authentication + JWT + rate limiting
-- All 7 roles + roleGuard + access matrix
-- Case CRUD + full lifecycle
-- Client Portal + onboarding + document signing
-- Shadow accounting calculations
-- HR Panel + routes
-- Compliance Panel + routes
-- FounderConsole (basic) + OPS routes
-- Document Vault service + routes
-- Notification service (SMTP integration)
-- PDF service (pdfkit structure)
-- All Prisma models + enums
-- Backups documentation
+**Authentication & Security:**
+- JWT authentication with bcrypt
+- 7-role system with roleGuard middleware
+- Rate limiting on auth endpoints
+- Audit logging middleware
+
+**Core Features:**
+- Case CRUD with full lifecycle management
+- Client portal with document viewing and signing
+- Employee office with (displayed) earnings tracking
+- Payout calculations with shadow accounting
+- Commission calculations per tier
+
+**Admin Panels:**
+- AdminDashboard with real-time metrics
+- AdminCases, AdminEmployees, AdminBanking
+- AdminTraining, AdminIngestion, AdminSettings
+- HR Panel with onboarding pipeline
+- Compliance Panel with audit tools
+- FounderConsole (basic) with OPS overview
+
+**Backend Infrastructure:**
+- All core routes implemented
+- All services structured
+- All 7 bots created (skeleton logic)
+- Document Vault service
+- Notification service (SMTP)
+- PDF service (pdfkit)
+
+**Database:**
+- Complete Prisma schema (800+ lines)
+- All models defined
+- All enums defined
+- Relations configured
+- OPS models included
+
+**Documentation:**
+- This Master Spec (14 sections)
+- DROP_THIS_TO_COPILOT.md
+- docs/BACKUPS.md
 
 ### 14.5 What's NOT Complete (Priority Order)
 
-**HIGH Priority:**
-1. Bot detection logic (PayoutBot anomalies, ComplianceBot deadlines)
-2. PDF templates with state-specific legal language
-3. Scraper configurations for priority states
+**HIGH Priority (Phase 2):**
+1. **Bot Detection Logic** - PayoutBot anomaly detection, ComplianceBot deadline scanning, IngestionBot pattern analysis
+2. **PDF Templates** - State-specific legal language for all document types
+3. **Scraper Configurations** - Working configs for TX, FL, CA, GA, NC priority states
+4. **Email Templates** - Full HTML templates for all notification triggers
 
-**MEDIUM Priority:**
-4. Notification email templates (all triggers)
-5. Training module content and quizzes
-6. FounderConsole full bot controls
+**MEDIUM Priority (Phase 3):**
+5. **Training Module Content** - Actual learning content and quiz questions
+6. **FounderConsole Enhancements** - Full bot controls, error management, scraper admin
+7. **State Rules Database** - Complete rules for all 50 states
+8. **Notification Engine** - Trigger automation, scheduling, retry logic
 
-**LOW Priority:**
-7. WebSocket real-time updates
-8. Mobile responsive optimization
-9. End-to-end test coverage
+**LOW Priority (Phase 4):**
+9. **WebSocket Real-time** - Live updates for FounderConsole
+10. **Mobile Responsive** - Optimize UI for mobile devices
+11. **End-to-End Tests** - Automated test coverage
+12. **Performance Optimization** - Query optimization, caching
 
 ### 14.6 Notes for Copilot Phase 2
 
-1. **Start with bot logic** - The 7 bots are currently skeletons. Implement real detection algorithms.
+1. **Start with Bot Logic**
+   - The 7 bots are skeletons with placeholder analysis
+   - Implement real detection algorithms for PayoutBot (anomalies) and ComplianceBot (deadlines) first
+   - Use OpsInsight table for all bot outputs
+   - Priority: 1-10 scale, 10 = most urgent
 
-2. **PDF templates need legal review** - State-specific language must be accurate. Start with TX, FL, CA, GA, NC.
+2. **PDF Templates Need Legal Review**
+   - Start with TX, FL, CA, GA, NC (highest volume states)
+   - Each state has different disclosure requirements
+   - SERVICE_AGREEMENT and LIMITED_POA are most critical
+   - Use pdfkit's built-in Helvetica font (no external dependencies)
 
-3. **Scraper maintenance is ongoing** - Build admin UI for managing scraper configs.
+3. **Scraper Maintenance is Ongoing**
+   - Build admin UI for managing scraper configs
+   - Store configs in database, not code
+   - WatchService should alert on page structure changes
+   - Plan for weekly scraper maintenance
 
-4. **Test shadow accounting thoroughly** - Any leak of actual rates to employees is a critical bug.
+4. **Test Shadow Accounting Thoroughly**
+   - Any leak of actual rates to employees is a critical bug
+   - Test every employee-facing endpoint
+   - Test every employee-facing UI component
+   - Automated tests should verify no `amountCents` in employee responses
 
-5. **Document everything** - Update this spec as you implement. Keep it as the single source of truth.
+5. **Document Everything**
+   - Update this spec as you implement
+   - Keep it as the single source of truth
+   - Add new sections as needed
+   - Version control all documentation
+
+### 14.7 Architecture Reminders for Phase 2/3
+
+**Service Layer Pattern:**
+```
+Route → Middleware → Controller → Service → Prisma → Database
+```
+
+**Bot Execution Pattern:**
+```
+CoordinatorBot → Individual Bots → OpsInsight → FounderConsole
+```
+
+**Notification Flow:**
+```
+Trigger Event → NotificationService → Template Render → SMTP Send → NotificationLog
+```
+
+**Document Flow:**
+```
+Upload → Validation → DocumentVaultService → Filesystem → Document Record
+Generate → PDFService → Buffer → DocumentVaultService → Document Record
+```
 
 ---
 
 **END OF MGR_CAPITAL_ASSISTANCE_MASTER_SPEC_V1_FINAL.md**
 
-*This document is the canonical source of truth for the MGR Capital Assistance platform. All implementation must conform to this specification.*
+*This document is the canonical source of truth for the MGR Capital Assistance platform. All implementation must conform to this specification. Last updated: 2026-01-21.*
