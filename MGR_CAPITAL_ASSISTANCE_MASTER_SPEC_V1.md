@@ -960,103 +960,867 @@ const transporter = nodemailer.createTransport({
 
 ---
 
-## 10. PDF TEMPLATE SPECIFICATION
+## 10. PDF TEMPLATE SPECIFICATION (COMPLETE)
 
-### 10.1 Template Engine
+### 10.1 Template Engine Architecture
 
-All PDFs generated using `pdfkit` with consistent styling:
-- Font: Helvetica (built-in, no external fonts)
-- Page Size: Letter (8.5" x 11")
-- Margins: 1 inch all sides (72 points)
-- Company letterhead on first page
-- Page numbers on multi-page documents
+All PDFs generated using `pdfkit` (sovereign, no external API dependencies).
 
-### 10.2 Document Templates
+**Global Settings:**
+```typescript
+// backend/src/services/pdfService.ts
 
-#### SERVICE_AGREEMENT
+const PDF_CONFIG = {
+  pageSize: 'LETTER' as const,        // 8.5" x 11" (612 x 792 points)
+  margins: {
+    top: 72,                          // 1 inch
+    bottom: 72,
+    left: 72,
+    right: 72
+  },
+  fonts: {
+    primary: 'Helvetica',
+    bold: 'Helvetica-Bold',
+    italic: 'Helvetica-Oblique'
+  },
+  fontSize: {
+    title: 18,
+    heading: 14,
+    subheading: 12,
+    body: 11,
+    small: 9,
+    footer: 8
+  },
+  colors: {
+    primary: '#1a365d',               // Dark blue for headers
+    secondary: '#2d3748',             // Dark gray for body
+    accent: '#3182ce',                // Blue for highlights
+    muted: '#718096'                  // Gray for footers
+  },
+  lineHeight: 1.4
+};
+```
+
+**Company Letterhead Implementation:**
+```typescript
+function addLetterhead(doc: PDFKit.PDFDocument): void {
+  // Company name
+  doc.fontSize(PDF_CONFIG.fontSize.title)
+     .font(PDF_CONFIG.fonts.bold)
+     .fillColor(PDF_CONFIG.colors.primary)
+     .text('MGR CAPITAL ASSISTANCE LLC', PDF_CONFIG.margins.left, PDF_CONFIG.margins.top, {
+       align: 'center'
+     });
+
+  // Tagline
+  doc.fontSize(PDF_CONFIG.fontSize.small)
+     .font(PDF_CONFIG.fonts.italic)
+     .fillColor(PDF_CONFIG.colors.muted)
+     .text('Tax Surplus Recovery Specialists', { align: 'center' });
+
+  // Horizontal line
+  doc.moveTo(PDF_CONFIG.margins.left, doc.y + 10)
+     .lineTo(doc.page.width - PDF_CONFIG.margins.right, doc.y + 10)
+     .strokeColor(PDF_CONFIG.colors.primary)
+     .lineWidth(1)
+     .stroke();
+
+  doc.moveDown(2);
+}
+
+function addPageNumbers(doc: PDFKit.PDFDocument): void {
+  const pages = doc.bufferedPageRange();
+  for (let i = 0; i < pages.count; i++) {
+    doc.switchToPage(i);
+    doc.fontSize(PDF_CONFIG.fontSize.footer)
+       .fillColor(PDF_CONFIG.colors.muted)
+       .text(
+         `Page ${i + 1} of ${pages.count}`,
+         PDF_CONFIG.margins.left,
+         doc.page.height - 50,
+         { align: 'center' }
+       );
+  }
+}
+```
+
+### 10.2 SERVICE_AGREEMENT Template (Complete)
 
 **Purpose:** Client service contract authorizing MGR Capital to act on their behalf.
 
 **Required Fields:**
-| Field | Source | Format |
-|-------|--------|--------|
-| clientName | Client.name | Title Case |
-| clientAddress | Client full address | Multi-line |
-| propertyAddress | Case.propertyAddress | Full address |
-| state | Case.state | Full state name |
-| county | Case.county | County name |
-| feePercent | Case.feePercent | "30%" format |
-| agreementDate | Generated | "January 21, 2026" |
+| Field | Source | Format | Validation |
+|-------|--------|--------|------------|
+| clientName | Client.name | Title Case | Required, min 2 chars |
+| clientAddress | Client.address + city + state + zip | Multi-line | Required |
+| propertyAddress | Case.propertyAddress | Full address | Required |
+| state | Case.state | Full state name | Valid US state |
+| county | Case.county | County name | Required |
+| feePercent | Case.feePercent | "30%" format | 1-50 range |
+| agreementDate | Generated | "January 21, 2026" | Auto-generated |
+| caseId | Case.internalId | MGR-YYYY-XXXXX | Auto-generated |
 
-**Sections:**
-1. Parties (MGR Capital Assistance LLC + Client)
-2. Property Description
-3. Services to be Provided
-4. Fee Structure (contingency basis)
-5. Term and Termination
-6. Governing Law
-7. Signatures
+**Full Implementation:**
+```typescript
+export async function generateServiceAgreement(
+  caseData: Case & { client: Client }
+): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    const doc = new PDFDocument({
+      size: PDF_CONFIG.pageSize,
+      margins: PDF_CONFIG.margins,
+      bufferPages: true,
+      info: {
+        Title: `Service Agreement - ${caseData.internalId}`,
+        Author: 'MGR Capital Assistance LLC',
+        Subject: 'Tax Surplus Recovery Service Agreement',
+        Creator: 'MGR Capital PDF Generator'
+      }
+    });
 
-**Signature Rules:**
-- Client signature required
-- Date field required
-- Witnessed by MGR representative (optional)
+    const chunks: Buffer[] = [];
+    doc.on('data', (chunk) => chunks.push(chunk));
+    doc.on('end', () => resolve(Buffer.concat(chunks)));
+    doc.on('error', reject);
 
-#### LIMITED_POA
+    // Add letterhead
+    addLetterhead(doc);
 
-**Purpose:** Power of Attorney authorizing MGR Capital to file claims.
+    // Document title
+    doc.fontSize(PDF_CONFIG.fontSize.heading)
+       .font(PDF_CONFIG.fonts.bold)
+       .fillColor(PDF_CONFIG.colors.primary)
+       .text('SERVICE AGREEMENT', { align: 'center' });
+    doc.moveDown();
 
-**Required Fields:**
-| Field | Source | Format |
-|-------|--------|--------|
-| clientName | Client.name | Title Case |
-| clientAddress | Client full address | Multi-line |
-| propertyAddress | Case.propertyAddress | Full address |
-| parcelNumber | Case.parcelNumber | As recorded |
-| saleDate | Case.saleDate | "January 15, 2024" |
-| state | Case.state | Full state name |
-| county | Case.county | County name |
+    // Reference number
+    doc.fontSize(PDF_CONFIG.fontSize.small)
+       .font(PDF_CONFIG.fonts.primary)
+       .fillColor(PDF_CONFIG.colors.muted)
+       .text(`Reference: ${caseData.internalId}`, { align: 'center' });
+    doc.moveDown(2);
 
-**Sections:**
-1. Grant of Authority
-2. Scope of Authority (specific actions authorized)
-3. Property Description
-4. Effective Date and Duration
-5. Revocation Clause
-6. Signatures and Notarization (if required by state)
+    // Introduction
+    doc.fontSize(PDF_CONFIG.fontSize.body)
+       .font(PDF_CONFIG.fonts.primary)
+       .fillColor(PDF_CONFIG.colors.secondary)
+       .text(
+         `This Service Agreement ("Agreement") is entered into as of ${formatDate(new Date())} ` +
+         `by and between:`,
+         { align: 'left' }
+       );
+    doc.moveDown();
 
-#### AFFIDAVIT
+    // Parties
+    doc.font(PDF_CONFIG.fonts.bold).text('COMPANY:');
+    doc.font(PDF_CONFIG.fonts.primary)
+       .text('MGR Capital Assistance LLC')
+       .text('(hereinafter referred to as "Company")');
+    doc.moveDown();
 
-**Purpose:** Sworn statement of ownership/entitlement.
+    doc.font(PDF_CONFIG.fonts.bold).text('CLIENT:');
+    doc.font(PDF_CONFIG.fonts.primary)
+       .text(caseData.client.name)
+       .text(formatAddress(caseData.client))
+       .text('(hereinafter referred to as "Client")');
+    doc.moveDown(2);
 
-**Required Fields:**
-| Field | Source | Format |
-|-------|--------|--------|
-| clientName | Client.name | Title Case |
-| propertyAddress | Case.propertyAddress | Full address |
-| parcelNumber | Case.parcelNumber | As recorded |
-| ownershipStatement | Generated | Legal language |
-| state | Case.state | Full state name |
-| county | Case.county | County name |
+    // Section 1: Property Description
+    doc.font(PDF_CONFIG.fonts.bold)
+       .text('1. PROPERTY DESCRIPTION');
+    doc.font(PDF_CONFIG.fonts.primary)
+       .text(`The property that is the subject of this Agreement is located at:`)
+       .moveDown(0.5)
+       .text(`Address: ${caseData.propertyAddress}`)
+       .text(`County: ${caseData.county}`)
+       .text(`State: ${getStateName(caseData.state)}`);
+    if (caseData.parcelNumber) {
+      doc.text(`Parcel Number: ${caseData.parcelNumber}`);
+    }
+    doc.moveDown();
 
-**Sections:**
-1. Affiant Identification
-2. Property Description
-3. Ownership Statement
-4. Basis for Claim
-5. Jurat (notarization block)
+    // Section 2: Services
+    doc.font(PDF_CONFIG.fonts.bold)
+       .text('2. SERVICES TO BE PROVIDED');
+    doc.font(PDF_CONFIG.fonts.primary)
+       .text('Company agrees to provide the following services on behalf of Client:');
+    doc.moveDown(0.5);
+    doc.list([
+      'Research and identify surplus funds or excess proceeds owed to Client resulting from tax sales or similar proceedings',
+      'Prepare all necessary documentation required to file claims for recovery of said funds',
+      'File claims with appropriate county, state, or court authorities',
+      'Communicate with government officials on Client\'s behalf regarding the claim',
+      'Monitor claim status and provide updates to Client',
+      'Process and coordinate disbursement of recovered funds'
+    ], { bulletRadius: 2, textIndent: 20 });
+    doc.moveDown();
 
-#### FILING_PACKET
+    // Section 3: Fee Structure
+    doc.font(PDF_CONFIG.fonts.bold)
+       .text('3. FEE STRUCTURE');
+    doc.font(PDF_CONFIG.fonts.primary)
+       .text(
+         `Company shall receive ${caseData.feePercent}% (${numberToWords(caseData.feePercent)} percent) ` +
+         `of any and all funds successfully recovered as compensation for services rendered. ` +
+         `This fee is strictly contingent upon successful recovery; no fee is owed if no funds are recovered.`
+       );
+    doc.moveDown(0.5);
+    doc.text(
+      'Client acknowledges that Company will deduct its fee directly from recovered funds ' +
+      'prior to disbursement of the remaining balance to Client.'
+    );
+    doc.moveDown();
 
-**Purpose:** Complete package for county/court filing.
+    // Section 4: Term and Termination
+    doc.font(PDF_CONFIG.fonts.bold)
+       .text('4. TERM AND TERMINATION');
+    doc.font(PDF_CONFIG.fonts.primary)
+       .text(
+         'This Agreement shall remain in effect until the earlier of: (a) successful recovery ' +
+         'and distribution of funds, (b) final denial of the claim with no further appeals available, ' +
+         'or (c) mutual written agreement to terminate.'
+       );
+    doc.moveDown(0.5);
+    doc.text(
+      'Client may terminate this Agreement at any time by providing written notice to Company. ' +
+      'If Client terminates after Company has filed a claim, Client agrees to pay Company ' +
+      'reasonable costs incurred, not to exceed $500.'
+    );
+    doc.moveDown();
 
-**Contents (Combined PDF):**
-1. Cover Letter (1 page)
-2. Service Agreement (copy)
-3. Limited POA (copy)
-4. Affidavit
-5. Supporting Evidence (if any)
-6. Payment Instructions (if required)
+    // Section 5: Authorization
+    doc.font(PDF_CONFIG.fonts.bold)
+       .text('5. AUTHORIZATION');
+    doc.font(PDF_CONFIG.fonts.primary)
+       .text(
+         'Client hereby authorizes Company to act as Client\'s representative in all matters ' +
+         'related to the recovery of surplus funds for the above-described property. This includes ' +
+         'but is not limited to: executing documents, communicating with authorities, and ' +
+         'receiving funds on Client\'s behalf.'
+       );
+    doc.moveDown();
+
+    // Section 6: Governing Law
+    doc.font(PDF_CONFIG.fonts.bold)
+       .text('6. GOVERNING LAW');
+    doc.font(PDF_CONFIG.fonts.primary)
+       .text(
+         `This Agreement shall be governed by and construed in accordance with the laws of the ` +
+         `State of ${getStateName(caseData.state)}.`
+       );
+    doc.moveDown(2);
+
+    // Signature Block
+    doc.font(PDF_CONFIG.fonts.bold)
+       .text('SIGNATURES');
+    doc.moveDown();
+
+    // Client signature
+    doc.font(PDF_CONFIG.fonts.primary)
+       .text('CLIENT:');
+    doc.moveDown(2);
+    doc.text('_________________________________________________');
+    doc.text(`${caseData.client.name}`);
+    doc.moveDown();
+    doc.text('Date: _______________________');
+    doc.moveDown(2);
+
+    // Company signature
+    doc.text('COMPANY:');
+    doc.moveDown(2);
+    doc.text('_________________________________________________');
+    doc.text('MGR Capital Assistance LLC');
+    doc.text('Authorized Representative');
+    doc.moveDown();
+    doc.text('Date: _______________________');
+
+    // Add page numbers
+    addPageNumbers(doc);
+
+    doc.end();
+  });
+}
+```
+
+### 10.3 LIMITED_POA Template (Complete)
+
+**Purpose:** Limited Power of Attorney authorizing MGR Capital to file claims on behalf of client.
+
+**State-Specific Variations:**
+| State | Notarization | Witnesses | Special Requirements |
+|-------|--------------|-----------|---------------------|
+| TX | Required | 0 | Statutory short form accepted |
+| FL | Required | 2 | Must include property legal description |
+| CA | Required | 0 | Must include A.P.N. (Assessor's Parcel Number) |
+| GA | Required | 0 | Must be filed with Superior Court Clerk |
+| NC | Required | 0 | Must include specific grant language |
+
+**Full Implementation:**
+```typescript
+export async function generateLimitedPOA(
+  caseData: Case & { client: Client }
+): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    const doc = new PDFDocument({
+      size: PDF_CONFIG.pageSize,
+      margins: PDF_CONFIG.margins,
+      bufferPages: true,
+      info: {
+        Title: `Limited Power of Attorney - ${caseData.internalId}`,
+        Author: 'MGR Capital Assistance LLC'
+      }
+    });
+
+    const chunks: Buffer[] = [];
+    doc.on('data', (chunk) => chunks.push(chunk));
+    doc.on('end', () => resolve(Buffer.concat(chunks)));
+    doc.on('error', reject);
+
+    addLetterhead(doc);
+
+    // Title
+    doc.fontSize(PDF_CONFIG.fontSize.heading)
+       .font(PDF_CONFIG.fonts.bold)
+       .fillColor(PDF_CONFIG.colors.primary)
+       .text('LIMITED POWER OF ATTORNEY', { align: 'center' });
+    doc.moveDown();
+    doc.fontSize(PDF_CONFIG.fontSize.small)
+       .font(PDF_CONFIG.fonts.primary)
+       .fillColor(PDF_CONFIG.colors.muted)
+       .text('For Tax Surplus/Excess Proceeds Recovery', { align: 'center' });
+    doc.moveDown(2);
+
+    // Know All Men clause
+    doc.fontSize(PDF_CONFIG.fontSize.body)
+       .font(PDF_CONFIG.fonts.primary)
+       .fillColor(PDF_CONFIG.colors.secondary)
+       .text('KNOW ALL PERSONS BY THESE PRESENTS:', { align: 'left' });
+    doc.moveDown();
+
+    // Principal identification
+    doc.text(
+      `That I, ${caseData.client.name.toUpperCase()}, residing at ` +
+      `${formatAddress(caseData.client)} (hereinafter "Principal"), ` +
+      `do hereby appoint MGR CAPITAL ASSISTANCE LLC, ` +
+      `(hereinafter "Agent"), as my true and lawful attorney-in-fact.`
+    );
+    doc.moveDown();
+
+    // Grant of Authority
+    doc.font(PDF_CONFIG.fonts.bold).text('GRANT OF AUTHORITY');
+    doc.font(PDF_CONFIG.fonts.primary)
+       .text(
+         'I grant to my Agent full power and authority to act on my behalf, ' +
+         'specifically and solely for the following purposes:'
+       );
+    doc.moveDown(0.5);
+    doc.list([
+      'To file claims for surplus funds, excess proceeds, or unclaimed property',
+      'To execute any and all documents necessary to perfect such claims',
+      'To communicate with county, state, and court officials regarding such claims',
+      'To receive funds on my behalf related to such claims',
+      'To endorse checks and negotiable instruments related to such claims',
+      'To execute releases and other closing documents'
+    ], { bulletRadius: 2, textIndent: 20 });
+    doc.moveDown();
+
+    // Property Description
+    doc.font(PDF_CONFIG.fonts.bold).text('PROPERTY DESCRIPTION');
+    doc.font(PDF_CONFIG.fonts.primary)
+       .text('This Power of Attorney relates solely to the following property:');
+    doc.moveDown(0.5);
+    doc.text(`Address: ${caseData.propertyAddress}`);
+    doc.text(`County: ${caseData.county}, State: ${getStateName(caseData.state)}`);
+    if (caseData.parcelNumber) {
+      doc.text(`Parcel/APN: ${caseData.parcelNumber}`);
+    }
+    if (caseData.saleDate) {
+      doc.text(`Tax Sale Date: ${formatDate(caseData.saleDate)}`);
+    }
+    doc.moveDown();
+
+    // Limitations
+    doc.font(PDF_CONFIG.fonts.bold).text('LIMITATIONS');
+    doc.font(PDF_CONFIG.fonts.primary)
+       .text(
+         'This Power of Attorney is LIMITED to the specific purposes stated above. ' +
+         'Agent has no authority to act on my behalf for any other purpose whatsoever.'
+       );
+    doc.moveDown();
+
+    // Duration
+    doc.font(PDF_CONFIG.fonts.bold).text('DURATION');
+    doc.font(PDF_CONFIG.fonts.primary)
+       .text(
+         'This Power of Attorney shall remain in effect until the earlier of: ' +
+         '(a) successful recovery and distribution of funds, ' +
+         '(b) written revocation by Principal, or ' +
+         '(c) two (2) years from the date of execution.'
+       );
+    doc.moveDown();
+
+    // Revocation clause
+    doc.font(PDF_CONFIG.fonts.bold).text('REVOCATION');
+    doc.font(PDF_CONFIG.fonts.primary)
+       .text(
+         'Principal may revoke this Power of Attorney at any time by providing ' +
+         'written notice to Agent. Such revocation shall not affect any actions ' +
+         'taken by Agent prior to receipt of notice.'
+       );
+    doc.moveDown(2);
+
+    // Signature block
+    doc.font(PDF_CONFIG.fonts.bold).text('PRINCIPAL SIGNATURE');
+    doc.moveDown(2);
+    doc.font(PDF_CONFIG.fonts.primary)
+       .text('_________________________________________________');
+    doc.text(`${caseData.client.name}`);
+    doc.moveDown();
+    doc.text('Date: _______________________');
+    doc.moveDown(2);
+
+    // State-specific notarization block
+    const notaryBlock = getNotaryBlock(caseData.state);
+    doc.addPage();
+    addLetterhead(doc);
+    doc.font(PDF_CONFIG.fonts.bold)
+       .text('NOTARIZATION', { align: 'center' });
+    doc.moveDown();
+    doc.font(PDF_CONFIG.fonts.primary)
+       .text(notaryBlock);
+
+    addPageNumbers(doc);
+    doc.end();
+  });
+}
+
+function getNotaryBlock(state: string): string {
+  const stateName = getStateName(state);
+  return `
+STATE OF ${stateName.toUpperCase()}
+COUNTY OF _______________________
+
+Before me, the undersigned notary public, on this _____ day of _______________, 20___,
+personally appeared ${'{CLIENT_NAME}'}, known to me (or proved to me on the basis of
+satisfactory evidence) to be the person whose name is subscribed to the within instrument
+and acknowledged to me that they executed the same in their authorized capacity, and that
+by their signature on the instrument the person, or the entity upon behalf of which the
+person acted, executed the instrument.
+
+WITNESS my hand and official seal.
+
+_________________________________________________
+Notary Public
+
+My Commission Expires: _______________________
+
+[NOTARY SEAL]
+`;
+}
+```
+
+### 10.4 AFFIDAVIT Template (Complete)
+
+**Purpose:** Sworn statement establishing ownership/entitlement to surplus funds.
+
+**Full Implementation:**
+```typescript
+export async function generateAffidavit(
+  caseData: Case & { client: Client }
+): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    const doc = new PDFDocument({
+      size: PDF_CONFIG.pageSize,
+      margins: PDF_CONFIG.margins,
+      bufferPages: true,
+      info: {
+        Title: `Affidavit of Ownership - ${caseData.internalId}`,
+        Author: 'MGR Capital Assistance LLC'
+      }
+    });
+
+    const chunks: Buffer[] = [];
+    doc.on('data', (chunk) => chunks.push(chunk));
+    doc.on('end', () => resolve(Buffer.concat(chunks)));
+    doc.on('error', reject);
+
+    addLetterhead(doc);
+
+    // Title
+    doc.fontSize(PDF_CONFIG.fontSize.heading)
+       .font(PDF_CONFIG.fonts.bold)
+       .fillColor(PDF_CONFIG.colors.primary)
+       .text('AFFIDAVIT OF OWNERSHIP AND ENTITLEMENT', { align: 'center' });
+    doc.moveDown(2);
+
+    // State/County header
+    doc.fontSize(PDF_CONFIG.fontSize.body)
+       .font(PDF_CONFIG.fonts.bold)
+       .fillColor(PDF_CONFIG.colors.secondary)
+       .text(`STATE OF ${getStateName(caseData.state).toUpperCase()}`);
+    doc.text(`COUNTY OF ${caseData.county.toUpperCase()}`);
+    doc.moveDown();
+
+    // Affiant statement
+    doc.font(PDF_CONFIG.fonts.primary)
+       .text(
+         `I, ${caseData.client.name.toUpperCase()}, being of legal age and being first ` +
+         `duly sworn, do hereby state under oath as follows:`
+       );
+    doc.moveDown();
+
+    // Numbered statements
+    let statementNum = 1;
+
+    doc.text(`${statementNum++}. I am the Affiant in this matter and make this Affidavit ` +
+             `based upon my own personal knowledge.`);
+    doc.moveDown();
+
+    doc.text(`${statementNum++}. I am a citizen of the United States and a resident of ` +
+             `the State of ${getStateName(caseData.state)}.`);
+    doc.moveDown();
+
+    doc.text(`${statementNum++}. I am, or was at the time of the tax sale, the owner ` +
+             `of record of the following real property:`);
+    doc.moveDown(0.5);
+    doc.text(`     Address: ${caseData.propertyAddress}`, { indent: 20 });
+    doc.text(`     County: ${caseData.county}`, { indent: 20 });
+    doc.text(`     State: ${getStateName(caseData.state)}`, { indent: 20 });
+    if (caseData.parcelNumber) {
+      doc.text(`     Parcel Number: ${caseData.parcelNumber}`, { indent: 20 });
+    }
+    doc.moveDown();
+
+    doc.text(`${statementNum++}. The above-described property was sold at a tax sale ` +
+             `conducted by ${caseData.county} County` +
+             (caseData.saleDate ? ` on or about ${formatDate(caseData.saleDate)}` : '') +
+             `.`);
+    doc.moveDown();
+
+    doc.text(`${statementNum++}. I believe there are surplus funds, excess proceeds, ` +
+             `or overage amounts resulting from said tax sale that I am entitled to receive.`);
+    doc.moveDown();
+
+    doc.text(`${statementNum++}. I have not previously received payment of these surplus ` +
+             `funds from any source.`);
+    doc.moveDown();
+
+    doc.text(`${statementNum++}. I have not assigned, transferred, or otherwise conveyed ` +
+             `my right to receive these surplus funds to any party other than MGR Capital ` +
+             `Assistance LLC for the purpose of filing this claim.`);
+    doc.moveDown();
+
+    doc.text(`${statementNum++}. The statements contained in this Affidavit are true and ` +
+             `correct to the best of my knowledge and belief.`);
+    doc.moveDown(2);
+
+    // Signature
+    doc.font(PDF_CONFIG.fonts.bold).text('FURTHER AFFIANT SAYETH NOT.');
+    doc.moveDown(2);
+
+    doc.font(PDF_CONFIG.fonts.primary)
+       .text('_________________________________________________');
+    doc.text(`${caseData.client.name}, Affiant`);
+    doc.moveDown();
+    doc.text('Date: _______________________');
+    doc.moveDown(2);
+
+    // Jurat
+    doc.font(PDF_CONFIG.fonts.bold).text('JURAT');
+    doc.moveDown();
+    doc.font(PDF_CONFIG.fonts.primary)
+       .text(
+         `Subscribed and sworn to before me this _____ day of _______________, 20___,\n` +
+         `by ${caseData.client.name}, who is personally known to me or who has produced\n` +
+         `_________________________________ as identification.`
+       );
+    doc.moveDown(2);
+    doc.text('_________________________________________________');
+    doc.text('Notary Public, State of ' + getStateName(caseData.state));
+    doc.text('My Commission Expires: _______________________');
+    doc.moveDown();
+    doc.text('[NOTARY SEAL]');
+
+    addPageNumbers(doc);
+    doc.end();
+  });
+}
+```
+
+### 10.5 COVER_LETTER Template (Complete)
+
+**Purpose:** Professional cover letter for filing submissions.
+
+```typescript
+export async function generateCoverLetter(
+  caseData: Case & { client: Client },
+  recipientInfo: { name: string; title: string; department: string; address: string }
+): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    const doc = new PDFDocument({
+      size: PDF_CONFIG.pageSize,
+      margins: PDF_CONFIG.margins,
+      info: {
+        Title: `Cover Letter - ${caseData.internalId}`,
+        Author: 'MGR Capital Assistance LLC'
+      }
+    });
+
+    const chunks: Buffer[] = [];
+    doc.on('data', (chunk) => chunks.push(chunk));
+    doc.on('end', () => resolve(Buffer.concat(chunks)));
+    doc.on('error', reject);
+
+    addLetterhead(doc);
+
+    // Date
+    doc.fontSize(PDF_CONFIG.fontSize.body)
+       .font(PDF_CONFIG.fonts.primary)
+       .fillColor(PDF_CONFIG.colors.secondary)
+       .text(formatDate(new Date()));
+    doc.moveDown(2);
+
+    // Recipient
+    doc.text(recipientInfo.name);
+    doc.text(recipientInfo.title);
+    doc.text(recipientInfo.department);
+    doc.text(recipientInfo.address);
+    doc.moveDown();
+
+    // RE line
+    doc.font(PDF_CONFIG.fonts.bold)
+       .text(`RE: Claim for Surplus Funds - ${caseData.client.name}`);
+    doc.font(PDF_CONFIG.fonts.primary);
+    if (caseData.parcelNumber) {
+      doc.text(`Parcel Number: ${caseData.parcelNumber}`);
+    }
+    doc.text(`Property: ${caseData.propertyAddress}`);
+    doc.moveDown();
+
+    // Salutation
+    doc.text(`Dear ${recipientInfo.name}:`);
+    doc.moveDown();
+
+    // Body
+    doc.text(
+      `Please find enclosed a claim for surplus funds on behalf of our client, ` +
+      `${caseData.client.name}, related to the above-referenced property.`
+    );
+    doc.moveDown();
+
+    doc.text('The following documents are enclosed:');
+    doc.moveDown(0.5);
+    doc.list([
+      'Service Agreement (copy)',
+      'Limited Power of Attorney (notarized)',
+      'Affidavit of Ownership (notarized)',
+      'Copy of government-issued identification',
+      'Proof of ownership/chain of title'
+    ], { bulletRadius: 2, textIndent: 20 });
+    doc.moveDown();
+
+    doc.text(
+      `We respectfully request that you process this claim in accordance with ` +
+      `applicable statutes and regulations. Please direct all correspondence ` +
+      `regarding this matter to our office.`
+    );
+    doc.moveDown();
+
+    doc.text(
+      `If you require any additional documentation or information, please do not ` +
+      `hesitate to contact us at your earliest convenience.`
+    );
+    doc.moveDown();
+
+    doc.text('Thank you for your attention to this matter.');
+    doc.moveDown(2);
+
+    // Closing
+    doc.text('Respectfully submitted,');
+    doc.moveDown(3);
+    doc.text('_________________________________________________');
+    doc.text('MGR Capital Assistance LLC');
+    doc.text('Authorized Representative');
+    doc.moveDown();
+    doc.text(`Reference: ${caseData.internalId}`);
+
+    doc.end();
+  });
+}
+```
+
+### 10.6 FILING_PACKET Generator (Complete)
+
+**Purpose:** Combines all documents into a single filing package.
+
+```typescript
+export async function generateFilingPacket(
+  caseData: Case & { client: Client; documents: Document[] },
+  recipientInfo: RecipientInfo
+): Promise<Buffer> {
+  // Generate individual documents
+  const [coverLetter, serviceAgreement, limitedPOA, affidavit] = await Promise.all([
+    generateCoverLetter(caseData, recipientInfo),
+    generateServiceAgreement(caseData),
+    generateLimitedPOA(caseData),
+    generateAffidavit(caseData)
+  ]);
+
+  // Merge PDFs using pdf-lib
+  const { PDFDocument } = await import('pdf-lib');
+  const mergedPdf = await PDFDocument.create();
+
+  // Add cover letter
+  const coverDoc = await PDFDocument.load(coverLetter);
+  const coverPages = await mergedPdf.copyPages(coverDoc, coverDoc.getPageIndices());
+  coverPages.forEach(page => mergedPdf.addPage(page));
+
+  // Add service agreement
+  const saDoc = await PDFDocument.load(serviceAgreement);
+  const saPages = await mergedPdf.copyPages(saDoc, saDoc.getPageIndices());
+  saPages.forEach(page => mergedPdf.addPage(page));
+
+  // Add POA
+  const poaDoc = await PDFDocument.load(limitedPOA);
+  const poaPages = await mergedPdf.copyPages(poaDoc, poaDoc.getPageIndices());
+  poaPages.forEach(page => mergedPdf.addPage(page));
+
+  // Add affidavit
+  const affDoc = await PDFDocument.load(affidavit);
+  const affPages = await mergedPdf.copyPages(affDoc, affDoc.getPageIndices());
+  affPages.forEach(page => mergedPdf.addPage(page));
+
+  // Add any existing uploaded documents (client ID, evidence, etc.)
+  for (const doc of caseData.documents) {
+    if (doc.type === 'CLIENT_ID' || doc.type === 'EVIDENCE_PACKET') {
+      try {
+        const docPath = path.join(VAULT_BASE_PATH, doc.filePath);
+        const docBuffer = await fs.readFile(docPath);
+        const existingDoc = await PDFDocument.load(docBuffer);
+        const pages = await mergedPdf.copyPages(existingDoc, existingDoc.getPageIndices());
+        pages.forEach(page => mergedPdf.addPage(page));
+      } catch (err) {
+        console.error(`Failed to add document ${doc.id}: ${err.message}`);
+      }
+    }
+  }
+
+  // Set metadata
+  mergedPdf.setTitle(`Filing Packet - ${caseData.internalId}`);
+  mergedPdf.setAuthor('MGR Capital Assistance LLC');
+  mergedPdf.setSubject(`Tax Surplus Claim for ${caseData.client.name}`);
+  mergedPdf.setCreationDate(new Date());
+
+  return Buffer.from(await mergedPdf.save());
+}
+```
+
+### 10.7 State-Specific Template Variations
+
+```typescript
+// State rules affecting PDF generation
+const stateTemplateRules: Record<string, StateTemplateConfig> = {
+  TX: {
+    requiresNotarization: ['LIMITED_POA', 'AFFIDAVIT'],
+    requiresWitnesses: 0,
+    additionalDisclosures: [
+      'Texas Property Tax Code Section 34.04 applies to this claim.'
+    ],
+    filingInstructions: 'File with County Tax Assessor-Collector',
+    deadlineMonths: 4  // 4 years from tax sale
+  },
+  FL: {
+    requiresNotarization: ['LIMITED_POA', 'AFFIDAVIT'],
+    requiresWitnesses: 2,
+    additionalDisclosures: [
+      'This claim is made pursuant to Florida Statutes Chapter 197.'
+    ],
+    filingInstructions: 'File with Clerk of Circuit Court',
+    deadlineMonths: 24  // 2 years from issuance of tax deed
+  },
+  CA: {
+    requiresNotarization: ['LIMITED_POA', 'AFFIDAVIT'],
+    requiresWitnesses: 0,
+    additionalDisclosures: [
+      'California Revenue and Taxation Code Section 4675 applies.'
+    ],
+    filingInstructions: 'File with County Tax Collector',
+    deadlineMonths: 12  // 1 year from recordation of deed
+  },
+  GA: {
+    requiresNotarization: ['LIMITED_POA', 'AFFIDAVIT'],
+    requiresWitnesses: 0,
+    additionalDisclosures: [
+      'O.C.G.A. § 48-4-5 governs excess tax sale proceeds in Georgia.'
+    ],
+    filingInstructions: 'File with Superior Court Clerk',
+    deadlineMonths: 60  // 5 years
+  },
+  NC: {
+    requiresNotarization: ['LIMITED_POA', 'AFFIDAVIT'],
+    requiresWitnesses: 0,
+    additionalDisclosures: [
+      'N.C. Gen. Stat. § 105-374 applies to this surplus claim.'
+    ],
+    filingInstructions: 'File with County Finance Office',
+    deadlineMonths: 36  // 3 years
+  }
+};
+
+function getStateDisclosures(state: string): string[] {
+  return stateTemplateRules[state]?.additionalDisclosures || [];
+}
+```
+
+### 10.8 Helper Functions
+
+```typescript
+function formatDate(date: Date): string {
+  return date.toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  });
+}
+
+function formatAddress(client: Client): string {
+  const parts = [
+    client.address,
+    `${client.city}, ${client.state} ${client.zipCode}`
+  ].filter(Boolean);
+  return parts.join('\n');
+}
+
+function getStateName(code: string): string {
+  const states: Record<string, string> = {
+    AL: 'Alabama', AK: 'Alaska', AZ: 'Arizona', AR: 'Arkansas',
+    CA: 'California', CO: 'Colorado', CT: 'Connecticut', DE: 'Delaware',
+    FL: 'Florida', GA: 'Georgia', HI: 'Hawaii', ID: 'Idaho',
+    IL: 'Illinois', IN: 'Indiana', IA: 'Iowa', KS: 'Kansas',
+    KY: 'Kentucky', LA: 'Louisiana', ME: 'Maine', MD: 'Maryland',
+    MA: 'Massachusetts', MI: 'Michigan', MN: 'Minnesota', MS: 'Mississippi',
+    MO: 'Missouri', MT: 'Montana', NE: 'Nebraska', NV: 'Nevada',
+    NH: 'New Hampshire', NJ: 'New Jersey', NM: 'New Mexico', NY: 'New York',
+    NC: 'North Carolina', ND: 'North Dakota', OH: 'Ohio', OK: 'Oklahoma',
+    OR: 'Oregon', PA: 'Pennsylvania', RI: 'Rhode Island', SC: 'South Carolina',
+    SD: 'South Dakota', TN: 'Tennessee', TX: 'Texas', UT: 'Utah',
+    VT: 'Vermont', VA: 'Virginia', WA: 'Washington', WV: 'West Virginia',
+    WI: 'Wisconsin', WY: 'Wyoming', DC: 'District of Columbia'
+  };
+  return states[code] || code;
+}
+
+function numberToWords(num: number): string {
+  const ones = ['', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine',
+                'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen',
+                'seventeen', 'eighteen', 'nineteen'];
+  const tens = ['', '', 'twenty', 'thirty', 'forty', 'fifty', 'sixty', 'seventy', 'eighty', 'ninety'];
+
+  if (num < 20) return ones[num];
+  if (num < 100) return tens[Math.floor(num / 10)] + (num % 10 ? '-' + ones[num % 10] : '');
+  return num.toString();
+}
+```
 
 ### 10.3 PDF Generation Implementation
 
