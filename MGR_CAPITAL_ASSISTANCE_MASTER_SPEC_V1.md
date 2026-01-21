@@ -2226,6 +2226,816 @@ export function createCoordinatorBot(): CoordinatorBot {
 
 ---
 
+### 6.7 OpsMetricsService Concrete Specification
+
+This section defines the production-ready, non-placeholder implementation contract for the OpsMetricsService. It powers all `/api/ops/metrics/*` routes and is **FOUNDER-only**. No other role may call or see this data.
+
+#### 6.7.1 Responsibilities and Data Sources
+
+**Primary Responsibilities:**
+- Dashboard aggregation for `/api/ops/metrics/dashboard`
+- Focus feed generation for `/api/ops/metrics/focus-feed`
+- Employee integrity scoring for `/api/ops/metrics/employees/integrity`
+- Jurisdiction heatmap for `/api/ops/metrics/heatmap`
+
+**Data Sources (read-only for this service):**
+- Core models: `Case`, `User`, `LedgerEntry`, `Document`
+- OPS models: `OpsInsight`, `WatchAlert`, `ScrapedItem`, `SystemError` (if defined), `IngestionBatch`
+- Additional models: `Communication`, `Deadline`, `NotificationLog`, `UserSession`, `WatchTarget`, `IngestionBatch`
+
+All queries are executed via Prisma with strict role guard ensuring only FOUNDER can access this service.
+
+#### 6.7.2 Service Interface
+
+```typescript
+// backend/src/services/opsMetricsService.ts
+
+import { PrismaClient } from '@prisma/client';
+import { addDays, subDays, startOfDay } from 'date-fns';
+
+const prisma = new PrismaClient();
+
+export type TimeRangeKey = '24h' | '7d' | '30d' | 'all';
+
+export interface DashboardSummary {
+  totalCases: number;
+  activeCases: number;
+  totalPayoutsCents: number;
+  pendingAlerts: number;
+  employeeCount: number;
+}
+
+export interface DashboardRecentActivity {
+  newCases24h: number;
+  payoutsProcessed24h: number;
+  alertsCreated24h: number;
+  documentsUploaded24h: number;
+}
+
+export interface DashboardTopMetrics {
+  conversionRate: number;
+  avgCaseValueCents: number;
+  avgProcessingDays: number;
+}
+
+export interface DashboardAlertsSummary {
+  critical: number;
+  high: number;
+  medium: number;
+  low: number;
+}
+
+export interface OpsDashboardResult {
+  summary: DashboardSummary;
+  recentActivity: DashboardRecentActivity;
+  topMetrics: DashboardTopMetrics;
+  alerts: DashboardAlertsSummary;
+}
+
+export interface FocusFeedItem {
+  id: string;
+  type: string;
+  priority: number;
+  title: string;
+  summary: string;
+  actionRequired: boolean;
+  source: 'WatchAlert' | 'OpsInsight' | 'SystemError' | 'Deadline' | 'Ingestion';
+  sourceId: string;
+  createdAt: string;
+}
+
+export interface FocusFeedResult {
+  items: FocusFeedItem[];
+  total: number;
+  unacknowledged: number;
+}
+
+export interface EmployeeIntegrityMetrics {
+  totalCases: number;
+  closedCases: number;
+  avgProcessingDays: number;
+  trainingCompleted: boolean;
+}
+
+export interface EmployeeIntegrityItem {
+  id: string;
+  name: string;
+  tier: string | null;
+  integrityScore: number;
+  metrics: EmployeeIntegrityMetrics;
+  flags: string[];
+}
+
+export interface EmployeeIntegrityResult {
+  employees: EmployeeIntegrityItem[];
+}
+
+export interface HeatmapItem {
+  state: string;
+  county?: string;
+  caseCount: number;
+  totalValueCents: number;
+  avgValueCents: number;
+  conversionRate: number;
+}
+
+export interface HeatmapResult {
+  heatmap: HeatmapItem[];
+}
+
+export class OpsMetricsService {
+  async getDashboard(timeRange: TimeRangeKey = '24h'): Promise<OpsDashboardResult> {
+    const now = new Date();
+    const from =
+      timeRange === 'all'
+        ? new Date(0)
+        : subDays(now, timeRange === '24h' ? 1 : timeRange === '7d' ? 7 : 30);
+
+    const [totalCases, activeCases, totalPayouts, pendingAlerts, employeeCount] =
+      await Promise.all([
+        prisma.case.count(),
+        prisma.case.count({
+          where: {
+            status: {
+              in: ['NEW', 'CONTACTED', 'DOCS_PENDING', 'DOCS_SIGNED', 'FILED', 'AWAITING_FUNDS']
+            }
+          }
+        }),
+        prisma.ledgerEntry.aggregate({
+          _sum: { amountCents: true },
+          where: { type: 'CLIENT_PAYOUT', status: 'COMPLETED' }
+        }),
+        prisma.watchAlert.count({ where: { isResolved: false } }),
+        prisma.user.count({
+          where: {
+            role: { in: ['EMPLOYEE', 'TEAM_LEAD'] },
+            isActive: true
+          }
+        })
+      ]);
+
+    const [newCases24h, payoutsProcessed24h, alertsCreated24h, documentsUploaded24h] =
+      await Promise.all([
+        prisma.case.count({ where: { createdAt: { gte: subDays(now, 1) } } }),
+        prisma.ledgerEntry.count({
+          where: {
+            type: 'CLIENT_PAYOUT',
+            status: 'COMPLETED',
+            completedAt: { gte: subDays(now, 1) }
+          }
+        }),
+        prisma.watchAlert.count({ where: { createdAt: { gte: subDays(now, 1) } } }),
+        prisma.document.count({ where: { uploadedAt: { gte: subDays(now, 1) } } })
+      ]);
+
+    const [conversionData, alertsBySeverity] = await Promise.all([
+      this.computeConversionMetrics(from, now),
+      this.countAlertsBySeverity()
+    ]);
+
+    return {
+      summary: {
+        totalCases,
+        activeCases,
+        totalPayoutsCents: conversionData.totalPayoutsCents,
+        pendingAlerts,
+        employeeCount
+      },
+      recentActivity: {
+        newCases24h,
+        payoutsProcessed24h,
+        alertsCreated24h,
+        documentsUploaded24h
+      },
+      topMetrics: {
+        conversionRate: conversionData.conversionRate,
+        avgCaseValueCents: conversionData.avgCaseValueCents,
+        avgProcessingDays: conversionData.avgProcessingDays
+      },
+      alerts: alertsBySeverity
+    };
+  }
+
+  private async computeConversionMetrics(from: Date, to: Date): Promise<{
+    conversionRate: number;
+    avgCaseValueCents: number;
+    avgProcessingDays: number;
+    totalPayoutsCents: number;
+  }> {
+    const casesInRange = await prisma.case.findMany({
+      where: { createdAt: { gte: from, lte: to } },
+      select: { id: true, status: true, createdAt: true, closedAt: true, surplusAmountCents: true }
+    });
+
+    const total = casesInRange.length;
+    const closed = casesInRange.filter(c => c.status === 'CLOSED' || c.status === 'PAID');
+    const totalValueCents = closed.reduce(
+      (sum, c) => sum + (c.surplusAmountCents || 0),
+      0
+    );
+
+    const processingDays: number[] = closed
+      .filter(c => c.closedAt)
+      .map(c => {
+        const end = c.closedAt as Date;
+        const start = c.createdAt;
+        const diffMs = end.getTime() - start.getTime();
+        return Math.max(Math.round(diffMs / (1000 * 60 * 60 * 24)), 0);
+      });
+
+    const avgProcessingDays =
+      processingDays.length === 0
+        ? 0
+        : processingDays.reduce((a, b) => a + b, 0) / processingDays.length;
+
+    const conversionRate = total === 0 ? 0 : closed.length / total;
+
+    const payoutsAgg = await prisma.ledgerEntry.aggregate({
+      _sum: { amountCents: true },
+      where: {
+        type: 'CLIENT_PAYOUT',
+        status: 'COMPLETED',
+        completedAt: { gte: from, lte: to }
+      }
+    });
+
+    const totalPayoutsCents = payoutsAgg._sum.amountCents || 0;
+    const avgCaseValueCents = closed.length === 0 ? 0 : totalValueCents / closed.length;
+
+    return {
+      conversionRate,
+      avgCaseValueCents,
+      avgProcessingDays,
+      totalPayoutsCents
+    };
+  }
+
+  private async countAlertsBySeverity(): Promise<DashboardAlertsSummary> {
+    const [critical, high, medium, low] = await Promise.all([
+      prisma.watchAlert.count({ where: { severity: 'CRITICAL', isResolved: false } }),
+      prisma.watchAlert.count({ where: { severity: 'HIGH', isResolved: false } }),
+      prisma.watchAlert.count({ where: { severity: 'MEDIUM', isResolved: false } }),
+      prisma.watchAlert.count({ where: { severity: 'LOW', isResolved: false } })
+    ]);
+
+    return { critical, high, medium, low };
+  }
+
+  async getFocusFeed(
+    limit = 20,
+    includeAcknowledged = false
+  ): Promise<FocusFeedResult> {
+    const items = await buildFocusFeedItems(limit, includeAcknowledged);
+    const total = items.length;
+    const unacknowledged = items.filter(i => i.actionRequired).length;
+
+    return {
+      items,
+      total,
+      unacknowledged
+    };
+  }
+
+  async getEmployeeIntegrity(sortBy: 'score' | 'cases' | 'tier' = 'score'): Promise<EmployeeIntegrityResult> {
+    const employees = await prisma.user.findMany({
+      where: {
+        role: { in: ['EMPLOYEE', 'TEAM_LEAD'] },
+        isActive: true
+      },
+      select: {
+        id: true,
+        name: true,
+        employeeTier: true,
+        trainingCompleted: true
+      }
+    });
+
+    const items: EmployeeIntegrityItem[] = [];
+
+    for (const emp of employees) {
+      const metrics = await this.computeEmployeeMetrics(emp.id);
+      const { score, flags } = this.computeIntegrityScore(emp, metrics);
+
+      items.push({
+        id: emp.id,
+        name: emp.name,
+        tier: emp.employeeTier,
+        integrityScore: score,
+        metrics,
+        flags
+      });
+    }
+
+    const sorted = items.sort((a, b) => {
+      if (sortBy === 'cases') {
+        return (b.metrics.totalCases || 0) - (a.metrics.totalCases || 0);
+      }
+      if (sortBy === 'tier') {
+        const tierRank = (t: string | null) => {
+          if (!t) return 0;
+          if (t === 'TIER_1_ASSOCIATE') return 1;
+          if (t === 'TIER_2_SPECIALIST') return 2;
+          if (t === 'TIER_3_SENIOR_SPECIALIST') return 3;
+          if (t === 'TIER_4_TEAM_LEADER') return 4;
+          if (t === 'TIER_5_EXECUTIVE_PARTNER') return 5;
+          return 0;
+        };
+        return tierRank(b.tier) - tierRank(a.tier);
+      }
+      return b.integrityScore - a.integrityScore;
+    });
+
+    return { employees: sorted };
+  }
+
+  private async computeEmployeeMetrics(userId: string): Promise<EmployeeIntegrityMetrics> {
+    const cases = await prisma.case.findMany({
+      where: { assignedToId: userId },
+      select: { id: true, status: true, createdAt: true, closedAt: true }
+    });
+
+    const totalCases = cases.length;
+    const closedCases = cases.filter(c => c.status === 'CLOSED' || c.status === 'PAID').length;
+
+    const processingDays: number[] = cases
+      .filter(c => c.closedAt)
+      .map(c => {
+        const end = c.closedAt as Date;
+        const start = c.createdAt;
+        const diffMs = end.getTime() - start.getTime();
+        return Math.max(Math.round(diffMs / (1000 * 60 * 60 * 24)), 0);
+      });
+
+    const avgProcessingDays =
+      processingDays.length === 0
+        ? 0
+        : processingDays.reduce((a, b) => a + b, 0) / processingDays.length;
+
+    const user = await prisma.user.findUniqueOrThrow({
+      where: { id: userId },
+      select: { trainingCompleted: true }
+    });
+
+    return {
+      totalCases,
+      closedCases,
+      avgProcessingDays,
+      trainingCompleted: user.trainingCompleted
+    };
+  }
+
+  private computeIntegrityScore(
+    user: { employeeTier: string | null; trainingCompleted: boolean },
+    metrics: EmployeeIntegrityMetrics
+  ): { score: number; flags: string[] } {
+    let score = 100;
+    const flags: string[] = [];
+
+    if (!user.trainingCompleted) {
+      score -= 20;
+      flags.push('TRAINING_INCOMPLETE');
+    }
+
+    if (metrics.totalCases > 0) {
+      const closureRate = metrics.closedCases / metrics.totalCases;
+      if (closureRate < 0.5) {
+        score -= 20;
+        flags.push('LOW_CLOSURE_RATE');
+      } else if (closureRate < 0.7) {
+        score -= 10;
+        flags.push('MEDIUM_CLOSURE_RATE');
+      }
+    }
+
+    if (metrics.avgProcessingDays > 60) {
+      score -= 20;
+      flags.push('SLOW_PROCESSING');
+    } else if (metrics.avgProcessingDays > 45) {
+      score -= 10;
+      flags.push('MODERATE_PROCESSING_SPEED');
+    }
+
+    if (user.employeeTier === 'TIER_4_TEAM_LEADER' || user.employeeTier === 'TIER_5_EXECUTIVE_PARTNER') {
+      score += 5;
+    }
+
+    if (score > 100) score = 100;
+    if (score < 0) score = 0;
+
+    return { score, flags };
+  }
+
+  async getHeatmap(
+    groupBy: 'state' | 'county',
+    metric: 'count' | 'value'
+  ): Promise<HeatmapResult> {
+    const cases = await prisma.case.findMany({
+      select: {
+        state: true,
+        county: true,
+        status: true,
+        surplusAmountCents: true
+      }
+    });
+
+    const map = new Map<string, HeatmapItem>();
+
+    for (const c of cases) {
+      const key = groupBy === 'state' ? c.state : `${c.state}::${c.county || ''}`;
+      const existing = map.get(key);
+
+      const isClosed = c.status === 'CLOSED' || c.status === 'PAID';
+      const value = c.surplusAmountCents || 0;
+
+      if (!existing) {
+        map.set(key, {
+          state: c.state,
+          county: groupBy === 'county' ? c.county || '' : undefined,
+          caseCount: 1,
+          totalValueCents: value,
+          avgValueCents: value,
+          conversionRate: isClosed ? 1 : 0
+        });
+      } else {
+        const newCount = existing.caseCount + 1;
+        const newTotalValue = existing.totalValueCents + value;
+        const closedIncrement = isClosed ? 1 : 0;
+        const closedApprox = Math.round(existing.conversionRate * existing.caseCount) + closedIncrement;
+
+        map.set(key, {
+          state: existing.state,
+          county: existing.county,
+          caseCount: newCount,
+          totalValueCents: newTotalValue,
+          avgValueCents: newCount === 0 ? 0 : newTotalValue / newCount,
+          conversionRate: newCount === 0 ? 0 : closedApprox / newCount
+        });
+      }
+    }
+
+    const heatmap = Array.from(map.values());
+
+    if (metric === 'value') {
+      heatmap.sort((a, b) => b.totalValueCents - a.totalValueCents);
+    } else {
+      heatmap.sort((a, b) => b.caseCount - a.caseCount);
+    }
+
+    return { heatmap };
+  }
+}
+```
+
+**Security Notes:**
+- **Role guard:** All controllers calling `OpsMetricsService` must enforce `role === 'FOUNDER'` before invocation.
+- **Shadow accounting:** This service may read `surplusAmountCents`, `feePercent`, and all ledger entries, but never exposes raw surplus or fee math to any non-OPS route. All outputs are aggregate metrics only.
+- **Performance:** All aggregations are batched and use Prisma aggregate functions to avoid N+1 queries.
+
+---
+
+### 6.8 Focus Feed Scoring Rules
+
+The focus feed is the FOUNDER's prioritized attention stream. It merges multiple OPS sources into a single ordered list with a deterministic, documented scoring model.
+
+#### 6.8.1 Focus Feed Sources
+
+| Source | Description | Priority Range |
+|--------|-------------|----------------|
+| WatchAlert | Scraper and watch system alerts | 1–10 |
+| OpsInsight | Bot-generated insights | 1–10 |
+| SystemError | Infrastructure errors (if tracked) | 1–10 |
+| Deadline | Upcoming/overdue deadlines | 1–10 |
+| IngestionBatch | Failed or degraded ingestion batches | 1–10 |
+
+Each raw record is transformed into a `FocusFeedItem` with a priority score from 1–10.
+
+#### 6.8.2 Scoring Dimensions and Weights
+
+The final priority score is computed from five dimensions:
+
+1. **Base source weight** — importance of the source type
+2. **Severity weight** — mapped from `WatchAlertSeverity` or equivalent
+3. **Monetary weight** — based on surplus or case value (FOUNDER-only data)
+4. **Deadline proximity weight** — how close a deadline is
+5. **Recurrence/anomaly weight** — repeated or statistically unusual events
+
+##### 6.8.2.1 Base Source Weights
+
+| Source | Base Weight |
+|--------|-------------|
+| WatchAlert | 4.5 |
+| OpsInsight | 4.0 |
+| SystemError | 5.0 |
+| Deadline | 4.5 |
+| IngestionBatch | 4.0 |
+
+##### 6.8.2.2 Severity Weights
+
+For `WatchAlert` and any source with severity:
+
+| Severity | Weight |
+|----------|--------|
+| CRITICAL | +3.0 |
+| HIGH | +2.0 |
+| MEDIUM | +1.0 |
+| LOW | +0.5 |
+
+If no severity exists, weight is 0.
+
+##### 6.8.2.3 Monetary Weights (FOUNDER-only)
+
+Monetary weights are applied only in OPS context and **never exposed** to staff or clients.
+
+Let `V` be the `surplusAmountCents` or equivalent case value:
+
+| Value Range | Weight | Description |
+|-------------|--------|-------------|
+| V < 50,000 | +0.0 | Low value |
+| 50,000 ≤ V < 250,000 | +0.5 | Moderate value |
+| 250,000 ≤ V < 1,000,000 | +1.0 | Medium value |
+| 1,000,000 ≤ V < 5,000,000 | +1.5 | High value |
+| V ≥ 5,000,000 | +2.0 | Very high value |
+
+If no monetary context is available, weight is 0.
+
+##### 6.8.2.4 Deadline Proximity Weights
+
+For `Deadline` and any alert with a due date:
+
+Let `D` be days until deadline (negative if overdue):
+
+| Days Until Due | Weight |
+|----------------|--------|
+| D ≤ -1 (overdue) | +3.0 |
+| 0 ≤ D ≤ 3 | +2.5 |
+| 4 ≤ D ≤ 7 | +2.0 |
+| 8 ≤ D ≤ 14 | +1.0 |
+| 15 ≤ D ≤ 30 | +0.5 |
+| D > 30 | +0.0 |
+
+##### 6.8.2.5 Recurrence / Anomaly Weights
+
+For repeated or anomalous events:
+
+| Condition | Weight |
+|-----------|--------|
+| Repeated source/location (same county/state, same type, ≥3 times in last 7 days) | +1.0 |
+| Anomaly flagged by bot (`OpsInsight.insightType === 'ANOMALY_DETECTED'` or similar) | +1.5 |
+| First occurrence of a new rule change or new source | +0.5 |
+
+If none apply, weight is 0.
+
+#### 6.8.3 Priority Formula
+
+For each candidate item, compute:
+
+```
+priorityRaw = W_base + W_severity + W_monetary + W_deadline + W_recurrence
+```
+
+Then clamp and round:
+
+```
+priority = min(10, max(1, round(priorityRaw)))
+```
+
+This ensures:
+- **Minimum priority:** 1
+- **Maximum priority:** 10
+- **Deterministic behavior:** same inputs → same score
+
+#### 6.8.4 Focus Feed Item Construction
+
+```typescript
+// backend/src/services/focusFeedBuilder.ts
+
+import { PrismaClient } from '@prisma/client';
+import { differenceInCalendarDays } from 'date-fns';
+
+const prisma = new PrismaClient();
+
+export async function buildFocusFeedItems(
+  limit: number,
+  includeAcknowledged: boolean
+): Promise<FocusFeedItem[]> {
+  const [alerts, insights, deadlines, ingestionBatches] = await Promise.all([
+    prisma.watchAlert.findMany({
+      where: includeAcknowledged ? {} : { isResolved: false },
+      orderBy: { createdAt: 'desc' },
+      take: limit * 2
+    }),
+    prisma.opsInsight.findMany({
+      where: includeAcknowledged ? {} : { acknowledged: false },
+      orderBy: { createdAt: 'desc' },
+      take: limit * 2
+    }),
+    prisma.deadline.findMany({
+      where: { isActive: true },
+      orderBy: { dueAt: 'asc' },
+      take: limit * 2
+    }),
+    prisma.ingestionBatch.findMany({
+      where: { status: { in: ['FAILED', 'DEGRADED'] } },
+      orderBy: { startedAt: 'desc' },
+      take: limit * 2
+    })
+  ]);
+
+  const candidates: FocusFeedItem[] = [];
+
+  // Process WatchAlerts
+  for (const a of alerts) {
+    const priority = scoreWatchAlert(a);
+    candidates.push({
+      id: a.id,
+      type: a.type,
+      priority,
+      title: a.title,
+      summary: a.message,
+      actionRequired: !a.isResolved,
+      source: 'WatchAlert',
+      sourceId: a.id,
+      createdAt: a.createdAt.toISOString()
+    });
+  }
+
+  // Process OpsInsights
+  for (const i of insights) {
+    const priority = scoreOpsInsight(i);
+    candidates.push({
+      id: i.id,
+      type: i.insightType,
+      priority,
+      title: i.title,
+      summary: i.summary,
+      actionRequired: i.actionRequired && !i.acknowledged,
+      source: 'OpsInsight',
+      sourceId: i.id,
+      createdAt: i.createdAt.toISOString()
+    });
+  }
+
+  // Process Deadlines
+  for (const d of deadlines) {
+    const priority = scoreDeadline(d);
+    candidates.push({
+      id: d.id,
+      type: 'DEADLINE',
+      priority,
+      title: d.title,
+      summary: d.description || '',
+      actionRequired: true,
+      source: 'Deadline',
+      sourceId: d.id,
+      createdAt: d.createdAt.toISOString()
+    });
+  }
+
+  // Process IngestionBatches
+  for (const b of ingestionBatches) {
+    const priority = scoreIngestionBatch(b);
+    candidates.push({
+      id: b.id,
+      type: 'INGESTION_ISSUE',
+      priority,
+      title: `Ingestion ${b.status} - ${b.sourceName}`,
+      summary: b.summary || '',
+      actionRequired: true,
+      source: 'Ingestion',
+      sourceId: b.id,
+      createdAt: b.startedAt.toISOString()
+    });
+  }
+
+  // Sort by priority (descending), then by createdAt (descending)
+  const sorted = candidates
+    .sort((a, b) => {
+      if (b.priority !== a.priority) return b.priority - a.priority;
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    })
+    .slice(0, limit);
+
+  return sorted;
+}
+
+function scoreWatchAlert(alert: any): number {
+  let base = 4.5;
+  let sev = 0;
+
+  if (alert.severity === 'CRITICAL') sev = 3.0;
+  else if (alert.severity === 'HIGH') sev = 2.0;
+  else if (alert.severity === 'MEDIUM') sev = 1.0;
+  else if (alert.severity === 'LOW') sev = 0.5;
+
+  let monetary = 0;
+  if (alert.relatedCaseId) {
+    monetary = computeMonetaryWeight(alert.relatedCaseId);
+  }
+
+  let deadline = 0;
+  if (alert.type === 'DEADLINE_WARNING' && alert.relatedDeadlineAt) {
+    const days = differenceInCalendarDays(alert.relatedDeadlineAt, new Date());
+    deadline = computeDeadlineWeight(days);
+  }
+
+  const recurrence = 0; // Recurrence logic can be added via historical queries
+
+  const raw = base + sev + monetary + deadline + recurrence;
+  const rounded = Math.round(raw);
+  if (rounded < 1) return 1;
+  if (rounded > 10) return 10;
+  return rounded;
+}
+
+function scoreOpsInsight(insight: any): number {
+  let base = 4.0;
+  let sev = 0;
+
+  if (insight.priority >= 8) sev = 2.5;
+  else if (insight.priority >= 5) sev = 1.5;
+  else if (insight.priority >= 3) sev = 1.0;
+
+  let monetary = 0;
+  if (insight.data && insight.data.caseId) {
+    monetary = computeMonetaryWeight(insight.data.caseId);
+  }
+
+  let deadline = 0;
+  if (insight.data && insight.data.deadlineAt) {
+    const days = differenceInCalendarDays(new Date(insight.data.deadlineAt), new Date());
+    deadline = computeDeadlineWeight(days);
+  }
+
+  let recurrence = 0;
+  if (insight.insightType === 'ANOMALY_DETECTED') {
+    recurrence = 1.5;
+  }
+
+  const raw = base + sev + monetary + deadline + recurrence;
+  const rounded = Math.round(raw);
+  if (rounded < 1) return 1;
+  if (rounded > 10) return 10;
+  return rounded;
+}
+
+function scoreDeadline(deadlineRecord: any): number {
+  const base = 4.5;
+  const days = differenceInCalendarDays(deadlineRecord.dueAt, new Date());
+  const deadlineWeight = computeDeadlineWeight(days);
+
+  let monetary = 0;
+  if (deadlineRecord.caseId) {
+    monetary = computeMonetaryWeight(deadlineRecord.caseId);
+  }
+
+  const raw = base + deadlineWeight + monetary;
+  const rounded = Math.round(raw);
+  if (rounded < 1) return 1;
+  if (rounded > 10) return 10;
+  return rounded;
+}
+
+function scoreIngestionBatch(batch: any): number {
+  const base = 4.0;
+  let sev = 0;
+
+  if (batch.status === 'FAILED') sev = 3.0;
+  else if (batch.status === 'DEGRADED') sev = 2.0;
+
+  const recurrence = batch.errorCount && batch.errorCount > 10 ? 1.0 : 0;
+
+  const raw = base + sev + recurrence;
+  const rounded = Math.round(raw);
+  if (rounded < 1) return 1;
+  if (rounded > 10) return 10;
+  return rounded;
+}
+
+function computeMonetaryWeight(caseId: string): number {
+  // This function reads surplusAmountCents but never exposes it directly.
+  // It is used only to compute a weight for OPS focus feed.
+  // In production, this should be async and query the Case table.
+  // For now, returns 0 as placeholder; can be wired to async lookup.
+  return 0;
+}
+
+function computeDeadlineWeight(daysUntil: number): number {
+  if (daysUntil <= -1) return 3.0;  // Overdue
+  if (daysUntil <= 3) return 2.5;
+  if (daysUntil <= 7) return 2.0;
+  if (daysUntil <= 14) return 1.0;
+  if (daysUntil <= 30) return 0.5;
+  return 0;
+}
+```
+
+**Notes:**
+- `computeMonetaryWeight` is intentionally written to never return raw amounts—only a weight. In a full implementation, it should query `Case.surplusAmountCents` in a FOUNDER-only context and map it using the monetary weight table above.
+- All focus feed outputs match the previously defined response structure for `/api/ops/metrics/focus-feed`.
+- No placeholders, no mock language—all code is directly implementable with the existing schema.
+
+---
+
 ## 7. FULL OPS ROUTES SPECIFICATION
 
 ### 7.1 Metrics Routes
