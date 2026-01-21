@@ -1188,6 +1188,1042 @@ async function sendNotification(payload: NotificationPayload): Promise<void> {
 - No tracking pixels or external analytics
 - All content in NotificationLog is internal-only
 
+### 6.6 Bot Implementation Specifications
+
+All bots are internal-only, run inside the backend process (or as internal workers), and never expose raw logic or formulas to any external consumer. Their only persisted outputs are:
+- **OpsInsight** records (primary)
+- **WatchAlert** records (for watch-related events only)
+
+All timestamps stored in UTC. All monetary values in cents.
+
+#### 6.6.1 Shared Bot Contract
+
+**Bot Execution Context:**
+
+```typescript
+// backend/src/ops/bots/types.ts
+
+export interface BotExecutionContext {
+  runId: string;                 // Unique ID for this bot run
+  startedAt: Date;               // UTC
+  triggeredBy: 'SCHEDULE' | 'FOUNDER_MANUAL' | 'SYSTEM_EVENT';
+  source?: string;               // Optional source tag (e.g., 'nightly', 'watch_cycle')
+  notes?: string;                // Optional context notes
+}
+```
+
+**Bot Result Contract:**
+
+```typescript
+export interface BotRunResult {
+  botName: string;
+  runId: string;
+  startedAt: Date;
+  completedAt: Date;
+  insightsCreated: number;
+  alertsCreated: number;
+  errors: string[];
+}
+```
+
+**Base Bot Interface:**
+
+```typescript
+export interface OpsBot {
+  name: string; // 'IngestionBot' | 'PayoutBot' | ...
+  run(context: BotExecutionContext): Promise<BotRunResult>;
+}
+```
+
+All concrete bots implement `OpsBot` and are registered with CoordinatorBot.
+
+#### 6.6.2 IngestionBot
+
+**Purpose:** Monitor ingestion health, detect duplicates, and assess source quality.
+
+**Inputs:**
+- ScrapedItem (last 24h/7d/30d)
+- IngestionBatch
+- WatchTarget
+- BotExecutionContext
+
+**Outputs:**
+- OpsInsight: `botSource = 'IngestionBot'`, `insightType = 'INGESTION_HEALTH' | 'DUPLICATE_RISK' | 'SOURCE_TREND'`
+- WatchAlert for critical ingestion failures
+
+**Core Functions:**
+
+```typescript
+// analyzeIngestionPatterns()
+// - Compare actual vs expected volume per source
+// - Create OpsInsight for deviations (priority 5-10 based on severity)
+// - Create WatchAlert (SOURCE_OFFLINE) if volume = 0 for active source
+
+async function analyzeIngestionPatterns(context: BotExecutionContext): Promise<void> {
+  const sources = await prisma.watchTarget.findMany({ where: { isActive: true } });
+
+  for (const source of sources) {
+    const items24h = await prisma.scrapedItem.count({
+      where: {
+        sourceUrl: source.url,
+        createdAt: { gte: subHours(new Date(), 24) }
+      }
+    });
+
+    // Compare against expected thresholds
+    if (items24h === 0 && source.lastCheckedAt) {
+      // Source went offline
+      await createOpsInsight({
+        botSource: 'IngestionBot',
+        insightType: 'INGESTION_HEALTH',
+        priority: 9,
+        title: `Source offline: ${source.name}`,
+        summary: `No items ingested in last 24h from ${source.name}`,
+        actionRequired: true
+      });
+
+      await createWatchAlert({
+        type: 'SOURCE_OFFLINE',
+        severity: 'HIGH',
+        title: `Source offline: ${source.name}`,
+        state: source.state,
+        county: source.county
+      });
+    }
+  }
+}
+
+// detectDuplicates()
+// - Hash key fields (state, county, parcelNumber, propertyAddress)
+// - Group by hash, mark duplicates
+// - Create OpsInsight for duplicate clusters
+
+async function detectDuplicates(context: BotExecutionContext): Promise<number> {
+  const recentItems = await prisma.scrapedItem.findMany({
+    where: {
+      createdAt: { gte: subDays(new Date(), 7) },
+      reviewStatus: 'PENDING'
+    }
+  });
+
+  const hashMap = new Map<string, ScrapedItem[]>();
+
+  for (const item of recentItems) {
+    const hash = computeContentHash(item);
+    const group = hashMap.get(hash) || [];
+    group.push(item);
+    hashMap.set(hash, group);
+  }
+
+  let duplicatesMarked = 0;
+
+  for (const [hash, group] of hashMap) {
+    if (group.length > 1) {
+      // Keep earliest, mark rest as duplicates
+      const [keep, ...dupes] = group.sort((a, b) =>
+        a.createdAt.getTime() - b.createdAt.getTime()
+      );
+
+      for (const dupe of dupes) {
+        await prisma.scrapedItem.update({
+          where: { id: dupe.id },
+          data: { reviewStatus: 'DUPLICATE' }
+        });
+        duplicatesMarked++;
+      }
+    }
+  }
+
+  if (duplicatesMarked > 0) {
+    await createOpsInsight({
+      botSource: 'IngestionBot',
+      insightType: 'DUPLICATE_RISK',
+      priority: duplicatesMarked > 10 ? 7 : 5,
+      title: `${duplicatesMarked} duplicates detected`,
+      summary: `Found and marked ${duplicatesMarked} duplicate records in last 7 days`
+    });
+  }
+
+  return duplicatesMarked;
+}
+
+// assessSourceHealth()
+// - Compute health score (0-100) per source
+// - Components: Availability (40%), Error rate (30%), Duplicate rate (20%), Latency (10%)
+
+function computeSourceHealthScore(source: WatchTarget, stats: SourceStats): number {
+  let score = 0;
+
+  // Availability (40%): Did we get expected volume?
+  const availabilityRatio = Math.min(stats.actualVolume / stats.expectedVolume, 1);
+  score += availabilityRatio * 40;
+
+  // Error rate (30%): Lower is better
+  const errorRatio = stats.errors / Math.max(stats.attempts, 1);
+  score += (1 - errorRatio) * 30;
+
+  // Duplicate rate (20%): Lower is better
+  const dupeRatio = stats.duplicates / Math.max(stats.actualVolume, 1);
+  score += (1 - dupeRatio) * 20;
+
+  // Latency (10%): Based on time since last success
+  const hoursSinceSuccess = (Date.now() - stats.lastSuccessAt.getTime()) / (1000 * 60 * 60);
+  const latencyScore = hoursSinceSuccess < 24 ? 1 : hoursSinceSuccess < 168 ? 0.5 : 0;
+  score += latencyScore * 10;
+
+  return Math.round(score);
+}
+```
+
+#### 6.6.3 PayoutBot
+
+**Purpose:** Validate payout math, detect anomalies, and flag high-value cases.
+
+**Inputs:**
+- Case (status = AWAITING_FUNDS or PAID)
+- LedgerEntry
+- Employee tier mapping
+- BotExecutionContext
+
+**Outputs:**
+- OpsInsight: `botSource = 'PayoutBot'`, `insightType = 'PAYOUT_VALIDATION' | 'HIGH_VALUE_CASE' | 'ANOMALY_DETECTED'`
+- WatchAlert for HIGH_VALUE_CASE
+
+**Core Functions:**
+
+```typescript
+// validatePayoutMath()
+// - Verify: CLIENT_PAYOUT + COMPANY_FEE = surplusAmountCents
+// - Verify: displayedAmountCents = 2 × employeeCommissionCents
+// - Create OpsInsight for mismatches
+
+async function validatePayoutMath(context: BotExecutionContext): Promise<number> {
+  const paidCases = await prisma.case.findMany({
+    where: { status: 'PAID' },
+    include: { ledgerEntries: true }
+  });
+
+  let mismatches = 0;
+
+  for (const caseRecord of paidCases) {
+    const clientPayout = sumLedgerEntries(caseRecord.ledgerEntries, 'CLIENT_PAYOUT');
+    const companyFee = sumLedgerEntries(caseRecord.ledgerEntries, 'COMPANY_FEE');
+
+    // Check surplus = client + company
+    if (clientPayout + companyFee !== caseRecord.surplusAmountCents) {
+      mismatches++;
+      await createOpsInsight({
+        botSource: 'PayoutBot',
+        insightType: 'PAYOUT_VALIDATION',
+        priority: 10, // Money mismatch is critical
+        title: `Payout math error: ${caseRecord.internalId}`,
+        summary: `Expected ${caseRecord.surplusAmountCents}, got ${clientPayout + companyFee}`,
+        data: {
+          caseId: caseRecord.id,
+          expected: caseRecord.surplusAmountCents,
+          actual: clientPayout + companyFee
+        },
+        actionRequired: true
+      });
+    }
+
+    // Check shadow accounting for employee commissions
+    const commissions = caseRecord.ledgerEntries.filter(e => e.type === 'EMPLOYEE_COMMISSION');
+    for (const comm of commissions) {
+      if (comm.displayedAmountCents !== comm.amountCents * 2) {
+        mismatches++;
+        await createOpsInsight({
+          botSource: 'PayoutBot',
+          insightType: 'PAYOUT_VALIDATION',
+          priority: 8,
+          title: `Shadow accounting error: ${caseRecord.internalId}`,
+          summary: `Displayed amount should be 2x actual`,
+          actionRequired: true
+        });
+      }
+    }
+  }
+
+  return mismatches;
+}
+
+// detectAnomalies()
+// - Flag cases where feePercent outside normal bounds
+// - Flag cases where founder share is negative
+
+async function detectAnomalies(context: BotExecutionContext): Promise<number> {
+  const cases = await prisma.case.findMany({
+    where: { status: { in: ['AWAITING_FUNDS', 'PAID'] } }
+  });
+
+  let anomalies = 0;
+  const FEE_MIN = 20;
+  const FEE_MAX = 40;
+
+  for (const c of cases) {
+    if (c.feePercent < FEE_MIN || c.feePercent > FEE_MAX) {
+      anomalies++;
+      await createOpsInsight({
+        botSource: 'PayoutBot',
+        insightType: 'ANOMALY_DETECTED',
+        priority: 7,
+        title: `Unusual fee: ${c.internalId}`,
+        summary: `Fee ${c.feePercent}% outside typical range (${FEE_MIN}-${FEE_MAX}%)`
+      });
+    }
+  }
+
+  return anomalies;
+}
+
+// flagHighValueCases()
+// - Threshold: $10,000+ = HIGH, $50,000+ = CRITICAL
+
+const HIGH_VALUE_THRESHOLD = 1000000;      // $10,000
+const CRITICAL_VALUE_THRESHOLD = 5000000;  // $50,000
+
+async function flagHighValueCases(context: BotExecutionContext): Promise<number> {
+  const highValueCases = await prisma.case.findMany({
+    where: {
+      surplusAmountCents: { gte: HIGH_VALUE_THRESHOLD },
+      status: { notIn: ['CLOSED', 'REJECTED'] }
+    }
+  });
+
+  for (const c of highValueCases) {
+    const severity = c.surplusAmountCents >= CRITICAL_VALUE_THRESHOLD ? 'CRITICAL' : 'HIGH';
+    const priority = severity === 'CRITICAL' ? 10 : 9;
+
+    await createOpsInsight({
+      botSource: 'PayoutBot',
+      insightType: 'HIGH_VALUE_CASE',
+      priority,
+      title: `High-value case: ${c.internalId}`,
+      summary: `Surplus: $${(c.surplusAmountCents / 100).toLocaleString()}`,
+      data: { caseId: c.id, surplusAmountCents: c.surplusAmountCents }
+    });
+
+    await createWatchAlert({
+      type: 'HIGH_VALUE_CASE',
+      severity,
+      title: `High-value case detected: ${c.internalId}`,
+      state: c.state,
+      county: c.county
+    });
+  }
+
+  return highValueCases.length;
+}
+```
+
+#### 6.6.4 ComplianceBot
+
+**Purpose:** Enforce lifecycle discipline, document completeness, and deadline safety.
+
+**Inputs:**
+- Case
+- Document
+- Deadline
+- BotExecutionContext
+
+**Outputs:**
+- OpsInsight: `botSource = 'ComplianceBot'`, `insightType = 'DOCS_INCOMPLETE' | 'INVALID_TRANSITION' | 'DEADLINE_RISK'`
+- WatchAlert for severe deadline risks
+
+**Core Functions:**
+
+```typescript
+// validateDocuments()
+// - Check required documents per status
+
+const REQUIRED_DOCS_BY_STATUS: Record<string, DocumentType[]> = {
+  DOCS_PENDING: ['SERVICE_AGREEMENT', 'LIMITED_POA'],
+  DOCS_SIGNED: ['SERVICE_AGREEMENT', 'LIMITED_POA'],
+  FILED: ['SERVICE_AGREEMENT', 'LIMITED_POA', 'FILING_PACKET'],
+  AWAITING_FUNDS: ['SERVICE_AGREEMENT', 'LIMITED_POA', 'FILING_PACKET'],
+  PAID: ['SERVICE_AGREEMENT', 'LIMITED_POA', 'FILING_PACKET']
+};
+
+async function validateDocuments(context: BotExecutionContext): Promise<number> {
+  const cases = await prisma.case.findMany({
+    where: { status: { in: Object.keys(REQUIRED_DOCS_BY_STATUS) } },
+    include: { documents: true }
+  });
+
+  let issues = 0;
+
+  for (const c of cases) {
+    const requiredDocs = REQUIRED_DOCS_BY_STATUS[c.status] || [];
+    const existingTypes = c.documents
+      .filter(d => d.status === 'SIGNED' || d.status === 'VERIFIED')
+      .map(d => d.type);
+
+    const missing = requiredDocs.filter(t => !existingTypes.includes(t));
+
+    if (missing.length > 0) {
+      issues++;
+      await createOpsInsight({
+        botSource: 'ComplianceBot',
+        insightType: 'DOCS_INCOMPLETE',
+        priority: c.priority === 'HIGH' ? 8 : 6,
+        title: `Missing documents: ${c.internalId}`,
+        summary: `Missing: ${missing.join(', ')}`,
+        data: { caseId: c.id, missingDocs: missing }
+      });
+    }
+  }
+
+  return issues;
+}
+
+// checkTransitions()
+// - Validate status transitions against allowed flow
+
+const ALLOWED_TRANSITIONS: Record<string, string[]> = {
+  NEW: ['CONTACTED', 'REJECTED'],
+  CONTACTED: ['DOCS_PENDING', 'REJECTED'],
+  DOCS_PENDING: ['DOCS_SIGNED', 'REJECTED'],
+  DOCS_SIGNED: ['FILED', 'REJECTED'],
+  FILED: ['AWAITING_FUNDS', 'REJECTED'],
+  AWAITING_FUNDS: ['PAID', 'REJECTED'],
+  PAID: ['CLOSED']
+};
+
+async function checkTransitions(context: BotExecutionContext): Promise<number> {
+  // Query audit logs for status changes in last 24h
+  const recentChanges = await prisma.auditLog.findMany({
+    where: {
+      action: 'STATUS_CHANGE',
+      createdAt: { gte: subHours(new Date(), 24) }
+    }
+  });
+
+  let invalid = 0;
+
+  for (const change of recentChanges) {
+    const { previousStatus, newStatus } = change.details as any;
+    const allowed = ALLOWED_TRANSITIONS[previousStatus] || [];
+
+    if (!allowed.includes(newStatus)) {
+      invalid++;
+      await createOpsInsight({
+        botSource: 'ComplianceBot',
+        insightType: 'INVALID_TRANSITION',
+        priority: 9,
+        title: `Invalid status transition`,
+        summary: `${previousStatus} → ${newStatus} not allowed`,
+        data: { auditLogId: change.id },
+        actionRequired: true
+      });
+    }
+  }
+
+  return invalid;
+}
+
+// scanDeadlines()
+// - Flag approaching and overdue deadlines
+
+async function scanDeadlines(context: BotExecutionContext): Promise<number> {
+  const deadlines = await prisma.deadline.findMany({
+    where: { status: 'PENDING' },
+    include: { case: true }
+  });
+
+  let flagged = 0;
+  const now = new Date();
+
+  for (const d of deadlines) {
+    const daysUntilDue = differenceInDays(d.dueDate, now);
+
+    if (daysUntilDue <= 0) {
+      // Overdue
+      flagged++;
+      await createOpsInsight({
+        botSource: 'ComplianceBot',
+        insightType: 'DEADLINE_RISK',
+        priority: 10,
+        title: `OVERDUE: ${d.title}`,
+        summary: `Case ${d.case.internalId} - ${Math.abs(daysUntilDue)} days overdue`,
+        actionRequired: true
+      });
+
+      await createWatchAlert({
+        type: 'DEADLINE_WARNING',
+        severity: 'CRITICAL',
+        title: `Deadline overdue: ${d.title}`,
+        state: d.case.state,
+        county: d.case.county
+      });
+    } else if (daysUntilDue <= 7) {
+      flagged++;
+      await createOpsInsight({
+        botSource: 'ComplianceBot',
+        insightType: 'DEADLINE_RISK',
+        priority: daysUntilDue <= 3 ? 9 : 7,
+        title: `Deadline approaching: ${d.title}`,
+        summary: `Case ${d.case.internalId} - ${daysUntilDue} days remaining`
+      });
+    }
+  }
+
+  return flagged;
+}
+```
+
+#### 6.6.5 TrainingBot
+
+**Purpose:** Monitor training completion, identify gaps, and correlate with performance.
+
+**Inputs:**
+- User (EMPLOYEE/TEAM_LEAD roles)
+- TrainingProgress, TrainingModule
+- OPS metrics
+- BotExecutionContext
+
+**Outputs:**
+- OpsInsight: `botSource = 'TrainingBot'`, `insightType = 'TRAINING_GAP' | 'TRAINING_CORRELATION' | 'TRAINING_RECOMMENDATION'`
+
+**Core Functions:**
+
+```typescript
+// identifyGaps()
+// - Check required modules per tier
+// - Flag employees missing required training
+
+async function identifyGaps(context: BotExecutionContext): Promise<number> {
+  const employees = await prisma.user.findMany({
+    where: { role: { in: ['EMPLOYEE', 'TEAM_LEAD'] }, isActive: true },
+    include: { trainingProgress: true }
+  });
+
+  let gaps = 0;
+
+  for (const emp of employees) {
+    const required = getRequiredModules(emp.employeeTier, emp.role);
+    const completed = emp.trainingProgress
+      .filter(p => p.status === 'COMPLETED')
+      .map(p => p.moduleId);
+
+    const missing = required.filter(m => !completed.includes(m));
+
+    if (missing.length > 0) {
+      gaps++;
+      await createOpsInsight({
+        botSource: 'TrainingBot',
+        insightType: 'TRAINING_GAP',
+        priority: emp.employeeTier >= 'TIER_3' ? 7 : 5,
+        title: `Training gap: ${emp.name}`,
+        summary: `Missing ${missing.length} required modules`,
+        data: { userId: emp.id, missingModules: missing }
+      });
+    }
+  }
+
+  return gaps;
+}
+
+// correlatePerformance()
+// - Compare metrics: trained vs untrained employees
+
+async function correlatePerformance(context: BotExecutionContext): Promise<void> {
+  const employees = await prisma.user.findMany({
+    where: { role: 'EMPLOYEE', isActive: true },
+    include: {
+      trainingProgress: true,
+      assignedCases: { where: { status: 'CLOSED' } }
+    }
+  });
+
+  const fullyTrained = employees.filter(e =>
+    e.trainingProgress.every(p => p.status === 'COMPLETED')
+  );
+  const partiallyTrained = employees.filter(e =>
+    e.trainingProgress.some(p => p.status !== 'COMPLETED')
+  );
+
+  const avgCasesFullyTrained = average(fullyTrained.map(e => e.assignedCases.length));
+  const avgCasesPartiallyTrained = average(partiallyTrained.map(e => e.assignedCases.length));
+
+  if (avgCasesFullyTrained > avgCasesPartiallyTrained * 1.2) {
+    await createOpsInsight({
+      botSource: 'TrainingBot',
+      insightType: 'TRAINING_CORRELATION',
+      priority: 6,
+      title: 'Training correlates with performance',
+      summary: `Fully trained employees close ${Math.round((avgCasesFullyTrained / avgCasesPartiallyTrained - 1) * 100)}% more cases`,
+      data: { avgCasesFullyTrained, avgCasesPartiallyTrained }
+    });
+  }
+}
+
+// suggestModules()
+// - Recommend training for underperforming employees
+
+async function suggestModules(context: BotExecutionContext): Promise<number> {
+  const underperformers = await getUnderperformingEmployees();
+  let suggestions = 0;
+
+  for (const emp of underperformers) {
+    const recommendations = determineRecommendedModules(emp.weakAreas);
+
+    if (recommendations.length > 0) {
+      suggestions++;
+      await createOpsInsight({
+        botSource: 'TrainingBot',
+        insightType: 'TRAINING_RECOMMENDATION',
+        priority: 6,
+        title: `Training recommended: ${emp.name}`,
+        summary: `Suggested: ${recommendations.join(', ')}`,
+        data: { userId: emp.id, recommendations }
+      });
+    }
+  }
+
+  return suggestions;
+}
+```
+
+#### 6.6.6 OutreachBot
+
+**Purpose:** Prioritize outreach, build follow-up queues, and analyze response patterns.
+
+**Inputs:**
+- Case (NEW, CONTACTED, DOCS_PENDING)
+- Communication
+- BotExecutionContext
+
+**Outputs:**
+- OpsInsight: `botSource = 'OutreachBot'`, `insightType = 'OUTREACH_PRIORITY' | 'FOLLOW_UP_QUEUE' | 'RESPONSE_ANALYSIS'`
+
+**Core Functions:**
+
+```typescript
+// prioritizeCases()
+// - Score cases 0-100 based on priority, surplus, time since contact
+
+async function prioritizeCases(context: BotExecutionContext): Promise<void> {
+  const activeCases = await prisma.case.findMany({
+    where: { status: { in: ['NEW', 'CONTACTED', 'DOCS_PENDING'] } },
+    include: { communications: { orderBy: { createdAt: 'desc' }, take: 1 } }
+  });
+
+  const scored = activeCases.map(c => ({
+    caseId: c.id,
+    internalId: c.internalId,
+    score: computeOutreachScore(c)
+  })).sort((a, b) => b.score - a.score);
+
+  await createOpsInsight({
+    botSource: 'OutreachBot',
+    insightType: 'OUTREACH_PRIORITY',
+    priority: 6,
+    title: 'Outreach priority ranking',
+    summary: `Top priority: ${scored[0]?.internalId || 'None'}`,
+    data: { topCases: scored.slice(0, 20) }
+  });
+}
+
+function computeOutreachScore(c: Case & { communications: Communication[] }): number {
+  let score = 50;
+
+  // Priority bonus
+  if (c.priority === 'HIGH') score += 20;
+  else if (c.priority === 'MEDIUM') score += 10;
+
+  // Days since last contact (more days = higher priority)
+  const lastContact = c.communications[0]?.createdAt;
+  if (lastContact) {
+    const daysSince = differenceInDays(new Date(), lastContact);
+    score += Math.min(daysSince * 2, 20);
+  } else {
+    score += 25; // Never contacted = high priority
+  }
+
+  // Surplus value bonus (internal only)
+  if (c.surplusAmountCents >= 5000000) score += 10;
+  else if (c.surplusAmountCents >= 1000000) score += 5;
+
+  return Math.min(score, 100);
+}
+
+// buildFollowUpQueue()
+// - Create per-employee follow-up lists
+
+async function buildFollowUpQueue(context: BotExecutionContext): Promise<void> {
+  const employees = await prisma.user.findMany({
+    where: { role: { in: ['EMPLOYEE', 'TEAM_LEAD'] }, isActive: true }
+  });
+
+  for (const emp of employees) {
+    const needsFollowUp = await prisma.case.findMany({
+      where: {
+        assignedToId: emp.id,
+        status: { in: ['CONTACTED', 'DOCS_PENDING'] },
+        communications: {
+          none: { createdAt: { gte: subDays(new Date(), 3) } }
+        }
+      },
+      orderBy: { priority: 'desc' }
+    });
+
+    if (needsFollowUp.length > 0) {
+      await createOpsInsight({
+        botSource: 'OutreachBot',
+        insightType: 'FOLLOW_UP_QUEUE',
+        priority: 5,
+        title: `Follow-up queue: ${emp.name}`,
+        summary: `${needsFollowUp.length} cases need follow-up`,
+        data: {
+          userId: emp.id,
+          queue: needsFollowUp.map(c => c.internalId)
+        }
+      });
+    }
+  }
+}
+
+// analyzeResponseRates()
+// - Compute response rates by channel
+
+async function analyzeResponseRates(context: BotExecutionContext): Promise<void> {
+  const channels: CommunicationType[] = ['EMAIL', 'CALL', 'PORTAL_MESSAGE'];
+  const stats: Record<string, { sent: number; responded: number; avgDays: number }> = {};
+
+  for (const channel of channels) {
+    const comms = await prisma.communication.findMany({
+      where: {
+        type: channel,
+        direction: 'OUTBOUND',
+        createdAt: { gte: subDays(new Date(), 30) }
+      }
+    });
+
+    // Calculate response stats (simplified)
+    stats[channel] = {
+      sent: comms.length,
+      responded: Math.floor(comms.length * 0.3), // Placeholder
+      avgDays: 2.5 // Placeholder
+    };
+  }
+
+  await createOpsInsight({
+    botSource: 'OutreachBot',
+    insightType: 'RESPONSE_ANALYSIS',
+    priority: 4,
+    title: 'Response rate analysis (30 days)',
+    summary: `Best channel: ${getBestChannel(stats)}`,
+    data: stats
+  });
+}
+```
+
+#### 6.6.7 DocketBot
+
+**Purpose:** Track deadlines, court events, and filing risks.
+
+**Inputs:**
+- Deadline
+- Case
+- ScrapedItem (docket data)
+- BotExecutionContext
+
+**Outputs:**
+- OpsInsight: `botSource = 'DocketBot'`, `insightType = 'DEADLINE_TRACKING' | 'FILING_RISK' | 'DOCKET_UPDATE'`
+- WatchAlert for critical deadline risks
+
+**Core Functions:**
+
+```typescript
+// trackDeadlines()
+// - Categorize deadlines by risk level
+
+async function trackDeadlines(context: BotExecutionContext): Promise<number> {
+  const deadlines = await prisma.deadline.findMany({
+    where: { status: 'PENDING' },
+    include: { case: true }
+  });
+
+  const categorized = {
+    critical: [] as Deadline[],  // <= 0 days
+    high: [] as Deadline[],      // 1-6 days
+    medium: [] as Deadline[],    // 7-30 days
+    low: [] as Deadline[]        // > 30 days
+  };
+
+  const now = new Date();
+
+  for (const d of deadlines) {
+    const daysUntil = differenceInDays(d.dueDate, now);
+
+    if (daysUntil <= 0) categorized.critical.push(d);
+    else if (daysUntil <= 6) categorized.high.push(d);
+    else if (daysUntil <= 30) categorized.medium.push(d);
+    else categorized.low.push(d);
+  }
+
+  await createOpsInsight({
+    botSource: 'DocketBot',
+    insightType: 'DEADLINE_TRACKING',
+    priority: categorized.critical.length > 0 ? 10 :
+              categorized.high.length > 0 ? 8 : 5,
+    title: 'Deadline status summary',
+    summary: `Critical: ${categorized.critical.length}, High: ${categorized.high.length}, Medium: ${categorized.medium.length}`,
+    data: {
+      counts: {
+        critical: categorized.critical.length,
+        high: categorized.high.length,
+        medium: categorized.medium.length,
+        low: categorized.low.length
+      }
+    }
+  });
+
+  return categorized.critical.length + categorized.high.length;
+}
+
+// assessFilingRisk()
+// - Flag cases at risk of missing filing deadlines
+
+async function assessFilingRisk(context: BotExecutionContext): Promise<number> {
+  const atRisk = await prisma.case.findMany({
+    where: {
+      status: { in: ['NEW', 'CONTACTED', 'DOCS_PENDING', 'DOCS_SIGNED'] },
+      deadlines: {
+        some: {
+          title: { contains: 'filing' },
+          status: 'PENDING',
+          dueDate: { lte: addDays(new Date(), 14) }
+        }
+      }
+    },
+    include: { deadlines: true }
+  });
+
+  for (const c of atRisk) {
+    const filingDeadline = c.deadlines.find(d =>
+      d.title.toLowerCase().includes('filing') && d.status === 'PENDING'
+    );
+
+    if (filingDeadline) {
+      const daysLeft = differenceInDays(filingDeadline.dueDate, new Date());
+
+      await createOpsInsight({
+        botSource: 'DocketBot',
+        insightType: 'FILING_RISK',
+        priority: daysLeft <= 7 ? 10 : 8,
+        title: `Filing risk: ${c.internalId}`,
+        summary: `${daysLeft} days until filing deadline, status: ${c.status}`,
+        actionRequired: true
+      });
+
+      if (daysLeft <= 7) {
+        await createWatchAlert({
+          type: 'DEADLINE_WARNING',
+          severity: daysLeft <= 3 ? 'CRITICAL' : 'HIGH',
+          title: `Filing deadline at risk: ${c.internalId}`,
+          state: c.state,
+          county: c.county
+        });
+      }
+    }
+  }
+
+  return atRisk.length;
+}
+
+// monitorProceedings()
+// - Match docket entries to cases
+
+async function monitorProceedings(context: BotExecutionContext): Promise<number> {
+  const docketItems = await prisma.scrapedItem.findMany({
+    where: {
+      sourceType: 'FORECLOSURE', // Docket data
+      reviewStatus: 'PENDING',
+      createdAt: { gte: subDays(new Date(), 1) }
+    }
+  });
+
+  let matched = 0;
+
+  for (const item of docketItems) {
+    const parsed = item.parsedData as any;
+
+    // Try to match to existing case
+    const matchedCase = await prisma.case.findFirst({
+      where: {
+        OR: [
+          { parcelNumber: parsed.parcelNumber },
+          { propertyAddress: { contains: parsed.address } }
+        ]
+      }
+    });
+
+    if (matchedCase) {
+      matched++;
+      await createOpsInsight({
+        botSource: 'DocketBot',
+        insightType: 'DOCKET_UPDATE',
+        priority: 7,
+        title: `Docket update: ${matchedCase.internalId}`,
+        summary: parsed.eventType || 'New docket entry detected',
+        data: { caseId: matchedCase.id, scrapedItemId: item.id }
+      });
+    }
+  }
+
+  return matched;
+}
+```
+
+#### 6.6.8 CoordinatorBot
+
+**Purpose:** Orchestrate all bots, prioritize insights, and generate executive summaries.
+
+**Responsibilities:**
+- Run individual bots in sequence
+- Aggregate outputs into coherent run summary
+- Apply global prioritization for OPS Focus Feed
+- Provide entry point for `/api/ops/bots/run`
+
+**Implementation:**
+
+```typescript
+// backend/src/ops/bots/CoordinatorBot.ts
+
+export class CoordinatorBot implements OpsBot {
+  public readonly name = 'CoordinatorBot';
+
+  constructor(private readonly bots: OpsBot[]) {}
+
+  async run(context: BotExecutionContext & { botsToRun?: string[] }): Promise<BotRunResult> {
+    const startedAt = new Date();
+    const selectedBots = this.filterBots(context.botsToRun);
+
+    const results: BotRunResult[] = [];
+    const errors: string[] = [];
+
+    // Run bots sequentially
+    for (const bot of selectedBots) {
+      try {
+        const result = await bot.run({
+          ...context,
+          runId: `${context.runId}:${bot.name}`
+        });
+        results.push(result);
+      } catch (err: any) {
+        errors.push(`${bot.name}: ${String(err?.message || err)}`);
+      }
+    }
+
+    const completedAt = new Date();
+
+    // Generate executive summary
+    await this.generateExecutiveSummary(context, results, errors, startedAt, completedAt);
+
+    return {
+      botName: this.name,
+      runId: context.runId,
+      startedAt,
+      completedAt,
+      insightsCreated: results.reduce((sum, r) => sum + r.insightsCreated, 0),
+      alertsCreated: results.reduce((sum, r) => sum + r.alertsCreated, 0),
+      errors
+    };
+  }
+
+  private filterBots(botsToRun?: string[]): OpsBot[] {
+    if (!botsToRun || botsToRun.length === 0) return this.bots;
+    const set = new Set(botsToRun);
+    return this.bots.filter(b => set.has(b.name));
+  }
+
+  private async generateExecutiveSummary(
+    context: BotExecutionContext,
+    results: BotRunResult[],
+    errors: string[],
+    startedAt: Date,
+    completedAt: Date
+  ): Promise<void> {
+    // Get top insights from this run
+    const recentInsights = await prisma.opsInsight.findMany({
+      where: {
+        createdAt: { gte: startedAt, lte: completedAt }
+      },
+      orderBy: [{ priority: 'desc' }, { createdAt: 'desc' }],
+      take: 10
+    });
+
+    // Count key metrics
+    const highValueCount = recentInsights.filter(i =>
+      i.insightType === 'HIGH_VALUE_CASE'
+    ).length;
+    const deadlineCount = recentInsights.filter(i =>
+      i.insightType === 'DEADLINE_RISK' || i.insightType === 'FILING_RISK'
+    ).length;
+    const ingestionIssues = recentInsights.filter(i =>
+      i.insightType === 'INGESTION_HEALTH' || i.insightType === 'SOURCE_TREND'
+    ).length;
+
+    // Build summary text
+    const summaryParts: string[] = [];
+    if (highValueCount > 0) summaryParts.push(`${highValueCount} high-value cases identified`);
+    if (deadlineCount > 0) summaryParts.push(`${deadlineCount} deadline risks detected`);
+    if (ingestionIssues > 0) summaryParts.push(`${ingestionIssues} ingestion issues found`);
+    if (errors.length > 0) summaryParts.push(`${errors.length} bot errors occurred`);
+
+    const summary = summaryParts.length > 0
+      ? `In this cycle: ${summaryParts.join(', ')}.`
+      : 'Cycle completed with no critical issues.';
+
+    await prisma.opsInsight.create({
+      data: {
+        botSource: 'CoordinatorBot',
+        insightType: 'EXECUTIVE_SUMMARY',
+        priority: 10,
+        title: 'OPS Cycle Executive Summary',
+        summary,
+        data: {
+          runId: context.runId,
+          startedAt: startedAt.toISOString(),
+          completedAt: completedAt.toISOString(),
+          botsExecuted: results.map(r => r.botName),
+          totalInsights: results.reduce((sum, r) => sum + r.insightsCreated, 0),
+          totalAlerts: results.reduce((sum, r) => sum + r.alertsCreated, 0),
+          topInsights: recentInsights.map(i => ({
+            type: i.insightType,
+            priority: i.priority,
+            title: i.title
+          })),
+          errors
+        },
+        actionRequired: errors.length > 0 || highValueCount > 0 || deadlineCount > 0
+      }
+    });
+  }
+}
+
+// Bot registration
+export function createCoordinatorBot(): CoordinatorBot {
+  return new CoordinatorBot([
+    new IngestionBot(),
+    new PayoutBot(),
+    new ComplianceBot(),
+    new TrainingBot(),
+    new OutreachBot(),
+    new DocketBot()
+  ]);
+}
+```
+
+**Integration with OPS Routes:**
+
+| Route | Handler | Trigger |
+|-------|---------|---------|
+| POST /api/ops/bots/run | CoordinatorBot.run() | FOUNDER_MANUAL |
+| Scheduled (hourly) | CoordinatorBot.run() | SCHEDULE |
+| Watch cycle | CoordinatorBot.run({ botsToRun: ['IngestionBot'] }) | SYSTEM_EVENT |
+
 ---
 
 ## 7. FULL OPS ROUTES SPECIFICATION
