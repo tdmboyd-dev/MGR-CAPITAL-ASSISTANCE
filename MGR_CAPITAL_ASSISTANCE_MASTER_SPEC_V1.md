@@ -341,47 +341,64 @@ enum ScrapedItemReviewStatus {
   DUPLICATE
 }
 
+// Communication channel/medium types
 enum CommunicationType {
-  CALL
-  EMAIL
-  SMS
-  LETTER
-  PORTAL
-  INTERNAL_NOTE
+  CALL              // Phone call (inbound or outbound)
+  EMAIL             // Email communication
+  SMS               // Text message
+  LETTER            // Physical mailed letter
+  PORTAL_MESSAGE    // Message sent via client portal
+  INTERNAL_NOTE     // Internal staff-only note (not visible to clients)
 }
 
+// Deadline urgency levels - used by DocketBot and Watch System
 enum DeadlinePriority {
-  CRITICAL
-  HIGH
-  MEDIUM
-  LOW
+  CRITICAL     // Immediate risk; missed deadline may invalidate claim
+  HIGH         // Time-sensitive; requires prompt action
+  MEDIUM       // Standard operational deadline
+  LOW          // Administrative or non-urgent deadline
 }
 
+// Notification category types
 enum NotificationType {
-  EMAIL
-  SMS
-  INTERNAL
+  EMAIL        // External email notification
+  SMS          // Text message notification
+  INTERNAL     // Internal portal notification
 }
 
+// Notification delivery mechanism
 enum NotificationChannel {
-  SMTP
-  SMS_GATEWAY
-  PORTAL
+  SMTP          // Email sent via SMTP server (sovereign)
+  SMS_GATEWAY   // SMS sent via local SMS gateway (self-hosted)
+  PORTAL        // Internal portal notification (no external delivery)
 }
 
+// Notification delivery status with retry tracking
 enum NotificationStatus {
-  PENDING
-  SENT
-  FAILED
-  CANCELLED
+  PENDING      // Queued for delivery
+  SENT         // Successfully delivered
+  FAILED       // Delivery failed after max retries
+  CANCELLED    // Cancelled before delivery
 }
 
+// User session lifecycle states
 enum SessionStatus {
-  ACTIVE
-  EXPIRED
-  REVOKED
+  ACTIVE       // Session currently valid
+  EXPIRED      // Session expired naturally (24h inactivity)
+  REVOKED      // Session manually revoked by Founder/Admin
 }
 ```
+
+**Enum Usage Notes:**
+
+| Enum | Used By | OPS Integration |
+|------|---------|-----------------|
+| CommunicationType | Communication model, OutreachBot | Communication pattern analysis |
+| DeadlinePriority | Deadline model, DocketBot | CRITICAL auto-generates WatchAlerts |
+| NotificationType | NotificationLog, NotificationService | Delivery channel selection |
+| NotificationChannel | NotificationLog | Delivery mechanism tracking |
+| NotificationStatus | NotificationLog | Retry logic, failure alerts |
+| SessionStatus | UserSession | Security anomaly detection |
 
 ### 4.4 Additional Core Models
 
@@ -394,7 +411,7 @@ enum SessionStatus {
 | id | String (CUID) | Primary key |
 | caseId | String | FK to Case |
 | userId | String? | FK to User (employee who logged the comm) |
-| type | CommunicationType | CALL/EMAIL/SMS/LETTER/PORTAL/INTERNAL_NOTE |
+| type | CommunicationType | CALL/EMAIL/SMS/LETTER/PORTAL_MESSAGE/INTERNAL_NOTE |
 | direction | String | INBOUND or OUTBOUND |
 | subject | String? | Subject line (emails/letters) |
 | body | String? | Message body or call summary |
