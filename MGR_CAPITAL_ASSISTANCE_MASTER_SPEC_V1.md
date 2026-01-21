@@ -570,24 +570,150 @@ enum SessionStatus {
 - 3 consecutive errors trigger SOURCE_OFFLINE alert
 - FOUNDER can manually trigger checks via FounderConsole
 
-### 4.5 Updated Prisma Relations
+### 4.5 Prisma Relations (Complete)
+
+#### 4.5.1 Case → Communications (one-to-many)
+
+**Purpose:** Each case may have multiple communications logged by employees, clients, or automated systems.
+
+**Enables:**
+- Case timeline reconstruction
+- Compliance audits
+- OPS communication pattern analysis
+- Employee performance scoring
+- Client portal message retrieval
 
 ```prisma
 // Add to Case model
 model Case {
   // ... existing fields ...
-  communications Communication[]
-  deadlines      Deadline[]
+  communications Communication[]  // All communications associated with this case
 }
 
+// Add to Communication model
+model Communication {
+  // ... fields from 4.4 ...
+  case           Case              @relation(fields: [caseId], references: [id])
+}
+```
+
+**Query Notes:**
+- Communications ordered by `createdAt` descending in UI views
+- OPS layer uses this relation to detect communication gaps and anomalies
+- OutreachBot analyzes communication frequency per case
+
+#### 4.5.2 Case → Deadlines (one-to-many)
+
+**Purpose:** Each case may have multiple deadlines including filing deadlines, response deadlines, court dates, administrative deadlines, and internal operational deadlines.
+
+**Essential For:**
+- DocketBot deadline scanning
+- ComplianceBot compliance checks
+- OPS Watch System escalations
+- Founder Focus Feed priority items
+
+```prisma
+// Add to Case model
+model Case {
+  // ... existing fields ...
+  deadlines      Deadline[]        // All deadlines associated with this case
+}
+
+// Add to Deadline model
+model Deadline {
+  // ... fields from 4.4 ...
+  case           Case              @relation(fields: [caseId], references: [id])
+}
+```
+
+**Behavior Notes:**
+- Overdue deadlines automatically generate WatchAlerts
+- CRITICAL priority deadlines appear in Founder Focus Feed
+- DocketBot scans daily and creates OpsInsights for approaching deadlines
+- Employees see only deadlines for their assigned cases
+
+#### 4.5.3 User → Sessions (one-to-many)
+
+**Purpose:** Tracks all active and historical sessions for each user.
+
+**Used For:**
+- Security auditing and compliance
+- OPS anomaly detection (suspicious patterns)
+- Session revocation (FOUNDER/ADMIN)
+- Device/IP pattern analysis
+
+```prisma
 // Add to User model
 model User {
   // ... existing fields ...
-  communications Communication[]
-  sessions       UserSession[]
-  notifications  NotificationLog[]
+  sessions       UserSession[]     // All sessions created by this user
+}
+
+// Add to UserSession model
+model UserSession {
+  // ... fields from 4.4 ...
+  user           User              @relation(fields: [userId], references: [id])
 }
 ```
+
+**Security Notes:**
+- FOUNDER can revoke any session via FounderConsole
+- OPS layer detects suspicious patterns: multiple IPs, rapid logins, geographic anomalies
+- Sessions auto-expire after 24 hours of inactivity
+- Concurrent session count tracked per user
+
+#### 4.5.4 User → Communications (one-to-many)
+
+**Purpose:** Links employees to the communications they logged.
+
+```prisma
+// Add to User model
+model User {
+  // ... existing fields ...
+  communications Communication[]   // Communications logged by this user
+}
+
+// Communication model already has userId field
+```
+
+**Use Cases:**
+- Employee activity tracking
+- Performance metrics (communication volume)
+- Audit trail for compliance
+
+#### 4.5.5 User → NotificationLog (one-to-many)
+
+**Purpose:** Tracks all notifications sent to a user.
+
+```prisma
+// Add to User model
+model User {
+  // ... existing fields ...
+  notifications  NotificationLog[] // Notifications sent to this user
+}
+
+// NotificationLog model already has userId field
+```
+
+**Use Cases:**
+- Notification history for users
+- Delivery success/failure tracking
+- OPS monitoring of notification patterns
+
+#### 4.5.6 Complete Relation Summary
+
+| Parent | Child | Cardinality | Purpose |
+|--------|-------|-------------|---------|
+| Case | Communication | 1:N | Case timeline, audit trail |
+| Case | Deadline | 1:N | Filing/response tracking |
+| Case | Document | 1:N | Document vault |
+| Case | LedgerEntry | 1:N | Financial records |
+| User | Communication | 1:N | Employee activity |
+| User | UserSession | 1:N | Security/audit |
+| User | NotificationLog | 1:N | Notification history |
+| User | Case (assignedTo) | 1:N | Employee workload |
+| User | TrainingProgress | 1:N | Training tracking |
+| Client | Case | 1:N | Client cases |
 
 ---
 
