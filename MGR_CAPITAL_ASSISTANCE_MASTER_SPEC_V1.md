@@ -340,6 +340,236 @@ enum ScrapedItemReviewStatus {
   REJECTED
   DUPLICATE
 }
+
+enum CommunicationType {
+  CALL
+  EMAIL
+  SMS
+  LETTER
+  PORTAL
+  INTERNAL_NOTE
+}
+
+enum DeadlinePriority {
+  CRITICAL
+  HIGH
+  MEDIUM
+  LOW
+}
+
+enum NotificationType {
+  EMAIL
+  SMS
+  INTERNAL
+}
+
+enum NotificationChannel {
+  SMTP
+  SMS_GATEWAY
+  PORTAL
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  FAILED
+  CANCELLED
+}
+
+enum SessionStatus {
+  ACTIVE
+  EXPIRED
+  REVOKED
+}
+```
+
+### 4.4 Additional Core Models
+
+#### Communication
+
+**Purpose:** Represents all inbound and outbound communications related to a case. Includes phone calls, emails, SMS, mailed letters, portal messages, and internal notes. Supports auditability, compliance review, and OPS-layer analysis.
+
+| Field | Type | Purpose |
+|-------|------|---------|
+| id | String (CUID) | Primary key |
+| caseId | String | FK to Case |
+| userId | String? | FK to User (employee who logged the comm) |
+| type | CommunicationType | CALL/EMAIL/SMS/LETTER/PORTAL/INTERNAL_NOTE |
+| direction | String | INBOUND or OUTBOUND |
+| subject | String? | Subject line (emails/letters) |
+| body | String? | Message body or call summary |
+| metadata | Json? | Channel-specific metadata |
+| createdAt | DateTime | Timestamp of communication |
+| updatedAt | DateTime | Last modification timestamp |
+
+**Relations:**
+- `case` → Case (many-to-one)
+- `user` → User (many-to-one)
+
+**Access Rules:**
+- FOUNDER, ADMIN, COMPLIANCE: All communications visible
+- EMPLOYEE: Only communications related to assigned cases
+- CLIENT: Only communications directed to them
+
+#### Deadline
+
+**Purpose:** Tracks all legal, administrative, and operational deadlines associated with a case. Used heavily by DocketBot, ComplianceBot, and the OPS Watch System.
+
+| Field | Type | Purpose |
+|-------|------|---------|
+| id | String (CUID) | Primary key |
+| caseId | String | FK to Case |
+| title | String | Short description of the deadline |
+| description | String? | Detailed explanation |
+| dueDate | DateTime | Deadline date (UTC) |
+| priority | DeadlinePriority | CRITICAL/HIGH/MEDIUM/LOW |
+| status | String | PENDING/COMPLETED/OVERDUE |
+| completedAt | DateTime? | When completed |
+| createdAt | DateTime | Creation timestamp |
+| updatedAt | DateTime | Last modification timestamp |
+
+**Relations:**
+- `case` → Case (many-to-one)
+
+**Behavior:**
+- Overdue deadlines automatically trigger WatchAlerts
+- DocketBot scans for approaching deadlines daily
+- FOUNDER sees all deadlines; employees see only their assigned case deadlines
+
+#### UserSession
+
+**Purpose:** Tracks authenticated user sessions for security, auditing, and OPS-layer anomaly detection.
+
+| Field | Type | Purpose |
+|-------|------|---------|
+| id | String (CUID) | Primary key |
+| userId | String | FK to User |
+| token | String | JWT token hash (for revocation) |
+| ipAddress | String? | IP address used for login |
+| userAgent | String? | Browser/device info |
+| status | SessionStatus | ACTIVE/EXPIRED/REVOKED |
+| createdAt | DateTime | Session creation timestamp |
+| expiresAt | DateTime | Session expiration timestamp |
+| revokedAt | DateTime? | When session was revoked |
+
+**Relations:**
+- `user` → User (many-to-one)
+
+**Security:**
+- OPS layer uses session patterns to detect suspicious activity
+- Multiple concurrent sessions flagged for review
+- FOUNDER can revoke any session
+- Sessions auto-expire after 24 hours of inactivity
+
+#### NotificationLog
+
+**Purpose:** Stores all notifications sent by the system across all channels. Supports auditing, retries, and OPS-layer monitoring.
+
+| Field | Type | Purpose |
+|-------|------|---------|
+| id | String (CUID) | Primary key |
+| userId | String? | FK to User (recipient) |
+| type | NotificationType | EMAIL/SMS/INTERNAL |
+| channel | NotificationChannel | SMTP/SMS_GATEWAY/PORTAL |
+| recipient | String | Email address or phone number |
+| subject | String? | Notification subject |
+| body | String | Notification body (HTML or text) |
+| bodyPreview | String? | Plain text preview (first 200 chars) |
+| templateId | String? | Template used for generation |
+| status | NotificationStatus | PENDING/SENT/FAILED/CANCELLED |
+| error | String? | Error message if failed |
+| attempts | Int | Number of send attempts (max 3) |
+| relatedCaseId | String? | FK to Case |
+| relatedUserId | String? | FK to User (if different from recipient) |
+| createdAt | DateTime | Creation timestamp |
+| sentAt | DateTime? | When successfully sent |
+| metadata | Json? | Additional delivery metadata |
+
+**Relations:**
+- `user` → User (many-to-one)
+- `case` → Case (many-to-one)
+
+**Retry Logic:**
+- Failed notifications retry up to 3 times with exponential backoff
+- After 3 failures, status set to FAILED and alert generated
+
+#### IngestionBatch
+
+**Purpose:** Represents a batch of ingested data (CSV, PDF, scrape results). Used by IngestionBot, ScraperService, and OPS metrics.
+
+| Field | Type | Purpose |
+|-------|------|---------|
+| id | String (CUID) | Primary key |
+| sourceId | String | Source identifier (scraper config ID or upload source) |
+| sourceName | String | Human-readable source name |
+| sourceType | String | CSV/PDF/SCRAPE/MANUAL |
+| fileName | String? | Original filename (for uploads) |
+| state | String? | State code if applicable |
+| county | String? | County name if applicable |
+| status | String | PENDING/PROCESSING/COMPLETED/PARTIAL/FAILED |
+| totalRecords | Int | Total records in batch |
+| successCount | Int | Records successfully processed |
+| failureCount | Int | Records that failed processing |
+| duplicateCount | Int | Duplicate records detected |
+| highValueCount | Int | High-value records flagged |
+| errors | Json? | Array of error details |
+| sampleRecord | Json? | Sample of first record (for pattern detection) |
+| startedAt | DateTime | Processing start timestamp |
+| completedAt | DateTime? | Processing completion timestamp |
+| createdAt | DateTime | Batch creation timestamp |
+
+**Metrics:**
+- IngestionBot analyzes batch patterns for anomalies
+- High failure rates trigger WatchAlerts
+- Source health calculated from batch success rates
+
+#### WatchTarget
+
+**Purpose:** Defines external sources monitored by the Watch System (county sites, rule pages, surplus lists).
+
+| Field | Type | Purpose |
+|-------|------|---------|
+| id | String (CUID) | Primary key |
+| name | String | Human-readable target name |
+| state | String | US state code |
+| county | String? | County name (optional) |
+| url | String | Target URL to monitor |
+| targetType | String | TAX_SALE/SURPLUS/RULES/DEADLINES/FORMS |
+| checkFrequency | String | DAILY/WEEKLY/MONTHLY |
+| isActive | Boolean | Whether monitoring is enabled |
+| contentHash | String? | SHA-256 hash of last content |
+| lastCheckedAt | DateTime? | Last successful check timestamp |
+| lastChangedAt | DateTime? | Last detected change timestamp |
+| lastStatus | String? | OK/ERROR/CHANGED/UNREACHABLE |
+| errorCount | Int | Consecutive error count |
+| notes | String? | Additional metadata or instructions |
+| selectors | Json? | CSS selectors for content extraction |
+| createdAt | DateTime | Creation timestamp |
+| updatedAt | DateTime | Last modification timestamp |
+
+**Watch Behavior:**
+- Content hash compared on each check to detect changes
+- Changes trigger RULE_CHANGE alerts
+- 3 consecutive errors trigger SOURCE_OFFLINE alert
+- FOUNDER can manually trigger checks via FounderConsole
+
+### 4.5 Updated Prisma Relations
+
+```prisma
+// Add to Case model
+model Case {
+  // ... existing fields ...
+  communications Communication[]
+  deadlines      Deadline[]
+}
+
+// Add to User model
+model User {
+  // ... existing fields ...
+  communications Communication[]
+  sessions       UserSession[]
+  notifications  NotificationLog[]
+}
 ```
 
 ---
