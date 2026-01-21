@@ -8,6 +8,9 @@ import AdminBanking from "./routes/AdminBanking";
 import AdminTraining from "./routes/AdminTraining";
 import AdminIngestion from "./routes/AdminIngestion";
 import AdminSettings from "./routes/AdminSettings";
+import FounderConsole from "./routes/FounderConsole";
+import HRPanel from "./routes/HRPanel";
+import CompliancePanel from "./routes/CompliancePanel";
 import EmployeeOffice from "./routes/EmployeeOffice";
 import EmployeeTraining from "./routes/EmployeeTraining";
 import ClientPortal from "./routes/ClientPortal";
@@ -82,6 +85,27 @@ function App() {
       <Route path="/admin/settings" element={
         <ProtectedRoute allowedRoles={["ADMIN"]}>
           <AdminSettings />
+        </ProtectedRoute>
+      } />
+
+      {/* Founder OPS Console - FOUNDER ONLY */}
+      <Route path="/admin/ops" element={
+        <ProtectedRoute allowedRoles={["FOUNDER"]}>
+          <FounderConsole />
+        </ProtectedRoute>
+      } />
+
+      {/* HR Panel - HR_ACCESS roles */}
+      <Route path="/admin/hr" element={
+        <ProtectedRoute allowedRoles={["ADMIN", "HR"]}>
+          <HRPanel />
+        </ProtectedRoute>
+      } />
+
+      {/* Compliance Panel - COMPLIANCE_ACCESS roles */}
+      <Route path="/admin/compliance" element={
+        <ProtectedRoute allowedRoles={["ADMIN", "COMPLIANCE"]}>
+          <CompliancePanel />
         </ProtectedRoute>
       } />
 

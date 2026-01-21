@@ -1,9 +1,11 @@
 // ============================================
 // TRAINING AI SERVICE — MGR CAPITAL ASSISTANCE
 // Production-ready employee training system
+// Per-role/tier module assignment
+// Video blueprint generation
 // ============================================
 
-import { PrismaClient, EmployeeTier, TrainingModuleStatus } from "@prisma/client";
+import { PrismaClient, EmployeeTier, TrainingModuleStatus, UserRole } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
@@ -942,6 +944,633 @@ export class TrainingService {
       data: { trainingCompleted: false }
     });
   }
+
+  // ============================================
+  // ROLE-SPECIFIC MODULES
+  // ============================================
+
+  /**
+   * Get modules required for a specific role
+   */
+  getModulesForRole(role: UserRole): TrainingModuleData[] {
+    // All roles get core modules
+    const modules = [...TRAINING_MODULES];
+
+    // Add role-specific modules
+    switch (role) {
+      case "HR":
+        modules.push(...HR_MODULES);
+        break;
+      case "COMPLIANCE":
+        modules.push(...COMPLIANCE_MODULES);
+        break;
+      case "TEAM_LEAD":
+        modules.push(...TEAM_LEAD_MODULES);
+        break;
+    }
+
+    return modules.sort((a, b) => a.orderIndex - b.orderIndex);
+  }
+
+  /**
+   * Get modules for employee tier
+   */
+  getModulesForTier(tier: EmployeeTier): TrainingModuleData[] {
+    const tierModules = TIER_SPECIFIC_MODULES[tier] || [];
+    return [...TRAINING_MODULES, ...tierModules].sort((a, b) => a.orderIndex - b.orderIndex);
+  }
+
+  /**
+   * Assign all appropriate modules to user based on role and tier
+   */
+  async assignModulesToUser(userId: string): Promise<void> {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { role: true, employeeTier: true }
+    });
+
+    if (!user) return;
+
+    // Get role modules
+    const roleModules = this.getModulesForRole(user.role);
+
+    // Get tier modules if employee
+    let allModules = roleModules;
+    if (user.employeeTier) {
+      const tierModules = TIER_SPECIFIC_MODULES[user.employeeTier] || [];
+      allModules = [...roleModules, ...tierModules];
+    }
+
+    // Create progress records
+    for (const module of allModules) {
+      const existing = await prisma.employeeTrainingProgress.findFirst({
+        where: {
+          employeeId: userId,
+          module: { title: module.title }
+        }
+      });
+
+      if (!existing) {
+        // Check prerequisites
+        let status: TrainingModuleStatus = "AVAILABLE";
+        if (module.prerequisites.length > 0) {
+          const completedPrereqs = await prisma.employeeTrainingProgress.count({
+            where: {
+              employeeId: userId,
+              module: { title: { in: module.prerequisites.map(p => {
+                const prereqMod = allModules.find(m => m.id === p);
+                return prereqMod?.title || "";
+              }) } },
+              status: "COMPLETED"
+            }
+          });
+          if (completedPrereqs < module.prerequisites.length) {
+            status = "LOCKED";
+          }
+        }
+
+        // Find or create the module in DB
+        let dbModule = await prisma.trainingModule.findFirst({
+          where: { title: module.title }
+        });
+
+        if (!dbModule) {
+          dbModule = await prisma.trainingModule.create({
+            data: {
+              title: module.title,
+              description: module.description,
+              content: module.content,
+              orderIndex: module.orderIndex,
+              requiredForTier: module.requiredForTier,
+              prerequisites: [],
+              hasQuiz: module.hasQuiz,
+              passingScore: module.passingScore
+            }
+          });
+
+          // Create questions
+          for (let i = 0; i < module.questions.length; i++) {
+            const q = module.questions[i];
+            await prisma.trainingQuestion.create({
+              data: {
+                moduleId: dbModule.id,
+                question: q.question,
+                options: q.options,
+                correctAnswer: q.correctAnswer,
+                explanation: q.explanation,
+                orderIndex: i + 1
+              }
+            });
+          }
+        }
+
+        await prisma.employeeTrainingProgress.create({
+          data: {
+            employeeId: userId,
+            moduleId: dbModule.id,
+            status,
+            progress: 0
+          }
+        });
+      }
+    }
+  }
+
+  // ============================================
+  // VIDEO BLUEPRINT GENERATION
+  // ============================================
+
+  /**
+   * Generate video blueprint for a module
+   */
+  generateVideoBlueprint(moduleId: string): VideoBlueprintResult | null {
+    const module = this.getModule(moduleId);
+    if (!module) return null;
+
+    const sections = this.generateVideoSections(module);
+    const totalDuration = sections.reduce((sum, s) => sum + s.duration, 0);
+
+    return {
+      moduleId: module.id,
+      title: module.title,
+      totalDuration,
+      sections,
+      productionNotes: this.generateProductionNotes(module),
+      equipmentNeeded: ["Camera", "Microphone", "Lighting kit", "Teleprompter/script display"],
+      estimatedProductionTime: `${Math.ceil(totalDuration / 60 / 10)} hours`
+    };
+  }
+
+  private generateVideoSections(module: TrainingModuleData): VideoSection[] {
+    return [
+      {
+        sectionNumber: 1,
+        title: "Introduction",
+        duration: 90,
+        script: `Welcome to ${module.title}. ${module.description} By the end of this video, you'll have a clear understanding of how to apply this in your daily work.`,
+        onScreenText: [module.title, "Learning Objectives"],
+        bRollSuggestions: ["Office establishing shot", "Employee working"],
+        keyTakeaways: ["Module overview", "Why this matters"]
+      },
+      {
+        sectionNumber: 2,
+        title: "Core Concepts",
+        duration: 300,
+        script: this.extractCoreScript(module.content),
+        onScreenText: this.extractBulletPoints(module.content),
+        bRollSuggestions: ["Screen recordings", "Diagrams", "Example scenarios"],
+        keyTakeaways: ["Main principles", "Key rules"]
+      },
+      {
+        sectionNumber: 3,
+        title: "Practical Examples",
+        duration: 240,
+        script: "Let's see how this works in practice with some real scenarios you might encounter...",
+        onScreenText: ["Example 1", "Example 2", "Common Situations"],
+        bRollSuggestions: ["Role-play demonstrations", "Screen walkthrough"],
+        keyTakeaways: ["How to apply", "What to avoid"]
+      },
+      {
+        sectionNumber: 4,
+        title: "Summary & Next Steps",
+        duration: 90,
+        script: `To recap what we covered in ${module.title}: ${this.generateRecap(module)}. ${module.hasQuiz ? "Now, complete the quiz to test your understanding. You need " + module.passingScore + "% to pass." : "Apply what you've learned, and move on to the next module."}`,
+        onScreenText: ["Key Takeaways", "Next Steps", module.hasQuiz ? `Quiz: ${module.passingScore}% to pass` : ""],
+        bRollSuggestions: ["Summary graphics", "Call-to-action screen"],
+        keyTakeaways: ["Review main points", "Clear next action"]
+      }
+    ];
+  }
+
+  private extractCoreScript(content: string): string {
+    // Extract key paragraphs for script
+    const lines = content.split('\n').filter(l => l.trim() && !l.startsWith('#'));
+    return lines.slice(0, 10).join(' ').substring(0, 500) + "...";
+  }
+
+  private extractBulletPoints(content: string): string[] {
+    const bullets = content.match(/^- .+$/gm) || [];
+    return bullets.slice(0, 5).map(b => b.replace('- ', ''));
+  }
+
+  private generateRecap(module: TrainingModuleData): string {
+    return `remember the key principles we discussed and apply them consistently`;
+  }
+
+  private generateProductionNotes(module: TrainingModuleData): string[] {
+    const notes = [
+      "Use conversational, friendly tone throughout",
+      "Include lower-third graphics with key terms",
+      "Add chapter markers for easy navigation",
+      "Include closed captions for accessibility"
+    ];
+
+    if (module.hasQuiz) {
+      notes.push("End with clear quiz call-to-action");
+    }
+
+    if (module.title.includes("Compliance")) {
+      notes.push("Extra emphasis on compliance points - use warning graphics");
+    }
+
+    return notes;
+  }
+
+  // ============================================
+  // MODULE DETAILS (AI-Ready Content)
+  // ============================================
+
+  /**
+   * Save generated module details to database
+   */
+  async saveModuleDetails(moduleId: string): Promise<void> {
+    const module = this.getModule(moduleId);
+    if (!module) return;
+
+    const blueprint = this.generateVideoBlueprint(moduleId);
+    if (!blueprint) return;
+
+    // Find DB module
+    const dbModule = await prisma.trainingModule.findFirst({
+      where: { title: module.title }
+    });
+
+    if (!dbModule) return;
+
+    await prisma.trainingModuleDetail.upsert({
+      where: { moduleId: dbModule.id },
+      create: {
+        moduleId: dbModule.id,
+        outline: { sections: blueprint.sections.map(s => s.title) },
+        scripts: { sections: blueprint.sections },
+        keyPoints: this.extractBulletPoints(module.content),
+        sceneBreakdown: blueprint.sections,
+        onScreenText: blueprint.sections.flatMap(s => s.onScreenText),
+        bRollSuggestions: blueprint.sections.flatMap(s => s.bRollSuggestions),
+        assessmentQuestions: module.questions,
+        generatedAt: new Date(),
+        generatedBy: "system"
+      },
+      update: {
+        scripts: { sections: blueprint.sections },
+        generatedAt: new Date()
+      }
+    });
+  }
+
+  /**
+   * Get training analytics dashboard
+   */
+  async getAnalyticsDashboard(): Promise<TrainingAnalytics> {
+    const [employees, modules] = await Promise.all([
+      prisma.user.findMany({
+        where: { role: "EMPLOYEE", isActive: true },
+        include: {
+          trainingProgress: {
+            include: { module: true }
+          }
+        }
+      }),
+      prisma.trainingModule.findMany({ where: { isActive: true } })
+    ]);
+
+    // Calculate metrics
+    let totalCompletion = 0;
+    let totalPossible = 0;
+    const tierStats: Record<string, { count: number; completed: number; scores: number[] }> = {};
+    const moduleStats: Record<string, { completed: number; total: number; scores: number[] }> = {};
+
+    for (const emp of employees) {
+      const tier = emp.employeeTier || "UNKNOWN";
+      if (!tierStats[tier]) {
+        tierStats[tier] = { count: 0, completed: 0, scores: [] };
+      }
+      tierStats[tier].count++;
+
+      for (const progress of emp.trainingProgress) {
+        totalPossible++;
+        if (progress.status === "COMPLETED") {
+          totalCompletion++;
+          tierStats[tier].completed++;
+        }
+        if (progress.bestScore) {
+          tierStats[tier].scores.push(progress.bestScore);
+        }
+
+        // Module stats
+        const modId = progress.moduleId;
+        if (!moduleStats[modId]) {
+          moduleStats[modId] = { completed: 0, total: 0, scores: [] };
+        }
+        moduleStats[modId].total++;
+        if (progress.status === "COMPLETED") {
+          moduleStats[modId].completed++;
+        }
+        if (progress.bestScore) {
+          moduleStats[modId].scores.push(progress.bestScore);
+        }
+      }
+    }
+
+    return {
+      totalEmployees: employees.length,
+      totalModules: modules.length,
+      overallCompletionRate: totalPossible > 0 ? Math.round((totalCompletion / totalPossible) * 100) : 0,
+      byTier: Object.entries(tierStats).map(([tier, stats]) => ({
+        tier: tier as EmployeeTier,
+        employeeCount: stats.count,
+        avgCompletion: stats.count > 0 ? Math.round((stats.completed / (stats.count * modules.length)) * 100) : 0,
+        avgQuizScore: stats.scores.length > 0 ? Math.round(stats.scores.reduce((a, b) => a + b, 0) / stats.scores.length) : 0
+      })),
+      byModule: modules.map(m => {
+        const stats = moduleStats[m.id] || { completed: 0, total: 0, scores: [] };
+        return {
+          moduleId: m.id,
+          title: m.title,
+          completionRate: stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0,
+          avgScore: stats.scores.length > 0 ? Math.round(stats.scores.reduce((a, b) => a + b, 0) / stats.scores.length) : 0
+        };
+      }),
+      topPerformers: employees
+        .filter(e => e.trainingProgress.some(p => p.status === "COMPLETED"))
+        .map(e => {
+          const scores = e.trainingProgress.filter(p => p.bestScore).map(p => p.bestScore!);
+          return {
+            employeeId: e.id,
+            name: e.name,
+            tier: e.employeeTier!,
+            completionRate: Math.round((e.trainingProgress.filter(p => p.status === "COMPLETED").length / modules.length) * 100),
+            avgScore: scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0
+          };
+        })
+        .sort((a, b) => b.avgScore - a.avgScore)
+        .slice(0, 10),
+      needsAttention: employees
+        .filter(e => {
+          const incomplete = e.trainingProgress.filter(p => p.status !== "COMPLETED").length;
+          return incomplete > modules.length / 2;
+        })
+        .map(e => ({
+          employeeId: e.id,
+          name: e.name,
+          tier: e.employeeTier!,
+          incompleteModules: e.trainingProgress.filter(p => p.status !== "COMPLETED").length,
+          issue: "Low training completion"
+        }))
+        .slice(0, 10)
+    };
+  }
+}
+
+// ============================================
+// ROLE-SPECIFIC MODULES
+// ============================================
+
+const HR_MODULES: TrainingModuleData[] = [
+  {
+    id: "mod-hr-001",
+    title: "HR Portal Overview",
+    description: "Complete guide to HR management features and employee oversight.",
+    orderIndex: 100,
+    requiredForTier: null,
+    prerequisites: ["mod-001"],
+    hasQuiz: true,
+    passingScore: 85,
+    content: `
+# HR Portal Overview
+
+## Your Role as HR
+
+As an HR team member, you have access to employee management tools that help maintain a productive, compliant workforce.
+
+## Key Responsibilities
+
+1. **Employee Onboarding** - Process new contractor applications
+2. **Performance Monitoring** - Track employee metrics and identify issues
+3. **Training Management** - Ensure compliance with training requirements
+4. **Issue Resolution** - Handle employee concerns and disputes
+
+## The HR Dashboard
+
+Your dashboard shows:
+- Total active employees
+- Onboarding queue
+- Training compliance rates
+- Performance alerts
+
+## Confidentiality
+
+HR data is sensitive. Never share employee information outside of official channels.
+    `,
+    questions: [
+      {
+        question: "What is a key responsibility of HR at MGR?",
+        options: ["Legal filings", "Employee onboarding and performance monitoring", "Client communication", "Financial processing"],
+        correctAnswer: 1,
+        explanation: "HR handles employee onboarding, performance monitoring, training management, and issue resolution."
+      }
+    ]
+  }
+];
+
+const COMPLIANCE_MODULES: TrainingModuleData[] = [
+  {
+    id: "mod-comp-001",
+    title: "Compliance Dashboard Overview",
+    description: "Understanding compliance monitoring tools and audit requirements.",
+    orderIndex: 100,
+    requiredForTier: null,
+    prerequisites: ["mod-001"],
+    hasQuiz: true,
+    passingScore: 90,
+    content: `
+# Compliance Dashboard Overview
+
+## Your Role in Compliance
+
+Compliance officers ensure all operations meet legal and ethical standards.
+
+## Key Areas
+
+1. **Communication Compliance** - Monitor employee-client interactions
+2. **Document Compliance** - Verify proper documentation
+3. **Process Compliance** - Ensure procedures are followed
+4. **Audit Trail** - Maintain complete records
+
+## Red Flags
+
+Watch for:
+- Promises of specific amounts
+- Pressure tactics
+- Missing documentation
+- Skipped process steps
+
+## Reporting
+
+All compliance issues must be documented and escalated appropriately.
+    `,
+    questions: [
+      {
+        question: "What should you watch for in employee communications?",
+        options: ["Friendly tone", "Promises of specific amounts and pressure tactics", "Quick responses", "Use of scripts"],
+        correctAnswer: 1,
+        explanation: "Compliance monitors for promises of specific amounts, pressure tactics, and other policy violations."
+      }
+    ]
+  }
+];
+
+const TEAM_LEAD_MODULES: TrainingModuleData[] = [
+  {
+    id: "mod-tl-001",
+    title: "Team Leadership Excellence",
+    description: "Leading and developing high-performing teams.",
+    orderIndex: 100,
+    requiredForTier: null,
+    prerequisites: ["mod-004"],
+    hasQuiz: true,
+    passingScore: 85,
+    content: `
+# Team Leadership Excellence
+
+## Leading at MGR
+
+As a Team Lead, you're responsible for your team's success.
+
+## Key Responsibilities
+
+1. **Coaching** - Help team members improve
+2. **Monitoring** - Track team performance
+3. **Support** - Remove obstacles for your team
+4. **Escalation** - Handle difficult situations
+
+## Daily Leadership Tasks
+
+- Review team metrics each morning
+- Check in with struggling team members
+- Recognize top performers
+- Address issues promptly
+
+## Building a Great Team
+
+- Set clear expectations
+- Provide regular feedback
+- Celebrate wins
+- Learn from failures together
+    `,
+    questions: [
+      {
+        question: "What is a key daily task for team leaders?",
+        options: ["Filing documents", "Reviewing team metrics and checking in with members", "Making client calls", "Processing payments"],
+        correctAnswer: 1,
+        explanation: "Team leaders should review metrics daily and check in with team members to ensure success."
+      }
+    ]
+  }
+];
+
+const TIER_SPECIFIC_MODULES: Record<EmployeeTier, TrainingModuleData[]> = {
+  TIER_1_ASSOCIATE: [],
+  TIER_2_SPECIALIST: [
+    {
+      id: "mod-t2-001",
+      title: "Specialist Advanced Techniques",
+      description: "Advanced case handling for Tier 2 Specialists.",
+      orderIndex: 50,
+      requiredForTier: "TIER_2_SPECIALIST",
+      prerequisites: ["mod-004"],
+      hasQuiz: true,
+      passingScore: 85,
+      content: `# Specialist Advanced Techniques\n\nAs a Tier 2 Specialist, you handle more complex cases...`,
+      questions: [
+        {
+          question: "What distinguishes Tier 2 work?",
+          options: ["Same as Tier 1", "More complex case handling", "No client contact", "Only administrative work"],
+          correctAnswer: 1,
+          explanation: "Tier 2 Specialists handle more complex cases requiring advanced skills."
+        }
+      ]
+    }
+  ],
+  TIER_3_SENIOR_SPECIALIST: [
+    {
+      id: "mod-t3-001",
+      title: "Senior Case Management",
+      description: "Managing complex and high-value cases.",
+      orderIndex: 60,
+      requiredForTier: "TIER_3_SENIOR_SPECIALIST",
+      prerequisites: ["mod-004"],
+      hasQuiz: true,
+      passingScore: 85,
+      content: `# Senior Case Management\n\nSenior Specialists handle the most complex cases...`,
+      questions: [
+        {
+          question: "What types of cases do Senior Specialists handle?",
+          options: ["Simple cases only", "Complex and high-value cases", "No cases", "Only new cases"],
+          correctAnswer: 1,
+          explanation: "Senior Specialists handle complex and high-value cases."
+        }
+      ]
+    }
+  ],
+  TIER_4_TEAM_LEADER: [],
+  TIER_5_EXECUTIVE_PARTNER: []
+};
+
+// ============================================
+// TYPES
+// ============================================
+
+interface VideoSection {
+  sectionNumber: number;
+  title: string;
+  duration: number;
+  script: string;
+  onScreenText: string[];
+  bRollSuggestions: string[];
+  keyTakeaways: string[];
+}
+
+interface VideoBlueprintResult {
+  moduleId: string;
+  title: string;
+  totalDuration: number;
+  sections: VideoSection[];
+  productionNotes: string[];
+  equipmentNeeded: string[];
+  estimatedProductionTime: string;
+}
+
+interface TrainingAnalytics {
+  totalEmployees: number;
+  totalModules: number;
+  overallCompletionRate: number;
+  byTier: Array<{
+    tier: EmployeeTier;
+    employeeCount: number;
+    avgCompletion: number;
+    avgQuizScore: number;
+  }>;
+  byModule: Array<{
+    moduleId: string;
+    title: string;
+    completionRate: number;
+    avgScore: number;
+  }>;
+  topPerformers: Array<{
+    employeeId: string;
+    name: string;
+    tier: EmployeeTier;
+    completionRate: number;
+    avgScore: number;
+  }>;
+  needsAttention: Array<{
+    employeeId: string;
+    name: string;
+    tier: EmployeeTier;
+    incompleteModules: number;
+    issue: string;
+  }>;
 }
 
 export const trainingService = new TrainingService();

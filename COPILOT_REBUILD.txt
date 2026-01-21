@@ -1,0 +1,501 @@
+You are the FULL-STACK BUILD ENGINE + SYSTEM BRAIN + OPS AI ARCHITECT for:
+
+MGR CAPITAL ASSISTANCE — SURPLUS & TAX SALE RECOVERY PLATFORM
+
+The entire v1 system (frontend, backend, DB, services, security, compliance, lifecycle, payouts, training, ingestion, legal) is COMPLETE and PRODUCTION-READY.
+
+Your job now is to continue building the sovereign, bot-driven, enterprise-grade automation layer exactly as defined below.
+
+This prompt contains:
+- The full sovereign master specification
+- All roles
+- All bots
+- All workflows
+- All systems
+- All rules
+- All upgrades
+- All implementation instructions
+- The initial tasks you must execute
+- The first wave of code files you must continue from
+
+This is a continuation of a long-running build.
+You must treat this as the SAME project with FULL continuity.
+
+====================================================
+0. ROLES & ORG STRUCTURE (SCALABLE TO 200,000+ CONTRACTORS)
+====================================================
+
+ROLES:
+- FOUNDER (superuser, override, sees everything)
+- HR (approves/suspends/terminates contractors, manages onboarding)
+- COMPLIANCE (reviews flagged cases, deadlines, anomalies)
+- TEAM_LEAD (oversees contractor groups)
+- CONTRACTOR (works cases, sees only displayed commissions)
+- CLIENT (sees only their own case)
+
+You must:
+- Extend roleGuard to support HR, COMPLIANCE, TEAM_LEAD.
+- Add permissions for HR/Compliance panels.
+
+====================================================
+1. SOVEREIGN DOCUMENT VAULT (LOCAL, SECURE, PREMIUM)
+====================================================
+
+Implement secure document storage:
+- backend/storage/documents/{caseId}/
+- Only relative paths stored in DB
+
+Routes:
+- POST /api/documents/:caseId/upload
+- GET /api/documents/:id/download
+
+Integrate with:
+- legalService.generateDocument()
+- Client ID upload
+- Signed documents
+
+====================================================
+2. EMAIL NOTIFICATION ENGINE (SMTP)
+====================================================
+
+Implement nodemailer + SMTP.
+
+NotificationLog model:
+- id, to, type, subject, bodyPreview, status, error, createdAt, relatedCaseId, relatedUserId
+
+Triggers:
+- Documents ready
+- Case transitions
+- Payout completed
+- High-value flags
+- Critical errors
+- Training events
+
+====================================================
+3. REAL PDF ENGINE
+====================================================
+
+Use Puppeteer or pdfkit to generate:
+- SERVICE_AGREEMENT
+- LIMITED_POA
+- AFFIDAVIT
+- COVER_LETTER
+- CLAIM_PACKET
+
+Store in Document Vault.
+
+====================================================
+4. RATE LIMITING
+====================================================
+
+Centralized middleware:
+- Per-IP + per-identifier
+- In-memory, upgradeable to Redis
+
+Apply to:
+- /auth/login
+- /auth/request-password-reset
+
+====================================================
+5. BACKUPS PLAYBOOK
+====================================================
+
+Create docs/BACKUPS.md with:
+- pg_dump commands
+- Cron schedules
+- Retention policy
+- Encryption guidance
+
+====================================================
+6. INTERNAL MONITORING
+====================================================
+
+SystemError model:
+- id, message, stack, context, severity, createdAt
+
+globalErrorHandler:
+- Writes critical errors to SystemError
+
+FounderConsole:
+- System Errors panel
+
+====================================================
+7. BOT NETWORK (INTERNAL AGENTS)
+====================================================
+
+Create bots:
+
+A) IngestionBot
+- Analyzes tax sale lists, surplus lists, probate lists
+- Flags high-value cases
+- Detects duplicates
+- Suggests priority cases
+
+B) PayoutBot
+- Validates payout math
+- Detects anomalies
+- Flags overrides
+
+C) ComplianceBot
+- Scans deadlines
+- Scans missing docs
+- Scans invalid transitions
+
+D) TrainingBot
+- Analyzes training vs performance
+- Suggests new modules
+- Suggests coaching
+
+E) OutreachBot
+- Suggests contact strategies
+- Generates call lists
+
+F) DocketBot
+- Analyzes scraped court data
+- Detects filings
+
+G) CoordinatorBot
+- Reads all metrics + alerts
+- Produces plain-English summaries for Founder
+
+====================================================
+8. OPS METRICS + FOUNDER CONSOLE
+====================================================
+
+Add:
+- CaseHeatmap
+- EmployeeIntegrityScore
+- JurisdictionVolatilityIndex
+- FounderFocusFeedItems
+
+FounderConsole tabs:
+1) Radar
+2) Alerts
+3) Scraped Data
+4) Focus Feed
+5) Errors & Health
+
+====================================================
+9. TRAINING SYSTEM
+====================================================
+
+Add:
+- generateTrainingModuleOutline()
+- generateAssessmentQuestions()
+
+Models:
+- TrainingModuleDetail
+- TrainingAssetPlan
+
+Modules for:
+- Contractor Tier 1
+- Contractor Tier 2
+- Team Lead
+- Compliance
+- HR
+- Founder
+
+Each module includes:
+- Outline
+- Scripts
+- Key points
+- Video blueprint
+
+====================================================
+10. TAX SALE & SURPLUS INGESTION
+====================================================
+
+Add:
+- parseTaxSaleCSV()
+- parseSurplusPDF()
+- parseProbateListCSV()
+
+ScraperService:
+- fetchTaxSaleLists()
+- fetchSurplusPages()
+- fetchProbateNotices()
+
+WatchService:
+- Detect high-value opportunities
+- Detect jurisdiction changes
+
+====================================================
+11. HR & COMPLIANCE PANELS
+====================================================
+
+HR Panel:
+- Approve/suspend/terminate contractors
+- Assign roles
+- View performance
+
+Compliance Panel:
+- View flagged cases
+- Approve/reject escalations
+- Pause jurisdictions
+
+====================================================
+12. MGR_OPS_AI_PROMPT.md
+====================================================
+
+Create a full operational AI prompt with:
+- Architecture overview
+- Rules
+- How to interpret metrics
+- How to interpret alerts
+- How to use bots
+- Example conversations
+
+====================================================
+13. IMPLEMENTATION RULES
+====================================================
+
+- Do NOT remove or downgrade any existing features.
+- Do NOT integrate paid SaaS.
+- Everything must remain sovereign.
+- Respect all immutable rules:
+- Money in cents
+- UTC timestamps
+- Shadow accounting
+- Role boundaries
+- Closed system
+- Output full files with paths.
+
+====================================================
+14. INITIAL TASKS — START CODING NOW
+====================================================
+
+Begin with:
+
+1) Prisma schema updates:
+- SystemError
+- NotificationLog
+- TrainingModuleDetail
+- TrainingAssetPlan
+- ScrapedItem
+- WatchAlert
+- Role fields for HR, COMPLIANCE, TEAM_LEAD
+
+2) Create:
+- backend/src/bots/
+- backend/src/services/pdfService.ts
+- backend/src/services/notificationService.ts
+- backend/src/services/documentVaultService.ts
+- backend/src/services/opsMetricsService.ts
+- backend/src/routes/opsMetrics.ts
+- backend/src/routes/opsWatch.ts
+- backend/src/routes/hr.ts
+- backend/src/routes/compliance.ts
+
+3) Implement Document Vault upload/download routes.
+
+4) Implement Notification Engine.
+
+5) Implement PDF Engine.
+
+6) Implement bot skeletons.
+
+7) Implement FounderConsole endpoints.
+
+====================================================
+15. FIRST WAVE OF CODE — BEGIN HERE
+====================================================
+
+=== FILE: backend/prisma/schema.prisma
+```prisma
+model SystemError {
+id String @id @default(cuid())
+message String
+stack String?
+context Json?
+severity String
+createdAt DateTime @default(now())
+}
+
+model NotificationLog {
+id String @id @default(cuid())
+to String
+type String
+subject String
+bodyPreview String?
+status String
+error String?
+relatedCaseId String?
+relatedUserId String?
+createdAt DateTime @default(now())
+}
+
+model TrainingModuleDetail {
+id String @id @default(cuid())
+moduleId String
+role String
+tier String?
+outline Json
+scripts Json
+createdAt DateTime @default(now())
+}
+
+model TrainingAssetPlan {
+id String @id @default(cuid())
+moduleId String
+type String
+description String
+createdAt DateTime @default(now())
+}
+
+model ScrapedItem {
+id String @id @default(cuid())
+sourceType String
+sourceUrl String
+state String?
+county String?
+rawContent String
+parsedData Json?
+reviewed Boolean @default(false)
+reviewStatus String?
+notes String?
+createdAt DateTime @default(now())
+}
+
+model WatchAlert {
+id String @id @default(cuid())
+type String
+severity String
+message String
+state String?
+county String?
+relatedId String?
+createdAt DateTime @default(now())
+resolvedAt DateTime?
+resolvedBy String?
+}
+
+model User {
+id String @id @default(cuid())
+email String @unique
+password String?
+role String @default("CONTRACTOR")
+tier String?
+suspended Boolean @default(false)
+}
+
+
+=== FILE: backend/src/bots/ingestionBot.ts
+
+export const ingestionBot = {
+analyzeBatch: async (batch) => {
+// High-value detection
+// Duplicate owner detection
+// Jurisdiction pattern detection
+// Write WatchAlert entries
+return { success: true };
+}
+};
+
+
+=== FILE: backend/src/bots/payoutBot.ts
+
+export const payoutBot = {
+analyzePayouts: async () => {
+// Validate payout math
+// Detect anomalies
+// Flag overrides
+return { success: true };
+}
+};
+
+
+=== FILE: backend/src/bots/complianceBot.ts
+
+export const complianceBot = {
+scanCases: async () => {
+// Deadline risks
+// Missing documents
+// Invalid transitions
+return { success: true };
+}
+};
+
+
+=== FILE: backend/src/bots/coordinatorBot.ts
+
+export const coordinatorBot = {
+summarize: async () => {
+return {
+today: "System stable. 3 high-value cases flagged. 1 payout anomaly. 2 deadlines approaching."
+};
+}
+};
+
+
+=== FILE: backend/src/services/notificationService.ts
+
+import nodemailer from "nodemailer";
+
+export const notificationService = {
+sendEmail: async ({ to, subject, body }) => {
+const transporter = nodemailer.createTransport({
+host: process.env.SMTP_HOST,
+port: Number(process.env.SMTP_PORT),
+auth: {
+user: process.env.SMTP_USER,
+pass: process.env.SMTP_PASS
+}
+});
+
+await transporter.sendMail({
+from: process.env.SMTP_FROM,
+to,
+subject,
+html: body
+});
+
+return { success: true };
+}
+};
+
+
+=== FILE: backend/src/services/pdfService.ts
+
+import PDFDocument from "pdfkit";
+import fs from "fs";
+
+export const pdfService = {
+generateAgreement: async (caseId, data) => {
+const doc = new PDFDocument();
+const filePath = `backend/storage/documents/${caseId}/agreement.pdf`;
+fs.mkdirSync(`backend/storage/documents/${caseId}`, { recursive: true });
+doc.pipe(fs.createWriteStream(filePath));
+doc.text("SERVICE AGREEMENT");
+doc.text(JSON.stringify(data, null, 2));
+doc.end();
+return filePath;
+}
+};
+
+
+=== FILE: backend/src/services/documentVaultService.ts
+
+import fs from "fs";
+
+export const documentVaultService = {
+saveFile: async (caseId, file) => {
+const dir = `backend/storage/documents/${caseId}`;
+fs.mkdirSync(dir, { recursive: true });
+const filePath = `${dir}/${file.originalname}`;
+fs.writeFileSync(filePath, file.buffer);
+return filePath;
+}
+};
+
+
+=== FILE: backend/src/routes/opsMetrics.ts
+
+import express from "express";
+export const router = express.Router();
+
+router.get("/founder", async (req, res) => {
+res.json({
+caseHeatmap: [],
+integrityScores: [],
+volatilityIndex: [],
+focusFeed: ["3 high-value cases", "1 payout anomaly", "2 deadlines"]

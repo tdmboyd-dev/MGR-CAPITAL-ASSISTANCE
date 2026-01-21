@@ -16,6 +16,9 @@ enum UserRole {
   ADMIN
   EMPLOYEE
   CLIENT
+  HR
+  COMPLIANCE
+  TEAM_LEAD
 }
 
 enum CaseStatus {
@@ -101,6 +104,46 @@ enum IngestionSourceType {
   AUCTION_RESULT
   COUNTY_WEBSITE
   MANUAL_ENTRY
+}
+
+// ============================================
+// OPS LAYER ENUMS
+// ============================================
+
+enum ScrapedItemType {
+  TAX_SALE_LIST
+  SURPLUS_RULES
+  COURT_NOTICE
+  COUNTY_WEBSITE
+  STATE_STATUTE
+  DOCUMENT_PATTERN
+}
+
+enum ScrapedItemReviewStatus {
+  PENDING
+  REVIEWED
+  ACTIONABLE
+  DISMISSED
+  ARCHIVED
+}
+
+enum WatchAlertType {
+  RULE_CHANGE_DETECTED
+  NEW_DOCUMENT_PATTERN
+  DEADLINE_PATTERN_CHANGE
+  HIGH_RISK_INGESTION
+  PAYOUT_ANOMALY
+  EMPLOYEE_ANOMALY
+  JURISDICTION_VOLATILITY
+  SYSTEM_HEALTH
+}
+
+enum WatchAlertSeverity {
+  INFO
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
 }
 
 // ============================================
@@ -268,7 +311,8 @@ model Document {
 
   // File info
   fileName        String
-  fileUrl         String
+  filePath        String?          // Local storage path (relative)
+  fileUrl         String           // Can be local path or external URL
   fileSize        Int
   mimeType        String
 
@@ -757,4 +801,455 @@ model SystemConfig {
   description     String?
 
   updatedAt       DateTime @updatedAt
+}
+
+// ============================================
+// OPS LAYER — SCRAPER & WATCH SYSTEM
+// FOUNDER ONLY — Never expose to employees/clients
+// ============================================
+
+model ScrapedItem {
+  id              String                   @id @default(cuid())
+  sourceType      ScrapedItemType
+  sourceUrl       String
+  sourceName      String?                  // Human-readable source name
+
+  // Location
+  state           String?
+  county          String?
+
+  // Content
+  rawContent      String                   @db.Text
+  parsedData      Json?                    // Structured extraction
+  contentHash     String?                  // For change detection
+
+  // Review status
+  reviewStatus    ScrapedItemReviewStatus  @default(PENDING)
+  reviewedAt      DateTime?
+  reviewedById    String?
+  notes           String?                  @db.Text
+
+  // Metadata
+  fetchedAt       DateTime                 @default(now())
+  createdAt       DateTime                 @default(now())
+
+  watchAlerts     WatchAlert[]
+
+  @@index([sourceType])
+  @@index([state])
+  @@index([reviewStatus])
+  @@index([fetchedAt])
+}
+
+model WatchAlert {
+  id              String               @id @default(cuid())
+  type            WatchAlertType
+  severity        WatchAlertSeverity   @default(MEDIUM)
+
+  // Alert content
+  title           String
+  message         String               @db.Text
+  details         Json?                // Structured alert data
+
+  // Location context
+  state           String?
+  county          String?
+
+  // Related entities
+  relatedCaseId   String?
+  relatedUserId   String?
+  scrapedItemId   String?
+  scrapedItem     ScrapedItem?         @relation(fields: [scrapedItemId], references: [id])
+
+  // Resolution
+  isResolved      Boolean              @default(false)
+  resolvedAt      DateTime?
+  resolvedById    String?
+  resolution      String?              @db.Text
+
+  // Metadata
+  createdAt       DateTime             @default(now())
+
+  @@index([type])
+  @@index([severity])
+  @@index([state])
+  @@index([isResolved])
+  @@index([createdAt])
+}
+
+// ============================================
+// OPS LAYER — PREMIUM METRICS
+// Jurisdiction Volatility, Employee Integrity, Case Heatmap
+// ============================================
+
+model JurisdictionMetrics {
+  id                    String   @id @default(cuid())
+  state                 String
+  county                String?
+
+  // Volatility metrics
+  ruleChangesLast30Days Int      @default(0)
+  alertsLast30Days      Int      @default(0)
+  volatilityScore       Int      @default(0)  // 0-100
+
+  // Performance metrics
+  totalCases            Int      @default(0)
+  paidCases             Int      @default(0)
+  rejectedCases         Int      @default(0)
+  avgDaysToClose        Int?
+  avgSurplusCents       Int?
+
+  // Risk assessment
+  riskScore             Int      @default(50)  // 0-100
+  riskFactors           Json?
+
+  lastCalculated        DateTime @default(now())
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@unique([state, county])
+  @@index([state])
+  @@index([volatilityScore])
+  @@index([riskScore])
+}
+
+model EmployeeIntegrityScore {
+  id                    String       @id @default(cuid())
+  employeeId            String       @unique
+  employeeTier          EmployeeTier?
+
+  // Training metrics
+  trainingCompletionPct Int          @default(0)
+  quizAvgScore          Int?
+
+  // Performance metrics
+  totalCases            Int          @default(0)
+  paidCases             Int          @default(0)
+  rejectedCases         Int          @default(0)
+  conversionRate        Int?         // Percentage
+
+  // Quality metrics
+  avgCallScore          Int?         // 1-100
+  complianceViolations  Int          @default(0)
+  customerComplaints    Int          @default(0)
+
+  // Financial metrics
+  totalRevenueCents     Int          @default(0)
+  avgCaseValueCents     Int?
+
+  // Computed scores
+  integrityScore        Int          @default(50)  // 0-100
+  performanceScore      Int          @default(50)  // 0-100
+  riskFlags             Json?
+
+  lastCalculated        DateTime     @default(now())
+  createdAt             DateTime     @default(now())
+  updatedAt             DateTime     @updatedAt
+
+  @@index([integrityScore])
+  @@index([performanceScore])
+}
+
+model CaseHeatmapEntry {
+  id                    String     @id @default(cuid())
+  caseId                String     @unique
+  internalCode          String
+
+  // Risk factors
+  valueScore            Int        @default(50)  // Based on surplus amount
+  ageScore              Int        @default(50)  // Based on time in current status
+  deadlineScore         Int        @default(50)  // Based on deadline proximity
+  jurisdictionScore     Int        @default(50)  // Based on state/county risk
+
+  // Computed
+  overallHeatScore      Int        @default(50)  // 0-100, higher = needs attention
+  heatFactors           Json?
+
+  // Context
+  currentStatus         CaseStatus
+  daysInStatus          Int        @default(0)
+  nearestDeadlineDays   Int?
+
+  lastCalculated        DateTime   @default(now())
+  createdAt             DateTime   @default(now())
+  updatedAt             DateTime   @updatedAt
+
+  @@index([overallHeatScore])
+  @@index([currentStatus])
+}
+
+model FounderFocusItem {
+  id                    String   @id @default(cuid())
+  priority              Int      @default(50)  // Higher = more urgent
+
+  // Content
+  title                 String
+  description           String   @db.Text
+  category              String   // "case", "employee", "jurisdiction", "system", "alert"
+
+  // Related entities
+  relatedCaseId         String?
+  relatedUserId         String?
+  relatedAlertId        String?
+
+  // Action
+  suggestedAction       String?  @db.Text
+  actionUrl             String?  // Deep link in admin
+
+  // Status
+  isDismissed           Boolean  @default(false)
+  dismissedAt           DateTime?
+  isCompleted           Boolean  @default(false)
+  completedAt           DateTime?
+
+  // Validity
+  expiresAt             DateTime?
+
+  createdAt             DateTime @default(now())
+
+  @@index([priority])
+  @@index([category])
+  @@index([isDismissed])
+  @@index([isCompleted])
+}
+
+// ============================================
+// SYSTEM MONITORING & NOTIFICATIONS
+// Internal sovereign monitoring (no Sentry dependency)
+// ============================================
+
+enum SystemErrorSeverity {
+  DEBUG
+  INFO
+  WARNING
+  ERROR
+  CRITICAL
+}
+
+enum NotificationType {
+  EMAIL
+  SMS
+  PUSH
+  IN_APP
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  DELIVERED
+  FAILED
+  BOUNCED
+}
+
+model SystemError {
+  id              String               @id @default(cuid())
+  message         String
+  stack           String?              @db.Text
+  context         Json?                // Request context, user info, etc.
+  severity        SystemErrorSeverity  @default(ERROR)
+
+  // Source info
+  source          String?              // Service/route that generated error
+  endpoint        String?              // API endpoint if applicable
+
+  // User context
+  userId          String?
+  ipAddress       String?
+  userAgent       String?
+
+  // Resolution
+  isResolved      Boolean              @default(false)
+  resolvedAt      DateTime?
+  resolvedById    String?
+  resolution      String?              @db.Text
+
+  createdAt       DateTime             @default(now())
+
+  @@index([severity])
+  @@index([source])
+  @@index([isResolved])
+  @@index([createdAt])
+}
+
+model NotificationLog {
+  id              String              @id @default(cuid())
+  type            NotificationType
+  status          NotificationStatus  @default(PENDING)
+
+  // Recipient
+  toAddress       String              // Email, phone, or user ID
+  toName          String?
+
+  // Content
+  subject         String?
+  bodyPreview     String?             // First 200 chars
+  bodyFull        String?             @db.Text
+
+  // Related entities
+  relatedCaseId   String?
+  relatedUserId   String?
+
+  // Delivery info
+  sentAt          DateTime?
+  deliveredAt     DateTime?
+  failedAt        DateTime?
+  errorMessage    String?
+
+  // External refs
+  externalId      String?             // ID from email provider
+
+  createdAt       DateTime            @default(now())
+
+  @@index([type])
+  @@index([status])
+  @@index([relatedCaseId])
+  @@index([relatedUserId])
+  @@index([createdAt])
+}
+
+// ============================================
+// TRAINING MODULE DETAILS & ASSET PLANS
+// AI-ready training content generation
+// ============================================
+
+enum TrainingAssetType {
+  VIDEO_SCRIPT
+  PDF_GUIDE
+  SLIDE_DECK
+  CHECKLIST
+  AUDIO_SCRIPT
+  QUIZ
+  INTERACTIVE
+}
+
+model TrainingModuleDetail {
+  id              String          @id @default(cuid())
+  moduleId        String          @unique
+
+  // Target audience
+  role            UserRole?       // EMPLOYEE, FOUNDER, etc.
+  tier            EmployeeTier?   // Specific tier if applicable
+
+  // Generated content
+  outline         Json?           // Structured learning outline
+  scripts         Json?           // Video/audio scripts
+  keyPoints       Json?           // Key learning points
+
+  // Video blueprint
+  sceneBreakdown  Json?           // Scene-by-scene breakdown
+  onScreenText    Json?           // Text overlays
+  bRollSuggestions Json?          // B-roll video suggestions
+
+  // Assessment
+  assessmentQuestions Json?       // Generated quiz questions
+
+  // Metadata
+  generatedAt     DateTime?
+  generatedBy     String?         // "system" or userId
+  version         Int             @default(1)
+
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  assetPlans      TrainingAssetPlan[]
+
+  @@index([role])
+  @@index([tier])
+}
+
+model TrainingAssetPlan {
+  id              String              @id @default(cuid())
+  moduleDetailId  String
+  moduleDetail    TrainingModuleDetail @relation(fields: [moduleDetailId], references: [id], onDelete: Cascade)
+
+  type            TrainingAssetType
+  title           String
+  description     String              @db.Text
+
+  // Asset spec
+  spec            Json?               // Detailed specifications
+  duration        Int?                // Estimated duration in seconds
+
+  // Production status
+  isProduced      Boolean             @default(false)
+  producedAt      DateTime?
+  assetUrl        String?
+
+  // Ordering
+  orderIndex      Int                 @default(0)
+
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  @@index([moduleDetailId])
+  @@index([type])
+  @@index([isProduced])
+}
+
+// ============================================
+// OPS INSIGHTS — BOT OUTPUT STORAGE
+// Internal bots write insights here
+// ============================================
+
+enum OpsInsightType {
+  INGESTION_ANALYSIS
+  PAYOUT_ANALYSIS
+  COMPLIANCE_CHECK
+  TRAINING_ANALYSIS
+  COORDINATOR_SUMMARY
+  CASE_RECOMMENDATION
+  EMPLOYEE_COACHING
+  SYSTEM_HEALTH
+}
+
+enum OpsInsightPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+model OpsInsight {
+  id              String              @id @default(cuid())
+  type            OpsInsightType
+  priority        OpsInsightPriority  @default(NORMAL)
+
+  // Content
+  title           String
+  summary         String              @db.Text
+  details         Json?               // Structured data
+
+  // Plain-English explanation
+  plainEnglish    String?             @db.Text
+
+  // Recommendations
+  recommendations Json?               // Array of suggested actions
+
+  // Related entities
+  relatedCaseIds  String[]
+  relatedUserIds  String[]
+  relatedAlertIds String[]
+
+  // Source bot
+  sourceBot       String              // "ingestionBot", "payoutBot", etc.
+  generatedAt     DateTime            @default(now())
+
+  // Validity
+  isStale         Boolean             @default(false)
+  expiresAt       DateTime?
+
+  // Founder interaction
+  isRead          Boolean             @default(false)
+  readAt          DateTime?
+  isActioned      Boolean             @default(false)
+  actionedAt      DateTime?
+  actionNotes     String?             @db.Text
+
+  createdAt       DateTime            @default(now())
+
+  @@index([type])
+  @@index([priority])
+  @@index([sourceBot])
+  @@index([isRead])
+  @@index([createdAt])
 }

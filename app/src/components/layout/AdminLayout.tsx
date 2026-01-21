@@ -91,6 +91,51 @@ export default function AdminLayout({ children }: Props) {
           >
             Settings
           </Link>
+
+          {/* Role-based panels */}
+          {(user?.role === "FOUNDER" || user?.role === "ADMIN" || user?.role === "HR") && (
+            <Link
+              className={`block px-3 py-2 rounded transition-colors ${
+                isActive("/admin/hr")
+                  ? "bg-blue-600 text-white"
+                  : "hover:bg-blue-900/30 text-blue-400"
+              }`}
+              to="/admin/hr"
+            >
+              HR Panel
+            </Link>
+          )}
+          {(user?.role === "FOUNDER" || user?.role === "ADMIN" || user?.role === "COMPLIANCE") && (
+            <Link
+              className={`block px-3 py-2 rounded transition-colors ${
+                isActive("/admin/compliance")
+                  ? "bg-amber-600 text-white"
+                  : "hover:bg-amber-900/30 text-amber-400"
+              }`}
+              to="/admin/compliance"
+            >
+              Compliance Panel
+            </Link>
+          )}
+
+          {/* OPS Console - FOUNDER ONLY */}
+          {user?.role === "FOUNDER" && (
+            <div className="pt-4 mt-4 border-t border-slate-700">
+              <div className="text-xs text-slate-500 uppercase tracking-wide px-3 mb-2">
+                Ops Layer
+              </div>
+              <Link
+                className={`block px-3 py-2 rounded transition-colors ${
+                  isActive("/admin/ops")
+                    ? "bg-purple-600 text-white"
+                    : "hover:bg-purple-900/30 text-purple-400"
+                }`}
+                to="/admin/ops"
+              >
+                Command Console
+              </Link>
+            </div>
+          )}
         </nav>
 
         {/* User Info */}

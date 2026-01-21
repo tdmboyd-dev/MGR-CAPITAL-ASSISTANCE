@@ -21,6 +21,18 @@ import legalRoutes from "./routes/legal.js";
 import ingestionRoutes from "./routes/ingestion.js";
 import trainingRoutes from "./routes/training.js";
 import settingsRoutes from "./routes/settings.js";
+import documentsRoutes from "./routes/documents.js";
+
+// OPS Layer routes (FOUNDER ONLY)
+import opsMetricsRoutes from "./routes/opsMetrics.js";
+import opsWatchRoutes from "./routes/opsWatch.js";
+
+// Role-specific management panels
+import hrRoutes from "./routes/hrRoutes.js";
+import complianceRoutes from "./routes/complianceRoutes.js";
+
+// Rate limiting
+import { loginRateLimit, passwordResetRateLimit } from "./middleware/rateLimit.js";
 
 const app = express();
 
@@ -48,7 +60,9 @@ app.use(auditLogMiddleware);
 // ROUTES
 // ============================================
 
-// Authentication
+// Authentication (with rate limiting)
+app.post("/api/auth/login", loginRateLimit);
+app.post("/api/auth/request-password-reset", passwordResetRateLimit);
 app.use("/api/auth", authRoutes);
 
 // Core business routes
@@ -57,11 +71,22 @@ app.use("/api/employees", employeesRoutes);
 app.use("/api/clients", clientsRoutes);
 app.use("/api/payouts", payoutsRoutes);
 
+// Document Vault routes (secure file upload/download)
+app.use("/api/documents", documentsRoutes);
+
 // Founder-only routes
 app.use("/api/legal", legalRoutes);
 app.use("/api/ingestion", ingestionRoutes);
 app.use("/api/training", trainingRoutes);
 app.use("/api/settings", settingsRoutes);
+
+// OPS Layer routes (FOUNDER ONLY — Never expose to employees/clients)
+app.use("/api/ops/metrics", opsMetricsRoutes);
+app.use("/api/ops/watch", opsWatchRoutes);
+
+// Role-specific management panels
+app.use("/api/hr", hrRoutes);
+app.use("/api/compliance", complianceRoutes);
 
 // ============================================
 // HEALTH CHECK
@@ -106,14 +131,23 @@ app.listen(PORT, () => {
 
 Available endpoints:
   - /api/health         Health check
-  - /api/auth           Authentication
+  - /api/auth           Authentication (rate limited)
   - /api/cases          Case management
   - /api/employees      Employee management
   - /api/clients        Client portal
   - /api/payouts        Payout/ledger
+  - /api/documents      Document Vault
   - /api/legal          Legal (Founder only)
   - /api/ingestion      Ingestion (Founder only)
   - /api/training       Training management
+
+OPS Layer (FOUNDER ONLY):
+  - /api/ops/metrics    Ops metrics dashboard
+  - /api/ops/watch      Scraper & watch alerts
+
+Role-Based Panels:
+  - /api/hr             HR management
+  - /api/compliance     Compliance monitoring
   `);
 });
 

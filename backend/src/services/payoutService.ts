@@ -2,13 +2,13 @@ import { commissionService } from "./commissionService.js";
 
 export class PayoutService {
   async calculatePayouts(params: {
-    tierName: string;
+    tier: string;
     surplusAmountCents: number;
     feePercent: number;
   }) {
     const feeAmountCents = Math.round((params.surplusAmountCents * params.feePercent) / 100);
     const employeeCommissionCents = commissionService.calculateEmployeeCommission({
-      tierName: params.tierName,
+      tier: params.tier,
       feeAmountCents,
     });
 

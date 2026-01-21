@@ -139,7 +139,7 @@ export class CaseService {
         clientId: payload.clientId,
         state: payload.state,
         county: payload.county,
-        propertyAddress: payload.propertyAddress,
+        propertyAddress: payload.propertyAddress || "",
         parcelNumber: payload.parcelNumber,
         saleDate: payload.saleDate,
         surplusAmountCents: payload.surplusAmountCents,

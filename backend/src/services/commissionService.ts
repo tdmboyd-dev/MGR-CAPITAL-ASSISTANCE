@@ -210,14 +210,14 @@ export class CommissionService {
       await prisma.commissionPlan.upsert({
         where: { tier: tier as EmployeeTier },
         update: {
-          tierName: config.tierName,
+          tierDisplayName: config.tierName,
           displayedRatePercent: config.displayedRatePercent,
           actualRatePercent: config.actualRatePercent,
           overridePercent: config.overridePercent,
         },
         create: {
           tier: tier as EmployeeTier,
-          tierName: config.tierName,
+          tierDisplayName: config.tierName,
           displayedRatePercent: config.displayedRatePercent,
           actualRatePercent: config.actualRatePercent,
           overridePercent: config.overridePercent,
