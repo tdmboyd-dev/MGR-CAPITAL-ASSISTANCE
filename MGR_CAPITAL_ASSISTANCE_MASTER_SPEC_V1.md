@@ -197,7 +197,7 @@ These rules are **non-negotiable** and must **never** be violated under any circ
 | EMPLOYEE | 20 | Works assigned cases, views displayed earnings (not actual), completes training modules. |
 | CLIENT | 10 | Reads case status in simple terms, uploads ID, signs documents. No financial visibility. |
 
-### 3.2 Role Groups (for roleGuard convenience)
+### 3.2 Role Groups
 
 | Group Name | Roles Included | Use Case |
 |------------|----------------|----------|
@@ -210,59 +210,21 @@ These rules are **non-negotiable** and must **never** be violated under any circ
 | FINANCIAL_ACCESS | FOUNDER, ADMIN | Financial data access |
 | OPS_ACCESS | FOUNDER | OPS layer access (FOUNDER ONLY) |
 
-### 3.3 Access Matrix by Feature
+### 3.3 5-Tier Employee Commission System (Shadow Accounting)
 
-| Feature | FOUNDER | ADMIN | HR | COMPLIANCE | TEAM_LEAD | EMPLOYEE | CLIENT |
-|---------|:-------:|:-----:|:--:|:----------:|:---------:|:--------:|:------:|
-| Admin Dashboard | ✓ | ✓ | ✓ | ✓ | ✓ | - | - |
-| All Cases | ✓ | ✓ | - | ✓ (read) | Team only | Own only | Own only |
-| Create Case | ✓ | ✓ | - | - | - | - | - |
-| Edit Case | ✓ | ✓ | - | - | ✓ (team) | ✓ (own) | - |
-| Surplus Amounts | ✓ | - | - | - | - | - | - |
-| Actual Commission Rates | ✓ | - | - | - | - | - | - |
-| Fee Percentages | ✓ | - | - | - | - | - | - |
-| Payout Math (full) | ✓ | - | - | - | - | - | - |
-| Payout Math (summary) | ✓ | ✓ | - | ✓ | - | - | - |
-| OPS Console | ✓ | - | - | - | - | - | - |
-| Bot Controls | ✓ | - | - | - | - | - | - |
-| Watch Alerts | ✓ | - | - | - | - | - | - |
-| System Errors | ✓ | - | - | - | - | - | - |
-| HR Panel | ✓ | ✓ | ✓ | - | - | - | - |
-| Compliance Panel | ✓ | ✓ | - | ✓ | - | - | - |
-| Training Admin | ✓ | ✓ | ✓ | - | - | - | - |
-| Training (own) | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | - |
-| Employee Tier Management | ✓ | ✓ | ✓ | - | - | - | - |
-| Employee Create/Edit | ✓ | ✓ | ✓ | - | - | - | - |
-| Audit Logs | ✓ | ✓ | - | ✓ | - | - | - |
-| Document Upload | ✓ | ✓ | - | - | ✓ (team) | ✓ (own) | ✓ (own) |
-| Document Download | ✓ | ✓ | - | ✓ | ✓ (team) | ✓ (own) | ✓ (own) |
-| Document Delete | ✓ | - | - | - | - | - | - |
-| Settings | ✓ | ✓ | - | - | - | - | - |
-| Ingestion | ✓ | ✓ | - | - | - | - | - |
+| Tier | Display Name | Displayed Rate | Actual Rate | Override |
+|------|--------------|----------------|-------------|----------|
+| TIER_1_ASSOCIATE | Associate | 20% | 10% | None |
+| TIER_2_SPECIALIST | Specialist | 40% | 20% | None |
+| TIER_3_SENIOR_SPECIALIST | Senior Specialist | 60% | 30% | None |
+| TIER_4_TEAM_LEADER | Team Leader | 80% | 40% | 10% |
+| TIER_5_EXECUTIVE_PARTNER | Executive Partner | 100% | 50% | 20% |
 
-### 3.4 "Never Reveal" Rules
-
-**To Employees (NEVER show):**
-- `surplusAmountCents` — the actual surplus amount
-- `actualRatePercent` — the actual commission rate they receive
-- `founderShareCents` — the founder's profit
-- `feePercent` — the company's fee percentage
-- Any payout calculations showing true math
-- Other employees' earnings or performance (except team leads see team)
-
-**To Clients (NEVER show):**
-- Any financial details whatsoever
-- Employee names or contact information
-- Commission structures
-- Fee calculations
-- Backend processing status details
-- Other clients' information
-
-**To Non-Founders (NEVER show):**
-- OPS layer (bots, insights, watch alerts, scraped data)
-- System errors with stack traces
-- Internal metrics and heuristics
-- Actual vs displayed commission math
+**Shadow Accounting Logic:**
+- Employees see `displayedRatePercent` in their portal
+- Employees actually receive `actualRatePercent` (half of displayed)
+- Founder keeps the difference as profit
+- Override % is paid to team leaders on their team's cases
 
 ---
 
@@ -290,15 +252,6 @@ These rules are **non-negotiable** and must **never** be violated under any circ
 | lastLoginAt      | DateTime?         | Last successful login timestamp            |
 ```
 
-**Relations:**
-- `teamLead` → User (many-to-one)
-- `teamMembers` → User[] (one-to-many)
-- `assignedCases` → Case[] (one-to-many)
-- `trainingProgress` → TrainingProgress[] (one-to-many)
-- `ledgerEntries` → LedgerEntry[] (one-to-many)
-- `auditLogs` → AuditLog[] (one-to-many)
-- `sessions` → UserSession[] (one-to-many)
-
 #### Case
 ```
 | Field              | Type              | Purpose                                  |
@@ -324,14 +277,6 @@ These rules are **non-negotiable** and must **never** be violated under any circ
 | closedAt           | DateTime?         | When case was closed                     |
 ```
 
-**Relations:**
-- `client` → Client (many-to-one)
-- `assignedTo` → User (many-to-one)
-- `documents` → Document[] (one-to-many)
-- `deadlines` → Deadline[] (one-to-many)
-- `communications` → Communication[] (one-to-many)
-- `ledgerEntries` → LedgerEntry[] (one-to-many)
-
 #### Client
 ```
 | Field       | Type              | Purpose                    |
@@ -350,9 +295,6 @@ These rules are **non-negotiable** and must **never** be violated under any circ
 | updatedAt   | DateTime          | Last modification          |
 ```
 
-**Relations:**
-- `cases` → Case[] (one-to-many)
-
 #### Document
 ```
 | Field             | Type              | Purpose                           |
@@ -370,15 +312,7 @@ These rules are **non-negotiable** and must **never** be violated under any circ
 | signatureData     | String?           | Signature data (base64)           |
 | uploadedAt        | DateTime          | Upload timestamp                  |
 | uploadedById      | String?           | FK to User (uploader)             |
-| verifiedAt        | DateTime?         | When verified                     |
-| verifiedById      | String?           | FK to User (verifier)             |
-| rejectionReason   | String?           | Reason if rejected                |
 ```
-
-**Relations:**
-- `case` → Case (many-to-one)
-- `uploadedBy` → User (many-to-one)
-- `verifiedBy` → User (many-to-one)
 
 #### LedgerEntry
 ```
@@ -399,66 +333,7 @@ These rules are **non-negotiable** and must **never** be violated under any circ
 | notes                  | String?           | Internal notes                       |
 ```
 
-**Relations:**
-- `case` → Case (many-to-one)
-- `employee` → User (many-to-one)
-
-#### AuditLog
-```
-| Field       | Type              | Purpose                    |
-|-------------|-------------------|----------------------------|
-| id          | String (CUID)     | Primary key                |
-| userId      | String?           | FK to User (actor)         |
-| action      | String            | Action performed           |
-| entityType  | String?           | Resource type affected     |
-| entityId    | String?           | Resource ID affected       |
-| details     | Json?             | Additional context         |
-| ipAddress   | String?           | Request IP address         |
-| userAgent   | String?           | Request user agent         |
-| createdAt   | DateTime          | Log timestamp              |
-```
-
-**Relations:**
-- `user` → User (many-to-one)
-
 ### 4.2 OPS/Monitoring Models
-
-#### SystemError
-```
-| Field        | Type              | Purpose                    |
-|--------------|-------------------|----------------------------|
-| id           | String (CUID)     | Primary key                |
-| message      | String            | Error message              |
-| stack        | String?           | Stack trace                |
-| context      | Json?             | Additional context         |
-| severity     | ErrorSeverity     | CRITICAL/HIGH/MEDIUM/LOW   |
-| resolved     | Boolean           | Resolution status          |
-| resolvedAt   | DateTime?         | When resolved              |
-| resolvedById | String?           | FK to User (resolver)      |
-| notes        | String?           | Resolution notes           |
-| createdAt    | DateTime          | Error timestamp            |
-```
-
-#### NotificationLog
-```
-| Field         | Type                | Purpose                      |
-|---------------|---------------------|------------------------------|
-| id            | String (CUID)       | Primary key                  |
-| userId        | String?             | FK to User (recipient)       |
-| type          | NotificationType    | EMAIL/SMS/INTERNAL           |
-| channel       | String              | Delivery channel             |
-| recipient     | String              | Email address/phone          |
-| subject       | String              | Notification subject         |
-| body          | String              | Notification body (HTML)     |
-| bodyPreview   | String?             | Plain text preview           |
-| status        | NotificationStatus  | PENDING/SENT/FAILED          |
-| error         | String?             | Error message if failed      |
-| attempts      | Int                 | Send attempt count           |
-| sentAt        | DateTime?           | When successfully sent       |
-| relatedCaseId | String?             | FK to Case                   |
-| relatedUserId | String?             | FK to User (related)         |
-| createdAt     | DateTime            | Log creation timestamp       |
-```
 
 #### OpsInsight
 ```
@@ -516,37 +391,6 @@ These rules are **non-negotiable** and must **never** be violated under any circ
 | createdAt    | DateTime                 | Scrape timestamp           |
 ```
 
-#### TrainingModuleDetail
-```
-| Field          | Type              | Purpose                       |
-|----------------|-------------------|-------------------------------|
-| id             | String (CUID)     | Primary key                   |
-| moduleId       | String            | FK to TrainingModule          |
-| role           | UserRole          | Target role                   |
-| tier           | EmployeeTier?     | Target tier (if applicable)   |
-| outline        | Json              | Module outline structure      |
-| scripts        | Json              | Call scripts and talking points|
-| keyPoints      | Json              | Key learning points           |
-| videoBlueprint | Json?             | Video production plan         |
-| createdAt      | DateTime          | Creation timestamp            |
-| updatedAt      | DateTime          | Last modification             |
-```
-
-#### TrainingAssetPlan
-```
-| Field          | Type              | Purpose                       |
-|----------------|-------------------|-------------------------------|
-| id             | String (CUID)     | Primary key                   |
-| moduleId       | String            | FK to TrainingModule          |
-| assetType      | TrainingAssetType | VIDEO/DOCUMENT/QUIZ/SCRIPT    |
-| title          | String            | Asset title                   |
-| description    | String            | Asset description             |
-| specifications | Json?             | Production specifications     |
-| status         | String            | Planning status               |
-| createdAt      | DateTime          | Creation timestamp            |
-| updatedAt      | DateTime          | Last modification             |
-```
-
 ### 4.3 All Enums
 
 ```prisma
@@ -598,7 +442,7 @@ enum DocumentType {
   VERIFICATION_LETTER
   PAYMENT_INSTRUCTIONS
   CLIENT_ID
-  SIGNED_DOCUMENT
+  OTHER
 }
 
 enum DocumentStatus {
@@ -606,8 +450,6 @@ enum DocumentStatus {
   SIGNED
   VERIFIED
   REJECTED
-  SUBMITTED
-  APPROVED
 }
 
 enum LedgerEntryType {
@@ -615,7 +457,9 @@ enum LedgerEntryType {
   EMPLOYEE_COMMISSION
   COMPANY_FEE
   FOUNDER_SHARE
-  OVERRIDE_COMMISSION
+  TEAM_LEAD_OVERRIDE
+  ADJUSTMENT
+  REFUND
 }
 
 enum LedgerEntryStatus {
@@ -636,27 +480,16 @@ enum NotificationStatus {
   PENDING
   SENT
   FAILED
-  RETRYING
-}
-
-enum ErrorSeverity {
-  CRITICAL
-  HIGH
-  MEDIUM
-  LOW
 }
 
 enum WatchAlertType {
   RULE_CHANGE
   HIGH_VALUE_CASE
-  DEADLINE_APPROACHING
-  PAYOUT_ANOMALY
-  COMPLIANCE_RISK
-  JURISDICTION_UPDATE
-  INGESTION_ISSUE
-  EMPLOYEE_ANOMALY
-  DOCUMENT_PATTERN
-  DUPLICATE_DETECTED
+  DEADLINE_WARNING
+  SCRAPE_ERROR
+  SOURCE_OFFLINE
+  ANOMALY_DETECTED
+  COMPLIANCE_FLAG
 }
 
 enum WatchAlertSeverity {
@@ -667,29 +500,25 @@ enum WatchAlertSeverity {
 }
 
 enum ScrapedItemType {
-  TAX_SALE_LIST
-  SURPLUS_PAGE
-  COURT_DOCKET
-  PROBATE_NOTICE
-  COUNTY_RULES
-  STATE_REGULATIONS
+  TAX_SALE
+  SURPLUS
+  UNCLAIMED_PROPERTY
+  FORECLOSURE
 }
 
 enum ScrapedItemReviewStatus {
   PENDING
   REVIEWED
-  FLAGGED
-  DISMISSED
-  PROCESSED
+  CONVERTED
+  REJECTED
+  DUPLICATE
 }
 
-enum TrainingAssetType {
-  VIDEO
-  DOCUMENT
-  QUIZ
-  SCRIPT
-  CHECKLIST
-  PRESENTATION
+enum ErrorSeverity {
+  CRITICAL
+  HIGH
+  MEDIUM
+  LOW
 }
 ```
 
@@ -697,185 +526,77 @@ enum TrainingAssetType {
 
 ## 5. CORE APPLICATION FLOWS
 
-### 5.1 Authentication Flow
+### 5.1 Case Lifecycle
 
 ```
-1. User submits email + password to POST /api/auth/login
-2. Rate limiter checks: max 5 attempts per 15 minutes per IP+email
-3. Backend validates credentials using bcrypt.compare()
-4. If valid: JWT token issued with payload:
-   {
-     userId: string,
-     email: string,
-     role: UserRole,
-     tier: EmployeeTier | null
-   }
-5. Token expires in 7 days
-6. Token stored in localStorage as "token"
-7. All subsequent API requests include header:
-   Authorization: Bearer <token>
-8. GET /api/auth/me validates token and returns current user data
-9. Role guard middleware checks role against route requirements
-10. FOUNDER role bypasses all role checks (superuser)
+NEW → CONTACTED → DOCS_PENDING → DOCS_SIGNED → FILED → AWAITING_FUNDS → PAID
+                                                                        ↓
+                                                                     CLOSED
 ```
 
-**Login Response:**
-```json
-{
-  "success": true,
-  "token": "eyJhbGciOiJIUzI1NiIs...",
-  "user": {
-    "id": "cuid...",
-    "email": "user@example.com",
-    "role": "EMPLOYEE",
-    "name": "John Doe",
-    "tier": "TIER_2_SPECIALIST"
-  }
+| Status | Description | Next Action |
+|--------|-------------|-------------|
+| NEW | Case created from ingestion or manual entry | Employee contacts client |
+| CONTACTED | Initial contact made with client | Send documents for signature |
+| DOCS_PENDING | Documents sent, awaiting client signatures | Follow up on document status |
+| DOCS_SIGNED | All required documents signed | File claim with county/court |
+| FILED | Claim filed with authorities | Monitor for response |
+| AWAITING_FUNDS | Claim approved, waiting for disbursement | Track payment |
+| PAID | Funds received and distributed | Close case |
+| CLOSED | Case closed (any reason) | Archive |
+| REJECTED | Filing rejected by authorities | Analyze, potentially retry |
+
+### 5.2 Payout Calculation Flow
+
+```typescript
+// bankingService.calculatePayout()
+
+Input: {
+  surplusAmountCents: 100000,  // $1,000.00
+  feePercent: 30,              // 30% fee
+  employeeTier: "TIER_3_SENIOR_SPECIALIST"
+}
+
+Processing:
+1. feeAmountCents = surplusAmountCents × (feePercent / 100)
+   = 100000 × 0.30 = 30000
+
+2. clientPayoutCents = surplusAmountCents - feeAmountCents
+   = 100000 - 30000 = 70000
+
+3. employeeActualRate = tierRates[tier].actualRatePercent
+   = 30 (for TIER_3)
+
+4. employeeCommissionCents = feeAmountCents × (actualRate / 100)
+   = 30000 × 0.30 = 9000
+
+5. employeeDisplayedRate = tierRates[tier].displayedRatePercent
+   = 60 (for TIER_3)
+
+6. employeeDisplayedCommissionCents = feeAmountCents × (displayedRate / 100)
+   = 30000 × 0.60 = 18000
+
+7. founderShareCents = feeAmountCents - employeeCommissionCents
+   = 30000 - 9000 = 21000
+
+Output: {
+  feeAmountCents: 30000,                    // $300 total fee
+  clientPayoutCents: 70000,                 // $700 to client
+  employeeCommissionCents: 9000,            // $90 actual
+  employeeDisplayedCommissionCents: 18000,  // $180 displayed
+  founderShareCents: 21000                  // $210 founder profit
 }
 ```
 
-### 5.2 Case Lifecycle
+### 5.3 Authentication Flow
 
-```
-                    ┌─────────────────────────────────────────────────────────┐
-                    │                                                         │
-                    ▼                                                         │
-NEW ──► CONTACTED ──► DOCS_PENDING ──► DOCS_SIGNED ──► FILED ──► AWAITING_FUNDS ──► PAID ──► CLOSED
- │          │              │               │            │              │              │
- │          │              │               │            │              │              │
- └──────────┴──────────────┴───────────────┴────────────┴──────────────┴──────────────┘
-                                           │
-                                           ▼
-                                       REJECTED
-```
-
-| Status | Description | Trigger | Next Actions |
-|--------|-------------|---------|--------------|
-| NEW | Case created from ingestion or manual entry | Batch upload, manual create | Employee calls client |
-| CONTACTED | Initial contact made with client | Employee marks contacted | Send documents to client |
-| DOCS_PENDING | Documents sent, waiting for signatures | Documents sent to client | Follow up for signatures |
-| DOCS_SIGNED | Client signed all required documents | Client signs via portal | File with county/court |
-| FILED | Claim filed with appropriate authority | Staff marks filed | Wait for response |
-| AWAITING_FUNDS | Claim approved, waiting for disbursement | County/court approves | Monitor for payment |
-| PAID | Funds received from county/court | Payment confirmed | Process payouts, close |
-| CLOSED | Case complete (successful or cancelled) | All payouts processed | Archive |
-| REJECTED | Claim rejected by authority | County/court rejects | Analyze, retry, or close |
-
-### 5.3 Shadow Accounting Flow
-
-#### Commission Tier Structure
-
-| Tier | Display Name | Displayed Rate | Actual Rate | Override Rate |
-|------|--------------|----------------|-------------|---------------|
-| TIER_1_ASSOCIATE | Associate | 20% | 10% | 0% |
-| TIER_2_SPECIALIST | Specialist | 40% | 20% | 0% |
-| TIER_3_SENIOR_SPECIALIST | Senior Specialist | 60% | 30% | 0% |
-| TIER_4_TEAM_LEADER | Team Leader | 80% | 40% | 10% |
-| TIER_5_EXECUTIVE_PARTNER | Executive Partner | 100% | 50% | 20% |
-
-**Key Rule:** Actual rate is ALWAYS exactly half of displayed rate.
-
-#### Payout Calculation Example
-
-```
-Input:
-  surplusAmountCents: 100000  // $1,000.00 surplus
-  feePercent: 30              // 30% company fee
-  employeeTier: TIER_3_SENIOR_SPECIALIST
-
-Tier Rates (from table):
-  displayedRate = 60%
-  actualRate = 30%
-
-Step 1: Calculate fee amount
-  feeAmountCents = surplusAmountCents × (feePercent / 100)
-  feeAmountCents = 100000 × 0.30 = 30000  // $300.00
-
-Step 2: Calculate client payout
-  clientPayoutCents = surplusAmountCents - feeAmountCents
-  clientPayoutCents = 100000 - 30000 = 70000  // $700.00
-
-Step 3: Calculate employee displayed commission (what they SEE)
-  employeeDisplayedCommissionCents = feeAmountCents × (displayedRate / 100)
-  employeeDisplayedCommissionCents = 30000 × 0.60 = 18000  // $180.00
-
-Step 4: Calculate employee actual commission (what they GET)
-  employeeActualCommissionCents = feeAmountCents × (actualRate / 100)
-  employeeActualCommissionCents = 30000 × 0.30 = 9000  // $90.00
-
-Step 5: Calculate founder share
-  founderShareCents = feeAmountCents - employeeActualCommissionCents
-  founderShareCents = 30000 - 9000 = 21000  // $210.00
-
-Output:
-{
-  feeAmountCents: 30000,                    // $300.00 total fee
-  clientPayoutCents: 70000,                 // $700.00 to client
-  employeeCommissionCents: 9000,            // $90.00 actual to employee
-  employeeDisplayedCommissionCents: 18000,  // $180.00 shown to employee
-  founderShareCents: 21000                  // $210.00 founder profit
-}
-```
-
-#### What Each Role Sees
-
-**FOUNDER sees:**
-- Surplus: $1,000.00
-- Fee: $300.00 (30%)
-- Client gets: $700.00
-- Employee displayed commission: $180.00 (60%)
-- Employee actual commission: $90.00 (30%)
-- Founder share: $210.00
-
-**EMPLOYEE sees:**
-- "Commission Rate: 60%"
-- "Your commission on this case: $180.00"
-- (They actually receive $90.00 but never see this)
-
-**CLIENT sees:**
-- "Case Status: Paid"
-- "Funds recovered on your behalf"
-- (No financial details shown)
-
-### 5.4 Client Portal Flow
-
-```
-1. Client receives email with portal link:
-   https://app.mgrcapital.com/client/{publicAccessToken}
-
-2. Client views case status in simple, non-technical language:
-   - "We're working on your case"
-   - "Documents ready for your review"
-   - "Your signatures are needed"
-   - "Your claim has been filed"
-   - "Waiting for funds to be released"
-   - "Success! Funds have been processed"
-
-3. Client completes onboarding:
-   - Confirms personal information
-   - Uploads government-issued ID (photo)
-   - Reviews service agreement
-   - Provides electronic signature
-
-4. Client signs documents:
-   - SERVICE_AGREEMENT (required)
-   - LIMITED_POA (required)
-   - Any additional state-specific documents
-
-5. Client tracks progress:
-   - Simple status updates
-   - Document status (pending/signed)
-   - Next steps in plain language
-
-CLIENT NEVER SEES:
-- Surplus amount
-- Fee percentage
-- Commission structure
-- Employee information
-- Internal case notes
-- Other clients' cases
-- Any backend logic
-```
+1. User submits email + password to `POST /api/auth/login`
+2. Backend validates credentials with bcrypt.compare()
+3. If valid, JWT token issued with payload: `{ userId, email, role, tier }`
+4. Token returned with expiration (24 hours default)
+5. Frontend stores token in localStorage as `token`
+6. All subsequent API requests include `Authorization: Bearer <token>`
+7. `GET /api/auth/me` validates token and returns current user data
 
 ---
 
@@ -883,132 +604,47 @@ CLIENT NEVER SEES:
 
 ### 6.1 Overview
 
-The OPS layer is the intelligence brain of the system. It provides:
-- Automated monitoring and alerting
-- Pattern detection and anomaly identification
-- Executive summaries for founder decision-making
-- Web scraping and data ingestion intelligence
+The OPS Layer is the **founder-only intelligence system** that provides:
+- Automated monitoring and analysis
+- Proactive issue detection
+- Strategic insights and recommendations
+- Full system observability
 
-**Access:** FOUNDER ONLY — Never exposed to any other role.
+**Access:** FOUNDER ONLY — Never expose to employees or clients.
 
 ### 6.2 Bot Network
 
-All bots:
-- Run on-demand via CoordinatorBot or individually
-- Write outputs to OpsInsight and/or WatchAlert
-- Produce plain-English summaries
-- Are completely invisible to non-FOUNDER users
+| Bot | Purpose | Key Functions |
+|-----|---------|---------------|
+| **IngestionBot** | Monitor data ingestion health | `analyzeIngestionPatterns()`, `detectDuplicates()`, `assessSourceHealth()` |
+| **PayoutBot** | Financial monitoring and validation | `validatePayoutMath()`, `detectAnomalies()`, `flagHighValueCases()` |
+| **ComplianceBot** | Compliance scanning and risk | `scanDeadlines()`, `validateDocuments()`, `checkTransitions()` |
+| **TrainingBot** | Training oversight and gaps | `identifyGaps()`, `correlatePerformance()`, `suggestModules()` |
+| **OutreachBot** | Case prioritization | `prioritizeCases()`, `analyzeResponseRates()`, `buildFollowUpQueue()` |
+| **DocketBot** | Deadline and court tracking | `trackDeadlines()`, `assessFilingRisk()`, `monitorProceedings()` |
+| **CoordinatorBot** | Orchestration | `runFullCycle()`, `generateExecutiveSummary()`, `prioritizeInsights()` |
 
-#### IngestionBot
+### 6.3 Bot Output Storage
 
-| Aspect | Details |
-|--------|---------|
-| **Purpose** | Analyze ingested data batches, flag opportunities, detect issues |
-| **Inputs** | IngestionBatch records, ScrapedItem records, Case records |
-| **Outputs** | WatchAlert (HIGH_VALUE_CASE, DUPLICATE_DETECTED, INGESTION_ISSUE), OpsInsight (patterns, source health) |
-| **Key Functions** | `analyze()`, `detectHighValue()`, `findDuplicates()`, `assessSourceHealth()`, `analyzePatterns()` |
-| **Frequency** | On batch upload (immediate), Daily scan (scheduled) |
-| **Thresholds** | High-value: >$10,000 surplus, Duplicate: same parcel+owner within 90 days |
+All bots write to `OpsInsight` table with:
+- `botSource`: Which bot generated the insight
+- `insightType`: Category (ANOMALY, DEADLINE, PERFORMANCE, etc.)
+- `priority`: 1-10 scale (10 = most urgent)
+- `title`: Short summary
+- `summary`: Plain-English explanation
+- `data`: Structured JSON with details
+- `actionRequired`: Boolean flag for founder attention
 
-#### PayoutBot
+### 6.4 Watch System
 
-| Aspect | Details |
-|--------|---------|
-| **Purpose** | Validate payout math, detect anomalies, flag suspicious patterns |
-| **Inputs** | LedgerEntry records, Case records, User records |
-| **Outputs** | WatchAlert (PAYOUT_ANOMALY), OpsInsight (trends, anomaly report) |
-| **Key Functions** | `analyze()`, `validateMath()`, `detectAnomalies()`, `flagOverrides()`, `analyzeVelocity()` |
-| **Frequency** | On payout creation (immediate), Daily scan (scheduled) |
-| **Thresholds** | Math mismatch: any deviation >1 cent, Velocity: >5 payouts/day per employee |
+The Watch System monitors external changes:
+- County rule changes
+- Website structure changes
+- Source availability
+- High-value case alerts
+- Deadline warnings
 
-#### ComplianceBot
-
-| Aspect | Details |
-|--------|---------|
-| **Purpose** | Scan for deadline risks, missing documents, invalid state transitions |
-| **Inputs** | Case records, Document records, Deadline records, state rules |
-| **Outputs** | WatchAlert (DEADLINE_APPROACHING, COMPLIANCE_RISK), OpsInsight (compliance summary) |
-| **Key Functions** | `scan()`, `checkDeadlines()`, `checkDocuments()`, `validateTransitions()`, `auditEmployees()` |
-| **Frequency** | Hourly for deadlines, Daily full scan |
-| **Thresholds** | Deadline risk: <7 days remaining, Missing doc: required doc not present after 48h |
-
-#### TrainingBot
-
-| Aspect | Details |
-|--------|---------|
-| **Purpose** | Analyze training completion vs performance, identify gaps, suggest modules |
-| **Inputs** | User records, TrainingProgress records, Case performance metrics |
-| **Outputs** | OpsInsight (training gaps, performance correlation, suggestions) |
-| **Key Functions** | `analyze()`, `identifyGaps()`, `suggestModules()`, `correlatePerformance()`, `assessReadiness()` |
-| **Frequency** | Weekly |
-| **Thresholds** | Gap: required module not completed within 30 days, Performance: <70% success rate |
-
-#### OutreachBot
-
-| Aspect | Details |
-|--------|---------|
-| **Purpose** | Prioritize cases for contact, suggest outreach strategies, build follow-up queues |
-| **Inputs** | Case records, Communication records, Client records, responsiveness data |
-| **Outputs** | OpsInsight (prioritized lists, contact suggestions, follow-up queues) |
-| **Key Functions** | `analyze()`, `prioritizeCases()`, `suggestContactMethod()`, `buildFollowUpQueue()`, `analyzeResponsiveness()` |
-| **Frequency** | Daily |
-| **Prioritization Factors** | Surplus amount, days since last contact, client responsiveness, deadline proximity |
-
-#### DocketBot
-
-| Aspect | Details |
-|--------|---------|
-| **Purpose** | Analyze court deadlines, track proceedings, assess filing risks |
-| **Inputs** | Case records, ScrapedItem (court dockets), Deadline records, state rules |
-| **Outputs** | WatchAlert (DEADLINE_APPROACHING, JURISDICTION_UPDATE), OpsInsight (docket analysis, risk assessment) |
-| **Key Functions** | `analyze()`, `calculateDeadlineSeverity()`, `trackProceedings()`, `assessRisk()`, `detectJurisdictionChanges()` |
-| **Frequency** | Daily |
-| **Risk Factors** | Days to deadline, filing complexity, jurisdiction rejection rate |
-
-#### CoordinatorBot
-
-| Aspect | Details |
-|--------|---------|
-| **Purpose** | Orchestrate all bots, consolidate findings, generate executive summaries |
-| **Inputs** | Outputs from all other bots, OpsInsight records, WatchAlert records |
-| **Outputs** | OpsInsight (executive summary, consolidated alerts, action items) |
-| **Key Functions** | `runFullOpsCycle()`, `generateExecutiveSummary()`, `consolidateInsights()`, `prioritizeActions()` |
-| **Frequency** | On-demand, Daily scheduled run |
-| **Orchestration** | Runs all bots in parallel, waits for completion, consolidates results |
-
-### 6.3 OPS Metrics
-
-#### CaseHeatmap
-- **Purpose:** Geographic visualization of case density and value
-- **Computation:** Group cases by state/county, aggregate counts and surplusAmountCents
-- **Fields:** `state`, `county`, `caseCount`, `totalValueCents`, `avgValueCents`, `riskScore`, `trend` (UP/DOWN/STABLE)
-- **Update Frequency:** Real-time on case changes
-
-#### EmployeeIntegrityScore
-- **Purpose:** Composite score for employee performance and compliance
-- **Computation:** Weighted average:
-  - Case success rate: 40%
-  - Response time: 20%
-  - Training completion: 20%
-  - Compliance flags: 20% (penalty)
-- **Fields:** `employeeId`, `employeeName`, `integrityScore` (0-100), `casesHandled`, `successRate`, `avgResponseDays`, `trainingComplete`, `flags[]`
-- **Update Frequency:** Daily recalculation
-
-#### JurisdictionVolatilityIndex
-- **Purpose:** Track rule changes and processing difficulty by jurisdiction
-- **Computation:** Factor in:
-  - Rule change frequency (last 90 days)
-  - Rejection rate
-  - Processing time variance
-  - Document requirement changes
-- **Fields:** `state`, `county`, `volatilityScore` (0-100), `ruleChangeCount`, `avgProcessingDays`, `rejectionRate`, `lastRuleChange`
-- **Update Frequency:** Weekly recalculation
-
-#### FounderFocusFeedItems
-- **Purpose:** Prioritized list of items requiring founder attention
-- **Sources:** Critical WatchAlerts, high-priority OpsInsights, unresolved system errors
-- **Fields:** `id`, `type`, `priority` (1-10), `title`, `summary`, `actionRequired`, `source`, `sourceId`, `createdAt`
-- **Sorting:** By priority descending, then by createdAt descending
+All watch events create `WatchAlert` records.
 
 ---
 
@@ -1017,13 +653,12 @@ All bots:
 ### 7.1 Metrics Routes
 
 #### GET /api/ops/metrics/dashboard
-
 | Aspect | Details |
 |--------|---------|
-| **Purpose** | Retrieve complete OPS dashboard data for FounderConsole |
+| **Purpose** | Retrieve complete OPS dashboard data |
 | **Access** | FOUNDER only |
-| **Inputs** | None (query params: `timeRange` optional, default "24h") |
-| **Outputs** | Dashboard summary, recent activity, alert counts, top metrics |
+| **Inputs** | Query: `timeRange` (24h/7d/30d/all) |
+| **Outputs** | Summary stats, activity metrics, alert counts |
 
 **Response:**
 ```json
@@ -1040,13 +675,7 @@ All bots:
     "recentActivity": {
       "newCases24h": 23,
       "payoutsProcessed24h": 8,
-      "alertsCreated24h": 5,
-      "documentsUploaded24h": 34
-    },
-    "topMetrics": {
-      "conversionRate": 0.67,
-      "avgCaseValueCents": 8500,
-      "avgProcessingDays": 45
+      "alertsCreated24h": 5
     },
     "alerts": {
       "critical": 2,
@@ -1059,357 +688,94 @@ All bots:
 ```
 
 #### GET /api/ops/metrics/focus-feed
-
 | Aspect | Details |
 |--------|---------|
-| **Purpose** | Retrieve prioritized founder attention items |
+| **Purpose** | Prioritized founder attention items |
 | **Access** | FOUNDER only |
-| **Inputs** | Query params: `limit` (default 20), `includeAcknowledged` (default false) |
-| **Outputs** | Array of focus feed items sorted by priority |
-
-**Response:**
-```json
-{
-  "success": true,
-  "data": {
-    "items": [
-      {
-        "id": "cuid...",
-        "type": "CRITICAL_ALERT",
-        "priority": 10,
-        "title": "High-value case requires attention",
-        "summary": "Case MGR-2026-00123 has $45,000 surplus and approaching deadline",
-        "actionRequired": true,
-        "source": "WatchAlert",
-        "sourceId": "cuid...",
-        "createdAt": "2026-01-21T10:30:00Z"
-      }
-    ],
-    "total": 15,
-    "unacknowledged": 8
-  }
-}
-```
-
-#### POST /api/ops/metrics/focus-feed/:id/dismiss
-
-| Aspect | Details |
-|--------|---------|
-| **Purpose** | Dismiss/acknowledge a focus feed item |
-| **Access** | FOUNDER only |
-| **Inputs** | Path param: `id` (focus item ID), Body: `{ notes?: string }` |
-| **Outputs** | Updated focus item |
-
-**Response:**
-```json
-{
-  "success": true,
-  "data": {
-    "id": "cuid...",
-    "acknowledged": true,
-    "acknowledgedAt": "2026-01-21T11:00:00Z"
-  }
-}
-```
+| **Inputs** | Query: `limit`, `includeAcknowledged` |
+| **Outputs** | Array of focus items sorted by priority |
 
 #### GET /api/ops/metrics/employees/integrity
-
 | Aspect | Details |
 |--------|---------|
-| **Purpose** | Retrieve employee integrity scores |
+| **Purpose** | Employee integrity/performance scores |
 | **Access** | FOUNDER only |
-| **Inputs** | Query params: `sortBy` (score/name/cases), `order` (asc/desc), `flaggedOnly` (boolean) |
-| **Outputs** | Array of employee integrity scores |
-
-**Response:**
-```json
-{
-  "success": true,
-  "data": {
-    "scores": [
-      {
-        "employeeId": "cuid...",
-        "employeeName": "John Doe",
-        "integrityScore": 87,
-        "casesHandled": 45,
-        "successRate": 0.82,
-        "avgResponseDays": 2.3,
-        "trainingComplete": true,
-        "flags": []
-      },
-      {
-        "employeeId": "cuid...",
-        "employeeName": "Jane Smith",
-        "integrityScore": 62,
-        "casesHandled": 23,
-        "successRate": 0.65,
-        "avgResponseDays": 4.1,
-        "trainingComplete": false,
-        "flags": ["TRAINING_OVERDUE", "LOW_SUCCESS_RATE"]
-      }
-    ],
-    "averageScore": 78,
-    "flaggedCount": 3
-  }
-}
-```
+| **Outputs** | Per-employee scores and metrics |
 
 #### GET /api/ops/metrics/heatmap
-
 | Aspect | Details |
 |--------|---------|
-| **Purpose** | Retrieve case heatmap by jurisdiction |
+| **Purpose** | Case distribution by jurisdiction |
 | **Access** | FOUNDER only |
-| **Inputs** | Query params: `groupBy` (state/county), `minCases` (default 1) |
-| **Outputs** | Array of heatmap entries |
+| **Outputs** | State/county case counts and values |
 
-**Response:**
-```json
-{
-  "success": true,
-  "data": {
-    "entries": [
-      {
-        "state": "TX",
-        "county": "Harris",
-        "caseCount": 156,
-        "totalValueCents": 2340000,
-        "avgValueCents": 15000,
-        "riskScore": 35,
-        "trend": "UP"
-      }
-    ],
-    "totalStates": 42,
-    "totalCounties": 234
-  }
-}
-```
+#### POST /api/ops/metrics/focus-feed/:id/dismiss
+| Aspect | Details |
+|--------|---------|
+| **Purpose** | Dismiss a focus feed item |
+| **Access** | FOUNDER only |
+| **Inputs** | Path: `id` |
 
-### 7.2 Watch/Alert Routes
+### 7.2 Watch Routes
 
 #### GET /api/ops/watch/alerts
-
 | Aspect | Details |
 |--------|---------|
-| **Purpose** | Retrieve watch alerts |
+| **Purpose** | List watch alerts |
 | **Access** | FOUNDER only |
-| **Inputs** | Query params: `isResolved` (boolean), `severity` (CRITICAL/HIGH/MEDIUM/LOW), `type` (WatchAlertType), `limit` (default 50), `offset` (default 0) |
-| **Outputs** | Array of watch alerts |
-
-**Response:**
-```json
-{
-  "success": true,
-  "data": {
-    "alerts": [
-      {
-        "id": "cuid...",
-        "type": "HIGH_VALUE_CASE",
-        "severity": "HIGH",
-        "title": "High-value case detected",
-        "message": "New case with $45,000 surplus identified in Harris County, TX",
-        "state": "TX",
-        "county": "Harris",
-        "relatedId": "cuid...",
-        "relatedType": "Case",
-        "isResolved": false,
-        "createdAt": "2026-01-21T09:15:00Z"
-      }
-    ],
-    "total": 27,
-    "unresolved": 15
-  }
-}
-```
+| **Inputs** | Query: `severity`, `type`, `resolved`, `limit` |
+| **Outputs** | Array of WatchAlert records |
 
 #### POST /api/ops/watch/alerts/:id/resolve
-
 | Aspect | Details |
 |--------|---------|
 | **Purpose** | Resolve a watch alert |
 | **Access** | FOUNDER only |
-| **Inputs** | Path param: `id`, Body: `{ notes?: string }` |
-| **Outputs** | Updated alert |
-
-**Response:**
-```json
-{
-  "success": true,
-  "data": {
-    "id": "cuid...",
-    "isResolved": true,
-    "resolvedAt": "2026-01-21T11:30:00Z",
-    "resolvedById": "founder-user-id",
-    "notes": "Reviewed and assigned to senior specialist"
-  }
-}
-```
+| **Inputs** | Path: `id`, Body: `notes` |
 
 #### POST /api/ops/watch/cycle
-
 | Aspect | Details |
 |--------|---------|
 | **Purpose** | Run full watch + scrape cycle |
 | **Access** | FOUNDER only |
-| **Inputs** | Body: `{ includeScrapers?: boolean, targetStates?: string[] }` |
-| **Outputs** | Cycle execution summary |
-
-**Response:**
-```json
-{
-  "success": true,
-  "data": {
-    "cycleId": "cycle-2026-01-21-001",
-    "startedAt": "2026-01-21T12:00:00Z",
-    "completedAt": "2026-01-21T12:05:32Z",
-    "scrapersRun": 12,
-    "itemsScraped": 456,
-    "alertsGenerated": 8,
-    "insightsGenerated": 3,
-    "errors": []
-  }
-}
-```
+| **Outputs** | Cycle results, new alerts created |
 
 #### POST /api/ops/watch/scraper/run
-
 | Aspect | Details |
 |--------|---------|
-| **Purpose** | Run web scrapers manually |
+| **Purpose** | Manually trigger scrapers |
 | **Access** | FOUNDER only |
-| **Inputs** | Body: `{ scraperType?: ScrapedItemType, states?: string[], counties?: string[] }` |
-| **Outputs** | Scraper execution summary |
+| **Inputs** | Body: `sources[]` (optional, default all) |
 
-**Response:**
-```json
-{
-  "success": true,
-  "data": {
-    "scraperId": "scrape-2026-01-21-001",
-    "startedAt": "2026-01-21T12:10:00Z",
-    "completedAt": "2026-01-21T12:12:45Z",
-    "sourcesProcessed": 15,
-    "itemsCreated": 89,
-    "itemsFlagged": 12,
-    "errors": []
-  }
-}
-```
-
-#### POST /api/ops/watch/run
-
+#### GET /api/ops/watch/scraper/status
 | Aspect | Details |
 |--------|---------|
-| **Purpose** | Run watch detection cycle (without scrapers) |
+| **Purpose** | Get scraper status and health |
 | **Access** | FOUNDER only |
-| **Inputs** | Body: `{ detectionTypes?: string[] }` |
-| **Outputs** | Detection cycle summary |
+| **Outputs** | Per-source status, last run, error count |
 
-**Response:**
-```json
-{
-  "success": true,
-  "data": {
-    "watchId": "watch-2026-01-21-001",
-    "detectionsRun": ["highValue", "deadlines", "anomalies", "ruleChanges"],
-    "alertsGenerated": 5,
-    "insightsGenerated": 2
-  }
-}
-```
+### 7.3 System Routes
 
-### 7.3 Bot Control Routes
-
-#### POST /api/ops/bots/run/:botName
-
+#### GET /api/ops/system/errors
 | Aspect | Details |
 |--------|---------|
-| **Purpose** | Run a specific bot manually |
+| **Purpose** | List system errors |
 | **Access** | FOUNDER only |
-| **Inputs** | Path param: `botName` (ingestion/payout/compliance/training/outreach/docket/coordinator) |
-| **Outputs** | Bot execution result |
+| **Inputs** | Query: `severity`, `resolved`, `limit` |
 
-**Response:**
-```json
-{
-  "success": true,
-  "data": {
-    "botName": "complianceBot",
-    "executionId": "exec-2026-01-21-001",
-    "startedAt": "2026-01-21T13:00:00Z",
-    "completedAt": "2026-01-21T13:02:15Z",
-    "insightsGenerated": 2,
-    "alertsGenerated": 3,
-    "summary": "Scanned 456 cases. Found 3 deadline risks, 2 missing documents."
-  }
-}
-```
-
-#### POST /api/ops/bots/cycle
-
+#### POST /api/ops/system/errors/:id/resolve
 | Aspect | Details |
 |--------|---------|
-| **Purpose** | Run full bot cycle via CoordinatorBot |
+| **Purpose** | Mark error as resolved |
 | **Access** | FOUNDER only |
-| **Inputs** | Body: `{ excludeBots?: string[] }` |
-| **Outputs** | Full cycle execution summary |
+| **Inputs** | Path: `id`, Body: `notes` |
 
-**Response:**
-```json
-{
-  "success": true,
-  "data": {
-    "cycleId": "bot-cycle-2026-01-21-001",
-    "botsRun": ["ingestion", "payout", "compliance", "training", "outreach", "docket"],
-    "totalInsights": 12,
-    "totalAlerts": 8,
-    "executiveSummary": "System stable. 3 high-value cases flagged. 2 deadline risks identified. 1 employee with low performance score.",
-    "duration": "4m 32s"
-  }
-}
-```
-
-### 7.4 Error Management Routes
-
-#### GET /api/ops/errors
-
+#### POST /api/ops/bots/run
 | Aspect | Details |
 |--------|---------|
-| **Purpose** | Retrieve system errors |
+| **Purpose** | Manually run bot cycle |
 | **Access** | FOUNDER only |
-| **Inputs** | Query params: `resolved` (boolean), `severity`, `limit`, `offset` |
-| **Outputs** | Array of system errors |
-
-**Response:**
-```json
-{
-  "success": true,
-  "data": {
-    "errors": [
-      {
-        "id": "cuid...",
-        "message": "Database connection timeout",
-        "stack": "Error: Connection timeout...",
-        "context": { "query": "SELECT...", "duration": 30000 },
-        "severity": "HIGH",
-        "resolved": false,
-        "createdAt": "2026-01-21T08:45:00Z"
-      }
-    ],
-    "total": 15,
-    "unresolved": 3
-  }
-}
-```
-
-#### POST /api/ops/errors/:id/resolve
-
-| Aspect | Details |
-|--------|---------|
-| **Purpose** | Mark system error as resolved |
-| **Access** | FOUNDER only |
-| **Inputs** | Path param: `id`, Body: `{ notes?: string }` |
-| **Outputs** | Updated error record |
+| **Inputs** | Body: `bots[]` (optional, default all) |
 
 ---
 
@@ -1418,1282 +784,630 @@ All bots:
 ### 8.1 Storage Structure
 
 ```
-backend/
-  storage/
-    documents/
-      {caseId}/
-        service_agreement_{timestamp}.pdf
-        limited_poa_{timestamp}.pdf
-        affidavit_{timestamp}.pdf
-        cover_letter_{timestamp}.pdf
-        filing_packet_{timestamp}.pdf
-        client_id_{timestamp}.{ext}
-        signed_document_{timestamp}.pdf
-        evidence_packet_{timestamp}.pdf
+backend/storage/documents/
+├── {caseId}/
+│   ├── SERVICE_AGREEMENT_20260121_143052.pdf
+│   ├── LIMITED_POA_20260121_143055.pdf
+│   ├── CLIENT_ID_20260121_150023.jpg
+│   └── FILING_PACKET_20260122_091530.pdf
 ```
 
-### 8.2 Document Type Access Matrix
+### 8.2 Access Matrix by Document Type
 
 | Document Type | FOUNDER | ADMIN | HR | COMPLIANCE | TEAM_LEAD | EMPLOYEE | CLIENT |
 |---------------|:-------:|:-----:|:--:|:----------:|:---------:|:--------:|:------:|
-| **SERVICE_AGREEMENT** | | | | | | | |
-| - Upload | ✓ | ✓ | - | - | - | ✓ (own) | - |
-| - Download | ✓ | ✓ | - | ✓ | ✓ (team) | ✓ (own) | ✓ (own) |
-| - View Metadata | ✓ | ✓ | - | ✓ | ✓ (team) | ✓ (own) | ✓ (own) |
-| - Delete | ✓ | - | - | - | - | - | - |
-| **LIMITED_POA** | | | | | | | |
-| - Upload | ✓ | ✓ | - | - | - | ✓ (own) | - |
-| - Download | ✓ | ✓ | - | ✓ | ✓ (team) | ✓ (own) | ✓ (own) |
-| - View Metadata | ✓ | ✓ | - | ✓ | ✓ (team) | ✓ (own) | ✓ (own) |
-| - Delete | ✓ | - | - | - | - | - | - |
-| **AFFIDAVIT** | | | | | | | |
-| - Upload | ✓ | ✓ | - | - | - | ✓ (own) | - |
-| - Download | ✓ | ✓ | - | ✓ | ✓ (team) | ✓ (own) | - |
-| - View Metadata | ✓ | ✓ | - | ✓ | ✓ (team) | ✓ (own) | - |
-| - Delete | ✓ | - | - | - | - | - | - |
-| **COVER_LETTER** | | | | | | | |
-| - Upload | ✓ | ✓ | - | - | - | - | - |
-| - Download | ✓ | ✓ | - | ✓ | ✓ (team) | ✓ (own) | - |
-| - View Metadata | ✓ | ✓ | - | ✓ | ✓ (team) | ✓ (own) | - |
-| - Delete | ✓ | - | - | - | - | - | - |
-| **FILING_PACKET** | | | | | | | |
-| - Upload | ✓ | ✓ | - | - | - | - | - |
-| - Download | ✓ | ✓ | - | ✓ | - | - | - |
-| - View Metadata | ✓ | ✓ | - | ✓ | ✓ (team) | ✓ (own) | - |
-| - Delete | ✓ | - | - | - | - | - | - |
-| **CLIENT_ID** | | | | | | | |
-| - Upload | ✓ | ✓ | - | - | - | - | ✓ (own) |
-| - Download | ✓ | ✓ | - | ✓ | - | - | - |
-| - View Metadata | ✓ | ✓ | - | ✓ | ✓ (team) | ✓ (own) | ✓ (own) |
-| - Delete | ✓ | - | - | - | - | - | - |
-| **SIGNED_DOCUMENT** | | | | | | | |
-| - Upload | ✓ | ✓ | - | - | - | ✓ (own) | ✓ (own) |
-| - Download | ✓ | ✓ | - | ✓ | ✓ (team) | ✓ (own) | ✓ (own) |
-| - View Metadata | ✓ | ✓ | - | ✓ | ✓ (team) | ✓ (own) | ✓ (own) |
-| - Delete | ✓ | - | - | - | - | - | - |
+| SERVICE_AGREEMENT | Full | Full | - | Read | Team | Own | Own |
+| LIMITED_POA | Full | Full | - | Read | Team | Own | Own |
+| AFFIDAVIT | Full | Full | - | Read | Team | Own | - |
+| MOTION | Full | Full | - | Read | Team | Own | - |
+| COVER_LETTER | Full | Full | - | Read | Team | Own | - |
+| FILING_PACKET | Full | Full | - | Read | Team | Own | - |
+| EVIDENCE_PACKET | Full | Full | - | Read | Team | Own | - |
+| CLIENT_ID | Full | Full | - | Read | - | Own | Own |
+| PAYMENT_INSTRUCTIONS | Full | Full | - | Read | Team | Own | - |
 
-### 8.3 Storage Rules
+**Access Levels:**
+- **Full**: Upload, download, delete, verify
+- **Read**: Download only
+- **Team**: Access for team member cases only
+- **Own**: Access for assigned/own cases only
 
-1. **Path Construction:** `backend/storage/documents/{caseId}/{type}_{timestamp}.{ext}`
-2. **Database Storage:** Only relative paths stored (e.g., `documents/abc123/service_agreement_1705123456.pdf`)
-3. **Full Path:** Constructed at runtime by prepending `backend/storage/`
-4. **Directory Creation:** Auto-created on first document upload for case
-5. **File Naming:** `{documentType}_{unixTimestamp}.{extension}`
-6. **No Overwrites:** Each upload creates new file with unique timestamp
+### 8.3 Document Routes
 
-### 8.4 Security Rules
+#### POST /api/documents/:caseId/upload
+| Aspect | Details |
+|--------|---------|
+| **Purpose** | Upload document to case |
+| **Access** | FOUNDER, ADMIN, TEAM_LEAD (team), EMPLOYEE (own), CLIENT (own) |
+| **Inputs** | Path: `caseId`, Body: multipart file + `type` |
+| **Validation** | File type, size limit (10MB), case ownership |
 
-1. **No Static Serving:** Files never served via express.static()
-2. **Authenticated Access:** All downloads require valid JWT
-3. **Role Verification:** roleGuard checks before file access
-4. **Ownership Verification:** For EMPLOYEE/CLIENT, verify case assignment/ownership
-5. **Audit Logging:** All uploads and downloads logged to AuditLog
-6. **Path Traversal Prevention:** Validate paths contain no `..` sequences
-7. **MIME Type Validation:** Verify uploaded file matches claimed type
-8. **Size Limits:** Max 50MB per file, enforced by multer
+#### GET /api/documents/:id/download
+| Aspect | Details |
+|--------|---------|
+| **Purpose** | Download document file |
+| **Access** | Per access matrix above |
+| **Outputs** | File stream with correct MIME type |
 
-### 8.5 Integration Points
+#### GET /api/documents/:id/view
+| Aspect | Details |
+|--------|---------|
+| **Purpose** | View document metadata |
+| **Access** | Per access matrix above |
+| **Outputs** | Document record without file content |
 
-| Service | Integration |
-|---------|-------------|
-| `legalService.generateDocument()` | Creates PDF → saves to vault → creates Document record |
-| Client ID upload (portal) | Client uploads → saves to vault → updates Document record |
-| Document signing | Client signs → creates signed copy → updates Document record |
-| Document download | Validates access → streams file from vault |
-| `pdfService.generateAgreement()` | Generates PDF → returns buffer → vault service saves |
+#### PATCH /api/documents/:id/sign
+| Aspect | Details |
+|--------|---------|
+| **Purpose** | Sign a document |
+| **Access** | CLIENT (own documents requiring signature) |
+| **Inputs** | Body: `signatureData` (base64) |
+
+#### DELETE /api/documents/:id
+| Aspect | Details |
+|--------|---------|
+| **Purpose** | Delete document |
+| **Access** | FOUNDER only |
 
 ---
 
 ## 9. NOTIFICATION TRIGGER MAP
 
-### 9.1 Notification Types and Triggers
+### 9.1 Notification Types
 
-#### DOCUMENTS_READY
+| Trigger | Recipient | Channel | Template |
+|---------|-----------|---------|----------|
+| Case Created | Client | EMAIL | `case_welcome` |
+| Documents Ready | Client | EMAIL | `docs_ready` |
+| Document Reminder | Client | EMAIL | `docs_reminder` |
+| Case Filed | Client | EMAIL | `case_filed` |
+| Payment Received | Client | EMAIL | `payment_received` |
+| Case Assigned | Employee | EMAIL | `case_assigned` |
+| High-Value Alert | Founder | INTERNAL | `high_value_case` |
 
-| Aspect | Details |
-|--------|---------|
-| **Trigger Event** | Documents generated and ready for client signature |
-| **Recipient Role(s)** | CLIENT |
-| **Channel** | EMAIL |
-| **Subject Line** | "Documents Ready for Your Review - MGR Capital" |
-| **Body Content** | Greeting, case reference, list of documents, portal link, deadline reminder |
-| **Logging** | NotificationLog with relatedCaseId, status tracking |
+### 9.2 Email Templates
 
-**Template:**
+#### case_welcome
 ```
+Subject: Welcome to MGR Capital Assistance - Case #{internalId}
+
 Dear {clientName},
 
-Your documents for case {internalId} are ready for review and signature.
-
-Documents requiring your attention:
-- Service Agreement
-- Limited Power of Attorney
-
-Please review and sign these documents by {deadline}.
-
-Access your portal: {portalLink}
-
-If you have questions, reply to this email.
-
-MGR Capital Assistance
-```
-
-#### CASE_STATUS_CHANGED
-
-| Aspect | Details |
-|--------|---------|
-| **Trigger Event** | Case status transitions to new state |
-| **Recipient Role(s)** | CLIENT, EMPLOYEE (assigned) |
-| **Channel** | EMAIL |
-| **Subject Line** | "Case Update - {statusDescription}" |
-| **Body Content** | Status change description, next steps, action items (if any) |
-| **Logging** | NotificationLog with relatedCaseId, old/new status in metadata |
-
-**Client Template:**
-```
-Dear {clientName},
-
-Your case status has been updated.
-
-Previous Status: {oldStatusFriendly}
-Current Status: {newStatusFriendly}
-
-{nextStepsDescription}
-
-Track your case: {portalLink}
-
-MGR Capital Assistance
-```
-
-**Employee Template:**
-```
-Case {internalId} status changed.
-
-{clientName} - {state}, {county}
-Status: {oldStatus} → {newStatus}
-
-Action Required: {actionRequired}
-
-View case: {caseLink}
-```
-
-#### PAYOUT_COMPLETED
-
-| Aspect | Details |
-|--------|---------|
-| **Trigger Event** | Payout marked as COMPLETED in ledger |
-| **Recipient Role(s)** | EMPLOYEE (commission), CLIENT (payout) |
-| **Channel** | EMAIL |
-| **Subject Line** | "Payment Processed - MGR Capital" |
-| **Body Content** | Confirmation, amount (displayed for employee), reference number |
-| **Logging** | NotificationLog with relatedCaseId, relatedUserId |
-
-**Employee Template:**
-```
-Commission Payment Processed
-
-Case: {internalId}
-Amount: ${displayedAmount}
-Reference: {reference}
-
-View your earnings: {earningsLink}
-```
-
-**Client Template:**
-```
-Dear {clientName},
-
-Great news! Your funds have been processed.
+Thank you for choosing MGR Capital Assistance to help you recover your
+unclaimed funds. Your case has been created and assigned to a specialist
+who will be in contact with you shortly.
 
 Case Reference: {internalId}
+Property: {propertyAddress}
 
-The funds will be delivered according to your instructions.
+You can check your case status anytime at:
+{portalUrl}
 
-Thank you for choosing MGR Capital Assistance.
+If you have questions, please reply to this email.
+
+Best regards,
+MGR Capital Assistance
 ```
 
-#### HIGH_VALUE_FLAG
-
-| Aspect | Details |
-|--------|---------|
-| **Trigger Event** | Case with surplus >$10,000 detected |
-| **Recipient Role(s)** | FOUNDER |
-| **Channel** | INTERNAL |
-| **Subject Line** | "High-Value Case Flagged: ${amount}" |
-| **Body Content** | Case details, surplus amount, source, recommended priority |
-| **Logging** | NotificationLog, also creates WatchAlert |
-
-**Template:**
+#### docs_ready
 ```
-HIGH-VALUE CASE DETECTED
+Subject: Documents Ready for Signature - Case #{internalId}
 
-Case: {internalId}
-Surplus: ${surplusAmount}
-Location: {county}, {state}
-Source: {source}
+Dear {clientName},
 
-Recommended Action: Assign to senior specialist, prioritize contact.
+The documents for your case are ready for your review and signature.
+Please visit your secure client portal to review and sign:
 
-View in OPS Console: {opsLink}
+{portalUrl}
+
+Documents awaiting signature:
+{documentList}
+
+Please complete within 5 business days to avoid delays.
+
+Best regards,
+MGR Capital Assistance
 ```
 
-#### DEADLINE_RISK
-
-| Aspect | Details |
-|--------|---------|
-| **Trigger Event** | Case deadline <7 days away |
-| **Recipient Role(s)** | EMPLOYEE (assigned), FOUNDER (critical) |
-| **Channel** | EMAIL (employee), INTERNAL (founder if <3 days) |
-| **Subject Line** | "Deadline Alert: {daysRemaining} days remaining" |
-| **Body Content** | Case reference, deadline date, required actions |
-| **Logging** | NotificationLog, also creates WatchAlert if critical |
-
-**Employee Template:**
+#### docs_reminder
 ```
-DEADLINE ALERT
+Subject: Reminder: Documents Awaiting Signature - Case #{internalId}
 
-Case: {internalId}
-Deadline: {deadlineDate} ({daysRemaining} days)
-Deadline Type: {deadlineType}
+Dear {clientName},
 
-Required Actions:
-{actionList}
+This is a friendly reminder that we are still awaiting your signature
+on the following documents:
 
-View case: {caseLink}
+{documentList}
+
+Please sign at your earliest convenience:
+{portalUrl}
+
+Best regards,
+MGR Capital Assistance
 ```
 
-#### TRAINING_EVENT
-
-| Aspect | Details |
-|--------|---------|
-| **Trigger Event** | Training module assigned, completed, or overdue |
-| **Recipient Role(s)** | EMPLOYEE (assigned), HR (overdue notifications) |
-| **Channel** | EMAIL |
-| **Subject Line** | Varies: "New Training Assigned" / "Training Completed" / "Training Overdue" |
-| **Body Content** | Module name, deadline (if applicable), completion status |
-| **Logging** | NotificationLog with relatedUserId |
-
-**Assigned Template:**
+#### payment_received
 ```
-New Training Module Assigned
+Subject: Great News! Your Funds Have Arrived - Case #{internalId}
 
-Module: {moduleName}
-Due Date: {dueDate}
+Dear {clientName},
 
-Access your training: {trainingLink}
+Congratulations! The funds for your case have been received.
+
+Property: {propertyAddress}
+Amount: ${clientPayoutFormatted}
+
+Your payment will be processed within 3-5 business days.
+
+Thank you for trusting MGR Capital Assistance.
+
+Best regards,
+MGR Capital Assistance
 ```
 
-**Overdue Template (to HR):**
+### 9.3 SMTP Configuration
+
+```typescript
+// backend/src/services/notificationService.ts
+
+const transporter = nodemailer.createTransport({
+  host: config.smtpHost,
+  port: config.smtpPort,
+  secure: config.smtpSecure,
+  auth: {
+    user: config.smtpUser,
+    pass: config.smtpPass
+  }
+});
 ```
-Training Overdue Alert
-
-Employee: {employeeName}
-Module: {moduleName}
-Due Date: {dueDate} (overdue by {daysOverdue} days)
-
-Employee profile: {employeeLink}
-```
-
-#### SYSTEM_ERROR
-
-| Aspect | Details |
-|--------|---------|
-| **Trigger Event** | Critical or high-severity error logged |
-| **Recipient Role(s)** | FOUNDER |
-| **Channel** | INTERNAL |
-| **Subject Line** | "[{severity}] System Error: {errorType}" |
-| **Body Content** | Error message, context, stack trace summary, suggested action |
-| **Logging** | NotificationLog, also creates SystemError record |
-
-**Template:**
-```
-SYSTEM ERROR - {severity}
-
-Error: {message}
-Time: {timestamp}
-Context: {contextSummary}
-
-Stack Trace:
-{stackTrace}
-
-View in OPS Console: {opsLink}
-```
-
-### 9.2 Notification Processing Rules
-
-1. **Retry Logic:** Failed emails retry up to 3 times with exponential backoff (1min, 5min, 15min)
-2. **Status Tracking:** All notifications tracked in NotificationLog with status updates
-3. **Rate Limiting:** Max 10 emails per recipient per hour (prevents spam)
-4. **Batch Processing:** Non-urgent notifications can be batched into daily digest
-5. **Unsubscribe:** Clients can unsubscribe from non-essential notifications
-6. **Logging:** Every notification attempt logged with timestamp, status, error (if any)
 
 ---
 
 ## 10. PDF TEMPLATE SPECIFICATION
 
-### 10.1 SERVICE_AGREEMENT
+### 10.1 Template Engine
 
+All PDFs generated using `pdfkit` with consistent styling:
+- Font: Helvetica (built-in, no external fonts)
+- Page Size: Letter (8.5" x 11")
+- Margins: 1 inch all sides
+- Company letterhead on first page
+
+### 10.2 Document Templates
+
+#### SERVICE_AGREEMENT
+
+**Purpose:** Client service contract authorizing MGR Capital to act on their behalf.
+
+**Fields:**
 | Field | Source | Required |
 |-------|--------|----------|
-| `clientName` | Client.name | Yes |
-| `clientAddress` | Client full address | Yes |
-| `propertyAddress` | Case.propertyAddress | Yes |
-| `state` | Case.state | Yes |
-| `county` | Case.county | Yes |
-| `feePercent` | Case.feePercent | Yes |
-| `effectiveDate` | Current date | Yes |
-| `companyName` | "MGR Capital Assistance" | Yes |
-| `companyAddress` | Config | Yes |
+| clientName | Client.name | Yes |
+| clientAddress | Client full address | Yes |
+| propertyAddress | Case.propertyAddress | Yes |
+| state | Case.state | Yes |
+| county | Case.county | Yes |
+| feePercent | Case.feePercent | Yes (FOUNDER sees, template shows) |
+| agreementDate | Generated | Yes |
+| signatureLine | Client signature | Yes |
 
-**Template Structure:**
-```
-[MGR CAPITAL LOGO]
+**Sections:**
+1. Parties (MGR Capital + Client)
+2. Property Description
+3. Services to be Provided
+4. Fee Structure
+5. Term and Termination
+6. Signatures
 
-SERVICE AGREEMENT
+#### LIMITED_POA
 
-This Service Agreement ("Agreement") is entered into as of {effectiveDate}...
+**Purpose:** Power of Attorney authorizing MGR Capital to file claims.
 
-PARTIES:
-Client: {clientName}
-Address: {clientAddress}
-
-Company: {companyName}
-Address: {companyAddress}
-
-PROPERTY:
-Address: {propertyAddress}
-County: {county}, State: {state}
-
-TERMS:
-1. Scope of Services...
-2. Compensation: Company shall receive {feePercent}% of recovered funds...
-3. Term and Termination...
-4. Representations and Warranties...
-5. Limitation of Liability...
-6. Governing Law: State of {state}...
-
-SIGNATURES:
-
-Client Signature: _________________ Date: _________
-Print Name: {clientName}
-
-Company Representative: _________________ Date: _________
-Print Name: _________________
-```
-
-**Signature Requirements:** Client signature required, company counter-signature optional
-**Storage:** `documents/{caseId}/service_agreement_{timestamp}.pdf`
-
-### 10.2 LIMITED_POA
-
+**Fields:**
 | Field | Source | Required |
 |-------|--------|----------|
-| `clientName` | Client.name | Yes |
-| `clientAddress` | Client full address | Yes |
-| `propertyAddress` | Case.propertyAddress | Yes |
-| `parcelNumber` | Case.parcelNumber | If available |
-| `state` | Case.state | Yes |
-| `county` | Case.county | Yes |
-| `scope` | State-specific | Yes |
-| `duration` | "Until case completion or 2 years" | Yes |
+| clientName | Client.name | Yes |
+| clientAddress | Client full address | Yes |
+| propertyAddress | Case.propertyAddress | Yes |
+| parcelNumber | Case.parcelNumber | If available |
+| saleDate | Case.saleDate | If available |
+| state | Case.state | Yes |
+| county | Case.county | Yes |
 
-**Template Structure:**
-```
-[MGR CAPITAL LOGO]
+**Sections:**
+1. Grant of Authority
+2. Scope of Authority
+3. Property Description
+4. Effective Date and Duration
+5. Signatures and Notarization
 
-LIMITED POWER OF ATTORNEY
+#### AFFIDAVIT
 
-KNOW ALL PERSONS BY THESE PRESENTS:
+**Purpose:** Sworn statement of ownership/entitlement.
 
-I, {clientName}, residing at {clientAddress}, do hereby appoint
-MGR Capital Assistance as my true and lawful attorney-in-fact...
-
-PROPERTY:
-{propertyAddress}
-Parcel Number: {parcelNumber}
-County: {county}, State: {state}
-
-POWERS GRANTED:
-The attorney-in-fact is authorized to:
-1. File claims for excess proceeds or surplus funds...
-2. Communicate with government agencies...
-3. Execute documents necessary...
-4. Receive funds on my behalf...
-
-LIMITATIONS:
-{scopeLimitations}
-
-DURATION:
-{duration}
-
-This Power of Attorney shall be governed by the laws of {state}.
-
-PRINCIPAL SIGNATURE:
-
-_________________ Date: _________
-{clientName}
-
-NOTARIZATION:
-State of _________
-County of _________
-[Notary section - state specific]
-```
-
-**Signature Requirements:** Client signature required, notarization may be required by state
-**Storage:** `documents/{caseId}/limited_poa_{timestamp}.pdf`
-
-### 10.3 AFFIDAVIT
-
+**Fields:**
 | Field | Source | Required |
 |-------|--------|----------|
-| `clientName` | Client.name | Yes |
-| `clientAddress` | Client full address | Yes |
-| `propertyAddress` | Case.propertyAddress | Yes |
-| `saleDate` | Case.saleDate | If available |
-| `state` | Case.state | Yes |
-| `county` | Case.county | Yes |
-| `claimBasis` | State-specific | Yes |
+| clientName | Client.name | Yes |
+| propertyAddress | Case.propertyAddress | Yes |
+| ownershipHistory | Case notes or intake | Yes |
+| state | Case.state | Yes |
+| county | Case.county | Yes |
 
-**Template Structure:**
-```
-[MGR CAPITAL LOGO]
+#### FILING_PACKET
 
-AFFIDAVIT OF CLAIM
+**Purpose:** Complete package for county/court filing.
 
-STATE OF {state}
-COUNTY OF {county}
+**Contents:**
+1. Cover Letter
+2. Service Agreement (copy)
+3. Limited POA (copy)
+4. Affidavit
+5. Supporting Evidence
+6. Payment Instructions (if required)
 
-I, {clientName}, being duly sworn, depose and say:
+### 10.3 PDF Generation Code Pattern
 
-1. I am over 18 years of age and competent to testify...
+```typescript
+// backend/src/services/pdfService.ts
 
-2. I am the owner/former owner/heir of the property located at:
-   {propertyAddress}
+import PDFDocument from 'pdfkit';
 
-3. The property was sold at tax sale on {saleDate}...
+export async function generateServiceAgreement(caseData: Case, clientData: Client): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    const doc = new PDFDocument({ size: 'LETTER', margin: 72 });
+    const chunks: Buffer[] = [];
 
-4. I am entitled to the excess proceeds/surplus funds because:
-   {claimBasis}
+    doc.on('data', (chunk) => chunks.push(chunk));
+    doc.on('end', () => resolve(Buffer.concat(chunks)));
+    doc.on('error', reject);
 
-5. I have not previously received these funds...
+    // Header
+    doc.fontSize(18).text('SERVICE AGREEMENT', { align: 'center' });
+    doc.moveDown();
 
-6. The statements in this affidavit are true and correct...
+    // Body content...
+    doc.fontSize(12).text(`This Agreement is entered into by and between...`);
 
-FURTHER AFFIANT SAYETH NOT.
+    // Signature lines
+    doc.moveDown(4);
+    doc.text('Client Signature: ________________________');
+    doc.text(`Date: ________________________`);
 
-_________________ Date: _________
-{clientName}
-
-SUBSCRIBED AND SWORN before me this ___ day of _______, 20__.
-
-_________________
-Notary Public
-My Commission Expires: _________
-```
-
-**Signature Requirements:** Client signature required, notarization required
-**Storage:** `documents/{caseId}/affidavit_{timestamp}.pdf`
-
-### 10.4 COVER_LETTER
-
-| Field | Source | Required |
-|-------|--------|----------|
-| `recipientName` | County clerk/treasurer | Yes |
-| `recipientTitle` | Office title | Yes |
-| `recipientAddress` | Office address | Yes |
-| `caseReference` | Case.internalId | Yes |
-| `clientName` | Client.name | Yes |
-| `propertyAddress` | Case.propertyAddress | Yes |
-| `parcelNumber` | Case.parcelNumber | If available |
-| `documentList` | Enclosed documents | Yes |
-
-**Template Structure:**
-```
-[MGR CAPITAL LOGO]
-[Company Address]
-[Date]
-
-{recipientName}
-{recipientTitle}
-{recipientAddress}
-
-RE: Claim for Surplus Funds
-    Property: {propertyAddress}
-    Parcel: {parcelNumber}
-    Our Reference: {caseReference}
-
-Dear {recipientName}:
-
-Please find enclosed the following documents in support of our client's
-claim for surplus funds:
-
-{documentList}
-
-Our client, {clientName}, is entitled to surplus funds from the tax sale
-of the above-referenced property.
-
-Please process this claim at your earliest convenience. Should you require
-additional documentation, please contact our office.
-
-Respectfully submitted,
-
-MGR Capital Assistance
-[Contact Information]
-```
-
-**Signature Requirements:** Company signature
-**Storage:** `documents/{caseId}/cover_letter_{timestamp}.pdf`
-
-### 10.5 FILING_PACKET
-
-| Field | Source | Required |
-|-------|--------|----------|
-| All fields from included documents | Various | Yes |
-| `tableOfContents` | Generated | Yes |
-| `includedDocuments` | List of documents | Yes |
-
-**Template Structure:**
-```
-[MGR CAPITAL LOGO]
-
-SURPLUS FUNDS CLAIM PACKET
-
-Case Reference: {internalId}
-Filing Date: {filingDate}
-Jurisdiction: {county}, {state}
-
-TABLE OF CONTENTS:
-1. Cover Letter........................Page 2
-2. Service Agreement...................Page 3
-3. Limited Power of Attorney...........Page 7
-4. Affidavit..........................Page 10
-5. Supporting Evidence................Page 12
-6. Client Identification..............Page 15
-
-[Each document follows as separate section]
-```
-
-**Signature Requirements:** All component documents must be signed
-**Storage:** `documents/{caseId}/filing_packet_{timestamp}.pdf`
-
-### 10.6 Additional Document Types
-
-| Type | Purpose | Key Fields |
-|------|---------|------------|
-| EVIDENCE_PACKET | Supporting evidence compilation | Property records, tax records, chain of title |
-| FOLLOW_UP_LETTER | Follow-up on filed claim | Case reference, original filing date, status request |
-| VERIFICATION_LETTER | Verify claim status | Case reference, verification request |
-| PAYMENT_INSTRUCTIONS | Payment delivery instructions | Client name, payment method, routing info |
-
-### 10.7 PDF Engine Integration
-
-```
-pdfService.generateDocument(type, caseId, data):
-  1. Load template for document type
-  2. Fetch case, client, and state rules from database
-  3. Merge data into template
-  4. Generate PDF using pdfkit
-  5. Call documentVaultService.saveDocument(caseId, buffer, metadata)
-  6. Create Document record in database
-  7. Return Document record with filePath
+    doc.end();
+  });
+}
 ```
 
 ---
 
 ## 11. TRAINING INTELLIGENCE BLUEPRINT
 
-### 11.1 Training Module Generation
+### 11.1 Module Structure
 
-#### generateTrainingModuleOutline(role, tier)
+| Module ID | Title | Target Roles | Tiers |
+|-----------|-------|--------------|-------|
+| M001 | Introduction to MGR Capital | ALL EMPLOYEES | All |
+| M002 | Client Communication Basics | EMPLOYEE, TEAM_LEAD | TIER_1, TIER_2 |
+| M003 | Compliance & Boundaries | ALL EMPLOYEES | All |
+| M004 | Case Processing Procedures | EMPLOYEE, TEAM_LEAD | All |
+| M005 | Advanced Negotiation | TEAM_LEAD | TIER_3+ |
+| M006 | Team Leadership | TEAM_LEAD | TIER_4+ |
+| M007 | HR Onboarding Procedures | HR | N/A |
+| M008 | Compliance Monitoring | COMPLIANCE | N/A |
 
-**Purpose:** Generate comprehensive training module outline for specific role/tier
+### 11.2 Training Progress Tracking
 
-**Inputs:**
-- `role`: UserRole (EMPLOYEE, TEAM_LEAD, HR, COMPLIANCE)
-- `tier`: EmployeeTier (for EMPLOYEE role only)
+```
+TrainingProgress {
+  userId -> User
+  moduleId -> TrainingModule
+  status: NOT_STARTED | IN_PROGRESS | COMPLETED
+  startedAt: DateTime?
+  completedAt: DateTime?
+  quizScore: Int?
+  attempts: Int
+}
+```
 
-**Process:**
-1. Determine required competencies based on role/tier
-2. Identify knowledge gaps from TrainingBot analysis
-3. Generate structured outline with learning objectives
-4. Create assessment criteria
-5. Save to TrainingModuleDetail
+### 11.3 TrainingBot Functions
 
-**Output Structure:**
+| Function | Purpose | Output |
+|----------|---------|--------|
+| `identifyGaps()` | Find employees missing required modules | List of gaps per employee |
+| `correlatePerformance()` | Link training completion to case metrics | Performance correlation data |
+| `suggestModules()` | Recommend next modules based on role/tier | Personalized suggestions |
+| `generateAnalytics()` | Training completion metrics | Dashboard data |
+
+### 11.4 Module Content Generation
+
+TrainingBot generates module content stored in `TrainingModuleDetail`:
+
 ```json
 {
-  "moduleId": "cuid...",
+  "moduleId": "M002",
   "role": "EMPLOYEE",
-  "tier": "TIER_2_SPECIALIST",
+  "tier": "TIER_1_ASSOCIATE",
   "outline": {
-    "title": "Specialist Level Training",
-    "duration": "8 hours",
     "sections": [
-      {
-        "title": "Advanced Client Communication",
-        "objectives": ["Handle objections", "Build rapport", "Close agreements"],
-        "topics": ["Objection handling", "Trust building", "Closing techniques"],
-        "duration": "2 hours"
-      }
+      { "title": "Introduction", "duration": "5min" },
+      { "title": "First Contact Best Practices", "duration": "15min" },
+      { "title": "Handling Objections", "duration": "20min" },
+      { "title": "Quiz", "duration": "10min" }
     ]
   },
   "scripts": {
-    "initialContact": "Hello, this is {name} from MGR Capital...",
+    "initialCall": "Hello, my name is {name} calling from MGR Capital Assistance...",
     "objectionHandling": {
-      "tooGoodToBeTrue": "I understand your concern. Let me explain...",
-      "alreadyHiredSomeone": "That's great that you're taking action..."
+      "tooGoodToBeTrue": "I understand your concern. Let me explain exactly how this works...",
+      "alreadyContacted": "Thank you for letting me know. Could you tell me who contacted you?"
     }
   },
   "keyPoints": [
-    "Never mention specific dollar amounts",
-    "Always confirm client identity before discussing case",
-    "Document all communication attempts"
+    "Always be professional and patient",
+    "Never discuss specific financial amounts",
+    "Document all communications"
   ]
 }
 ```
-
-### 11.2 Assessment Question Generation
-
-#### generateAssessmentQuestions(moduleId)
-
-**Purpose:** Generate quiz questions for module assessment
-
-**Inputs:**
-- `moduleId`: TrainingModuleDetail ID
-
-**Process:**
-1. Load module outline and key points
-2. Generate questions covering all learning objectives
-3. Create multiple choice and scenario-based questions
-4. Set passing threshold (typically 80%)
-5. Save to module assessment
-
-**Output Structure:**
-```json
-{
-  "moduleId": "cuid...",
-  "questions": [
-    {
-      "id": "q1",
-      "type": "multiple_choice",
-      "question": "When should you mention specific surplus amounts to a client?",
-      "options": [
-        { "id": "a", "text": "During the initial call" },
-        { "id": "b", "text": "After they sign the agreement" },
-        { "id": "c", "text": "Never - employees don't have access to this information" },
-        { "id": "d", "text": "Only if they ask directly" }
-      ],
-      "correctAnswer": "c",
-      "explanation": "Employees never see or discuss specific surplus amounts..."
-    },
-    {
-      "id": "q2",
-      "type": "scenario",
-      "scenario": "A client says they already hired another company...",
-      "question": "What is the best response?",
-      "options": [...],
-      "correctAnswer": "b"
-    }
-  ],
-  "passingScore": 80,
-  "timeLimit": 30
-}
-```
-
-### 11.3 TrainingBot Gap Analysis
-
-#### TrainingBot.identifyGaps()
-
-**Purpose:** Identify training gaps correlating with performance issues
-
-**Process:**
-1. Query employees with low success rates (<70%)
-2. Check training completion status
-3. Correlate incomplete training with performance metrics
-4. Identify common gaps across multiple employees
-5. Generate OpsInsight with recommendations
-
-**Gap Detection Logic:**
-```
-For each employee with successRate < 0.70:
-  - Check which modules are incomplete
-  - Check time since last training
-  - Check performance trend (improving/declining)
-
-For each incomplete module with >3 employees:
-  - Flag as systemic gap
-  - Recommend mandatory completion
-
-Generate insight:
-  {
-    type: "TRAINING_GAP",
-    title: "Training Gap Identified",
-    summary: "5 employees missing 'Advanced Client Communication' module...",
-    actionRequired: true,
-    data: {
-      module: "Advanced Client Communication",
-      affectedEmployees: [...],
-      avgSuccessRate: 0.62
-    }
-  }
-```
-
-### 11.4 HR Panel Integration
-
-**Training Compliance View:**
-- List all employees with training status
-- Filter by: overdue, incomplete, completed
-- Show days since last training
-- One-click reminder sending
-
-**Actions Available:**
-- Assign new module to employee
-- Send training reminder
-- Mark training as excused (with notes)
-- View training history
-
-### 11.5 Compliance Panel Integration
-
-**Training Audit View:**
-- Overall training completion rate
-- Compliance by role/tier
-- Overdue training report
-- Training effectiveness metrics (completion vs performance)
-
-**Audit Actions:**
-- Generate training compliance report
-- Flag employees for non-compliance
-- Escalate to HR for action
-
-### 11.6 TrainingModuleDetail and TrainingAssetPlan Usage
-
-**TrainingModuleDetail:**
-- Stores generated module content
-- Referenced by TrainingProgress for completion tracking
-- Updated when module content changes
-- Used by EmployeeTraining page to display content
-
-**TrainingAssetPlan:**
-- Plans for producing training materials
-- Types: VIDEO, DOCUMENT, QUIZ, SCRIPT, CHECKLIST
-- Contains production specifications
-- Tracks production status (planned, in_progress, completed)
 
 ---
 
 ## 12. INGESTION INTELLIGENCE BLUEPRINT
 
-### 12.1 Parsing Functions
+### 12.1 Data Sources
 
-#### parseTaxSaleCSV(content)
+| Source Type | Format | Frequency | Priority |
+|-------------|--------|-----------|----------|
+| County Tax Sale Lists | CSV/Excel | Weekly | HIGH |
+| Surplus Fund Notices | PDF | Daily | HIGH |
+| State Unclaimed Property | Web scrape | Monthly | MEDIUM |
+| Foreclosure Lists | CSV | Weekly | MEDIUM |
 
-**Purpose:** Parse county tax sale CSV files
+### 12.2 Parsing Functions
 
-**Input:** Raw CSV content (string)
-
-**Expected Columns:**
-- `parcel_number` or `parcel_id`
-- `owner_name` or `property_owner`
-- `property_address`
-- `sale_date`
-- `sale_amount` or `bid_amount`
-- `surplus_amount` (if available)
-
-**Process:**
-1. Detect delimiter (comma, tab, semicolon)
-2. Parse headers and map to standard fields
-3. Validate required fields present
-4. Parse each row into structured object
-5. Validate data types (dates, amounts)
-6. Flag rows with validation errors
-
-**Output:**
-```json
-{
-  "success": true,
-  "records": [
-    {
-      "parcelNumber": "123-456-789",
-      "ownerName": "John Doe",
-      "propertyAddress": "123 Main St, Houston, TX 77001",
-      "saleDate": "2025-06-15",
-      "saleAmountCents": 5000000,
-      "surplusAmountCents": 1500000
-    }
-  ],
-  "errors": [
-    { "row": 15, "error": "Invalid date format" }
-  ],
-  "stats": {
-    "totalRows": 150,
-    "validRows": 148,
-    "errorRows": 2,
-    "totalSurplusCents": 45000000
-  }
+#### parseCSV()
+```typescript
+async function parseCSV(file: Buffer, config: IngestionConfig): Promise<ParsedRecord[]> {
+  // 1. Detect encoding (UTF-8, Latin-1, etc.)
+  // 2. Parse headers, map to standard fields
+  // 3. Validate required fields
+  // 4. Transform data types (dates, amounts)
+  // 5. Detect and flag duplicates
+  // 6. Return normalized records
 }
 ```
 
-#### parseSurplusPDF(content)
-
-**Purpose:** Extract surplus fund data from county PDF documents
-
-**Input:** PDF content (buffer or path)
-
-**Process:**
-1. Extract text from PDF using pdf-parse
-2. Identify table structures
-3. Extract property records using regex patterns
-4. Parse amounts, removing currency formatting
-5. Map to standard structure
-6. Flag extraction uncertainties
-
-**Output:**
-```json
-{
-  "success": true,
-  "records": [...],
-  "confidence": 0.85,
-  "warnings": ["Some values may be approximate due to PDF formatting"]
+#### parsePDF()
+```typescript
+async function parsePDF(file: Buffer): Promise<ParsedRecord[]> {
+  // 1. Extract text using pdf-parse
+  // 2. Identify table structures
+  // 3. Apply regex patterns for data extraction
+  // 4. Handle multi-page documents
+  // 5. Return extracted records
 }
 ```
 
-#### parseProbateListCSV(content)
+### 12.3 IngestionBot Functions
 
-**Purpose:** Parse probate court listing files
+| Function | Purpose |
+|----------|---------|
+| `analyzePatterns()` | Detect changes in data source formats |
+| `detectDuplicates()` | Find records matching existing cases |
+| `assessSourceHealth()` | Monitor source reliability and format changes |
+| `prioritizeRecords()` | Flag high-value records for immediate processing |
+| `generateSourceReport()` | Per-source ingestion statistics |
 
-**Expected Columns:**
-- `case_number`
-- `deceased_name`
-- `property_address`
-- `filing_date`
-- `estate_value` (if available)
+### 12.4 Scraper Configurations
 
-**Output:**
-```json
-{
-  "success": true,
-  "records": [
-    {
-      "caseNumber": "2025-PR-12345",
-      "deceasedName": "Jane Smith",
-      "propertyAddress": "456 Oak Ave, Dallas, TX 75201",
-      "filingDate": "2025-03-20",
-      "estateValueCents": 25000000
-    }
-  ]
-}
-```
+```typescript
+// backend/src/services/scraperService.ts
 
-### 12.2 ScraperService Functions
-
-#### fetchTaxSaleLists(state, county)
-
-**Purpose:** Scrape county tax sale announcement pages
-
-**Process:**
-1. Load URL pattern for state/county from config
-2. Fetch page content
-3. Parse HTML for tax sale listings
-4. Extract dates, properties, amounts
-5. Save to ScrapedItem with sourceType: TAX_SALE_LIST
-6. Flag high-value items for review
-
-**Config Structure:**
-```json
-{
-  "TX": {
-    "Harris": {
-      "taxSaleUrl": "https://...",
-      "selectors": {
-        "tableContainer": ".tax-sale-list",
-        "rows": "tr",
-        "parcel": "td:nth-child(1)",
-        "address": "td:nth-child(2)"
+const scraperConfigs: ScraperConfig[] = [
+  {
+    id: "harris_county_tx",
+    name: "Harris County, TX Tax Sale",
+    state: "TX",
+    county: "Harris",
+    url: "https://...",
+    frequency: "weekly",
+    selectors: {
+      table: ".tax-sale-table",
+      row: "tr.record",
+      fields: {
+        parcel: "td.parcel-id",
+        address: "td.property-address",
+        amount: "td.surplus-amount"
       }
+    },
+    transforms: {
+      amount: (val) => parseCurrency(val)
     }
   }
-}
+];
 ```
 
-#### fetchSurplusPages(state, county)
+### 12.5 Batch Processing Flow
 
-**Purpose:** Scrape county surplus fund listing pages
-
-**Process:**
-1. Load URL pattern for state/county
-2. Fetch page content
-3. Parse HTML or PDF links
-4. Download and parse surplus documents
-5. Save to ScrapedItem with sourceType: SURPLUS_PAGE
-6. Flag amounts >$10,000
-
-#### fetchProbateNotices(state, county)
-
-**Purpose:** Scrape court probate notice pages
-
-**Process:**
-1. Load court website URL
-2. Fetch recent probate filings
-3. Extract case numbers and property info
-4. Cross-reference with surplus records
-5. Save to ScrapedItem with sourceType: PROBATE_NOTICE
-
-### 12.3 WatchService Detection Functions
-
-#### detectHighValueOpportunities()
-
-**Purpose:** Identify high-value cases from scraped data
-
-**Thresholds:**
-- High Value: surplus >$10,000
-- Very High Value: surplus >$50,000
-- Exceptional: surplus >$100,000
-
-**Process:**
-1. Query ScrapedItem where reviewStatus = PENDING
-2. Parse surplusAmount from parsedData
-3. For items exceeding threshold:
-   - Create WatchAlert (HIGH_VALUE_CASE)
-   - Create OpsInsight with details
-   - Set priority based on amount
-
-#### detectJurisdictionChanges()
-
-**Purpose:** Detect changes in county/state rules
-
-**Process:**
-1. Compare current scraped rules to stored rules
-2. Identify changes in:
-   - Filing deadlines
-   - Required documents
-   - Fee structures
-   - Contact information
-3. Create WatchAlert (RULE_CHANGE) for significant changes
-4. Update stored rules
-
-#### detectDeadlineRisks()
-
-**Purpose:** Identify cases approaching deadlines
-
-**Process:**
-1. Query cases with status != PAID, CLOSED, REJECTED
-2. Calculate days to deadline based on state rules
-3. Flag cases with <7 days remaining
-4. Create WatchAlert (DEADLINE_APPROACHING) for critical deadlines
-
-### 12.4 Writing to WatchAlert and ScrapedItem
-
-**ScrapedItem Creation:**
 ```
-scraperService.fetchTaxSaleLists("TX", "Harris"):
-  1. Fetch page content
-  2. Parse records
-  3. For each record:
-     ScrapedItem.create({
-       sourceType: TAX_SALE_LIST,
-       sourceUrl: url,
-       state: "TX",
-       county: "Harris",
-       rawContent: htmlContent,
-       parsedData: { parcel, owner, address, amount },
-       reviewStatus: PENDING
-     })
-  4. Return summary
-```
-
-**WatchAlert Creation:**
-```
-watchService.detectHighValueOpportunities():
-  1. Query pending ScrapedItems
-  2. For items with surplus > $10,000:
-     WatchAlert.create({
-       type: HIGH_VALUE_CASE,
-       severity: surplus > 50000 ? CRITICAL : HIGH,
-       title: "High-value opportunity: $" + formatMoney(surplus),
-       message: "Property at " + address + " with " + surplus + " surplus",
-       state: item.state,
-       county: item.county,
-       relatedId: item.id,
-       relatedType: "ScrapedItem"
-     })
+1. Receive file upload or scraper output
+2. Create IngestionBatch record (status: PROCESSING)
+3. Parse data based on source type
+4. For each record:
+   a. Check for duplicates
+   b. Validate required fields
+   c. Create/update Client if needed
+   d. Create Case record
+   e. Flag high-value (> $10,000) for priority
+5. Update IngestionBatch with results
+6. Notify founder of batch completion
 ```
 
 ---
 
 ## 13. BACKUPS PLAYBOOK
 
-### 13.1 Backup Strategy Overview
+### 13.1 Components to Backup
 
-| Component | Method | Frequency | Retention |
-|-----------|--------|-----------|-----------|
-| PostgreSQL Database | pg_dump (custom format) | Every 6 hours | 30 days |
-| Document Vault | File system copy/rsync | Daily | 30 days |
-| Configuration | Git repository | On change | Indefinite |
-| Audit Logs | Separate archive | Weekly | 7 years |
+| Component | Location | Method | Frequency |
+|-----------|----------|--------|-----------|
+| PostgreSQL Database | localhost:5432 | pg_dump | Every 6 hours |
+| Document Vault | backend/storage/documents/ | rsync | Hourly |
+| Configuration | .env, secrets | Manual | On change |
 
 ### 13.2 PostgreSQL Backup Commands
 
-**Full Database Backup:**
 ```bash
-# Custom format (recommended - supports parallel restore)
-pg_dump -h localhost -U postgres -d mgr_capital \
-  -F c -Z 9 \
-  -f /backups/db/mgr_capital_$(date +%Y%m%d_%H%M%S).dump
+# Full database dump
+pg_dump -h localhost -U postgres -d mgr_capital -F c -f /backups/db/mgr_capital_$(date +%Y%m%d_%H%M%S).dump
 
-# Plain SQL format (readable, larger)
-pg_dump -h localhost -U postgres -d mgr_capital \
-  -F p \
-  -f /backups/db/mgr_capital_$(date +%Y%m%d_%H%M%S).sql
+# With compression
+pg_dump -h localhost -U postgres -d mgr_capital -F c -Z 9 -f /backups/db/mgr_capital_$(date +%Y%m%d_%H%M%S).dump.gz
+
+# Restore
+pg_restore -h localhost -U postgres -d mgr_capital -c -F c /backups/db/backup_file.dump
 ```
 
-**Schema-Only Backup:**
+### 13.3 Retention Policy
+
+| Backup Type | Frequency | Retention |
+|-------------|-----------|-----------|
+| Hourly | Every hour | 24 hours |
+| 6-hour | Every 6 hours | 7 days |
+| Daily | Daily at 2 AM | 30 days |
+| Weekly | Sunday at 3 AM | 90 days |
+| Monthly | 1st of month | 1 year |
+| Annual | January 1st | 7 years |
+
+### 13.4 Disaster Recovery
+
+| Scenario | RPO | RTO |
+|----------|-----|-----|
+| Database corruption | 6 hours | 2 hours |
+| Full server failure | 6 hours | 4 hours |
+| Ransomware attack | 24 hours | 8 hours |
+
+### 13.5 Encryption
+
 ```bash
-pg_dump -h localhost -U postgres -d mgr_capital \
-  --schema-only \
-  -f /backups/schema/schema_$(date +%Y%m%d).sql
+# Encrypt backup with GPG
+gpg --cipher-algo AES256 --symmetric --batch --passphrase-file /etc/mgr/backup-key \
+  -o /backups/db/backup.dump.gz.gpg \
+  /backups/db/backup.dump.gz
+
+# Decrypt for restore
+gpg --decrypt --batch --passphrase-file /etc/mgr/backup-key \
+  -o /tmp/restore.dump.gz \
+  /backups/db/backup.dump.gz.gpg
 ```
-
-**Data-Only Backup:**
-```bash
-pg_dump -h localhost -U postgres -d mgr_capital \
-  --data-only -F c \
-  -f /backups/data/data_$(date +%Y%m%d_%H%M%S).dump
-```
-
-**Critical Tables Only:**
-```bash
-pg_dump -h localhost -U postgres -d mgr_capital \
-  -t '"User"' -t '"Case"' -t '"Client"' -t '"LedgerEntry"' -t '"Document"' \
-  -F c \
-  -f /backups/critical/critical_$(date +%Y%m%d_%H%M%S).dump
-```
-
-### 13.3 Cron Schedule Examples
-
-```cron
-# /etc/cron.d/mgr-backups
-
-# Every 6 hours: Database snapshot
-0 */6 * * * postgres /opt/mgr/scripts/backup_db.sh >> /var/log/mgr-backup.log 2>&1
-
-# Daily at 2 AM: Full database + document vault
-0 2 * * * root /opt/mgr/scripts/daily_backup.sh >> /var/log/mgr-backup.log 2>&1
-
-# Weekly on Sunday at 3 AM: Full archive with encryption
-0 3 * * 0 root /opt/mgr/scripts/weekly_backup.sh >> /var/log/mgr-backup.log 2>&1
-
-# Monthly on 1st at 4 AM: Long-term archive
-0 4 1 * * root /opt/mgr/scripts/monthly_archive.sh >> /var/log/mgr-backup.log 2>&1
-
-# Daily: Clean old backups
-0 5 * * * root /opt/mgr/scripts/cleanup_backups.sh >> /var/log/mgr-backup.log 2>&1
-```
-
-### 13.4 Retention Policy
-
-| Backup Type | Retention Period | Storage Location |
-|-------------|------------------|------------------|
-| 6-hour snapshots | 7 days | /backups/db/hourly/ |
-| Daily backups | 30 days | /backups/db/daily/ |
-| Weekly backups | 90 days | /backups/db/weekly/ |
-| Monthly archives | 1 year | /backups/db/monthly/ |
-| Annual archives | 7 years | /backups/archive/ |
-
-**Cleanup Script:**
-```bash
-#!/bin/bash
-# cleanup_backups.sh
-
-# Remove 6-hour snapshots older than 7 days
-find /backups/db/hourly/ -mtime +7 -name "*.dump" -delete
-
-# Remove daily backups older than 30 days
-find /backups/db/daily/ -mtime +30 -name "*.dump" -delete
-
-# Remove weekly backups older than 90 days
-find /backups/db/weekly/ -mtime +90 -name "*.dump" -delete
-
-# Keep monthly backups for 1 year
-find /backups/db/monthly/ -mtime +365 -name "*.dump" -delete
-```
-
-### 13.5 Encryption Guidance
-
-**Encrypt Backup with GPG:**
-```bash
-# Encrypt
-gpg --cipher-algo AES256 --symmetric \
-  --batch --passphrase-file /etc/mgr/backup.key \
-  -o backup.dump.gpg backup.dump
-
-# Decrypt
-gpg --decrypt \
-  --batch --passphrase-file /etc/mgr/backup.key \
-  -o backup.dump backup.dump.gpg
-```
-
-**Key Management Rules:**
-1. Store encryption keys separately from backups
-2. Never store keys in git repository
-3. Maintain key escrow with trusted party
-4. Rotate keys annually
-5. Test decryption monthly
-
-### 13.6 Restore Procedure
-
-**Full Database Restore:**
-```bash
-# Stop application
-systemctl stop mgr-backend
-
-# Drop and recreate database
-psql -U postgres -c "DROP DATABASE IF EXISTS mgr_capital;"
-psql -U postgres -c "CREATE DATABASE mgr_capital;"
-
-# Restore from backup
-pg_restore -h localhost -U postgres -d mgr_capital \
-  -F c -j 4 /backups/db/daily/mgr_capital_YYYYMMDD.dump
-
-# Run Prisma migrations (if any)
-cd /app/backend && npx prisma migrate deploy
-
-# Restart application
-systemctl start mgr-backend
-```
-
-**Document Vault Restore:**
-```bash
-# Stop application
-systemctl stop mgr-backend
-
-# Restore documents
-rsync -av /backups/documents/YYYYMMDD/ /app/backend/storage/documents/
-
-# Restart application
-systemctl start mgr-backend
-```
-
-### 13.7 Sovereign Backup Philosophy
-
-1. **No Cloud Dependencies:** All backups stored on self-controlled infrastructure
-2. **Geographic Distribution:** Maintain off-site copy in separate physical location
-3. **Encryption at Rest:** All backups encrypted before storage
-4. **Regular Testing:** Monthly restore test to verify backup integrity
-5. **Documentation:** Maintain runbook with step-by-step restore procedures
-6. **Air-Gap Capable:** Backup system can operate without internet
-7. **Audit Trail:** Log all backup/restore operations
 
 ---
 
 ## 14. PHASE SUMMARY FOR COPILOT
 
-### 14.1 Key Design Decisions Made
+### 14.1 What's Complete (100%)
 
-1. **Unified 7 Roles:** Consolidated FOUNDER, ADMIN, HR, COMPLIANCE, TEAM_LEAD, EMPLOYEE, CLIENT from both source documents. "CONTRACTOR" from COPILOT_REBUILD.txt treated as equivalent to "EMPLOYEE".
+**Authentication & Authorization:**
+- JWT-based authentication with bcrypt
+- 7-role system with complete roleGuard
+- Rate limiting on auth endpoints
+- Session management
 
-2. **Role Permission Levels:** Established numeric levels (100, 80, 60, 40, 20, 10) for clean comparison logic in roleGuard middleware.
+**Core Features:**
+- Case CRUD with full lifecycle
+- Client portal with document signing
+- Employee management with shadow accounting
+- Payout calculations and ledger
+- Commission calculations (shadow)
 
-3. **Bot Architecture:** Confirmed 7 bots total (Ingestion, Payout, Compliance, Training, Outreach, Docket, Coordinator), all writing to OpsInsight/WatchAlert tables, all orchestrated by CoordinatorBot.
+**Frontend:**
+- AdminDashboard with real data
+- AdminCases, AdminEmployees, AdminBanking
+- AdminTraining, AdminIngestion, AdminSettings
+- EmployeeOffice, EmployeeTraining
+- ClientPortal, ClientOnboarding
+- HRPanel, CompliancePanel
+- FounderConsole (basic)
 
-4. **Shadow Accounting Formula:** Locked in formula where displayedRate = 2 × actualRate. No exceptions, no overrides for this ratio.
+**Backend:**
+- All core routes implemented
+- HR and Compliance routes
+- OPS metrics and watch routes
+- Document Vault routes
+- Notification service (SMTP)
+- PDF service structure
 
-5. **Document Vault:** Confirmed local filesystem storage only. No S3, no cloud storage. Path: `backend/storage/documents/{caseId}/`.
+**Database:**
+- Complete Prisma schema
+- All models and enums
+- OPS models (OpsInsight, WatchAlert, etc.)
 
-6. **Notification Engine:** SMTP-based only. No Twilio, no SendGrid. Self-hosted mail server or SMTP relay.
+### 14.2 What's NOT Complete
 
-7. **PDF Generation:** pdfkit library for programmatic PDF generation. No external APIs.
+**HIGH Priority:**
+1. **Bot Logic** — All 7 bots are skeletons needing real detection/analysis logic
+2. **Scraper Service** — Needs real configurations for county websites
+3. **PDF Templates** — Need complete templates with state-specific language
 
-8. **Rate Limiting:** In-memory store with Redis-upgrade path. Applied to auth endpoints.
+**MEDIUM Priority:**
+4. **Notification Templates** — Need full email templates for all triggers
+5. **FounderConsole** — Needs full error management and bot controls
+6. **Training Content** — Need actual module content and quizzes
 
-9. **FounderConsole Tabs:** Consolidated into: Overview, Alerts, Scraped Data, Employees, Heatmap, Errors.
+**LOW Priority:**
+7. **WebSocket Updates** — Real-time updates for FounderConsole
+8. **Mobile Responsive** — Current UI is desktop-focused
+9. **End-to-End Tests** — Automated test coverage
 
-### 14.2 Ambiguities Resolved
+### 14.3 Implementation Priority Order
 
-1. **CONTRACTOR vs EMPLOYEE:** Standardized on EMPLOYEE as it's already in Prisma schema and codebase.
+1. Complete bot detection logic (PayoutBot anomalies, ComplianceBot deadlines)
+2. Build out PDF templates with state-specific legal language
+3. Configure scrapers for top 10 priority states
+4. Complete notification templates
+5. Add real training module content
+6. Enhance FounderConsole with full controls
+7. Add WebSocket for real-time updates
+8. Mobile responsive optimization
+9. Comprehensive testing
 
-2. **NotificationLog Fields:** Used expanded version with all tracking fields (attempts, sentAt, bodyPreview).
+### 14.4 Environment Setup
 
-3. **Bot Output Destinations:** Clarified that bots write to OpsInsight for analytics/summaries and WatchAlert for actionable alerts.
+```bash
+# Install dependencies
+cd backend && npm install
+cd ../app && npm install
 
-4. **TrainingModuleDetail vs TrainingAssetPlan:** TrainingModuleDetail = content/outline, TrainingAssetPlan = production plans for videos/documents.
+# Database setup
+cd backend
+npx prisma generate
+npx prisma db push
 
-5. **Document Access Control:** Built complete matrix defining upload/download/view/delete permissions per role and document type.
+# Start servers
+cd backend && npm run dev  # Port 4000
+cd app && npm run dev      # Port 3000
+```
 
-6. **HR vs Compliance Panel Separation:** HR focuses on employee lifecycle (onboarding, training, tiers). Compliance focuses on audits, risk, and payout review.
+### 14.5 Environment Variables
 
-7. **OPS Routes Structure:** Separated into /ops/metrics (analytics), /ops/watch (alerts/scrapers), /ops/bots (bot controls), /ops/errors (system errors).
+**Backend (.env):**
+```
+DATABASE_URL="postgresql://user:pass@localhost:5432/mgr_capital"
+JWT_SECRET="your-secret-key-min-32-chars"
+PORT=4000
+NODE_ENV=development
+SMTP_HOST=smtp.example.com
+SMTP_PORT=587
+SMTP_USER=notifications@mgrcapital.com
+SMTP_PASS=smtp-password
+```
 
-### 14.3 Areas of Risk/Complexity
-
-1. **ScraperService Implementation:**
-   - HIGH complexity due to varying county website structures
-   - Requires per-jurisdiction pattern definitions
-   - Websites may change without notice
-   - Recommendation: Start with high-volume states (TX, FL, CA), add incrementally
-
-2. **PDF Template Legal Compliance:**
-   - MEDIUM complexity
-   - Templates must comply with 50 different state requirements
-   - Some states require notarization, specific language
-   - Recommendation: Legal review of templates before production
-
-3. **Bot Heuristics:**
-   - Currently skeleton implementations
-   - Need domain expertise to define proper thresholds
-   - Recommendation: Start with conservative thresholds, tune based on data
-
-4. **Rate Limiting Tuning:**
-   - Too strict = blocks legitimate users
-   - Too loose = vulnerable to abuse
-   - Recommendation: Start with documented thresholds, monitor and adjust
-
-5. **Shadow Accounting Visibility:**
-   - Critical that displayed amounts never leak to wrong roles
-   - Every query touching amounts must be role-aware
-   - Recommendation: Add middleware that strips sensitive fields based on role
-
-### 14.4 What Copilot Must Consider for Phase 2
-
-1. **Complete Bot Logic:** Move from skeletons to real implementations with actual detection heuristics.
-
-2. **Add Real-Time Updates:** Consider WebSocket integration for FounderConsole live updates.
-
-3. **Mobile Responsiveness:** Current UI optimized for desktop. Mobile optimization needed.
-
-4. **State Rules Database:** Currently 50 state rules in code. Consider moving to database for easier updates.
-
-5. **Audit Log Retention:** Current logs grow indefinitely. Implement archival strategy.
-
-6. **Performance at Scale:** Test with 10,000+ cases, 100+ employees. May need query optimization.
-
-7. **Error Recovery:** Implement retry logic for failed operations (email sends, PDF generation).
-
-8. **Testing Coverage:** Add unit tests for commission calculations, role guards, and bot detection logic.
-
-### 14.5 Implementation Priority Recommendation
-
-**Phase 2 Priority Order:**
-
-1. **HIGH - Security:**
-   - Verify rate limiting is applied correctly
-   - Audit all endpoints for proper role guards
-   - Verify shadow accounting never leaks
-
-2. **HIGH - Core Features:**
-   - Complete PDF engine with all templates
-   - Verify notification engine sends correctly
-   - Test document vault upload/download flow
-
-3. **MEDIUM - OPS Intelligence:**
-   - Implement real bot detection logic
-   - Add scraper configurations for priority states
-   - Complete FounderConsole error management
-
-4. **LOW - Enhancements:**
-   - Mobile responsive design
-   - Real-time WebSocket updates
-   - Advanced reporting features
+**Frontend (.env):**
+```
+VITE_API_URL=http://localhost:4000/api
+```
 
 ---
 
