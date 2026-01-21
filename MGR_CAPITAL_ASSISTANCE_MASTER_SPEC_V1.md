@@ -811,6 +811,383 @@ The Watch System monitors external changes:
 
 All watch events create `WatchAlert` records.
 
+### 6.5 Core Service Layer Specifications
+
+#### 6.5.1 ScraperService
+
+**Purpose:** Sovereign ingestion of external county data (tax sale lists, surplus lists, unclaimed property, foreclosure dockets) with full auditability and no external SaaS dependencies.
+
+**Responsibilities:**
+- Reads WatchTarget and internal config to know what to scrape and how often
+- Fetches and normalizes remote content (HTML, CSV, PDF, JSON)
+- Persists raw content into ScrapedItem
+- Groups runs into IngestionBatch for downstream processing
+- Emits WatchAlert records on failures, anomalies, or source changes
+
+**Service Interface:**
+
+```typescript
+// backend/src/services/scraperService.ts
+
+export interface ScraperSourceConfig {
+  id: string;                    // e.g. 'harris_tx_surplus'
+  label: string;                 // Human-readable name
+  url: string;                   // Target URL
+  type: ScrapedItemType;         // TAX_SALE | SURPLUS | UNCLAIMED_PROPERTY | FORECLOSURE
+  state?: string;
+  county?: string;
+  scheduleCron?: string;         // For scheduler (if used)
+  parserKey: string;             // Which parser implementation to use
+  enabled: boolean;
+}
+
+export interface ScraperRunResult {
+  sourceId: string;
+  sourceUrl: string;
+  startedAt: string;             // ISO UTC
+  completedAt: string;           // ISO UTC
+  createdItems: number;
+  updatedItems: number;
+  errors: string[];
+}
+
+export interface ScraperCycleResult {
+  cycleId: string;
+  startedAt: string;
+  completedAt: string;
+  sourcesProcessed: number;
+  perSource: ScraperRunResult[];
+  newAlerts: number;
+  newRecords: number;
+  errors: string[];
+}
+
+export class ScraperService {
+  async runForSources(sourceIds: string[]): Promise<ScraperCycleResult>;
+  async runFullCycle(): Promise<ScraperCycleResult>;
+  async getStatus(): Promise<{
+    sources: Array<{
+      id: string;
+      label: string;
+      lastRunAt: string | null;
+      lastSuccessAt: string | null;
+      lastErrorAt: string | null;
+      errorCount24h: number;
+      enabled: boolean;
+    }>;
+  }>;
+}
+```
+
+**Core Behaviors:**
+
+| Behavior | Description |
+|----------|-------------|
+| Source Resolution | Loads configs from static file and/or WatchTarget records. Only processes `enabled = true`. |
+| Fetch + Normalize | Uses node-fetch or native HTTPS. Supports HTML, CSV, PDF, JSON formats. |
+| Persistence | Creates ScrapedItem with sourceType, sourceUrl, rawContent, parsedData, reviewStatus = PENDING |
+| Error Handling | Creates WatchAlert (type = SCRAPE_ERROR), logs to SystemError, includes in ScraperRunResult.errors |
+| Duplicate Detection | Hash of (sourceUrl + content signature). Marks duplicates or skips creation. |
+
+**Sovereignty Notes:**
+- No headless browser SaaS—use local Puppeteer/Playwright if needed
+- All timestamps in UTC
+- No external logging services
+
+#### 6.5.2 WatchService
+
+**Purpose:** Continuous monitoring brain for external sources and rule changes.
+
+**Responsibilities:**
+- Manages WatchTarget records (what to watch, how, why)
+- Coordinates with ScraperService to run watch cycles
+- Evaluates results and emits WatchAlert records
+- Feeds the OPS Layer (FounderConsole) with high-signal alerts
+
+**Service Interface:**
+
+```typescript
+// backend/src/services/watchService.ts
+
+export interface WatchCycleOptions {
+  sources?: string[];   // Optional subset of WatchTarget identifiers
+}
+
+export interface WatchCycleResult {
+  cycleId: string;
+  startedAt: string;
+  completedAt: string;
+  sourcesProcessed: number;
+  newAlerts: number;
+  newRecords: number;
+  errors: string[];
+}
+
+export class WatchService {
+  async runFullCycle(options?: WatchCycleOptions): Promise<WatchCycleResult>;
+  async resolveAlert(alertId: string, notes: string, resolverUserId: string): Promise<void>;
+  async listAlerts(filters: {
+    severity?: WatchAlertSeverity;
+    type?: WatchAlertType;
+    resolved?: boolean;
+    limit?: number;
+    offset?: number;
+  }): Promise<{
+    alerts: WatchAlert[];
+    total: number;
+    unresolved: number;
+  }>;
+}
+```
+
+**Core Behaviors:**
+
+| Behavior | Description |
+|----------|-------------|
+| WatchTarget Evaluation | Reads targets, checks checkFrequency, determines which are due |
+| ScraperService Integration | Calls ScraperService.runForSources() for targets needing scraping |
+| Change Detection | Compares new ScrapedItem against prior items; detects structural/semantic changes |
+| Alert Generation | Creates WatchAlert (RULE_CHANGE, SOURCE_OFFLINE, ANOMALY_DETECTED, HIGH_VALUE_CASE) |
+| Resolution Flow | resolveAlert() sets isResolved = true, records notes and resolver |
+
+**Security:** All WatchService routes are FOUNDER ONLY via roleGuard. No external callbacks.
+
+#### 6.5.3 OpsMetricsService
+
+**Purpose:** Powers all `/api/ops/metrics/*` routes for Founder-only dashboards and focus feeds.
+
+**Responsibilities:**
+- Aggregates metrics from Case, LedgerEntry, User, OpsInsight, WatchAlert, ScrapedItem
+- Produces dashboards and focus feeds
+- Computes integrity scores, heatmaps, and trend metrics
+
+**Service Interface:**
+
+```typescript
+// backend/src/services/opsMetricsService.ts
+
+export type TimeRangeKey = '24h' | '7d' | '30d' | 'all';
+
+export class OpsMetricsService {
+  getTimeRange(key: TimeRangeKey): { from: Date; to: Date };
+
+  async getDashboard(timeRangeKey: TimeRangeKey): Promise<{
+    summary: {
+      totalCases: number;
+      activeCases: number;
+      totalPayoutsCents: number;
+      pendingAlerts: number;
+      employeeCount: number;
+    };
+    recentActivity: {
+      newCases24h: number;
+      payoutsProcessed24h: number;
+      alertsCreated24h: number;
+      documentsUploaded24h: number;
+    };
+    topMetrics: {
+      conversionRate: number;
+      avgCaseValueCents: number;
+      avgProcessingDays: number;
+    };
+    alerts: {
+      critical: number;
+      high: number;
+      medium: number;
+      low: number;
+    };
+  }>;
+
+  async getFocusFeed(options: {
+    limit?: number;
+    includeAcknowledged?: boolean;
+  }): Promise<{
+    items: Array<{
+      id: string;
+      type: string;
+      priority: number;
+      title: string;
+      summary: string;
+      actionRequired: boolean;
+      source: 'WatchAlert' | 'OpsInsight' | 'SystemError';
+      sourceId: string;
+      createdAt: string;
+    }>;
+    total: number;
+    unacknowledged: number;
+  }>;
+
+  async dismissFocusItem(id: string, notes?: string, founderId?: string): Promise<void>;
+
+  async getEmployeeIntegrity(options: {
+    limit?: number;
+    sortBy?: 'score' | 'cases' | 'tier';
+  }): Promise<{
+    employees: Array<{
+      id: string;
+      name: string;
+      tier: EmployeeTier | null;
+      integrityScore: number;
+      metrics: {
+        totalCases: number;
+        closedCases: number;
+        avgProcessingDays: number;
+        trainingCompleted: boolean;
+      };
+      flags: string[];
+    }>;
+  }>;
+
+  async getHeatmap(options: {
+    groupBy: 'state' | 'county';
+    metric: 'count' | 'value';
+  }): Promise<{
+    heatmap: Array<{
+      state: string;
+      county?: string;
+      caseCount: number;
+      totalValueCents: number;
+      avgValueCents: number;
+      conversionRate: number;
+    }>;
+  }>;
+}
+```
+
+**Metric Definitions:**
+
+| Metric | Formula |
+|--------|---------|
+| totalCases | Count of all Case records |
+| activeCases | Cases where status NOT IN (CLOSED, REJECTED) |
+| totalPayoutsCents | SUM(LedgerEntry.amountCents) WHERE type = CLIENT_PAYOUT AND status = COMPLETED |
+| conversionRate | (Cases with status >= FILED) / (Cases with status >= CONTACTED) |
+| avgCaseValueCents | AVG(surplusAmountCents) for cases with known surplus |
+| avgProcessingDays | AVG(closedAt - createdAt) for closed cases |
+
+**Integrity Score Logic:**
+- Base score: 100
+- Deductions: Late contacts (>24h), missed deadlines, high rejection rate, incomplete training
+- Bonuses: High close rate, low processing days
+- Final score clamped to 0–100
+
+#### 6.5.4 NotificationService (Full Architecture)
+
+**Purpose:** Central messaging engine for client emails, internal notifications, and future channels.
+
+**Guarantees:**
+- Template-driven messages
+- Logged delivery attempts in NotificationLog
+- Channel abstraction (EMAIL vs INTERNAL)
+- Retry-safe behavior
+
+**Service Interface:**
+
+```typescript
+// backend/src/services/notificationService.ts
+
+export interface NotificationPayload {
+  type: NotificationType;              // EMAIL | INTERNAL
+  channel: NotificationChannel;        // SMTP | PORTAL_MESSAGE
+  templateId: string;                  // e.g. 'case_welcome'
+  recipient: string;                   // email or userId depending on channel
+  data: Record<string, string>;        // template variables
+  relatedCaseId?: string;
+  relatedUserId?: string;
+}
+
+export interface RenderedNotification {
+  subject: string;
+  body: string;
+}
+
+export class NotificationService {
+  async send(payload: NotificationPayload): Promise<void>;
+  async queue(payload: NotificationPayload): Promise<void>;
+  async retryFailed(limit: number): Promise<number>;
+}
+```
+
+**Template System:**
+
+```typescript
+// Template loading and rendering
+function loadTemplate(templateId: string): Promise<{
+  subjectTemplate: string;
+  bodyTemplate: string;
+}>;
+
+function renderTemplate(
+  template: { subjectTemplate: string; bodyTemplate: string },
+  data: Record<string, string>
+): RenderedNotification {
+  const replaceTokens = (text: string) =>
+    text.replace(/\{(\w+)\}/g, (_, key) => data[key] ?? '');
+
+  return {
+    subject: replaceTokens(template.subjectTemplate),
+    body: replaceTokens(template.bodyTemplate)
+  };
+}
+```
+
+**Sending Logic:**
+
+```typescript
+async function sendNotification(payload: NotificationPayload): Promise<void> {
+  const template = await loadTemplate(payload.templateId);
+  const rendered = renderTemplate(template, payload.data);
+
+  // Create log entry
+  const log = await prisma.notificationLog.create({
+    data: {
+      type: payload.type,
+      channel: payload.channel,
+      recipient: payload.recipient,
+      subject: rendered.subject,
+      body: rendered.body,
+      status: 'PENDING',
+      createdAt: new Date(),
+      relatedCaseId: payload.relatedCaseId,
+      relatedUserId: payload.relatedUserId
+    }
+  });
+
+  try {
+    if (payload.type === 'EMAIL' && payload.channel === 'SMTP') {
+      await sendEmail(payload.recipient, rendered.subject, rendered.body);
+    } else if (payload.type === 'INTERNAL' && payload.channel === 'PORTAL_MESSAGE') {
+      await createInternalNotification(payload, rendered);
+    } else {
+      throw new Error('Unsupported notification type/channel combination');
+    }
+
+    await prisma.notificationLog.update({
+      where: { id: log.id },
+      data: { status: 'SENT', sentAt: new Date() }
+    });
+  } catch (error: any) {
+    await prisma.notificationLog.update({
+      where: { id: log.id },
+      data: { status: 'FAILED', error: error?.message ?? 'Unknown error' }
+    });
+    throw error;
+  }
+}
+```
+
+**Retry Strategy:**
+- Scheduled job calls `retryFailed(limit)`
+- Selects NotificationLog where status = FAILED and attempts < MAX_RETRIES (3)
+- Re-sends, increments attempts
+- On success → status = SENT
+- On repeated failure → remains FAILED, generates WatchAlert
+
+**Security:**
+- No external email SaaS—self-hosted SMTP only
+- No tracking pixels or external analytics
+- All content in NotificationLog is internal-only
+
 ---
 
 ## 7. FULL OPS ROUTES SPECIFICATION
