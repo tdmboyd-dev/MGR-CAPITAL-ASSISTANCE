@@ -98,6 +98,44 @@ enum TrainingModuleStatus {
   COMPLETED
 }
 
+enum TrainingModuleSourceType {
+  STATIC
+  OPS_INSIGHT
+  SCRAPED_ITEM
+  CLAIM_PATTERN
+  COMPLIANCE_UPDATE
+  JURISDICTION_CHANGE
+}
+
+enum TrainingRecommendationPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+  MANDATORY
+}
+
+enum TrainingRecommendationReason {
+  LOW_CONVERSION
+  MISSING_SKILLS
+  TIER_REQUIREMENT
+  COMPLIANCE_GAP
+  JURISDICTION_UPDATE
+  NEW_HIRE
+  PERFORMANCE_DECLINE
+  SKILL_REFRESH
+  PROMOTION_PATH
+}
+
+enum TierProgressionStatus {
+  NOT_ELIGIBLE
+  IN_PROGRESS
+  REQUIREMENTS_MET
+  PENDING_REVIEW
+  APPROVED
+  DENIED
+}
+
 enum IngestionSourceType {
   TAX_SALE_LIST
   SURPLUS_PDF
@@ -607,32 +645,45 @@ model CallScore {
 // ============================================
 
 model TrainingModule {
-  id              String    @id @default(cuid())
+  id              String                    @id @default(cuid())
   title           String
-  description     String    @db.Text
-  content         String    @db.Text  // Full training content
+  description     String                    @db.Text
+  content         String                    @db.Text  // Full training content
 
   // Ordering
   orderIndex      Int
 
   // Requirements
-  requiredForTier EmployeeTier?  // Minimum tier that needs this
-  prerequisites   String[]       // IDs of modules that must be completed first
+  requiredForTier EmployeeTier?             // Minimum tier that needs this
+  prerequisites   String[]                  // IDs of modules that must be completed first
 
   // Assessment
-  hasQuiz         Boolean   @default(false)
-  passingScore    Int?      // Percentage needed to pass
+  hasQuiz         Boolean                   @default(false)
+  passingScore    Int?                      // Percentage needed to pass
 
-  isActive        Boolean   @default(true)
-  version         Int       @default(1)
+  // Source type (for dynamic vs static modules)
+  sourceType      TrainingModuleSourceType  @default(STATIC)
+  sourceId        String?                   // Reference to source if dynamic
+  sourceSummary   String?                   @db.Text
 
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  // Target audience for dynamic modules
+  targetStates    String[]                  // If jurisdiction-specific
+
+  isActive        Boolean                   @default(true)
+  isMandatory     Boolean                   @default(false)
+  isCertification Boolean                   @default(false)
+  version         Int                       @default(1)
+
+  createdAt       DateTime                  @default(now())
+  updatedAt       DateTime                  @updatedAt
+  expiresAt       DateTime?                 // For time-limited modules
 
   progress        EmployeeTrainingProgress[]
   questions       TrainingQuestion[]
 
   @@index([orderIndex])
+  @@index([sourceType])
+  @@index([requiredForTier])
 }
 
 model TrainingQuestion {
@@ -667,12 +718,216 @@ model EmployeeTrainingProgress {
   bestScore       Int?
   passedAt        DateTime?
 
+  // Tracking
   startedAt       DateTime?
   completedAt     DateTime?
+  deadline        DateTime?             // When this module must be completed
+
+  // Assignment
+  assignedBy      String?               // "system", "trainingBot", or userId
+  assignedAt      DateTime              @default(now())
+
+  // Priority
+  priority        TrainingRecommendationPriority @default(NORMAL)
+  isMandatory     Boolean               @default(false)
 
   @@unique([employeeId, moduleId])
   @@index([employeeId])
   @@index([moduleId])
+  @@index([deadline])
+  @@index([status])
+}
+
+// ============================================
+// TRAINING INTELLIGENCE — RECOMMENDATIONS
+// Personalized training recommendations per employee
+// ============================================
+
+model TrainingRecommendation {
+  id              String                          @id @default(cuid())
+  employeeId      String
+  moduleId        String?                         // Null if recommending a new topic
+
+  // Recommendation details
+  reason          TrainingRecommendationReason
+  priority        TrainingRecommendationPriority  @default(NORMAL)
+  mandatory       Boolean                         @default(false)
+
+  // Content
+  title           String
+  description     String                          @db.Text
+  estimatedDuration Int?                          // Minutes
+
+  // Deadline
+  dueDate         DateTime?
+
+  // Status
+  isAccepted      Boolean                         @default(false)
+  acceptedAt      DateTime?
+  isCompleted     Boolean                         @default(false)
+  completedAt     DateTime?
+  isDismissed     Boolean                         @default(false)
+  dismissedAt     DateTime?
+  dismissedReason String?
+
+  // Source tracking
+  sourceBot       String?                         // "trainingBot", etc.
+  sourceInsightId String?                         // If generated from OpsInsight
+
+  createdAt       DateTime                        @default(now())
+  expiresAt       DateTime?
+
+  @@index([employeeId])
+  @@index([moduleId])
+  @@index([priority])
+  @@index([isCompleted])
+}
+
+// ============================================
+// TRAINING INTELLIGENCE — DYNAMIC MODULES
+// Auto-generated modules from OpsInsight/ScrapedItem
+// ============================================
+
+model DynamicTrainingModule {
+  id              String                    @id @default(cuid())
+
+  // Module content
+  title           String
+  description     String                    @db.Text
+  content         Json                      // DynamicModuleContent structure
+
+  // Source
+  sourceType      TrainingModuleSourceType
+  sourceId        String?                   // OpsInsight ID, ScrapedItem ID, etc.
+  sourceSummary   String?                   @db.Text
+
+  // Target audience
+  targetRoles     UserRole[]
+  targetTiers     EmployeeTier[]
+  targetStates    String[]
+  targetAll       Boolean                   @default(false)
+
+  // Quiz
+  quizQuestions   Json?                     // Array of DynamicQuizQuestion
+  passingScore    Int                       @default(80)
+
+  // Metadata
+  estimatedDuration Int                     @default(30)  // Minutes
+  isActive        Boolean                   @default(true)
+  version         Int                       @default(1)
+
+  // Validity
+  expiresAt       DateTime?
+
+  // Stats
+  assignedCount   Int                       @default(0)
+  completedCount  Int                       @default(0)
+  avgScore        Int?
+
+  generatedBy     String                    // "trainingBot", "system"
+  generatedAt     DateTime                  @default(now())
+  createdAt       DateTime                  @default(now())
+  updatedAt       DateTime                  @updatedAt
+
+  @@index([sourceType])
+  @@index([isActive])
+  @@index([generatedAt])
+}
+
+// ============================================
+// TRAINING INTELLIGENCE — TIER PROGRESSION
+// Track tier advancement evaluations
+// ============================================
+
+model TierProgressionLog {
+  id              String                @id @default(cuid())
+  employeeId      String
+
+  // Tiers
+  fromTier        EmployeeTier
+  toTier          EmployeeTier
+
+  // Status
+  status          TierProgressionStatus @default(IN_PROGRESS)
+
+  // Requirements snapshot
+  requirements    Json                  // TierProgressionRequirements at evaluation time
+  evaluation      Json                  // RequirementStatus array
+  overallProgress Int                   @default(0)
+
+  // Shadow accounting (FOUNDER ONLY)
+  actualRevenueCents    Int             @default(0)
+  displayedRevenueCents Int             @default(0)
+
+  // Review
+  evaluatedAt     DateTime              @default(now())
+  evaluatedBy     String                // "trainingBot" or userId
+
+  reviewedAt      DateTime?
+  reviewedBy      String?
+  reviewNotes     String?               @db.Text
+
+  // Outcome
+  approvedAt      DateTime?
+  deniedAt        DateTime?
+  deniedReason    String?               @db.Text
+
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+
+  @@index([employeeId])
+  @@index([status])
+  @@index([fromTier])
+  @@index([toTier])
+}
+
+// ============================================
+// FOUNDER CONFIG — For Training Settings
+// ============================================
+
+model FounderConfig {
+  id              String   @id @default(cuid())
+  key             String   @unique
+  value           Json
+  description     String?
+
+  updatedAt       DateTime @updatedAt
+  createdAt       DateTime @default(now())
+
+  @@index([key])
+}
+
+// ============================================
+// BOT RUN LOG — Track bot executions
+// ============================================
+
+model BotRunLog {
+  id              String   @id @default(cuid())
+  botName         String
+
+  // Execution
+  startedAt       DateTime @default(now())
+  completedAt     DateTime?
+  durationMs      Int?
+
+  // Result
+  success         Boolean  @default(false)
+  error           String?  @db.Text
+
+  // Metrics
+  recordsProcessed Int     @default(0)
+  insightsGenerated Int    @default(0)
+  alertsCreated   Int      @default(0)
+
+  // Output
+  summary         String?  @db.Text
+  details         Json?
+
+  createdAt       DateTime @default(now())
+
+  @@index([botName])
+  @@index([startedAt])
+  @@index([success])
 }
 
 // ============================================

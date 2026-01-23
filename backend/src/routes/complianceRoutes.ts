@@ -57,7 +57,7 @@ router.get("/dashboard", async (_req: AuthenticatedRequest, res: Response) => {
       }),
       prisma.auditLog.count({
         where: {
-          metadata: { path: ["flagged"], equals: true }
+          action: "COMPLIANCE_FLAG"
         }
       })
     ]);
@@ -70,25 +70,25 @@ router.get("/dashboard", async (_req: AuthenticatedRequest, res: Response) => {
       completedCases
     ] = await Promise.all([
       prisma.case.count(),
-      prisma.case.count({ where: { status: "UNDER_REVIEW" } }),
+      prisma.case.count({ where: { status: "DOCS_PENDING" } }),
       prisma.case.count({
         where: {
-          status: { in: ["NEW", "PENDING", "IN_PROGRESS"] },
+          status: { in: ["NEW", "CONTACTED", "DOCS_PENDING"] },
           updatedAt: { lt: new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000) }
         }
       }),
-      prisma.case.count({ where: { status: { in: ["COMPLETED", "CLOSED"] } } })
+      prisma.case.count({ where: { status: { in: ["PAID", "CLOSED"] } } })
     ]);
 
-    // Get payout compliance
+    // Get payout compliance (using LedgerEntry)
     const [
       totalPayouts,
       pendingPayouts,
       reviewRequiredPayouts
     ] = await Promise.all([
-      prisma.payout.count(),
-      prisma.payout.count({ where: { status: "PENDING" } }),
-      prisma.payout.count({
+      prisma.ledgerEntry.count(),
+      prisma.ledgerEntry.count({ where: { status: "PENDING" } }),
+      prisma.ledgerEntry.count({
         where: {
           status: "PENDING",
           amountCents: { gte: 100000 } // $1000+ requires review
@@ -203,15 +203,15 @@ router.get("/audit-logs", async (req: AuthenticatedRequest, res: Response) => {
         logs: logs.map(log => ({
           id: log.id,
           action: log.action,
-          resource: log.resource,
-          resourceId: log.resourceId,
+          resource: log.entityType,
+          resourceId: log.entityId,
           userId: log.userId,
           userName: log.user?.name,
           userEmail: log.user?.email,
           userRole: log.user?.role,
           ipAddress: log.ipAddress,
           userAgent: log.userAgent,
-          metadata: log.metadata,
+          metadata: log.details,
           createdAt: log.createdAt.toISOString()
         })),
         pagination: {
@@ -237,8 +237,8 @@ router.get("/cases", async (_req: AuthenticatedRequest, res: Response) => {
     const cases = await prisma.case.findMany({
       include: {
         client: { select: { id: true, name: true } },
-        assignedTo: { select: { id: true, name: true } },
-        documents: { select: { id: true, type: true, uploadedAt: true } }
+        assignedEmployee: { select: { id: true, name: true } },
+        documents: { select: { id: true, type: true, createdAt: true } }
       },
       orderBy: { createdAt: "desc" },
       take: 100
@@ -249,20 +249,20 @@ router.get("/cases", async (_req: AuthenticatedRequest, res: Response) => {
     const complianceReport = cases.map(c => {
       const daysSinceUpdate = Math.floor((now.getTime() - c.updatedAt.getTime()) / (24 * 60 * 60 * 1000));
       const hasRequiredDocs = c.documents.length >= 2; // Simplified check
-      const isOverdue = daysSinceUpdate > 14 && c.status !== "COMPLETED" && c.status !== "CLOSED";
+      const isOverdue = daysSinceUpdate > 14 && c.status !== "PAID" && c.status !== "CLOSED";
 
       const complianceFlags: string[] = [];
       if (!hasRequiredDocs) complianceFlags.push("MISSING_DOCUMENTS");
       if (isOverdue) complianceFlags.push("OVERDUE");
-      if (!c.assignedToId) complianceFlags.push("UNASSIGNED");
+      if (!c.assignedEmployeeId) complianceFlags.push("UNASSIGNED");
       if (daysSinceUpdate > 7) complianceFlags.push("STALE");
 
       return {
         id: c.id,
-        internalId: c.internalId,
+        internalId: c.internalCode,
         clientName: c.client.name,
         status: c.status,
-        assigneeName: c.assignedTo?.name || "Unassigned",
+        assigneeName: c.assignedEmployee?.name || "Unassigned",
         documentsCount: c.documents.length,
         daysSinceUpdate,
         complianceFlags,
@@ -331,14 +331,14 @@ router.get("/employees", async (_req: AuthenticatedRequest, res: Response) => {
         name: emp.name,
         email: emp.email,
         role: emp.role,
-        tier: emp.tier || "TIER_1_ASSOCIATE",
+        tier: emp.employeeTier || "TIER_1_ASSOCIATE",
         isActive: emp.isActive,
         casesAssigned: emp.assignedCases.length,
-        activeCases: emp.assignedCases.filter(c => !["COMPLETED", "CLOSED"].includes(c.status)).length,
+        activeCases: emp.assignedCases.filter(c => !["PAID", "CLOSED"].includes(c.status)).length,
         trainingCompleted: completedTraining,
         trainingTotal: totalTraining,
         overdueTrainingCount: overdueTraining.length,
-        overdueModules: overdueTraining.map(t => t.module?.name || "Unknown"),
+        overdueModules: overdueTraining.map(t => t.module?.title || "Unknown"),
         complianceFlags,
         isCompliant: complianceFlags.length === 0
       };
@@ -372,10 +372,10 @@ router.get("/employees", async (_req: AuthenticatedRequest, res: Response) => {
 
 router.get("/payouts", async (_req: AuthenticatedRequest, res: Response) => {
   try {
-    const payouts = await prisma.payout.findMany({
+    const payouts = await prisma.ledgerEntry.findMany({
       include: {
-        case: { select: { id: true, internalId: true } },
-        employee: { select: { id: true, name: true } }
+        case: { select: { id: true, internalCode: true } },
+        user: { select: { id: true, name: true } }
       },
       orderBy: { createdAt: "desc" },
       take: 100
@@ -395,9 +395,9 @@ router.get("/payouts", async (_req: AuthenticatedRequest, res: Response) => {
       return {
         id: p.id,
         caseId: p.caseId,
-        caseInternalId: p.case?.internalId,
-        employeeId: p.employeeId,
-        employeeName: p.employee.name,
+        caseInternalId: p.case?.internalCode,
+        userId: p.userId,
+        userName: p.user?.name || "N/A",
         amountCents: p.amountCents,
         status: p.status,
         type: p.type,
@@ -435,10 +435,10 @@ router.get("/documents", async (_req: AuthenticatedRequest, res: Response) => {
   try {
     const documents = await prisma.document.findMany({
       include: {
-        case: { select: { id: true, internalId: true, status: true } },
+        case: { select: { id: true, internalCode: true, status: true } },
         uploadedBy: { select: { id: true, name: true } }
       },
-      orderBy: { uploadedAt: "desc" },
+      orderBy: { createdAt: "desc" },
       take: 100
     });
 
@@ -447,19 +447,19 @@ router.get("/documents", async (_req: AuthenticatedRequest, res: Response) => {
 
       // Check document type requirements
       if (!doc.type) complianceFlags.push("MISSING_TYPE");
-      if (!doc.isVerified) complianceFlags.push("UNVERIFIED");
+      if (doc.status !== "APPROVED" && doc.status !== "SIGNED") complianceFlags.push("UNVERIFIED");
 
       return {
         id: doc.id,
-        fileName: doc.fileName,
+        fileName: doc.filename,
         type: doc.type,
         caseId: doc.caseId,
-        caseInternalId: doc.case?.internalId,
+        caseInternalId: doc.case?.internalCode,
         caseStatus: doc.case?.status,
         uploadedBy: doc.uploadedBy?.name || "System",
-        isVerified: doc.isVerified,
+        isVerified: doc.status === "APPROVED" || doc.status === "SIGNED",
         complianceFlags,
-        uploadedAt: doc.uploadedAt.toISOString()
+        uploadedAt: doc.createdAt.toISOString()
       };
     });
 
@@ -469,8 +469,8 @@ router.get("/documents", async (_req: AuthenticatedRequest, res: Response) => {
         documents: complianceReport,
         summary: {
           total: documents.length,
-          verified: documents.filter(d => d.isVerified).length,
-          unverified: documents.filter(d => !d.isVerified).length,
+          verified: documents.filter(d => d.status === "APPROVED" || d.status === "SIGNED").length,
+          unverified: documents.filter(d => d.status !== "APPROVED" && d.status !== "SIGNED").length,
           missingType: complianceReport.filter(d => d.complianceFlags.includes("MISSING_TYPE")).length
         }
       }
@@ -494,9 +494,9 @@ router.post("/flag", async (req: AuthenticatedRequest, res: Response) => {
       data: {
         userId: req.user!.id,
         action: "COMPLIANCE_FLAG",
-        resource: resourceType,
-        resourceId,
-        metadata: {
+        entityType: resourceType,
+        entityId: resourceId,
+        details: {
           reason,
           severity,
           flagged: true,
@@ -536,7 +536,7 @@ router.post("/generate-report", async (req: AuthenticatedRequest, res: Response)
       }),
       prisma.case.count(),
       prisma.user.count({ where: { role: { in: ["EMPLOYEE", "TEAM_LEAD"] } } }),
-      prisma.payout.aggregate({
+      prisma.ledgerEntry.aggregate({
         _sum: { amountCents: true },
         _count: true
       })
@@ -591,12 +591,12 @@ router.get("/risk-assessment", async (_req: AuthenticatedRequest, res: Response)
       prisma.auditLog.count({
         where: { action: "LOGIN_FAILED", createdAt: { gte: thirtyDaysAgo } }
       }),
-      prisma.payout.count({
+      prisma.ledgerEntry.count({
         where: { amountCents: { gte: 500000 }, status: "PENDING" }
       }),
       prisma.case.count({
         where: {
-          status: { in: ["NEW", "PENDING", "IN_PROGRESS"] },
+          status: { in: ["NEW", "CONTACTED", "DOCS_PENDING"] },
           updatedAt: { lt: new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000) }
         }
       }),
@@ -606,7 +606,7 @@ router.get("/risk-assessment", async (_req: AuthenticatedRequest, res: Response)
           deadline: { lt: now }
         }
       }),
-      prisma.document.count({ where: { isVerified: false } })
+      prisma.document.count({ where: { status: { notIn: ["APPROVED", "SIGNED"] } } })
     ]);
 
     // Calculate risk scores (0-100)

@@ -9,6 +9,7 @@ import { authMiddleware } from "../middleware/authMiddleware.js";
 import { roleGuard } from "../middleware/roleGuard.js";
 import { scraperService } from "../services/scraperService.js";
 import { watchService } from "../services/watchService.js";
+import { getParserHealth } from "../services/parserService.js";
 import { ScrapedItemType, ScrapedItemReviewStatus, WatchAlertType, WatchAlertSeverity } from "@prisma/client";
 
 const router = Router();
@@ -27,7 +28,7 @@ router.use(roleGuard(["FOUNDER"]));
  */
 router.get("/scraper/configs", async (req: Request, res: Response) => {
   try {
-    const configs = scraperService.getConfigurations();
+    const configs = await scraperService.getConfigurations();
     res.json({ success: true, data: configs });
   } catch (error: any) {
     console.error("Scraper configs error:", error);
@@ -467,6 +468,272 @@ router.post("/alerts/bulk-resolve", async (req: Request, res: Response) => {
     res.status(500).json({
       success: false,
       error: "Failed to bulk resolve alerts"
+    });
+  }
+});
+
+// ============================================
+// SCRAPER ADVANCED OPERATIONS
+// ============================================
+
+/**
+ * POST /api/ops/watch/scraper/fetch-url
+ * Manually fetch a single URL
+ * Body: { url, name?, type?, state?, county? }
+ */
+router.post("/scraper/fetch-url", async (req: Request, res: Response) => {
+  try {
+    const { url, name, type, state, county } = req.body;
+
+    if (!url) {
+      return res.status(400).json({
+        success: false,
+        error: "URL is required"
+      });
+    }
+
+    const result = await scraperService.fetchSingleUrl(url, { name, type, state, county });
+    res.json({ success: true, data: result });
+  } catch (error: any) {
+    console.error("Fetch URL error:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to fetch URL"
+    });
+  }
+});
+
+/**
+ * POST /api/ops/watch/scraper/fetch-overdue
+ * Fetch only overdue targets
+ */
+router.post("/scraper/fetch-overdue", async (req: Request, res: Response) => {
+  try {
+    const result = await scraperService.fetchOverdueTargets();
+    res.json({ success: true, data: result });
+  } catch (error: any) {
+    console.error("Fetch overdue error:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to fetch overdue targets"
+    });
+  }
+});
+
+/**
+ * GET /api/ops/watch/scraper/overdue
+ * Get list of overdue targets
+ */
+router.get("/scraper/overdue", async (req: Request, res: Response) => {
+  try {
+    const overdueTargets = await scraperService.getOverdueTargets();
+    res.json({
+      success: true,
+      data: {
+        count: overdueTargets.length,
+        targets: overdueTargets
+      }
+    });
+  } catch (error: any) {
+    console.error("Get overdue targets error:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to get overdue targets"
+    });
+  }
+});
+
+// ============================================
+// WATCH TARGETS
+// ============================================
+
+/**
+ * GET /api/ops/watch/targets
+ * Get all watch targets with health status
+ */
+router.get("/targets", async (req: Request, res: Response) => {
+  try {
+    const report = await watchService.getWatchTargetHealthReport();
+    res.json({ success: true, data: report });
+  } catch (error: any) {
+    console.error("Watch targets fetch error:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to fetch watch targets"
+    });
+  }
+});
+
+/**
+ * GET /api/ops/watch/targets/:id
+ * Get single watch target with details
+ */
+router.get("/targets/:id", async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const target = await watchService.getWatchTarget(id);
+
+    if (!target) {
+      return res.status(404).json({
+        success: false,
+        error: "Watch target not found"
+      });
+    }
+
+    res.json({ success: true, data: target });
+  } catch (error: any) {
+    console.error("Watch target fetch error:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to fetch watch target"
+    });
+  }
+});
+
+/**
+ * GET /api/ops/watch/targets/:id/health
+ * Get health score for a single watch target
+ */
+router.get("/targets/:id/health", async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const health = await watchService.calculateSourceHealth(id);
+    res.json({ success: true, data: health });
+  } catch (error: any) {
+    console.error("Watch target health error:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to calculate source health"
+    });
+  }
+});
+
+/**
+ * POST /api/ops/watch/targets
+ * Create a new watch target
+ * Body: { name, watchType, url, state?, county?, enabled?, checkIntervalMinutes? }
+ */
+router.post("/targets", async (req: Request, res: Response) => {
+  try {
+    const { name, watchType, url, state, county, enabled, checkIntervalMinutes } = req.body;
+
+    if (!name || !watchType || !url) {
+      return res.status(400).json({
+        success: false,
+        error: "name, watchType, and url are required"
+      });
+    }
+
+    const target = await watchService.upsertWatchTarget({
+      name,
+      watchType,
+      url,
+      state,
+      county,
+      enabled,
+      checkIntervalMinutes
+    });
+
+    res.status(201).json({ success: true, data: target });
+  } catch (error: any) {
+    console.error("Create watch target error:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to create watch target"
+    });
+  }
+});
+
+/**
+ * PUT /api/ops/watch/targets/:id
+ * Update a watch target
+ * Body: { name, watchType, url, state?, county?, enabled?, checkIntervalMinutes? }
+ */
+router.put("/targets/:id", async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { name, watchType, url, state, county, enabled, checkIntervalMinutes } = req.body;
+
+    if (!name || !watchType || !url) {
+      return res.status(400).json({
+        success: false,
+        error: "name, watchType, and url are required"
+      });
+    }
+
+    const target = await watchService.upsertWatchTarget({
+      id,
+      name,
+      watchType,
+      url,
+      state,
+      county,
+      enabled,
+      checkIntervalMinutes
+    });
+
+    res.json({ success: true, data: target });
+  } catch (error: any) {
+    console.error("Update watch target error:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to update watch target"
+    });
+  }
+});
+
+/**
+ * DELETE /api/ops/watch/targets/:id
+ * Delete a watch target
+ */
+router.delete("/targets/:id", async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    await watchService.deleteWatchTarget(id);
+    res.json({ success: true, message: "Watch target deleted" });
+  } catch (error: any) {
+    console.error("Delete watch target error:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to delete watch target"
+    });
+  }
+});
+
+/**
+ * POST /api/ops/watch/targets/monitor
+ * Run watch target monitoring
+ */
+router.post("/targets/monitor", async (req: Request, res: Response) => {
+  try {
+    const result = await watchService.monitorWatchTargets();
+    res.json({ success: true, data: result });
+  } catch (error: any) {
+    console.error("Monitor watch targets error:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to monitor watch targets"
+    });
+  }
+});
+
+// ============================================
+// PARSER SERVICE
+// ============================================
+
+/**
+ * GET /api/ops/watch/parsers/health
+ * Get parser service health status
+ */
+router.get("/parsers/health", async (req: Request, res: Response) => {
+  try {
+    const health = getParserHealth();
+    res.json({ success: true, data: health });
+  } catch (error: any) {
+    console.error("Parser health error:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to fetch parser health"
     });
   }
 });

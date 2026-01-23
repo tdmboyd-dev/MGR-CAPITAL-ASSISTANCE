@@ -44,6 +44,25 @@ const WATCH_THRESHOLDS = {
 };
 
 // ============================================
+// SOURCE HEALTH SCORING CONFIGURATION
+// ============================================
+
+const SOURCE_HEALTH_CONFIG = {
+  // Health score weights (out of 100)
+  FETCH_SUCCESS_WEIGHT: 40,      // Percentage of successful fetches
+  RESPONSE_TIME_WEIGHT: 20,      // Average response time
+  CONTENT_FRESHNESS_WEIGHT: 20,  // How recently content was updated
+  CHANGE_FREQUENCY_WEIGHT: 20,   // Normal vs erratic change patterns
+
+  // Thresholds
+  GOOD_RESPONSE_TIME_MS: 5000,   // Under 5s is good
+  BAD_RESPONSE_TIME_MS: 30000,   // Over 30s is bad
+  STALE_THRESHOLD_HOURS: 168,    // 7 days without successful fetch = stale
+  FAILING_THRESHOLD: 3,          // 3 consecutive failures = failing
+  VOLATILE_CHANGE_COUNT: 5,      // 5+ changes in 7 days = volatile
+};
+
+// ============================================
 // WATCH SERVICE CLASS
 // ============================================
 
@@ -722,6 +741,376 @@ class WatchService {
     };
   }
 
+  // ============================================
+  // WATCH TARGET MONITORING
+  // ============================================
+
+  /**
+   * Monitor all WatchTargets and detect issues
+   * Creates alerts for failing, stale, or volatile sources
+   */
+  async monitorWatchTargets(): Promise<{
+    monitored: number;
+    healthy: number;
+    failing: number;
+    stale: number;
+    volatile: number;
+    alertsCreated: number;
+  }> {
+    const watchTargets = await prisma.watchTarget.findMany({
+      where: { enabled: true },
+    });
+
+    let healthy = 0;
+    let failing = 0;
+    let stale = 0;
+    let volatile = 0;
+    let alertsCreated = 0;
+
+    for (const target of watchTargets) {
+      const health = await this.calculateSourceHealth(target.id);
+
+      if (health.status === "HEALTHY") {
+        healthy++;
+      } else if (health.status === "FAILING") {
+        failing++;
+        alertsCreated += await this.createSourceAlert(target, health, "SOURCE_FAILING");
+      } else if (health.status === "STALE") {
+        stale++;
+        alertsCreated += await this.createSourceAlert(target, health, "SOURCE_STALE");
+      } else if (health.status === "VOLATILE") {
+        volatile++;
+        alertsCreated += await this.createSourceAlert(target, health, "SOURCE_VOLATILE");
+      }
+    }
+
+    return {
+      monitored: watchTargets.length,
+      healthy,
+      failing,
+      stale,
+      volatile,
+      alertsCreated,
+    };
+  }
+
+  /**
+   * Calculate health score for a WatchTarget
+   */
+  async calculateSourceHealth(watchTargetId: string): Promise<{
+    score: number;
+    status: "HEALTHY" | "FAILING" | "STALE" | "VOLATILE" | "UNKNOWN";
+    metrics: {
+      fetchSuccessRate: number;
+      avgResponseTimeMs: number;
+      lastFetchedHoursAgo: number;
+      changesLast7Days: number;
+      consecutiveFailures: number;
+    };
+  }> {
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
+    // Get recent scraped items for this target
+    const recentItems = await prisma.scrapedItem.findMany({
+      where: {
+        watchTargetId,
+        fetchedAt: { gte: sevenDaysAgo },
+      },
+      orderBy: { fetchedAt: "desc" },
+      take: 50,
+    });
+
+    if (recentItems.length === 0) {
+      // Check if target was ever fetched
+      const anyItem = await prisma.scrapedItem.findFirst({
+        where: { watchTargetId },
+        orderBy: { fetchedAt: "desc" },
+      });
+
+      if (!anyItem) {
+        return {
+          score: 0,
+          status: "UNKNOWN",
+          metrics: {
+            fetchSuccessRate: 0,
+            avgResponseTimeMs: 0,
+            lastFetchedHoursAgo: -1,
+            changesLast7Days: 0,
+            consecutiveFailures: 0,
+          },
+        };
+      }
+
+      const hoursAgo = (Date.now() - anyItem.fetchedAt.getTime()) / (1000 * 60 * 60);
+
+      return {
+        score: hoursAgo > SOURCE_HEALTH_CONFIG.STALE_THRESHOLD_HOURS ? 20 : 50,
+        status: hoursAgo > SOURCE_HEALTH_CONFIG.STALE_THRESHOLD_HOURS ? "STALE" : "UNKNOWN",
+        metrics: {
+          fetchSuccessRate: 100,
+          avgResponseTimeMs: 0,
+          lastFetchedHoursAgo: hoursAgo,
+          changesLast7Days: 0,
+          consecutiveFailures: 0,
+        },
+      };
+    }
+
+    // Calculate metrics
+    const successfulFetches = recentItems.filter(item => item.rawContent && item.rawContent.length > 0);
+    const fetchSuccessRate = (successfulFetches.length / recentItems.length) * 100;
+
+    // Count unique content hashes to detect changes
+    const uniqueHashes = new Set(recentItems.map(item => item.contentHash));
+    const changesLast7Days = uniqueHashes.size - 1; // Subtract 1 as we count changes, not versions
+
+    // Calculate hours since last fetch
+    const lastFetchedHoursAgo = (Date.now() - recentItems[0].fetchedAt.getTime()) / (1000 * 60 * 60);
+
+    // Count consecutive failures (simplified - assume failure if no content)
+    let consecutiveFailures = 0;
+    for (const item of recentItems) {
+      if (!item.rawContent || item.rawContent.length === 0) {
+        consecutiveFailures++;
+      } else {
+        break;
+      }
+    }
+
+    // Calculate score components
+    const successScore = (fetchSuccessRate / 100) * SOURCE_HEALTH_CONFIG.FETCH_SUCCESS_WEIGHT;
+
+    const freshnessScore = lastFetchedHoursAgo < 24
+      ? SOURCE_HEALTH_CONFIG.CONTENT_FRESHNESS_WEIGHT
+      : lastFetchedHoursAgo < SOURCE_HEALTH_CONFIG.STALE_THRESHOLD_HOURS
+        ? SOURCE_HEALTH_CONFIG.CONTENT_FRESHNESS_WEIGHT * 0.5
+        : 0;
+
+    const volatilityScore = changesLast7Days <= SOURCE_HEALTH_CONFIG.VOLATILE_CHANGE_COUNT
+      ? SOURCE_HEALTH_CONFIG.CHANGE_FREQUENCY_WEIGHT
+      : SOURCE_HEALTH_CONFIG.CHANGE_FREQUENCY_WEIGHT * 0.3;
+
+    // Response time score (placeholder as we don't track response time yet)
+    const responseTimeScore = SOURCE_HEALTH_CONFIG.RESPONSE_TIME_WEIGHT;
+
+    const totalScore = Math.round(successScore + freshnessScore + volatilityScore + responseTimeScore);
+
+    // Determine status
+    let status: "HEALTHY" | "FAILING" | "STALE" | "VOLATILE" | "UNKNOWN";
+
+    if (consecutiveFailures >= SOURCE_HEALTH_CONFIG.FAILING_THRESHOLD) {
+      status = "FAILING";
+    } else if (lastFetchedHoursAgo > SOURCE_HEALTH_CONFIG.STALE_THRESHOLD_HOURS) {
+      status = "STALE";
+    } else if (changesLast7Days > SOURCE_HEALTH_CONFIG.VOLATILE_CHANGE_COUNT) {
+      status = "VOLATILE";
+    } else if (totalScore >= 70) {
+      status = "HEALTHY";
+    } else {
+      status = "UNKNOWN";
+    }
+
+    return {
+      score: totalScore,
+      status,
+      metrics: {
+        fetchSuccessRate,
+        avgResponseTimeMs: 0, // Placeholder
+        lastFetchedHoursAgo,
+        changesLast7Days,
+        consecutiveFailures,
+      },
+    };
+  }
+
+  /**
+   * Create alert for source health issue
+   */
+  private async createSourceAlert(
+    target: { id: string; name: string; url: string; state: string | null; county: string | null },
+    health: { score: number; status: string; metrics: Record<string, number> },
+    alertType: "SOURCE_FAILING" | "SOURCE_STALE" | "SOURCE_VOLATILE"
+  ): Promise<number> {
+    // Check for existing unresolved alert
+    const existingAlert = await prisma.watchAlert.findFirst({
+      where: {
+        type: alertType as WatchAlertType,
+        watchTargetId: target.id,
+        isResolved: false,
+      },
+    });
+
+    if (existingAlert) {
+      return 0;
+    }
+
+    const severityMap: Record<string, WatchAlertSeverity> = {
+      SOURCE_FAILING: "HIGH",
+      SOURCE_STALE: "MEDIUM",
+      SOURCE_VOLATILE: "MEDIUM",
+    };
+
+    const titleMap: Record<string, string> = {
+      SOURCE_FAILING: `Source Failing: ${target.name}`,
+      SOURCE_STALE: `Source Stale: ${target.name}`,
+      SOURCE_VOLATILE: `Source Volatile: ${target.name}`,
+    };
+
+    const messageMap: Record<string, string> = {
+      SOURCE_FAILING: `The watch target "${target.name}" has had ${health.metrics.consecutiveFailures} consecutive fetch failures. URL: ${target.url}`,
+      SOURCE_STALE: `The watch target "${target.name}" has not been successfully fetched in ${Math.round(health.metrics.lastFetchedHoursAgo)} hours. URL: ${target.url}`,
+      SOURCE_VOLATILE: `The watch target "${target.name}" has changed ${health.metrics.changesLast7Days} times in the last 7 days, indicating potential instability. URL: ${target.url}`,
+    };
+
+    await prisma.watchAlert.create({
+      data: {
+        type: alertType as WatchAlertType,
+        severity: severityMap[alertType],
+        title: titleMap[alertType],
+        message: messageMap[alertType],
+        details: {
+          healthScore: health.score,
+          healthStatus: health.status,
+          metrics: health.metrics,
+          targetUrl: target.url,
+        },
+        state: target.state,
+        county: target.county,
+        watchTargetId: target.id,
+      },
+    });
+
+    return 1;
+  }
+
+  /**
+   * Get all WatchTargets with their health status
+   */
+  async getWatchTargetHealthReport(): Promise<{
+    targets: Array<{
+      id: string;
+      name: string;
+      url: string;
+      state: string | null;
+      county: string | null;
+      enabled: boolean;
+      healthScore: number;
+      healthStatus: string;
+      lastCheckedAt: Date | null;
+      lastChangeAt: Date | null;
+    }>;
+    summary: {
+      total: number;
+      healthy: number;
+      failing: number;
+      stale: number;
+      volatile: number;
+      unknown: number;
+    };
+  }> {
+    const watchTargets = await prisma.watchTarget.findMany({
+      orderBy: { createdAt: "asc" },
+    });
+
+    const targets = await Promise.all(
+      watchTargets.map(async (target) => {
+        const health = await this.calculateSourceHealth(target.id);
+        return {
+          id: target.id,
+          name: target.name,
+          url: target.url,
+          state: target.state,
+          county: target.county,
+          enabled: target.enabled,
+          healthScore: health.score,
+          healthStatus: health.status,
+          lastCheckedAt: target.lastCheckedAt,
+          lastChangeAt: target.lastChangeAt,
+        };
+      })
+    );
+
+    const summary = {
+      total: targets.length,
+      healthy: targets.filter((t) => t.healthStatus === "HEALTHY").length,
+      failing: targets.filter((t) => t.healthStatus === "FAILING").length,
+      stale: targets.filter((t) => t.healthStatus === "STALE").length,
+      volatile: targets.filter((t) => t.healthStatus === "VOLATILE").length,
+      unknown: targets.filter((t) => t.healthStatus === "UNKNOWN").length,
+    };
+
+    return { targets, summary };
+  }
+
+  /**
+   * Create or update WatchTarget
+   */
+  async upsertWatchTarget(data: {
+    id?: string;
+    name: string;
+    watchType: string;
+    url: string;
+    state?: string;
+    county?: string;
+    enabled?: boolean;
+    checkIntervalMinutes?: number;
+  }): Promise<unknown> {
+    if (data.id) {
+      return prisma.watchTarget.update({
+        where: { id: data.id },
+        data: {
+          name: data.name,
+          watchType: data.watchType,
+          url: data.url,
+          state: data.state,
+          county: data.county,
+          enabled: data.enabled ?? true,
+          checkIntervalMinutes: data.checkIntervalMinutes ?? 360,
+        },
+      });
+    }
+
+    return prisma.watchTarget.create({
+      data: {
+        name: data.name,
+        watchType: data.watchType,
+        url: data.url,
+        state: data.state,
+        county: data.county,
+        enabled: data.enabled ?? true,
+        checkIntervalMinutes: data.checkIntervalMinutes ?? 360,
+      },
+    });
+  }
+
+  /**
+   * Delete WatchTarget
+   */
+  async deleteWatchTarget(id: string): Promise<void> {
+    await prisma.watchTarget.delete({
+      where: { id },
+    });
+  }
+
+  /**
+   * Get WatchTarget by ID
+   */
+  async getWatchTarget(id: string): Promise<unknown> {
+    return prisma.watchTarget.findUnique({
+      where: { id },
+      include: {
+        scrapedItems: {
+          orderBy: { fetchedAt: "desc" },
+          take: 10,
+        },
+        watchAlerts: {
+          where: { isResolved: false },
+          orderBy: { createdAt: "desc" },
+        },
+      },
+    });
+  }
+
   /**
    * Run all watch checks
    * Called on schedule or manually by Founder
@@ -735,6 +1124,7 @@ class WatchService {
       ingestion: { alertsCreated: number };
       payouts: { alertsCreated: number };
       employees: { alertsCreated: number };
+      watchTargets: { monitored: number; healthy: number; failing: number; stale: number; alertsCreated: number };
     };
   }> {
     const ruleResult = await this.detectRuleChangesFromScrapedItems();
@@ -743,6 +1133,27 @@ class WatchService {
     const ingestionResult = await this.detectHighRiskIngestionPatterns();
     const payoutResult = await this.detectPayoutAnomalies();
     const employeeResult = await this.detectEmployeeAnomalies();
+    const watchTargetResult = await this.monitorWatchTargets();
+
+    // Create OpsInsight for watch cycle completion
+    await prisma.opsInsight.create({
+      data: {
+        category: "WATCH_CYCLE",
+        priority: watchTargetResult.failing > 0 ? "HIGH" : "LOW",
+        title: "Watch Cycle Complete",
+        summary: `Watch cycle completed. ${ruleResult.alertsCreated + docResult.alertsCreated + deadlineResult.alertsCreated + ingestionResult.alertsCreated + payoutResult.alertsCreated + employeeResult.alertsCreated + watchTargetResult.alertsCreated} total alerts created. ${watchTargetResult.healthy}/${watchTargetResult.monitored} sources healthy.`,
+        details: {
+          ruleChanges: ruleResult,
+          documentPatterns: docResult,
+          deadlines: deadlineResult,
+          ingestion: ingestionResult,
+          payouts: payoutResult,
+          employees: employeeResult,
+          watchTargets: watchTargetResult,
+        },
+        status: watchTargetResult.failing > 0 ? "NEW" : "ACKNOWLEDGED",
+      },
+    });
 
     return {
       success: true,
@@ -756,7 +1167,14 @@ class WatchService {
         },
         ingestion: { alertsCreated: ingestionResult.alertsCreated },
         payouts: { alertsCreated: payoutResult.alertsCreated },
-        employees: { alertsCreated: employeeResult.alertsCreated }
+        employees: { alertsCreated: employeeResult.alertsCreated },
+        watchTargets: {
+          monitored: watchTargetResult.monitored,
+          healthy: watchTargetResult.healthy,
+          failing: watchTargetResult.failing,
+          stale: watchTargetResult.stale,
+          alertsCreated: watchTargetResult.alertsCreated
+        }
       }
     };
   }

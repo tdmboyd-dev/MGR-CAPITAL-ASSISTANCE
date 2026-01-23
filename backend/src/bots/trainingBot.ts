@@ -1,79 +1,45 @@
 // ============================================
 // TRAINING BOT — MGR CAPITAL ASSISTANCE
-// Analyzes training completion vs performance
-// Suggests who needs coaching
-// Suggests new training modules
+// Enhanced Training Intelligence Layer
+// Personalized recommendations, dynamic modules
+// Auto-tier progression with shadow accounting
 // ============================================
 
 import { PrismaClient, OpsInsightType, OpsInsightPriority, EmployeeTier } from "@prisma/client";
+import { trainingIntelligenceService } from "../services/TrainingIntelligenceService.js";
+import {
+  TrainingBotAnalysis,
+  ContractorTrainingNeeds,
+  TierProgressionEvaluation,
+  DynamicModuleSpec,
+  PerformanceCorrelation,
+  TrainingPattern,
+  UrgentTrainingAction,
+  TrainingModuleSourceType,
+} from "../types/trainingTypes.js";
 
 const prisma = new PrismaClient();
 
 const BOT_NAME = "trainingBot";
 
-interface TrainingAnalysis {
-  analysisDate: Date;
-  totalEmployees: number;
-  totalModules: number;
-  completionRate: number;
-  performanceCorrelation: PerformanceCorrelation;
-  needsCoaching: CoachingRecommendation[];
-  topPerformers: EmployeePerformance[];
-  moduleEffectiveness: ModuleEffectiveness[];
-  recommendations: string[];
-}
-
-interface PerformanceCorrelation {
-  correlation: "strong" | "moderate" | "weak" | "none";
-  description: string;
-  data: {
-    trainedAvgConversion: number;
-    untrainedAvgConversion: number;
-    trainedAvgCases: number;
-    untrainedAvgCases: number;
-  };
-}
-
-interface CoachingRecommendation {
-  employeeId: string;
-  employeeName: string;
-  tier: string;
-  reason: string;
-  trainingCompletion: number;
-  conversionRate: number;
-  suggestedModules: string[];
-}
-
-interface EmployeePerformance {
-  employeeId: string;
-  employeeName: string;
-  tier: string;
-  trainingCompletion: number;
-  conversionRate: number;
-  casesHandled: number;
-}
-
-interface ModuleEffectiveness {
-  moduleId: string;
-  moduleName: string;
-  completedBy: number;
-  avgScorePreCompletion: number;
-  avgScorePostCompletion: number;
-  effectivenessScore: number;
-}
-
 class TrainingBot {
   // ============================================
-  // MAIN ANALYSIS
+  // MAIN ANALYSIS — ENHANCED
   // ============================================
 
   /**
-   * Run full training analysis
+   * Run full training intelligence analysis
    */
-  async analyze(): Promise<TrainingAnalysis> {
-    // Get all employees with their training and case data
+  async analyze(): Promise<TrainingBotAnalysis> {
+    const startTime = Date.now();
+
+    // Load config
+    await trainingIntelligenceService.loadConfig();
+    const config = trainingIntelligenceService.getConfig();
+
+    // Get all employees
     const employees = await prisma.user.findMany({
-      where: { role: "EMPLOYEE", isActive: true },
+      where: { role: { in: ["EMPLOYEE", "TEAM_LEAD"] }, isActive: true },
       include: {
         trainingProgress: {
           include: { module: true },
@@ -91,14 +57,26 @@ class TrainingBot {
 
     const modules = await prisma.trainingModule.findMany({
       where: { isActive: true },
-      include: {
-        progress: {
-          where: { completedAt: { not: null } },
-        },
-      },
     });
 
-    // Calculate overall completion rate
+    // 1. Analyze all contractors for training needs
+    const allNeeds = await trainingIntelligenceService.analyzeAllContractors();
+    const needsCoaching = allNeeds.filter((n) => n.recommendedModules.length > 0);
+
+    // 2. Evaluate tier progressions
+    const allProgressions = await trainingIntelligenceService.evaluateAllTierProgressions();
+    const eligibleForPromotion = allProgressions.filter(
+      (p) => p.status === "REQUIREMENTS_MET" || p.status === "PENDING_REVIEW"
+    );
+
+    // 3. Generate dynamic modules from recent insights
+    const newModulesGenerated: DynamicModuleSpec[] = [];
+    if (config.autoGenerateModulesFromInsights) {
+      const dynamicModules = await this.generateModulesFromInsights(config.insightTypesForModules);
+      newModulesGenerated.push(...dynamicModules);
+    }
+
+    // 4. Calculate metrics
     const totalAssignments = employees.reduce(
       (sum, e) => sum + e.trainingProgress.length,
       0
@@ -107,44 +85,141 @@ class TrainingBot {
       (sum, e) => sum + e.trainingProgress.filter((t) => t.completedAt !== null).length,
       0
     );
-    const completionRate =
-      totalAssignments > 0 ? (completedAssignments / totalAssignments) * 100 : 0;
+    const overallCompletionRate =
+      totalAssignments > 0 ? Math.round((completedAssignments / totalAssignments) * 100) : 0;
 
-    // Analyze performance correlation
-    const performanceCorrelation = this.analyzeCorrelation(employees);
+    // Calculate average quiz score
+    const allScores: number[] = [];
+    for (const emp of employees) {
+      for (const progress of emp.trainingProgress) {
+        if (progress.bestScore !== null) {
+          allScores.push(progress.bestScore);
+        }
+      }
+    }
+    const avgQuizScore = allScores.length > 0
+      ? Math.round(allScores.reduce((a, b) => a + b, 0) / allScores.length)
+      : 0;
 
-    // Identify who needs coaching
-    const needsCoaching = this.identifyCoachingNeeds(employees, modules);
+    // 5. Analyze training-performance correlation
+    const trainingCorrelation = this.analyzeCorrelation(employees);
 
-    // Identify top performers
-    const topPerformers = this.identifyTopPerformers(employees);
+    // 6. Detect patterns
+    const patterns = this.detectPatterns(employees, modules, needsCoaching);
 
-    // Analyze module effectiveness
-    const moduleEffectiveness = this.analyzeModuleEffectiveness(employees, modules);
-
-    // Generate recommendations
+    // 7. Generate recommendations
     const recommendations = this.generateRecommendations(
-      performanceCorrelation,
       needsCoaching,
-      completionRate,
-      moduleEffectiveness
+      eligibleForPromotion,
+      overallCompletionRate,
+      patterns
     );
 
-    const analysis: TrainingAnalysis = {
+    // 8. Save recommendations to database
+    for (const needs of needsCoaching) {
+      await trainingIntelligenceService.saveRecommendations(needs);
+    }
+
+    // 9. Save tier progression logs
+    for (const progression of eligibleForPromotion) {
+      await trainingIntelligenceService.saveTierProgressionLog(progression);
+    }
+
+    // Build analysis result
+    const analysis: TrainingBotAnalysis = {
       analysisDate: new Date(),
       totalEmployees: employees.length,
-      totalModules: modules.length,
-      completionRate: Math.round(completionRate),
-      performanceCorrelation,
+      employeesAnalyzed: employees.length,
       needsCoaching,
-      topPerformers,
-      moduleEffectiveness,
+      eligibleForPromotion,
+      newModulesGenerated,
+      overallCompletionRate,
+      avgQuizScore,
+      trainingCorrelation,
       recommendations,
+      plainEnglish: "", // Will be generated below
     };
 
-    await this.saveInsight(analysis);
+    analysis.plainEnglish = this.generatePlainEnglish(analysis, patterns);
+
+    // 10. Save insight
+    await this.saveInsight(analysis, patterns);
+
+    // 11. Log bot run
+    await this.logBotRun(startTime, analysis);
 
     return analysis;
+  }
+
+  // ============================================
+  // GENERATE MODULES FROM INSIGHTS
+  // ============================================
+
+  private async generateModulesFromInsights(insightTypes: string[]): Promise<DynamicModuleSpec[]> {
+    const generatedModules: DynamicModuleSpec[] = [];
+
+    // Get recent actionable insights
+    const recentInsights = await prisma.opsInsight.findMany({
+      where: {
+        type: { in: insightTypes as any[] },
+        isActioned: false,
+        createdAt: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) },
+      },
+      orderBy: { priority: "desc" },
+      take: 5,
+    });
+
+    for (const insight of recentInsights) {
+      // Check if module already exists for this insight
+      const existingModule = await prisma.dynamicTrainingModule.findFirst({
+        where: { sourceId: insight.id },
+      });
+
+      if (!existingModule) {
+        const moduleSpec = await trainingIntelligenceService.generateDynamicModule({
+          type: TrainingModuleSourceType.OPS_INSIGHT,
+          sourceId: insight.id,
+          sourceSummary: insight.summary,
+          relevantData: insight.details as any || {},
+        });
+
+        if (moduleSpec) {
+          await trainingIntelligenceService.saveDynamicModule(moduleSpec);
+          generatedModules.push(moduleSpec);
+        }
+      }
+    }
+
+    // Get recent actionable scraped items (jurisdiction changes)
+    const recentScrapedItems = await prisma.scrapedItem.findMany({
+      where: {
+        reviewStatus: "ACTIONABLE",
+        fetchedAt: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) },
+      },
+      take: 3,
+    });
+
+    for (const item of recentScrapedItems) {
+      const existingModule = await prisma.dynamicTrainingModule.findFirst({
+        where: { sourceId: item.id },
+      });
+
+      if (!existingModule) {
+        const moduleSpec = await trainingIntelligenceService.generateDynamicModule({
+          type: TrainingModuleSourceType.SCRAPED_ITEM,
+          sourceId: item.id,
+          sourceSummary: item.sourceName || item.sourceType,
+          relevantData: item.parsedData as any || {},
+        });
+
+        if (moduleSpec) {
+          await trainingIntelligenceService.saveDynamicModule(moduleSpec);
+          generatedModules.push(moduleSpec);
+        }
+      }
+    }
+
+    return generatedModules;
   }
 
   // ============================================
@@ -171,47 +246,37 @@ class TrainingBot {
       return completion < 0.5;
     });
 
-    // Calculate metrics for each group
     const trainedMetrics = this.calculateGroupMetrics(trained);
     const untrainedMetrics = this.calculateGroupMetrics(untrained);
 
-    // Determine correlation strength
-    const conversionDiff =
-      trainedMetrics.avgConversion - untrainedMetrics.avgConversion;
+    const conversionDiff = trainedMetrics.avgConversion - untrainedMetrics.avgConversion;
 
     let correlation: PerformanceCorrelation["correlation"];
     let description: string;
 
     if (conversionDiff > 20) {
       correlation = "strong";
-      description = "Training completion strongly correlates with better performance";
+      description = "Training completion strongly correlates with better performance. Trained employees convert at significantly higher rates.";
     } else if (conversionDiff > 10) {
       correlation = "moderate";
-      description = "Training completion shows moderate impact on performance";
+      description = "Training completion shows moderate impact on performance. Consider enforcing training requirements.";
     } else if (conversionDiff > 5) {
       correlation = "weak";
-      description = "Training completion has slight impact on performance";
+      description = "Training completion has slight impact on performance. Review module content for relevance.";
     } else {
       correlation = "none";
-      description = "No clear correlation between training and performance";
+      description = "No clear correlation between training and performance. Training content may need updating.";
     }
 
     return {
       correlation,
       description,
-      data: {
-        trainedAvgConversion: trainedMetrics.avgConversion,
-        untrainedAvgConversion: untrainedMetrics.avgConversion,
-        trainedAvgCases: trainedMetrics.avgCases,
-        untrainedAvgCases: untrainedMetrics.avgCases,
-      },
+      trainedAvgConversion: trainedMetrics.avgConversion,
+      untrainedAvgConversion: untrainedMetrics.avgConversion,
     };
   }
 
-  private calculateGroupMetrics(employees: any[]): {
-    avgConversion: number;
-    avgCases: number;
-  } {
+  private calculateGroupMetrics(employees: any[]): { avgConversion: number; avgCases: number } {
     if (employees.length === 0) {
       return { avgConversion: 0, avgCases: 0 };
     }
@@ -223,7 +288,6 @@ class TrainingBot {
     for (const emp of employees) {
       const cases = emp.assignedCases;
       if (cases.length >= 3) {
-        // Only count employees with meaningful case history
         const paid = cases.filter((c: any) => c.status === "PAID").length;
         totalConversion += (paid / cases.length) * 100;
         totalCases += cases.length;
@@ -232,174 +296,87 @@ class TrainingBot {
     }
 
     return {
-      avgConversion:
-        employeesWithCases > 0
-          ? Math.round(totalConversion / employeesWithCases)
-          : 0,
-      avgCases:
-        employeesWithCases > 0 ? Math.round(totalCases / employeesWithCases) : 0,
+      avgConversion: employeesWithCases > 0 ? Math.round(totalConversion / employeesWithCases) : 0,
+      avgCases: employeesWithCases > 0 ? Math.round(totalCases / employeesWithCases) : 0,
     };
   }
 
   // ============================================
-  // COACHING IDENTIFICATION
+  // PATTERN DETECTION
   // ============================================
 
-  private identifyCoachingNeeds(
+  private detectPatterns(
     employees: any[],
-    modules: any[]
-  ): CoachingRecommendation[] {
-    const coaching: CoachingRecommendation[] = [];
+    modules: any[],
+    needsCoaching: ContractorTrainingNeeds[]
+  ): TrainingPattern[] {
+    const patterns: TrainingPattern[] = [];
 
-    for (const emp of employees) {
-      const trainingCompletion =
-        emp.trainingProgress.length > 0
-          ? Math.round(
-              (emp.trainingProgress.filter((t: any) => t.completedAt !== null)
-                .length /
-                emp.trainingProgress.length) *
-                100
-            )
-          : 0;
+    // High failure modules
+    for (const module of modules) {
+      const progress = employees.flatMap((e) =>
+        e.trainingProgress.filter((t: any) => t.moduleId === module.id && t.bestScore !== null)
+      );
 
-      const cases = emp.assignedCases;
-      const paid = cases.filter((c: any) => c.status === "PAID").length;
-      const conversionRate =
-        cases.length > 0 ? Math.round((paid / cases.length) * 100) : 0;
+      if (progress.length >= 5) {
+        const failureCount = progress.filter(
+          (p: any) => p.bestScore < (module.passingScore || 80)
+        ).length;
+        const failureRate = Math.round((failureCount / progress.length) * 100);
 
-      // Identify coaching needs
-      const reasons: string[] = [];
-      const suggestedModules: string[] = [];
-
-      // Low training completion
-      if (trainingCompletion < 50 && emp.trainingProgress.length >= 2) {
-        reasons.push("Low training completion");
-
-        // Suggest incomplete modules
-        for (const progress of emp.trainingProgress) {
-          if (!progress.completedAt) {
-            suggestedModules.push(progress.module?.title || "Unknown module");
-          }
+        if (failureRate > 30) {
+          patterns.push({
+            type: "HIGH_FAILURE_MODULE",
+            description: `Module "${module.title}" has ${failureRate}% failure rate`,
+            affectedCount: failureCount,
+            severity: failureRate > 50 ? "high" : "medium",
+            suggestedAction: "Review and simplify module content or adjust passing score",
+          });
         }
       }
+    }
 
-      // Low conversion despite training
-      if (trainingCompletion > 70 && conversionRate < 30 && cases.length >= 5) {
-        reasons.push("Low conversion despite completing training");
-        suggestedModules.push("Advanced Sales Techniques");
-        suggestedModules.push("Objection Handling");
+    // Skill gap clusters
+    const skillGapCounts: Record<string, number> = {};
+    for (const needs of needsCoaching) {
+      for (const gap of needs.skillGaps) {
+        skillGapCounts[gap.skill] = (skillGapCounts[gap.skill] || 0) + 1;
       }
+    }
 
-      // New employee (< 5 cases) with low training
-      if (cases.length < 5 && trainingCompletion < 50) {
-        reasons.push("New employee needs onboarding completion");
-      }
-
-      if (reasons.length > 0) {
-        coaching.push({
-          employeeId: emp.id,
-          employeeName: emp.name,
-          tier: emp.employeeTier || "UNKNOWN",
-          reason: reasons.join("; "),
-          trainingCompletion,
-          conversionRate,
-          suggestedModules: [...new Set(suggestedModules)].slice(0, 3),
+    for (const [skill, count] of Object.entries(skillGapCounts)) {
+      if (count >= 3) {
+        patterns.push({
+          type: "SKILL_GAP_CLUSTER",
+          description: `${count} employees have gaps in ${skill.replace(/-/g, " ")} skills`,
+          affectedCount: count,
+          severity: count >= 5 ? "high" : "medium",
+          suggestedAction: `Schedule group training session on ${skill.replace(/-/g, " ")}`,
         });
       }
     }
 
-    return coaching.sort(
-      (a, b) => a.trainingCompletion - b.trainingCompletion
-    );
-  }
+    // Tier bottleneck
+    const tierCounts: Record<string, number> = {};
+    for (const emp of employees) {
+      const tier = emp.employeeTier || "TIER_1_ASSOCIATE";
+      tierCounts[tier] = (tierCounts[tier] || 0) + 1;
+    }
 
-  // ============================================
-  // TOP PERFORMERS
-  // ============================================
+    const tier1Count = tierCounts["TIER_1_ASSOCIATE"] || 0;
+    const totalCount = employees.length;
 
-  private identifyTopPerformers(employees: any[]): EmployeePerformance[] {
-    return employees
-      .filter((emp) => emp.assignedCases.length >= 5)
-      .map((emp) => {
-        const trainingCompletion =
-          emp.trainingProgress.length > 0
-            ? Math.round(
-                (emp.trainingProgress.filter((t: any) => t.completedAt !== null)
-                  .length /
-                  emp.trainingProgress.length) *
-                  100
-              )
-            : 0;
+    if (tier1Count / totalCount > 0.7 && totalCount >= 5) {
+      patterns.push({
+        type: "TIER_BOTTLENECK",
+        description: `${Math.round((tier1Count / totalCount) * 100)}% of employees are still at Tier 1`,
+        affectedCount: tier1Count,
+        severity: "medium",
+        suggestedAction: "Review tier progression requirements and training support",
+      });
+    }
 
-        const cases = emp.assignedCases;
-        const paid = cases.filter((c: any) => c.status === "PAID").length;
-        const conversionRate =
-          cases.length > 0 ? Math.round((paid / cases.length) * 100) : 0;
-
-        return {
-          employeeId: emp.id,
-          employeeName: emp.name,
-          tier: emp.employeeTier || "UNKNOWN",
-          trainingCompletion,
-          conversionRate,
-          casesHandled: cases.length,
-        };
-      })
-      .filter((emp) => emp.trainingCompletion >= 80 && emp.conversionRate >= 50)
-      .sort((a, b) => b.conversionRate - a.conversionRate)
-      .slice(0, 5);
-  }
-
-  // ============================================
-  // MODULE EFFECTIVENESS
-  // ============================================
-
-  private analyzeModuleEffectiveness(
-    employees: any[],
-    modules: any[]
-  ): ModuleEffectiveness[] {
-    return modules.map((module) => {
-      // Find employees who completed this module
-      const completers = employees.filter((emp) =>
-        emp.trainingProgress.some(
-          (t: any) => t.moduleId === module.id && t.completedAt !== null
-        )
-      );
-
-      // Calculate average score for completers
-      let totalScore = 0;
-      let scoredCount = 0;
-
-      for (const completer of completers) {
-        const progress = completer.trainingProgress.find(
-          (t: any) => t.moduleId === module.id
-        );
-        if (progress?.bestScore) {
-          totalScore += progress.bestScore;
-          scoredCount++;
-        }
-      }
-
-      // Effectiveness score based on completion rate and performance
-      const completionRate =
-        module.progress.length > 0
-          ? module.progress.filter((p: any) => p.completedAt !== null).length /
-            module.progress.length
-          : 0;
-
-      const effectivenessScore = Math.round(
-        completionRate * 50 + (scoredCount > 0 ? (totalScore / scoredCount) * 0.5 : 25)
-      );
-
-      return {
-        moduleId: module.id,
-        moduleName: module.title,
-        completedBy: completers.length,
-        avgScorePreCompletion: 0, // Would need historical data
-        avgScorePostCompletion: scoredCount > 0 ? Math.round(totalScore / scoredCount) : 0,
-        effectivenessScore,
-      };
-    });
+    return patterns;
   }
 
   // ============================================
@@ -407,118 +384,116 @@ class TrainingBot {
   // ============================================
 
   private generateRecommendations(
-    correlation: PerformanceCorrelation,
-    coaching: CoachingRecommendation[],
+    needsCoaching: ContractorTrainingNeeds[],
+    eligibleForPromotion: TierProgressionEvaluation[],
     completionRate: number,
-    moduleEffectiveness: ModuleEffectiveness[]
+    patterns: TrainingPattern[]
   ): string[] {
     const recommendations: string[] = [];
 
     // Coaching recommendations
-    if (coaching.length > 0) {
+    const urgentCoaching = needsCoaching.filter((n) => n.overallPriority === "URGENT" || n.overallPriority === "MANDATORY");
+    if (urgentCoaching.length > 0) {
       recommendations.push(
-        `${coaching.length} employees need coaching or additional training`
+        `URGENT: ${urgentCoaching.length} employees need immediate training attention`
       );
     }
 
-    // Low completion rate
+    if (needsCoaching.length > urgentCoaching.length) {
+      recommendations.push(
+        `${needsCoaching.length - urgentCoaching.length} additional employees would benefit from coaching`
+      );
+    }
+
+    // Promotion recommendations
+    if (eligibleForPromotion.length > 0) {
+      recommendations.push(
+        `${eligibleForPromotion.length} employees are eligible for tier advancement — review pending`
+      );
+    }
+
+    // Completion rate
     if (completionRate < 60) {
       recommendations.push(
         `Training completion rate (${completionRate}%) is below target. Consider enforcement measures.`
       );
     }
 
-    // Based on correlation
-    if (correlation.correlation === "strong" || correlation.correlation === "moderate") {
-      recommendations.push(
-        `Training shows positive impact on performance. Prioritize training completion for underperformers.`
-      );
-    } else if (correlation.correlation === "none") {
-      recommendations.push(
-        `Review training content relevance - no correlation with performance detected`
-      );
-    }
-
-    // Module effectiveness
-    const lowEffectiveness = moduleEffectiveness.filter(
-      (m) => m.effectivenessScore < 40
-    );
-    if (lowEffectiveness.length > 0) {
-      recommendations.push(
-        `${lowEffectiveness.length} training modules have low effectiveness - consider updating content`
-      );
+    // Pattern-based recommendations
+    for (const pattern of patterns) {
+      if (pattern.severity === "high") {
+        recommendations.push(pattern.suggestedAction);
+      }
     }
 
     if (recommendations.length === 0) {
-      recommendations.push("Training program is performing well - continue monitoring");
+      recommendations.push("Training program is performing well — continue monitoring");
     }
 
     return recommendations;
   }
 
   // ============================================
-  // SAVE INSIGHT
+  // PLAIN ENGLISH GENERATION
   // ============================================
 
-  private async saveInsight(analysis: TrainingAnalysis): Promise<void> {
-    const priority =
-      analysis.needsCoaching.length >= 5 || analysis.completionRate < 40
-        ? "HIGH"
-        : analysis.needsCoaching.length > 0
-        ? "NORMAL"
-        : "LOW";
-
-    const plainEnglish = this.generatePlainEnglish(analysis);
-
-    await prisma.opsInsight.create({
-      data: {
-        type: "TRAINING_ANALYSIS" as OpsInsightType,
-        priority: priority as OpsInsightPriority,
-        title: "Training Program Analysis",
-        summary: `${analysis.totalEmployees} employees analyzed. ${analysis.completionRate}% overall completion. ${analysis.needsCoaching.length} need coaching.`,
-        details: analysis as any,
-        plainEnglish,
-        recommendations: analysis.recommendations,
-        relatedCaseIds: [],
-        relatedUserIds: analysis.needsCoaching.map((c) => c.employeeId),
-        relatedAlertIds: [],
-        sourceBot: BOT_NAME,
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
-      },
-    });
-  }
-
-  private generatePlainEnglish(analysis: TrainingAnalysis): string {
+  private generatePlainEnglish(analysis: TrainingBotAnalysis, patterns: TrainingPattern[]): string {
     const parts: string[] = [];
 
-    parts.push(
-      `I analyzed the training program for ${analysis.totalEmployees} employees across ${analysis.totalModules} modules.`
-    );
+    parts.push(`Training Intelligence Report — ${new Date().toLocaleDateString()}`);
+    parts.push(`\nI analyzed ${analysis.totalEmployees} contractors across the training program.`);
 
-    parts.push(
-      `Overall training completion is ${analysis.completionRate}%.`
-    );
+    // Completion overview
+    parts.push(`\nOverall training completion: ${analysis.overallCompletionRate}%`);
+    if (analysis.avgQuizScore > 0) {
+      parts.push(`Average quiz score: ${analysis.avgQuizScore}%`);
+    }
 
-    // Correlation
-    parts.push(`\n${analysis.performanceCorrelation.description}`);
+    // Correlation insight
+    parts.push(`\n${analysis.trainingCorrelation.description}`);
+    if (analysis.trainingCorrelation.correlation !== "none") {
+      parts.push(
+        `Trained employees convert at ${analysis.trainingCorrelation.trainedAvgConversion}% vs ${analysis.trainingCorrelation.untrainedAvgConversion}% for untrained.`
+      );
+    }
 
     // Coaching needs
     if (analysis.needsCoaching.length > 0) {
-      parts.push(`\n${analysis.needsCoaching.length} employees need coaching:`);
-      for (const emp of analysis.needsCoaching.slice(0, 5)) {
+      parts.push(`\n${analysis.needsCoaching.length} contractors need training attention:`);
+      for (const needs of analysis.needsCoaching.slice(0, 5)) {
+        const topModule = needs.recommendedModules[0];
         parts.push(
-          `- ${emp.employeeName}: ${emp.reason} (${emp.trainingCompletion}% training, ${emp.conversionRate}% conversion)`
+          `- ${needs.employeeName} (${needs.employeeTier}): ${topModule?.moduleTitle || "General coaching"} — ${needs.overallPriority} priority`
+        );
+      }
+      if (analysis.needsCoaching.length > 5) {
+        parts.push(`  ...and ${analysis.needsCoaching.length - 5} more`);
+      }
+    }
+
+    // Tier progressions
+    if (analysis.eligibleForPromotion.length > 0) {
+      parts.push(`\n${analysis.eligibleForPromotion.length} contractors ready for tier advancement:`);
+      for (const prog of analysis.eligibleForPromotion.slice(0, 5)) {
+        parts.push(
+          `- ${prog.employeeName}: ${prog.currentTier} → ${prog.targetTier} (${prog.overallProgress}% complete)`
         );
       }
     }
 
-    // Top performers
-    if (analysis.topPerformers.length > 0) {
-      parts.push(`\nTop performers (trained + high conversion):`);
-      for (const emp of analysis.topPerformers.slice(0, 3)) {
-        parts.push(
-          `- ${emp.employeeName}: ${emp.conversionRate}% conversion, ${emp.casesHandled} cases`
-        );
+    // Dynamic modules
+    if (analysis.newModulesGenerated.length > 0) {
+      parts.push(`\n${analysis.newModulesGenerated.length} new training modules auto-generated:`);
+      for (const mod of analysis.newModulesGenerated) {
+        parts.push(`- ${mod.title}`);
+      }
+    }
+
+    // Patterns
+    if (patterns.length > 0) {
+      parts.push(`\nPatterns detected:`);
+      for (const pattern of patterns) {
+        parts.push(`- ${pattern.description} (${pattern.severity})`);
       }
     }
 
@@ -531,6 +506,134 @@ class TrainingBot {
     }
 
     return parts.join("\n");
+  }
+
+  // ============================================
+  // SAVE INSIGHT
+  // ============================================
+
+  private async saveInsight(analysis: TrainingBotAnalysis, patterns: TrainingPattern[]): Promise<void> {
+    const urgentCount = analysis.needsCoaching.filter(
+      (n) => n.overallPriority === "URGENT" || n.overallPriority === "MANDATORY"
+    ).length;
+
+    const priority =
+      urgentCount >= 3 || analysis.overallCompletionRate < 40
+        ? "URGENT"
+        : urgentCount > 0 || analysis.needsCoaching.length >= 5
+        ? "HIGH"
+        : analysis.needsCoaching.length > 0
+        ? "NORMAL"
+        : "LOW";
+
+    await prisma.opsInsight.create({
+      data: {
+        type: "TRAINING_ANALYSIS" as OpsInsightType,
+        priority: priority as OpsInsightPriority,
+        title: "Training Intelligence Analysis",
+        summary: `Analyzed ${analysis.totalEmployees} contractors. ${analysis.overallCompletionRate}% completion. ${analysis.needsCoaching.length} need coaching. ${analysis.eligibleForPromotion.length} ready for promotion.`,
+        details: {
+          needsCoaching: analysis.needsCoaching,
+          eligibleForPromotion: analysis.eligibleForPromotion,
+          newModulesGenerated: analysis.newModulesGenerated.map((m) => m.title),
+          trainingCorrelation: analysis.trainingCorrelation,
+          patterns,
+        } as any,
+        plainEnglish: analysis.plainEnglish,
+        recommendations: analysis.recommendations,
+        relatedCaseIds: [],
+        relatedUserIds: analysis.needsCoaching.map((n) => n.employeeId),
+        relatedAlertIds: [],
+        sourceBot: BOT_NAME,
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+      },
+    });
+  }
+
+  // ============================================
+  // LOG BOT RUN
+  // ============================================
+
+  private async logBotRun(startTime: number, analysis: TrainingBotAnalysis): Promise<void> {
+    const durationMs = Date.now() - startTime;
+
+    await prisma.botRunLog.create({
+      data: {
+        botName: BOT_NAME,
+        startedAt: new Date(startTime),
+        completedAt: new Date(),
+        durationMs,
+        success: true,
+        recordsProcessed: analysis.totalEmployees,
+        insightsGenerated: 1,
+        alertsCreated: analysis.newModulesGenerated.length,
+        summary: `Analyzed ${analysis.totalEmployees} contractors. Found ${analysis.needsCoaching.length} needing coaching, ${analysis.eligibleForPromotion.length} ready for promotion. Generated ${analysis.newModulesGenerated.length} new modules.`,
+        details: {
+          overallCompletionRate: analysis.overallCompletionRate,
+          avgQuizScore: analysis.avgQuizScore,
+          trainingCorrelation: analysis.trainingCorrelation.correlation,
+        },
+      },
+    });
+  }
+
+  // ============================================
+  // QUICK METHODS FOR SINGLE EMPLOYEE
+  // ============================================
+
+  /**
+   * Quick check for single employee training status
+   */
+  async checkEmployee(employeeId: string): Promise<{
+    status: "on_track" | "needs_attention" | "urgent";
+    message: string;
+    recommendations: string[];
+  }> {
+    const needs = await trainingIntelligenceService.analyzeContractorNeeds(employeeId);
+
+    if (!needs) {
+      return {
+        status: "on_track",
+        message: "Employee not found or no training data",
+        recommendations: [],
+      };
+    }
+
+    if (needs.overallPriority === "URGENT" || needs.overallPriority === "MANDATORY") {
+      return {
+        status: "urgent",
+        message: `${needs.employeeName} has urgent training needs`,
+        recommendations: needs.recommendedModules.map((m) => m.moduleTitle),
+      };
+    }
+
+    if (needs.recommendedModules.length > 0) {
+      return {
+        status: "needs_attention",
+        message: `${needs.employeeName} has ${needs.recommendedModules.length} recommended modules`,
+        recommendations: needs.recommendedModules.map((m) => m.moduleTitle),
+      };
+    }
+
+    return {
+      status: "on_track",
+      message: `${needs.employeeName} is on track with training`,
+      recommendations: [],
+    };
+  }
+
+  /**
+   * Check tier progression eligibility for single employee
+   */
+  async checkTierEligibility(employeeId: string): Promise<TierProgressionEvaluation | null> {
+    return trainingIntelligenceService.evaluateTierProgression(employeeId);
+  }
+
+  /**
+   * Get training dashboard data for HR Panel
+   */
+  async getDashboard() {
+    return trainingIntelligenceService.getTrainingDashboardData();
   }
 }
 

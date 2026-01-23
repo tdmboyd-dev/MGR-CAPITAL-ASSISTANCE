@@ -2,8 +2,8 @@
 
 ## COMPLETE SYSTEM DOCUMENTATION
 
-**Last Updated:** 2026-01-21
-**Status:** 100% PRODUCTION READY
+**Last Updated:** 2026-01-22
+**Status:** PHASE 5 COMPLETE — Training Intelligence Fully Implemented
 **All mock data removed, all pages connected to real API**
 
 ---
@@ -146,6 +146,7 @@ NEW → CONTACTED → DOCS_PENDING → DOCS_SIGNED → FILED → AWAITING_FUNDS 
 | `ingestion.ts` | Data import | GET /sources, POST /upload, GET /batches |
 | `training.ts` | Training system | GET /modules, GET /progress/:employeeId, POST /complete/:moduleId |
 | `hrRoutes.ts` | HR management | GET /dashboard, /employees, /onboarding, PATCH /employees/:id/tier |
+| `hrTrainingRoutes.ts` | **Training Intelligence (NEW)** | GET /dashboard, /analyze, /employees/:id/needs, /tier-progressions, /recommendations |
 | `complianceRoutes.ts` | Compliance monitoring | GET /dashboard, /audit-logs, /cases, /risk-assessment |
 | `opsMetrics.ts` | OPS metrics (FOUNDER) | GET /dashboard, /focus-feed, /employees/integrity, /heatmap |
 | `opsWatch.ts` | OPS watch/scraper (FOUNDER) | GET /alerts, POST /cycle, /scraper/run |
@@ -160,6 +161,7 @@ NEW → CONTACTED → DOCS_PENDING → DOCS_SIGNED → FILED → AWAITING_FUNDS 
 | `bankingService.ts` | Financial calculations | calculatePayout(), getEmployeeEarnings(), detectAnomalies() |
 | `ingestionService.ts` | Data parsing | parseCSV(), parsePDF(), processIngestionBatch() |
 | `trainingService.ts` | Training system | getModules(), trackProgress(), submitQuiz() |
+| `TrainingIntelligenceService.ts` | **Training Intelligence (NEW)** | getContractorMetrics(), analyzeContractorNeeds(), evaluateTierProgression(), generateDynamicModule() |
 | `caseService.ts` | Case operations | listAll(), listByEmployee(), getForClient(), createFromIngestion() |
 | `commissionService.ts` | Commission math | calculateEmployeeCommission(), calculateDisplayedCommission() |
 | `documentVaultService.ts` | Secure file storage | uploadDocument(), getDocumentFile(), verifyAccess(), getVaultStats() |
@@ -518,6 +520,36 @@ VITE_API_URL=http://localhost:4000/api
 
 ## SESSION HISTORY
 
+### Session 9 (2026-01-22) - Phase 5: Training Intelligence Expansion COMPLETE
+- **Created `trainingTypes.ts`** — Complete type definitions (30+ interfaces/enums)
+  - ContractorMetrics, ContractorTrainingNeeds, DynamicModuleSpec
+  - TierProgressionEvaluation, TrainingConfigSettings
+  - All shadow accounting integration types
+- **Created `TrainingIntelligenceService.ts`** — Core intelligence layer
+  - getContractorMetrics() — Full metrics with shadow accounting
+  - analyzeContractorNeeds() — Skill gap analysis from OpsInsights
+  - generateDynamicModule() — Create modules from OpsInsight/ScrapedItem
+  - evaluateTierProgression() — Tier advancement with FounderConfig thresholds
+  - getTrainingDashboardData() — HR Panel analytics
+- **Rewrote `trainingBot.ts`** — Enhanced intelligence bot
+  - Pattern detection (high failure modules, skill gaps, tier bottlenecks)
+  - Dynamic module generation from OpsInsights
+  - Training-performance correlation analysis
+  - BotRunLog integration for audit trail
+- **Created `hrTrainingRoutes.ts`** — Complete HR Training API (20+ endpoints)
+  - GET /dashboard, /analyze, /employees/:id/needs, /employees/:id/progression
+  - GET /tier-progressions, /recommendations, /modules, /progress
+  - POST /recommendations/:id/approve, /dynamic-modules
+  - GET/PATCH /config for FounderConfig management
+- **Updated Prisma schema** — New training intelligence models
+  - New enums: TrainingModuleSourceType, TrainingRecommendationPriority, TierProgressionStatus
+  - New models: TrainingRecommendation, DynamicTrainingModule, TierProgressionLog, FounderConfig, BotRunLog
+- **Created `FULL_SYSTEM_CONTEXT_FOR_GROK.md`** — Comprehensive AI documentation (1500+ lines)
+  - Complete database schema (37 models, 30 enums)
+  - All 7 bots documented
+  - All API routes (100+ endpoints)
+  - Gaps identified for Grok review
+
 ### Session 8 (2026-01-21) - Master Spec Final Expansion
 - **Finalized MGR_CAPITAL_ASSISTANCE_MASTER_SPEC_V1.md** - Now 2988 lines with ALL 14 sections FULLY EXPANDED
 - **Expanded Section 11 (Training Intelligence Blueprint):**
@@ -669,25 +701,33 @@ VITE_API_URL=http://localhost:4000/api
 
 ## REMAINING TASKS (What's NOT Done Yet)
 
-### HIGH Priority - Bot Logic (Currently Skeletons)
-1. **IngestionBot** - Needs real pattern detection, duplicate finding, source health assessment
-2. **PayoutBot** - Needs real anomaly detection, math validation, velocity analysis
-3. **ComplianceBot** - Needs full deadline scanning, document validation, transition checks
-4. **TrainingBot** - Needs full gap analysis, performance correlation
-5. **OutreachBot** - Needs real prioritization algorithm, responsiveness analysis
-6. **DocketBot** - Needs real deadline severity calculation, risk assessment
+### Phase 6: Ingestion Intelligence Expansion (HIGH Priority)
+1. **parseTaxSaleCSV()** - Full column mapping and validation
+2. **parseSurplusPDF()** - State-specific patterns for text extraction
+3. **detectDuplicates()** - Algorithm for finding duplicate records
+4. **ScraperService** - County website scraping (Harris TX, Miami-Dade FL, Los Angeles CA)
+5. **WatchService** - Rule change detection (statutes, thresholds, deadlines)
+6. **flagHighValueRecords()** - Automatic high-value case flagging
 
-### MEDIUM Priority - Features
-7. **ScraperService** - Web scraping configurations for county websites (HIGH complexity)
-8. **PDF Templates** - Complete all document templates with state-specific language
-9. **Notification Templates** - Full email templates for all trigger types
-10. **MGR_OPS_AI_PROMPT.md** - AI prompt documentation for OPS layer
+### Phase 7: Final System Hardening (MEDIUM Priority)
+7. **Backup Scripts** - Complete bash scripts (backup_db.sh, backup_vault.sh, restore_db.sh)
+8. **Disaster Recovery** - Full procedures with RTO/RPO objectives
+9. **End-to-end Testing** - Automated test coverage
+10. **API Documentation** - OpenAPI/Swagger docs
+11. **Production Deployment** - Checklist and procedures
+
+### Bot Logic (Partially Complete)
+- **IngestionBot** - Needs real pattern detection, duplicate finding *(Phase 6)*
+- **PayoutBot** - Needs real anomaly detection, velocity analysis
+- **ComplianceBot** - Needs full deadline scanning, document validation
+- **TrainingBot** - ✅ COMPLETE (Phase 5) - Full gap analysis, performance correlation
+- **OutreachBot** - Needs real prioritization algorithm
+- **DocketBot** - Needs real deadline severity calculation
 
 ### LOW Priority - Enhancements
-11. **Real-time WebSocket updates** - Live updates for FounderConsole
-12. **Mobile responsive optimization** - Current UI is desktop-focused
-13. **End-to-end testing** - Automated test coverage
-14. **API documentation** - OpenAPI/Swagger docs
+- **Real-time WebSocket updates** - Live updates for FounderConsole
+- **Mobile responsive optimization** - Current UI is desktop-focused
+- **Frontend HR Training Dashboard** - UI for hrTrainingRoutes
 
 ### What IS Complete (100%)
 - Authentication + JWT + rate limiting
@@ -703,6 +743,12 @@ VITE_API_URL=http://localhost:4000/api
 - PDF service (pdfkit structure)
 - All Prisma models + enums
 - Backups documentation
+- **Training Intelligence Layer (Phase 5):**
+  - TrainingIntelligenceService with all core methods
+  - hrTrainingRoutes with 20+ endpoints
+  - trainingTypes.ts with complete type definitions
+  - trainingBot.ts rewritten with full intelligence
+  - Database models: TrainingRecommendation, DynamicTrainingModule, TierProgressionLog, FounderConfig, BotRunLog
 
 ---
 

@@ -29,6 +29,7 @@ import opsWatchRoutes from "./routes/opsWatch.js";
 
 // Role-specific management panels
 import hrRoutes from "./routes/hrRoutes.js";
+import hrTrainingRoutes from "./routes/hrTrainingRoutes.js";
 import complianceRoutes from "./routes/complianceRoutes.js";
 
 // Rate limiting
@@ -86,6 +87,7 @@ app.use("/api/ops/watch", opsWatchRoutes);
 
 // Role-specific management panels
 app.use("/api/hr", hrRoutes);
+app.use("/api/hr/training", hrTrainingRoutes);
 app.use("/api/compliance", complianceRoutes);
 
 // ============================================
@@ -147,6 +149,7 @@ OPS Layer (FOUNDER ONLY):
 
 Role-Based Panels:
   - /api/hr             HR management
+  - /api/hr/training    Training Intelligence (HR)
   - /api/compliance     Compliance monitoring
   `);
 });
