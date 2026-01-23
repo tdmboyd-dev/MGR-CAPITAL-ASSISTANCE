@@ -530,6 +530,238 @@ docker-compose -f docker-compose.prod.yml pull
 
 ---
 
+## Launch Verification Checklist
+
+Pre-launch verification steps to ensure the platform is fully operational.
+
+### 1. Database Seeding Verification
+
+```bash
+# Seed initial data
+./scripts/deploy.sh seed
+
+# Verify seed data
+docker-compose -f docker-compose.prod.yml exec db psql -U postgres -d mgr_capital -c "
+SELECT COUNT(*) as users FROM \"User\";
+SELECT COUNT(*) as state_rules FROM \"StateRule\";
+SELECT COUNT(*) as commission_plans FROM \"CommissionPlan\";
+SELECT COUNT(*) as training_modules FROM \"TrainingModule\";
+"
+
+# Expected output:
+# - At least 1 FOUNDER user
+# - 50+ state rules (all US states + territories)
+# - 5 commission plans (TIER_1 through TIER_5)
+# - 10+ training modules
+```
+
+### 2. Authentication Testing
+
+```bash
+# Test login endpoint
+curl -X POST http://localhost:4000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email": "founder@mgrcapital.com", "password": "your-password"}'
+
+# Verify JWT token is returned
+# Verify refresh token is set in cookie
+
+# Test protected endpoint
+curl http://localhost:4000/api/auth/me \
+  -H "Authorization: Bearer <your-jwt-token>"
+```
+
+### 3. Case Management Testing
+
+```bash
+# Create test case
+curl -X POST http://localhost:4000/api/cases \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "propertyAddress": "123 Test St",
+    "city": "Nashville",
+    "state": "TN",
+    "county": "Davidson",
+    "estimatedValueCents": 500000
+  }'
+
+# Verify case creation
+curl http://localhost:4000/api/cases \
+  -H "Authorization: Bearer <token>"
+
+# Test document upload
+curl -X POST http://localhost:4000/api/documents/upload \
+  -H "Authorization: Bearer <token>" \
+  -F "file=@test-document.pdf" \
+  -F "caseId=1" \
+  -F "type=CLIENT_ID"
+```
+
+### 4. Communication (Comms) Testing
+
+```bash
+# Test comms endpoint
+curl http://localhost:4000/api/communications?caseId=1 \
+  -H "Authorization: Bearer <token>"
+
+# Create test communication log
+curl -X POST http://localhost:4000/api/communications \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "caseId": "1",
+    "type": "CALL",
+    "direction": "OUTBOUND",
+    "notes": "Test call for launch verification"
+  }'
+```
+
+### 5. Air-Gap Simulation
+
+```bash
+# 1. Disconnect from internet (simulate air-gap)
+# 2. Run the following tests:
+
+# Test health endpoints (should work offline)
+curl http://localhost:4000/health
+curl http://localhost/health
+
+# Test database operations (should work offline)
+curl http://localhost:4000/api/cases \
+  -H "Authorization: Bearer <token>"
+
+# Test PWA offline functionality
+# - Open https://localhost in browser
+# - Verify service worker is active (check DevTools > Application)
+# - Go offline in DevTools > Network
+# - Refresh page - should show cached content or offline.html
+
+# 3. Reconnect to internet
+# 4. Verify all services recover automatically
+```
+
+### 6. Backup and Restore Verification
+
+```bash
+# Create backup
+./scripts/deploy.sh backup
+
+# Verify backup file exists
+ls -la ./backups/
+
+# Verify backup is encrypted (if BACKUP_PASSPHRASE is set)
+file ./backups/backup_*.sql.gz.enc
+
+# Test restore (on test environment!)
+# WARNING: This will overwrite the database
+
+# 1. Create a test case
+curl -X POST http://localhost:4000/api/cases \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"propertyAddress": "Backup Test", "state": "TN", "county": "Davidson"}'
+
+# 2. Note the case ID
+
+# 3. Restore from backup
+./scripts/deploy.sh restore ./backups/backup_<timestamp>.sql.gz.enc
+
+# 4. Verify the test case is gone (restored to pre-backup state)
+curl http://localhost:4000/api/cases \
+  -H "Authorization: Bearer <token>"
+```
+
+### 7. Analytics and Forecasting Verification
+
+```bash
+# Test analytics dashboard
+curl http://localhost:4000/api/analytics/dashboard \
+  -H "Authorization: Bearer <token>"
+
+# Test forecast endpoint
+curl http://localhost:4000/api/analytics/forecast \
+  -H "Authorization: Bearer <token>"
+
+# Expected response includes:
+# - historical: Array of daily revenue/case data
+# - predictions: 30-day forecast array
+# - summary: avgDailyRevenue, predictedRevenue30d, trend
+```
+
+### 8. Mobile Responsiveness Verification
+
+Open the application on various devices/viewports:
+
+| Viewport | Check |
+|----------|-------|
+| Mobile (< 768px) | Hamburger menu visible, sidebar hidden |
+| Tablet (768-1024px) | Hybrid layout works correctly |
+| Desktop (> 1024px) | Full sidebar visible, no hamburger |
+
+Test touch interactions:
+- Swipe to open/close sidebar
+- Tap targets are at least 44x44px
+- Forms are usable on touch devices
+
+### 9. PWA Verification
+
+```bash
+# Check manifest is accessible
+curl http://localhost/manifest.json
+
+# Check service worker is registered
+# In browser DevTools > Application > Service Workers
+# Should show "service-worker.js" as active
+
+# Verify offline functionality
+# 1. Visit the app and navigate around
+# 2. Go offline (DevTools > Network > Offline)
+# 3. Refresh - should show cached content
+# 4. Try navigating - offline.html should appear for uncached routes
+```
+
+### 10. Bot Verification
+
+```bash
+# Run coordinator bot manually
+curl -X POST http://localhost:4000/api/ops/bots/coordinator/run \
+  -H "Authorization: Bearer <founder-token>"
+
+# Check for generated insights
+curl http://localhost:4000/api/ops/metrics/focus-items \
+  -H "Authorization: Bearer <founder-token>"
+
+# Verify bot run log
+curl http://localhost:4000/api/ops/bots/logs?limit=5 \
+  -H "Authorization: Bearer <founder-token>"
+```
+
+### Launch Readiness Checklist
+
+Before going live, verify all items:
+
+- [ ] Database seeded with initial data
+- [ ] FOUNDER account can log in
+- [ ] Cases can be created, viewed, updated
+- [ ] Documents can be uploaded and downloaded
+- [ ] Communications can be logged
+- [ ] Air-gap mode tested successfully
+- [ ] Backup created and verified
+- [ ] Restore tested on non-production environment
+- [ ] Analytics dashboard loads with data
+- [ ] Forecast endpoint returns predictions
+- [ ] Mobile responsive design verified
+- [ ] PWA manifest loads correctly
+- [ ] Service worker active and caching
+- [ ] Offline fallback page works
+- [ ] All bots can run manually
+- [ ] SSL certificates valid
+- [ ] Firewall configured
+- [ ] Logs accessible and rotating
+
+---
+
 ## Support
 
 For issues and support:
