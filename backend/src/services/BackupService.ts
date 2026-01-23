@@ -1,17 +1,25 @@
 /**
  * BackupService.ts
  *
- * Sovereign backup service for MGR Capital Assistance (Phase 7).
+ * Production-ready sovereign backup service for MGR Capital Assistance (Phase 7).
  * Handles database backups, document vault backups, and disaster recovery.
  *
  * FOUNDER-ONLY OPS LAYER COMPONENT
  *
+ * Features:
+ * - pg_dump with custom compressed format (-Fc)
+ * - GPG symmetric AES256 encryption
+ * - Tiered retention policies (hourly/daily/weekly/monthly)
+ * - SHA256 checksum verification
+ * - Air-gap ready (local volume backups)
+ * - Restore functionality with decryption
+ * - Manifest tracking in database
+ *
  * Backup Strategy:
- * - Hourly: Incremental DB backup
- * - 6-hour: Full DB backup
- * - Daily: Full DB + Document Vault
- * - Weekly: Full backup with verification + offsite copy
- * - Monthly: Archive to air-gapped storage
+ * - Hourly: Incremental DB backup (24 retained)
+ * - Daily: Full DB + Document Vault (7 days)
+ * - Weekly: Full backup with verification (4 weeks)
+ * - Monthly: Archive to air-gapped storage (12 months)
  */
 
 import { PrismaClient } from "@prisma/client";
@@ -20,6 +28,7 @@ import { promisify } from "util";
 import { createHash } from "crypto";
 import * as fs from "fs";
 import * as path from "path";
+import logger from "../utils/logger.js";
 
 const execAsync = promisify(exec);
 const prisma = new PrismaClient();
@@ -29,14 +38,11 @@ const prisma = new PrismaClient();
 // =============================================================================
 
 interface BackupConfig {
-  // Database
-  databaseUrl: string;
+  // Directories
   backupDir: string;
-
-  // Document Vault
   vaultDir: string;
 
-  // Retention
+  // Retention (counts)
   hourlyRetentionCount: number;
   dailyRetentionDays: number;
   weeklyRetentionWeeks: number;
@@ -44,41 +50,50 @@ interface BackupConfig {
 
   // Encryption
   encryptionEnabled: boolean;
-  gpgKeyId?: string;
+  encryptionPassphrase?: string;
 
   // Offsite (optional)
   offsiteEnabled: boolean;
   offsitePath?: string;
+
+  // Database
+  pgDumpPath: string; // Path to pg_dump binary
+  pgRestorePath: string; // Path to pg_restore binary
 }
 
 interface BackupResult {
   success: boolean;
   type: "hourly" | "daily" | "weekly" | "monthly";
   filename: string;
+  filepath: string;
   sizeBytes: number;
   checksum: string;
   durationMs: number;
+  encrypted: boolean;
   error?: string;
 }
 
+interface BackupManifestEntry {
+  filename: string;
+  type: string;
+  createdAt: string;
+  sizeBytes: number;
+  checksum: string;
+  encrypted: boolean;
+  verified: boolean;
+}
+
 interface BackupManifest {
-  backups: Array<{
-    filename: string;
-    type: string;
-    createdAt: string;
-    sizeBytes: number;
-    checksum: string;
-    verified: boolean;
-  }>;
+  backups: BackupManifestEntry[];
   lastUpdated: string;
+  version: string;
 }
 
 // =============================================================================
-// DEFAULT CONFIG
+// DEFAULT CONFIGURATION
 // =============================================================================
 
 const DEFAULT_CONFIG: BackupConfig = {
-  databaseUrl: process.env.DATABASE_URL || "",
   backupDir: process.env.BACKUP_DIR || "./backups",
   vaultDir: process.env.VAULT_DIR || "./vault",
 
@@ -87,8 +102,14 @@ const DEFAULT_CONFIG: BackupConfig = {
   weeklyRetentionWeeks: 4,
   monthlyRetentionMonths: 12,
 
-  encryptionEnabled: false,
+  encryptionEnabled: true,
+  encryptionPassphrase: process.env.BACKUP_PASSPHRASE,
+
   offsiteEnabled: false,
+  offsitePath: process.env.OFFSITE_BACKUP_PATH,
+
+  pgDumpPath: "pg_dump",
+  pgRestorePath: "pg_restore",
 };
 
 // =============================================================================
@@ -103,7 +124,7 @@ class BackupService {
   }
 
   /**
-   * Update backup configuration from FounderConfig
+   * Load configuration from FounderConfig
    */
   async loadConfig(): Promise<void> {
     try {
@@ -114,8 +135,16 @@ class BackupService {
       if (founderConfig?.value) {
         this.config = { ...DEFAULT_CONFIG, ...(founderConfig.value as Partial<BackupConfig>) };
       }
-    } catch {
-      console.log("[BackupService] Using default config");
+
+      // Ensure backup directory exists
+      await fs.promises.mkdir(this.config.backupDir, { recursive: true });
+
+      logger.info("BackupService config loaded", {
+        backupDir: this.config.backupDir,
+        encryptionEnabled: this.config.encryptionEnabled,
+      });
+    } catch (error) {
+      logger.warn("Failed to load backup config, using defaults");
     }
   }
 
@@ -127,32 +156,42 @@ class BackupService {
    * Hourly incremental database backup
    */
   async runHourlyBackup(): Promise<BackupResult> {
-    return this.runDatabaseBackup("hourly");
+    await this.loadConfig();
+    return this.performDatabaseBackup("hourly");
   }
 
   /**
    * Daily full backup (DB + Vault)
    */
   async runDailyBackup(): Promise<BackupResult> {
-    const dbResult = await this.runDatabaseBackup("daily");
-    const vaultResult = await this.runVaultBackup("daily");
+    await this.loadConfig();
+
+    const dbResult = await this.performDatabaseBackup("daily");
+    const vaultResult = await this.performVaultBackup("daily");
 
     // Combine results
-    return {
+    const combined: BackupResult = {
       success: dbResult.success && vaultResult.success,
       type: "daily",
-      filename: `daily_${new Date().toISOString().split("T")[0]}`,
+      filename: `daily_${this.getTimestamp()}`,
+      filepath: this.config.backupDir,
       sizeBytes: dbResult.sizeBytes + vaultResult.sizeBytes,
       checksum: dbResult.checksum,
       durationMs: dbResult.durationMs + vaultResult.durationMs,
+      encrypted: dbResult.encrypted,
       error: dbResult.error || vaultResult.error,
     };
+
+    await this.logBackupResult(combined);
+    return combined;
   }
 
   /**
    * Weekly full backup with verification
    */
   async runWeeklyBackup(): Promise<BackupResult> {
+    await this.loadConfig();
+
     const result = await this.runDailyBackup();
 
     if (result.success) {
@@ -161,12 +200,13 @@ class BackupService {
 
       if (!verified) {
         result.success = false;
-        result.error = "Backup verification failed";
+        result.error = "Backup verification failed - checksum mismatch";
+        logger.error("Weekly backup verification failed", { filename: result.filename });
       }
 
       // Copy to offsite if enabled
       if (this.config.offsiteEnabled && this.config.offsitePath) {
-        await this.copyToOffsite(result.filename);
+        await this.copyToOffsite(result.filepath);
       }
     }
 
@@ -177,9 +217,11 @@ class BackupService {
    * Monthly archive backup
    */
   async runMonthlyBackup(): Promise<BackupResult> {
+    await this.loadConfig();
+
     const result = await this.runWeeklyBackup();
 
-    // Archive to air-gapped storage notification
+    // Create archive notification for air-gapped storage
     await this.createArchiveNotification(result);
 
     return { ...result, type: "monthly" };
@@ -190,76 +232,111 @@ class BackupService {
   // ---------------------------------------------------------------------------
 
   /**
-   * Run PostgreSQL database backup using pg_dump
+   * Perform PostgreSQL database backup using pg_dump
    */
-  async runDatabaseBackup(type: "hourly" | "daily" | "weekly" | "monthly"): Promise<BackupResult> {
+  private async performDatabaseBackup(
+    type: "hourly" | "daily" | "weekly" | "monthly"
+  ): Promise<BackupResult> {
     const startTime = Date.now();
-    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-    const filename = `db_${type}_${timestamp}.sql`;
-    const filepath = path.join(this.config.backupDir, filename);
+    const timestamp = this.getTimestamp();
+    const baseName = `db_${type}_${timestamp}`;
+    const dumpFile = path.join(this.config.backupDir, `${baseName}.dump`);
+    const encryptedFile = `${dumpFile}.gpg`;
 
     try {
       // Ensure backup directory exists
       await fs.promises.mkdir(this.config.backupDir, { recursive: true });
 
-      // Run pg_dump
-      // TODO: Implement actual pg_dump command
-      // const { stdout, stderr } = await execAsync(
-      //   `pg_dump "${this.config.databaseUrl}" > "${filepath}"`
-      // );
-
-      console.log(`[BackupService] Database backup created: ${filename}`);
-
-      // Calculate checksum
-      // const checksum = await this.calculateChecksum(filepath);
-
-      // Get file size
-      // const stats = await fs.promises.stat(filepath);
-
-      // Encrypt if enabled
-      if (this.config.encryptionEnabled && this.config.gpgKeyId) {
-        await this.encryptFile(filepath);
+      // Parse DATABASE_URL
+      const dbUrl = process.env.DATABASE_URL;
+      if (!dbUrl) {
+        throw new Error("DATABASE_URL environment variable not set");
       }
 
-      // Log to database
-      await this.logBackup({
-        filename,
+      const url = new URL(dbUrl);
+      const host = url.hostname;
+      const port = url.port || "5432";
+      const user = url.username;
+      const password = url.password;
+      const database = url.pathname.slice(1).split("?")[0];
+
+      // Set PGPASSWORD environment variable for pg_dump
+      const env = { ...process.env, PGPASSWORD: password };
+
+      // Run pg_dump with custom compressed format
+      const pgDumpCmd = `"${this.config.pgDumpPath}" -Fc -h ${host} -p ${port} -U ${user} -d ${database} -f "${dumpFile}"`;
+
+      logger.info(`Starting database backup: ${baseName}`);
+      await execAsync(pgDumpCmd, { env, timeout: 600000 }); // 10 min timeout
+
+      let finalFile = dumpFile;
+      let encrypted = false;
+
+      // Encrypt if enabled
+      if (this.config.encryptionEnabled && this.config.encryptionPassphrase) {
+        await this.encryptFile(dumpFile, encryptedFile);
+        await fs.promises.unlink(dumpFile); // Remove unencrypted file
+        finalFile = encryptedFile;
+        encrypted = true;
+      }
+
+      // Calculate checksum
+      const checksum = await this.calculateChecksum(finalFile);
+
+      // Get file size
+      const stats = await fs.promises.stat(finalFile);
+
+      // Update manifest
+      await this.addToManifest({
+        filename: path.basename(finalFile),
         type,
-        sizeBytes: 0, // stats.sizeBytes
-        checksum: "placeholder",
-        success: true,
+        createdAt: new Date().toISOString(),
+        sizeBytes: stats.size,
+        checksum,
+        encrypted,
+        verified: false,
       });
 
-      return {
+      const durationMs = Date.now() - startTime;
+      logger.info(`Database backup completed: ${baseName}`, {
+        sizeBytes: stats.size,
+        durationMs,
+        encrypted,
+      });
+
+      const result: BackupResult = {
         success: true,
         type,
-        filename,
-        sizeBytes: 0,
-        checksum: "placeholder",
-        durationMs: Date.now() - startTime,
+        filename: path.basename(finalFile),
+        filepath: finalFile,
+        sizeBytes: stats.size,
+        checksum,
+        durationMs,
+        encrypted,
       };
+
+      await this.logBackupResult(result);
+      return result;
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Unknown error";
-      console.error(`[BackupService] Database backup failed: ${message}`);
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      const durationMs = Date.now() - startTime;
 
-      await this.logBackup({
-        filename,
-        type,
-        sizeBytes: 0,
-        checksum: "",
-        success: false,
-        error: message,
-      });
+      logger.error(`Database backup failed: ${baseName}`, { error: errorMessage });
 
-      return {
+      const result: BackupResult = {
         success: false,
         type,
-        filename,
+        filename: baseName,
+        filepath: "",
         sizeBytes: 0,
         checksum: "",
-        durationMs: Date.now() - startTime,
-        error: message,
+        durationMs,
+        encrypted: false,
+        error: errorMessage,
       };
+
+      await this.logBackupResult(result);
+      return result;
     }
   }
 
@@ -270,38 +347,100 @@ class BackupService {
   /**
    * Backup document vault
    */
-  async runVaultBackup(type: "daily" | "weekly" | "monthly"): Promise<BackupResult> {
+  private async performVaultBackup(
+    type: "daily" | "weekly" | "monthly"
+  ): Promise<BackupResult> {
     const startTime = Date.now();
-    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-    const filename = `vault_${type}_${timestamp}.tar.gz`;
-    const filepath = path.join(this.config.backupDir, filename);
+    const timestamp = this.getTimestamp();
+    const baseName = `vault_${type}_${timestamp}`;
+    const tarFile = path.join(this.config.backupDir, `${baseName}.tar.gz`);
+    const encryptedFile = `${tarFile}.gpg`;
 
     try {
-      // TODO: Implement vault backup using tar
-      // await execAsync(`tar -czf "${filepath}" "${this.config.vaultDir}"`);
+      // Check if vault directory exists
+      try {
+        await fs.promises.access(this.config.vaultDir);
+      } catch {
+        logger.warn("Vault directory does not exist, skipping vault backup");
+        return {
+          success: true,
+          type,
+          filename: baseName,
+          filepath: "",
+          sizeBytes: 0,
+          checksum: "",
+          durationMs: Date.now() - startTime,
+          encrypted: false,
+        };
+      }
 
-      console.log(`[BackupService] Vault backup created: ${filename}`);
+      // Create tar archive
+      const tarCmd = `tar -czf "${tarFile}" -C "${path.dirname(this.config.vaultDir)}" "${path.basename(this.config.vaultDir)}"`;
+
+      logger.info(`Starting vault backup: ${baseName}`);
+      await execAsync(tarCmd, { timeout: 600000 }); // 10 min timeout
+
+      let finalFile = tarFile;
+      let encrypted = false;
+
+      // Encrypt if enabled
+      if (this.config.encryptionEnabled && this.config.encryptionPassphrase) {
+        await this.encryptFile(tarFile, encryptedFile);
+        await fs.promises.unlink(tarFile); // Remove unencrypted file
+        finalFile = encryptedFile;
+        encrypted = true;
+      }
+
+      // Calculate checksum
+      const checksum = await this.calculateChecksum(finalFile);
+
+      // Get file size
+      const stats = await fs.promises.stat(finalFile);
+
+      // Update manifest
+      await this.addToManifest({
+        filename: path.basename(finalFile),
+        type: `vault_${type}`,
+        createdAt: new Date().toISOString(),
+        sizeBytes: stats.size,
+        checksum,
+        encrypted,
+        verified: false,
+      });
+
+      const durationMs = Date.now() - startTime;
+      logger.info(`Vault backup completed: ${baseName}`, {
+        sizeBytes: stats.size,
+        durationMs,
+        encrypted,
+      });
 
       return {
         success: true,
         type,
-        filename,
-        sizeBytes: 0,
-        checksum: "placeholder",
-        durationMs: Date.now() - startTime,
+        filename: path.basename(finalFile),
+        filepath: finalFile,
+        sizeBytes: stats.size,
+        checksum,
+        durationMs,
+        encrypted,
       };
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Unknown error";
-      console.error(`[BackupService] Vault backup failed: ${message}`);
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      const durationMs = Date.now() - startTime;
+
+      logger.error(`Vault backup failed: ${baseName}`, { error: errorMessage });
 
       return {
         success: false,
         type,
-        filename,
+        filename: baseName,
+        filepath: "",
         sizeBytes: 0,
         checksum: "",
-        durationMs: Date.now() - startTime,
-        error: message,
+        durationMs,
+        encrypted: false,
+        error: errorMessage,
       };
     }
   }
@@ -314,22 +453,53 @@ class BackupService {
    * Restore database from backup
    */
   async restoreDatabase(filename: string): Promise<{ success: boolean; message: string }> {
+    await this.loadConfig();
+
     const filepath = path.join(this.config.backupDir, filename);
 
     try {
       // Verify file exists
       await fs.promises.access(filepath);
 
-      // Decrypt if encrypted
       let restoreFile = filepath;
+
+      // Decrypt if encrypted
       if (filename.endsWith(".gpg")) {
-        restoreFile = await this.decryptFile(filepath);
+        if (!this.config.encryptionPassphrase) {
+          return { success: false, message: "Encryption passphrase not configured" };
+        }
+
+        const decryptedFile = filepath.replace(".gpg", "");
+        await this.decryptFile(filepath, decryptedFile);
+        restoreFile = decryptedFile;
       }
 
-      // TODO: Implement pg_restore
-      // await execAsync(`psql "${this.config.databaseUrl}" < "${restoreFile}"`);
+      // Parse DATABASE_URL
+      const dbUrl = process.env.DATABASE_URL;
+      if (!dbUrl) {
+        return { success: false, message: "DATABASE_URL not set" };
+      }
 
-      console.log(`[BackupService] Database restored from: ${filename}`);
+      const url = new URL(dbUrl);
+      const host = url.hostname;
+      const port = url.port || "5432";
+      const user = url.username;
+      const password = url.password;
+      const database = url.pathname.slice(1).split("?")[0];
+
+      // Set PGPASSWORD environment variable
+      const env = { ...process.env, PGPASSWORD: password };
+
+      // Run pg_restore
+      const pgRestoreCmd = `"${this.config.pgRestorePath}" -h ${host} -p ${port} -U ${user} -d ${database} -c "${restoreFile}"`;
+
+      logger.warn("Starting database restore", { filename });
+      await execAsync(pgRestoreCmd, { env, timeout: 1800000 }); // 30 min timeout
+
+      // Clean up decrypted file if we created one
+      if (restoreFile !== filepath) {
+        await fs.promises.unlink(restoreFile);
+      }
 
       // Log restore action
       await prisma.auditLog.create({
@@ -341,19 +511,54 @@ class BackupService {
         },
       });
 
+      logger.info("Database restored successfully", { filename });
       return { success: true, message: `Database restored from ${filename}` };
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown error";
+      logger.error("Database restore failed", { filename, error: message });
       return { success: false, message };
     }
   }
 
   // ---------------------------------------------------------------------------
-  // UTILITY METHODS
+  // ENCRYPTION
   // ---------------------------------------------------------------------------
 
   /**
-   * Verify backup integrity
+   * Encrypt file using GPG symmetric AES256
+   */
+  private async encryptFile(inputPath: string, outputPath: string): Promise<void> {
+    if (!this.config.encryptionPassphrase) {
+      throw new Error("Encryption passphrase not configured");
+    }
+
+    // Use GPG for encryption with AES256
+    const cmd = `gpg --symmetric --cipher-algo AES256 --batch --yes --passphrase "${this.config.encryptionPassphrase}" -o "${outputPath}" "${inputPath}"`;
+
+    await execAsync(cmd, { timeout: 300000 }); // 5 min timeout
+    logger.debug("File encrypted", { output: outputPath });
+  }
+
+  /**
+   * Decrypt file using GPG
+   */
+  private async decryptFile(inputPath: string, outputPath: string): Promise<void> {
+    if (!this.config.encryptionPassphrase) {
+      throw new Error("Encryption passphrase not configured");
+    }
+
+    const cmd = `gpg --decrypt --batch --yes --passphrase "${this.config.encryptionPassphrase}" -o "${outputPath}" "${inputPath}"`;
+
+    await execAsync(cmd, { timeout: 300000 }); // 5 min timeout
+    logger.debug("File decrypted", { output: outputPath });
+  }
+
+  // ---------------------------------------------------------------------------
+  // VERIFICATION
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Verify backup integrity by comparing checksums
    */
   async verifyBackup(filename: string): Promise<boolean> {
     const filepath = path.join(this.config.backupDir, filename);
@@ -361,19 +566,45 @@ class BackupService {
     try {
       // Check file exists and is not empty
       const stats = await fs.promises.stat(filepath);
-      if (stats.size === 0) return false;
+      if (stats.size === 0) {
+        logger.error("Backup file is empty", { filename });
+        return false;
+      }
 
-      // Verify checksum matches manifest
+      // Calculate current checksum
+      const currentChecksum = await this.calculateChecksum(filepath);
+
+      // Load manifest and find entry
       const manifest = await this.loadManifest();
       const entry = manifest.backups.find((b) => b.filename === filename);
 
       if (entry) {
-        const currentChecksum = await this.calculateChecksum(filepath);
-        return currentChecksum === entry.checksum;
+        const verified = currentChecksum === entry.checksum;
+
+        if (verified) {
+          // Update manifest to mark as verified
+          entry.verified = true;
+          await this.saveManifest(manifest);
+          logger.info("Backup verified successfully", { filename });
+        } else {
+          logger.error("Backup checksum mismatch", {
+            filename,
+            expected: entry.checksum,
+            actual: currentChecksum,
+          });
+        }
+
+        return verified;
       }
 
-      return true; // No manifest entry, assume valid
-    } catch {
+      // No manifest entry, assume valid
+      logger.warn("No manifest entry for backup, assuming valid", { filename });
+      return true;
+    } catch (error) {
+      logger.error("Backup verification failed", {
+        filename,
+        error: error instanceof Error ? error.message : "Unknown",
+      });
       return false;
     }
   }
@@ -381,60 +612,197 @@ class BackupService {
   /**
    * Calculate SHA-256 checksum of file
    */
-  async calculateChecksum(filepath: string): Promise<string> {
+  private async calculateChecksum(filepath: string): Promise<string> {
     const content = await fs.promises.readFile(filepath);
     return createHash("sha256").update(content).digest("hex");
   }
 
-  /**
-   * Encrypt file using GPG
-   */
-  async encryptFile(filepath: string): Promise<void> {
-    if (!this.config.gpgKeyId) return;
-
-    // TODO: Implement GPG encryption
-    // await execAsync(`gpg --encrypt --recipient "${this.config.gpgKeyId}" "${filepath}"`);
-    // await fs.promises.unlink(filepath); // Remove unencrypted file
-  }
+  // ---------------------------------------------------------------------------
+  // RETENTION POLICY
+  // ---------------------------------------------------------------------------
 
   /**
-   * Decrypt file using GPG
+   * Clean up old backups based on retention policy
    */
-  async decryptFile(filepath: string): Promise<string> {
-    const outputPath = filepath.replace(".gpg", "");
+  async cleanupOldBackups(): Promise<{ deleted: number }> {
+    await this.loadConfig();
 
-    // TODO: Implement GPG decryption
-    // await execAsync(`gpg --decrypt --output "${outputPath}" "${filepath}"`);
+    let deleted = 0;
+    const manifest = await this.loadManifest();
+    const now = new Date();
 
-    return outputPath;
+    // Group backups by type
+    const backupsByType: Record<string, BackupManifestEntry[]> = {};
+    for (const backup of manifest.backups) {
+      const type = backup.type.split("_")[0]; // "db" or "vault"
+      const tier = backup.type.split("_")[1]; // "hourly", "daily", etc.
+      const key = `${type}_${tier}`;
+
+      if (!backupsByType[key]) {
+        backupsByType[key] = [];
+      }
+      backupsByType[key].push(backup);
+    }
+
+    // Sort each group by date (newest first)
+    for (const key in backupsByType) {
+      backupsByType[key].sort(
+        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      );
+    }
+
+    // Apply retention policies
+    const toDelete: string[] = [];
+
+    // Hourly: keep last N
+    for (const key of ["db_hourly", "vault_hourly"]) {
+      const backups = backupsByType[key] || [];
+      if (backups.length > this.config.hourlyRetentionCount) {
+        const excess = backups.slice(this.config.hourlyRetentionCount);
+        toDelete.push(...excess.map((b) => b.filename));
+      }
+    }
+
+    // Daily: keep last N days
+    const dailyCutoff = new Date(now);
+    dailyCutoff.setDate(dailyCutoff.getDate() - this.config.dailyRetentionDays);
+
+    for (const key of ["db_daily", "vault_daily"]) {
+      const backups = backupsByType[key] || [];
+      const old = backups.filter((b) => new Date(b.createdAt) < dailyCutoff);
+      toDelete.push(...old.map((b) => b.filename));
+    }
+
+    // Weekly: keep last N weeks
+    const weeklyCutoff = new Date(now);
+    weeklyCutoff.setDate(weeklyCutoff.getDate() - this.config.weeklyRetentionWeeks * 7);
+
+    for (const key of ["db_weekly", "vault_weekly"]) {
+      const backups = backupsByType[key] || [];
+      const old = backups.filter((b) => new Date(b.createdAt) < weeklyCutoff);
+      toDelete.push(...old.map((b) => b.filename));
+    }
+
+    // Monthly: keep last N months
+    const monthlyCutoff = new Date(now);
+    monthlyCutoff.setMonth(monthlyCutoff.getMonth() - this.config.monthlyRetentionMonths);
+
+    for (const key of ["db_monthly", "vault_monthly"]) {
+      const backups = backupsByType[key] || [];
+      const old = backups.filter((b) => new Date(b.createdAt) < monthlyCutoff);
+      toDelete.push(...old.map((b) => b.filename));
+    }
+
+    // Delete files and update manifest
+    for (const filename of toDelete) {
+      const filepath = path.join(this.config.backupDir, filename);
+      try {
+        await fs.promises.unlink(filepath);
+        deleted++;
+        logger.debug("Deleted old backup", { filename });
+      } catch (error) {
+        // File might already be deleted
+        logger.warn("Failed to delete backup file", { filename });
+      }
+    }
+
+    // Update manifest
+    manifest.backups = manifest.backups.filter((b) => !toDelete.includes(b.filename));
+    await this.saveManifest(manifest);
+
+    logger.info(`Cleaned up ${deleted} old backups`);
+    return { deleted };
   }
+
+  // ---------------------------------------------------------------------------
+  // OFFSITE COPY
+  // ---------------------------------------------------------------------------
 
   /**
    * Copy backup to offsite location
    */
-  async copyToOffsite(filename: string): Promise<void> {
+  private async copyToOffsite(filepath: string): Promise<void> {
     if (!this.config.offsitePath) return;
 
-    const source = path.join(this.config.backupDir, filename);
+    const filename = path.basename(filepath);
     const dest = path.join(this.config.offsitePath, filename);
 
-    // TODO: Implement offsite copy (rsync, s3, etc.)
-    // await execAsync(`rsync -av "${source}" "${dest}"`);
+    try {
+      // Use rsync if available, otherwise copy
+      try {
+        await execAsync(`rsync -av "${filepath}" "${dest}"`);
+      } catch {
+        await fs.promises.copyFile(filepath, dest);
+      }
 
-    console.log(`[BackupService] Copied to offsite: ${filename}`);
+      logger.info("Copied to offsite", { filename, dest });
+    } catch (error) {
+      logger.error("Offsite copy failed", {
+        filename,
+        error: error instanceof Error ? error.message : "Unknown",
+      });
+    }
   }
+
+  // ---------------------------------------------------------------------------
+  // MANIFEST MANAGEMENT
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Load backup manifest
+   */
+  private async loadManifest(): Promise<BackupManifest> {
+    const manifestPath = path.join(this.config.backupDir, "manifest.json");
+
+    try {
+      const content = await fs.promises.readFile(manifestPath, "utf-8");
+      return JSON.parse(content);
+    } catch {
+      return { backups: [], lastUpdated: new Date().toISOString(), version: "1.0" };
+    }
+  }
+
+  /**
+   * Save backup manifest
+   */
+  private async saveManifest(manifest: BackupManifest): Promise<void> {
+    const manifestPath = path.join(this.config.backupDir, "manifest.json");
+    manifest.lastUpdated = new Date().toISOString();
+    await fs.promises.writeFile(manifestPath, JSON.stringify(manifest, null, 2));
+  }
+
+  /**
+   * Add entry to manifest
+   */
+  private async addToManifest(entry: BackupManifestEntry): Promise<void> {
+    const manifest = await this.loadManifest();
+    manifest.backups.push(entry);
+    await this.saveManifest(manifest);
+  }
+
+  // ---------------------------------------------------------------------------
+  // NOTIFICATIONS
+  // ---------------------------------------------------------------------------
 
   /**
    * Create notification for monthly archive
    */
-  async createArchiveNotification(result: BackupResult): Promise<void> {
+  private async createArchiveNotification(result: BackupResult): Promise<void> {
     await prisma.opsInsight.create({
       data: {
         source: "BackupService",
         category: "MONTHLY_ARCHIVE",
-        severity: "LOW",
-        title: "Monthly backup ready for air-gapped archival",
-        description: `Monthly backup ${result.filename} is ready. Please transfer to air-gapped storage.`,
+        severity: result.success ? "LOW" : "HIGH",
+        priority: result.success ? "NORMAL" : "URGENT",
+        title: result.success
+          ? "Monthly backup ready for air-gapped archival"
+          : "Monthly backup FAILED - immediate attention required",
+        description: result.success
+          ? `Monthly backup ${result.filename} is ready. Please transfer to air-gapped storage.`
+          : `Monthly backup failed: ${result.error}`,
+        plainEnglish: result.success
+          ? `The monthly backup completed successfully. File: ${result.filename}, Size: ${(result.sizeBytes / 1024 / 1024).toFixed(2)}MB, Encrypted: ${result.encrypted}. Please copy to USB/external drive for air-gapped storage.`
+          : `CRITICAL: Monthly backup failed. Error: ${result.error}. Please investigate immediately and run manual backup.`,
         data: result as unknown as Record<string, unknown>,
         status: "OPEN",
       },
@@ -442,70 +810,28 @@ class BackupService {
   }
 
   /**
-   * Log backup to database
+   * Log backup result to BotRunLog
    */
-  async logBackup(data: {
-    filename: string;
-    type: string;
-    sizeBytes: number;
-    checksum: string;
-    success: boolean;
-    error?: string;
-  }): Promise<void> {
+  private async logBackupResult(result: BackupResult): Promise<void> {
     await prisma.botRunLog.create({
       data: {
         botName: "BackupService",
-        runType: `backup_${data.type}`,
-        status: data.success ? "SUCCESS" : "ERROR",
-        resultSummary: data.success
-          ? `Backup created: ${data.filename}`
-          : `Backup failed: ${data.error}`,
+        runType: `backup_${result.type}`,
+        status: result.success ? "SUCCESS" : "ERROR",
+        resultSummary: result.success
+          ? `Backup created: ${result.filename} (${(result.sizeBytes / 1024 / 1024).toFixed(2)}MB)`
+          : `Backup failed: ${result.error}`,
         recordsProcessed: 1,
         insightsGenerated: 0,
-        errorsEncountered: data.success ? 0 : 1,
-        durationMs: 0,
+        errorsEncountered: result.success ? 0 : 1,
+        durationMs: result.durationMs,
       },
     });
   }
 
-  /**
-   * Load backup manifest
-   */
-  async loadManifest(): Promise<BackupManifest> {
-    const manifestPath = path.join(this.config.backupDir, "manifest.json");
-
-    try {
-      const content = await fs.promises.readFile(manifestPath, "utf-8");
-      return JSON.parse(content);
-    } catch {
-      return { backups: [], lastUpdated: new Date().toISOString() };
-    }
-  }
-
-  /**
-   * Save backup manifest
-   */
-  async saveManifest(manifest: BackupManifest): Promise<void> {
-    const manifestPath = path.join(this.config.backupDir, "manifest.json");
-    manifest.lastUpdated = new Date().toISOString();
-    await fs.promises.writeFile(manifestPath, JSON.stringify(manifest, null, 2));
-  }
-
-  /**
-   * Clean up old backups based on retention policy
-   */
-  async cleanupOldBackups(): Promise<{ deleted: number }> {
-    let deleted = 0;
-
-    // TODO: Implement cleanup based on retention policy
-    // - Keep last N hourly backups
-    // - Keep last N daily backups
-    // - Keep last N weekly backups
-    // - Keep last N monthly backups
-
-    console.log(`[BackupService] Cleaned up ${deleted} old backups`);
-    return { deleted };
-  }
+  // ---------------------------------------------------------------------------
+  // STATUS
+  // ---------------------------------------------------------------------------
 
   /**
    * Get backup status and statistics
@@ -514,13 +840,21 @@ class BackupService {
     lastBackup: Date | null;
     backupCount: number;
     totalSizeBytes: number;
-    nextScheduled: Date | null;
+    nextScheduled: string | null;
+    config: {
+      backupDir: string;
+      encryptionEnabled: boolean;
+      offsiteEnabled: boolean;
+    };
   }> {
+    await this.loadConfig();
+
     const manifest = await this.loadManifest();
 
-    const lastBackup = manifest.backups.length > 0
-      ? new Date(manifest.backups[manifest.backups.length - 1].createdAt)
-      : null;
+    const lastBackup =
+      manifest.backups.length > 0
+        ? new Date(manifest.backups[manifest.backups.length - 1].createdAt)
+        : null;
 
     const totalSizeBytes = manifest.backups.reduce((sum, b) => sum + b.sizeBytes, 0);
 
@@ -528,8 +862,24 @@ class BackupService {
       lastBackup,
       backupCount: manifest.backups.length,
       totalSizeBytes,
-      nextScheduled: null, // TODO: Calculate from scheduler
+      nextScheduled: null, // Determined by scheduler
+      config: {
+        backupDir: this.config.backupDir,
+        encryptionEnabled: this.config.encryptionEnabled,
+        offsiteEnabled: this.config.offsiteEnabled,
+      },
     };
+  }
+
+  // ---------------------------------------------------------------------------
+  // UTILITIES
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Get timestamp string for filenames
+   */
+  private getTimestamp(): string {
+    return new Date().toISOString().replace(/[:.]/g, "-").split("T").join("_").slice(0, -5);
   }
 }
 

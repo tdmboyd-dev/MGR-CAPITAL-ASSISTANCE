@@ -1,24 +1,23 @@
 /**
  * scheduler.ts
  *
- * Cron job scheduler for MGR Capital Assistance OPS Layer (Phase 7).
+ * Production-ready cron job scheduler for MGR Capital Assistance (Phase 7).
  * Schedules automated bot runs, backups, reports, and maintenance tasks.
  *
  * FOUNDER-ONLY OPS LAYER COMPONENT
  *
- * Schedule Format (node-cron):
- * ┌────────────── second (0-59) [optional]
- * │ ┌──────────── minute (0-59)
- * │ │ ┌────────── hour (0-23)
- * │ │ │ ┌──────── day of month (1-31)
- * │ │ │ │ ┌────── month (1-12)
- * │ │ │ │ │ ┌──── day of week (0-6, 0=Sunday)
- * │ │ │ │ │ │
- * * * * * * *
+ * Features:
+ * - Timezone support via FounderConfig
+ * - Graceful shutdown on SIGTERM/SIGINT
+ * - Structured logging with duration tracking
+ * - WatchAlert creation on failures
+ * - Dynamic enable/disable via FounderConfig
+ * - BotRunLog integration for audit trail
  */
 
-// import cron from "node-cron";
+import cron, { ScheduledTask } from "node-cron";
 import { PrismaClient } from "@prisma/client";
+import logger from "../utils/logger.js";
 
 // Bot imports
 import { coordinatorBot } from "../bots/coordinatorBot.js";
@@ -29,225 +28,268 @@ import { trainingBot } from "../bots/trainingBot.js";
 import { outreachBot } from "../bots/outreachBot.js";
 import { docketBot } from "../bots/docketBot.js";
 
-// Service imports (Phase 7 - to be implemented)
-// import { backupService } from "../services/BackupService.js";
-// import { reportingService } from "../services/ReportingService.js";
+// Service imports
+import { backupService } from "../services/BackupService.js";
+import { reportingService } from "../services/ReportingService.js";
 
 const prisma = new PrismaClient();
 
 // =============================================================================
-// SCHEDULE CONFIGURATION
+// TYPES
 // =============================================================================
 
-interface ScheduleConfig {
+interface CronJob {
   name: string;
+  key: string; // FounderConfig key for enable/disable
   cronExpression: string;
   description: string;
-  enabled: boolean;
-  handler: () => Promise<void>;
+  enabledByDefault: boolean;
+  task: () => Promise<void>;
+  category: "bot" | "backup" | "report" | "maintenance";
 }
 
-const schedules: ScheduleConfig[] = [
+interface SchedulerConfig {
+  timezone: string;
+  jobs: Record<string, { enabled: boolean; cronExpression?: string }>;
+}
+
+// =============================================================================
+// DEFAULT CONFIGURATION
+// =============================================================================
+
+const DEFAULT_TIMEZONE = "America/Chicago";
+
+const DEFAULT_CONFIG: SchedulerConfig = {
+  timezone: DEFAULT_TIMEZONE,
+  jobs: {},
+};
+
+// =============================================================================
+// JOB DEFINITIONS
+// =============================================================================
+
+const jobs: CronJob[] = [
   // ===========================================
   // BOT SCHEDULES
   // ===========================================
-
   {
-    name: "coordinator_daily_summary",
+    name: "Coordinator Daily Summary",
+    key: "coordinator_daily_summary",
     cronExpression: "0 6 * * *", // 6:00 AM daily
     description: "Run full ops cycle and generate daily summary",
-    enabled: true,
-    handler: async () => {
-      console.log("[Scheduler] Running coordinator daily summary...");
+    enabledByDefault: true,
+    category: "bot",
+    task: async () => {
       await coordinatorBot.runFullCycle();
     },
   },
-
   {
-    name: "ingestion_analysis",
+    name: "Ingestion Intelligence Analysis",
+    key: "ingestion_intelligence",
     cronExpression: "0 */6 * * *", // Every 6 hours
-    description: "Analyze ingestion batches for patterns and issues",
-    enabled: true,
-    handler: async () => {
-      console.log("[Scheduler] Running ingestion analysis...");
+    description: "Analyze ingestion batches with intelligence layer",
+    enabledByDefault: true,
+    category: "bot",
+    task: async () => {
       await ingestionBot.analyze(7);
     },
   },
-
   {
-    name: "ingestion_auto_file",
+    name: "Ingestion Auto-File Batch",
+    key: "ingestion_auto_file",
     cronExpression: "0 8,14,20 * * *", // 8 AM, 2 PM, 8 PM
-    description: "Process auto-file candidates",
-    enabled: false, // FOUNDER must enable via FounderConfig
-    handler: async () => {
-      console.log("[Scheduler] Running auto-file batch...");
+    description: "Process auto-file candidates (FOUNDER MUST ENABLE)",
+    enabledByDefault: false,
+    category: "bot",
+    task: async () => {
       await ingestionBot.runAutoFileBatch();
     },
   },
-
   {
-    name: "payout_analysis",
+    name: "Payout Analysis",
+    key: "payout_analysis",
     cronExpression: "0 7 * * *", // 7:00 AM daily
     description: "Analyze payouts for anomalies",
-    enabled: true,
-    handler: async () => {
-      console.log("[Scheduler] Running payout analysis...");
+    enabledByDefault: true,
+    category: "bot",
+    task: async () => {
       await payoutBot.analyze();
     },
   },
-
   {
-    name: "compliance_scan",
+    name: "Compliance Scan",
+    key: "compliance_scan",
     cronExpression: "0 5 * * *", // 5:00 AM daily
     description: "Run compliance checks on all active cases",
-    enabled: true,
-    handler: async () => {
-      console.log("[Scheduler] Running compliance scan...");
+    enabledByDefault: true,
+    category: "bot",
+    task: async () => {
       await complianceBot.analyze();
     },
   },
-
   {
-    name: "training_analysis",
+    name: "Training Analysis",
+    key: "training_analysis",
     cronExpression: "0 4 * * 1", // 4:00 AM every Monday
     description: "Analyze training needs and generate recommendations",
-    enabled: true,
-    handler: async () => {
-      console.log("[Scheduler] Running training analysis...");
+    enabledByDefault: true,
+    category: "bot",
+    task: async () => {
       await trainingBot.runFullAnalysis();
     },
   },
-
   {
-    name: "outreach_prioritization",
+    name: "Outreach Prioritization",
+    key: "outreach_prioritization",
     cronExpression: "0 9 * * 1-5", // 9:00 AM Monday-Friday
     description: "Prioritize cases for outreach",
-    enabled: true,
-    handler: async () => {
-      console.log("[Scheduler] Running outreach prioritization...");
+    enabledByDefault: true,
+    category: "bot",
+    task: async () => {
       await outreachBot.analyze();
     },
   },
-
   {
-    name: "docket_deadline_check",
+    name: "Docket Deadline Check",
+    key: "docket_deadline_check",
     cronExpression: "0 6 * * *", // 6:00 AM daily
     description: "Check upcoming deadlines and court dates",
-    enabled: true,
-    handler: async () => {
-      console.log("[Scheduler] Running docket deadline check...");
+    enabledByDefault: true,
+    category: "bot",
+    task: async () => {
       await docketBot.analyze();
     },
   },
 
   // ===========================================
-  // BACKUP SCHEDULES (Phase 7)
+  // BACKUP SCHEDULES
   // ===========================================
-
   {
-    name: "backup_hourly",
+    name: "Hourly Backup",
+    key: "backup_hourly",
     cronExpression: "0 * * * *", // Every hour
-    description: "Hourly database backup",
-    enabled: false, // Enable after BackupService is implemented
-    handler: async () => {
-      console.log("[Scheduler] Running hourly backup...");
-      // await backupService.runHourlyBackup();
+    description: "Hourly incremental database backup",
+    enabledByDefault: true,
+    category: "backup",
+    task: async () => {
+      await backupService.runHourlyBackup();
     },
   },
-
   {
-    name: "backup_daily",
+    name: "Daily Backup",
+    key: "backup_daily",
     cronExpression: "0 2 * * *", // 2:00 AM daily
     description: "Full daily backup (DB + documents)",
-    enabled: false,
-    handler: async () => {
-      console.log("[Scheduler] Running daily backup...");
-      // await backupService.runDailyBackup();
+    enabledByDefault: true,
+    category: "backup",
+    task: async () => {
+      await backupService.runDailyBackup();
     },
   },
-
   {
-    name: "backup_weekly",
+    name: "Weekly Backup",
+    key: "backup_weekly",
     cronExpression: "0 3 * * 0", // 3:00 AM every Sunday
     description: "Weekly full backup with verification",
-    enabled: false,
-    handler: async () => {
-      console.log("[Scheduler] Running weekly backup...");
-      // await backupService.runWeeklyBackup();
+    enabledByDefault: true,
+    category: "backup",
+    task: async () => {
+      await backupService.runWeeklyBackup();
+    },
+  },
+  {
+    name: "Monthly Backup",
+    key: "backup_monthly",
+    cronExpression: "0 4 1 * *", // 4:00 AM on 1st of each month
+    description: "Monthly archive backup for air-gapped storage",
+    enabledByDefault: true,
+    category: "backup",
+    task: async () => {
+      await backupService.runMonthlyBackup();
     },
   },
 
   // ===========================================
-  // REPORT SCHEDULES (Phase 7)
+  // REPORT SCHEDULES
   // ===========================================
-
   {
-    name: "report_daily_digest",
-    cronExpression: "0 7 * * 1-5", // 7:00 AM Monday-Friday
+    name: "Daily Digest Report",
+    key: "report_daily_digest",
+    cronExpression: "30 6 * * 1-5", // 6:30 AM Monday-Friday
     description: "Generate and send daily digest to FOUNDER",
-    enabled: false,
-    handler: async () => {
-      console.log("[Scheduler] Generating daily digest...");
-      // await reportingService.generateDailyDigest();
+    enabledByDefault: false, // FOUNDER enables via config
+    category: "report",
+    task: async () => {
+      await reportingService.generateDailyDigest();
     },
   },
-
   {
-    name: "report_weekly_summary",
+    name: "Weekly Summary Report",
+    key: "report_weekly_summary",
     cronExpression: "0 8 * * 1", // 8:00 AM every Monday
     description: "Generate weekly summary report",
-    enabled: false,
-    handler: async () => {
-      console.log("[Scheduler] Generating weekly summary...");
-      // await reportingService.generateWeeklySummary();
+    enabledByDefault: false,
+    category: "report",
+    task: async () => {
+      await reportingService.generateWeeklySummary();
     },
   },
-
   {
-    name: "report_monthly_metrics",
+    name: "Monthly Metrics Report",
+    key: "report_monthly_metrics",
     cronExpression: "0 9 1 * *", // 9:00 AM on 1st of each month
     description: "Generate monthly metrics report",
-    enabled: false,
-    handler: async () => {
-      console.log("[Scheduler] Generating monthly metrics...");
-      // await reportingService.generateMonthlyMetrics();
+    enabledByDefault: false,
+    category: "report",
+    task: async () => {
+      await reportingService.generateMonthlyMetrics();
     },
   },
 
   // ===========================================
   // MAINTENANCE SCHEDULES
   // ===========================================
-
   {
-    name: "cleanup_expired_insights",
+    name: "Cleanup Expired Insights",
+    key: "cleanup_expired_insights",
     cronExpression: "0 3 * * *", // 3:00 AM daily
     description: "Clean up expired OpsInsights",
-    enabled: true,
-    handler: async () => {
-      console.log("[Scheduler] Cleaning up expired insights...");
-      await prisma.opsInsight.deleteMany({
-        where: {
-          expiresAt: { lt: new Date() },
-        },
+    enabledByDefault: true,
+    category: "maintenance",
+    task: async () => {
+      const result = await prisma.opsInsight.deleteMany({
+        where: { expiresAt: { lt: new Date() } },
       });
+      logger.info(`Cleaned up ${result.count} expired OpsInsights`);
     },
   },
-
   {
-    name: "cleanup_old_bot_logs",
+    name: "Cleanup Old Bot Logs",
+    key: "cleanup_old_bot_logs",
     cronExpression: "0 4 * * 0", // 4:00 AM every Sunday
     description: "Clean up bot run logs older than 30 days",
-    enabled: true,
-    handler: async () => {
-      console.log("[Scheduler] Cleaning up old bot logs...");
+    enabledByDefault: true,
+    category: "maintenance",
+    task: async () => {
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-      await prisma.botRunLog.deleteMany({
-        where: {
-          startedAt: { lt: thirtyDaysAgo },
-        },
+      const result = await prisma.botRunLog.deleteMany({
+        where: { startedAt: { lt: thirtyDaysAgo } },
       });
+      logger.info(`Cleaned up ${result.count} old BotRunLogs`);
+    },
+  },
+  {
+    name: "Backup Retention Cleanup",
+    key: "cleanup_old_backups",
+    cronExpression: "0 5 * * 0", // 5:00 AM every Sunday
+    description: "Clean up old backups based on retention policy",
+    enabledByDefault: true,
+    category: "maintenance",
+    task: async () => {
+      const result = await backupService.cleanupOldBackups();
+      logger.info(`Cleaned up ${result.deleted} old backups`);
     },
   },
 ];
@@ -257,79 +299,257 @@ const schedules: ScheduleConfig[] = [
 // =============================================================================
 
 class Scheduler {
-  private jobs: Map<string, unknown> = new Map();
+  private scheduledTasks: Map<string, ScheduledTask> = new Map();
+  private config: SchedulerConfig = DEFAULT_CONFIG;
   private isRunning = false;
+
+  /**
+   * Load configuration from FounderConfig
+   */
+  private async loadConfig(): Promise<void> {
+    try {
+      const founderConfig = await prisma.founderConfig.findFirst({
+        where: { key: "scheduler" },
+      });
+
+      if (founderConfig?.value) {
+        this.config = {
+          ...DEFAULT_CONFIG,
+          ...(founderConfig.value as Partial<SchedulerConfig>),
+        };
+      }
+
+      logger.info("Scheduler config loaded", { timezone: this.config.timezone });
+    } catch (error) {
+      logger.warn("Failed to load scheduler config, using defaults");
+    }
+  }
+
+  /**
+   * Check if a job is enabled
+   */
+  private isJobEnabled(job: CronJob): boolean {
+    const configJob = this.config.jobs[job.key];
+    return configJob?.enabled ?? job.enabledByDefault;
+  }
+
+  /**
+   * Get cron expression for a job (allows override via config)
+   */
+  private getCronExpression(job: CronJob): string {
+    const configJob = this.config.jobs[job.key];
+    return configJob?.cronExpression ?? job.cronExpression;
+  }
+
+  /**
+   * Run a job with logging and error handling
+   */
+  private async runJob(job: CronJob): Promise<void> {
+    const startTime = Date.now();
+    const runId = `${job.key}_${Date.now()}`;
+
+    logger.info(`Starting cron job: ${job.name}`, {
+      key: job.key,
+      category: job.category,
+      runId,
+    });
+
+    try {
+      await job.task();
+
+      const durationMs = Date.now() - startTime;
+      logger.info(`Completed cron job: ${job.name}`, {
+        key: job.key,
+        durationMs,
+        runId,
+      });
+
+      // Log to BotRunLog
+      await prisma.botRunLog.create({
+        data: {
+          botName: "Scheduler",
+          runType: job.key,
+          status: "SUCCESS",
+          resultSummary: `Scheduled job ${job.name} completed successfully`,
+          recordsProcessed: 0,
+          insightsGenerated: 0,
+          errorsEncountered: 0,
+          durationMs,
+        },
+      });
+    } catch (error) {
+      const durationMs = Date.now() - startTime;
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      const errorStack = error instanceof Error ? error.stack : undefined;
+
+      logger.error(`Cron job failed: ${job.name}`, {
+        key: job.key,
+        durationMs,
+        error: errorMessage,
+        stack: errorStack,
+        runId,
+      });
+
+      // Log to BotRunLog
+      await prisma.botRunLog.create({
+        data: {
+          botName: "Scheduler",
+          runType: job.key,
+          status: "ERROR",
+          resultSummary: `Job failed: ${errorMessage}`,
+          recordsProcessed: 0,
+          insightsGenerated: 0,
+          errorsEncountered: 1,
+          durationMs,
+        },
+      });
+
+      // Create WatchAlert for critical failures
+      await prisma.watchAlert.create({
+        data: {
+          type: "SYSTEM_HEALTH",
+          severity: job.category === "bot" ? "CRITICAL" : "HIGH",
+          message: `Scheduled job failure: ${job.name}`,
+          details: {
+            jobKey: job.key,
+            category: job.category,
+            error: errorMessage,
+            stack: errorStack,
+            durationMs,
+          },
+          status: "OPEN",
+        },
+      });
+
+      // Create OpsInsight
+      await prisma.opsInsight.create({
+        data: {
+          source: "Scheduler",
+          category: "JOB_FAILURE",
+          severity: "HIGH",
+          priority: "URGENT",
+          title: `Scheduled job failed: ${job.name}`,
+          description: errorMessage,
+          plainEnglish: `The ${job.name} scheduled task failed at ${new Date().toISOString()}. Error: ${errorMessage}. Please check system logs and resolve.`,
+          data: { jobKey: job.key, error: errorMessage },
+          status: "OPEN",
+        },
+      });
+    }
+  }
 
   /**
    * Start all enabled scheduled jobs
    */
   async start(): Promise<void> {
     if (this.isRunning) {
-      console.log("[Scheduler] Already running");
+      logger.warn("Scheduler already running");
       return;
     }
 
-    console.log("[Scheduler] Starting scheduler...");
+    logger.info("Starting scheduler...");
 
-    // Load dynamic config from FounderConfig
-    const dynamicConfig = await this.loadDynamicConfig();
+    // Load config
+    await this.loadConfig();
 
-    for (const schedule of schedules) {
-      // Check if dynamically disabled
-      const isEnabled = dynamicConfig[schedule.name] ?? schedule.enabled;
-
-      if (!isEnabled) {
-        console.log(`[Scheduler] Skipping disabled job: ${schedule.name}`);
+    // Schedule all enabled jobs
+    for (const job of jobs) {
+      if (!this.isJobEnabled(job)) {
+        logger.info(`Skipping disabled job: ${job.name}`, { key: job.key });
         continue;
       }
 
-      // TODO: Uncomment when node-cron is installed
-      // const job = cron.schedule(schedule.cronExpression, async () => {
-      //   try {
-      //     await this.runJob(schedule);
-      //   } catch (error) {
-      //     console.error(`[Scheduler] Error in ${schedule.name}:`, error);
-      //     await this.logJobError(schedule.name, error);
-      //   }
-      // });
+      const cronExpression = this.getCronExpression(job);
 
-      // this.jobs.set(schedule.name, job);
-      console.log(`[Scheduler] Scheduled: ${schedule.name} (${schedule.cronExpression})`);
+      // Validate cron expression
+      if (!cron.validate(cronExpression)) {
+        logger.error(`Invalid cron expression for ${job.name}: ${cronExpression}`);
+        continue;
+      }
+
+      const task = cron.schedule(
+        cronExpression,
+        async () => {
+          await this.runJob(job);
+        },
+        {
+          timezone: this.config.timezone,
+          scheduled: true,
+        }
+      );
+
+      this.scheduledTasks.set(job.key, task);
+      logger.info(`Scheduled: ${job.name}`, {
+        key: job.key,
+        cron: cronExpression,
+        category: job.category,
+      });
     }
 
     this.isRunning = true;
-    console.log(`[Scheduler] Started with ${this.jobs.size} jobs`);
+    logger.info(`Scheduler active: ${this.scheduledTasks.size} jobs running`, {
+      timezone: this.config.timezone,
+    });
+
+    // Log startup to BotRunLog
+    await prisma.botRunLog.create({
+      data: {
+        botName: "Scheduler",
+        runType: "startup",
+        status: "SUCCESS",
+        resultSummary: `Scheduler started with ${this.scheduledTasks.size} jobs`,
+        recordsProcessed: this.scheduledTasks.size,
+        insightsGenerated: 0,
+        errorsEncountered: 0,
+        durationMs: 0,
+      },
+    });
   }
 
   /**
-   * Stop all scheduled jobs
+   * Stop all scheduled jobs (graceful shutdown)
    */
-  stop(): void {
-    console.log("[Scheduler] Stopping scheduler...");
+  async stop(): Promise<void> {
+    logger.info("Stopping scheduler...");
 
-    for (const [name, job] of this.jobs) {
-      // (job as any).stop();
-      console.log(`[Scheduler] Stopped: ${name}`);
+    for (const [name, task] of this.scheduledTasks) {
+      task.stop();
+      logger.debug(`Stopped job: ${name}`);
     }
 
-    this.jobs.clear();
+    this.scheduledTasks.clear();
     this.isRunning = false;
-    console.log("[Scheduler] Stopped");
+
+    // Log shutdown to BotRunLog
+    await prisma.botRunLog.create({
+      data: {
+        botName: "Scheduler",
+        runType: "shutdown",
+        status: "SUCCESS",
+        resultSummary: "Scheduler stopped gracefully",
+        recordsProcessed: 0,
+        insightsGenerated: 0,
+        errorsEncountered: 0,
+        durationMs: 0,
+      },
+    });
+
+    logger.info("Scheduler stopped");
   }
 
   /**
    * Run a specific job manually
    */
-  async runManually(jobName: string): Promise<{ success: boolean; message: string }> {
-    const schedule = schedules.find((s) => s.name === jobName);
+  async runManually(jobKey: string): Promise<{ success: boolean; message: string }> {
+    const job = jobs.find((j) => j.key === jobKey);
 
-    if (!schedule) {
-      return { success: false, message: `Job not found: ${jobName}` };
+    if (!job) {
+      return { success: false, message: `Job not found: ${jobKey}` };
     }
 
     try {
-      await this.runJob(schedule);
-      return { success: true, message: `Job ${jobName} completed successfully` };
+      await this.runJob(job);
+      return { success: true, message: `Job ${job.name} completed successfully` };
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown error";
       return { success: false, message };
@@ -341,102 +561,61 @@ class Scheduler {
    */
   getStatus(): Array<{
     name: string;
+    key: string;
     cronExpression: string;
     description: string;
+    category: string;
     enabled: boolean;
     isScheduled: boolean;
   }> {
-    return schedules.map((s) => ({
-      name: s.name,
-      cronExpression: s.cronExpression,
-      description: s.description,
-      enabled: s.enabled,
-      isScheduled: this.jobs.has(s.name),
+    return jobs.map((job) => ({
+      name: job.name,
+      key: job.key,
+      cronExpression: this.getCronExpression(job),
+      description: job.description,
+      category: job.category,
+      enabled: this.isJobEnabled(job),
+      isScheduled: this.scheduledTasks.has(job.key),
     }));
   }
 
-  // ---------------------------------------------------------------------------
-  // PRIVATE METHODS
-  // ---------------------------------------------------------------------------
-
-  private async runJob(schedule: ScheduleConfig): Promise<void> {
-    const startTime = Date.now();
-    console.log(`[Scheduler] Running job: ${schedule.name}`);
-
-    try {
-      await schedule.handler();
-
-      await prisma.botRunLog.create({
-        data: {
-          botName: "Scheduler",
-          runType: schedule.name,
-          status: "SUCCESS",
-          resultSummary: `Scheduled job ${schedule.name} completed`,
-          recordsProcessed: 0,
-          insightsGenerated: 0,
-          errorsEncountered: 0,
-          durationMs: Date.now() - startTime,
-        },
-      });
-
-      console.log(`[Scheduler] Job completed: ${schedule.name} (${Date.now() - startTime}ms)`);
-    } catch (error) {
-      await this.logJobError(schedule.name, error);
-      throw error;
-    }
+  /**
+   * Reload configuration and restart jobs
+   */
+  async reload(): Promise<void> {
+    logger.info("Reloading scheduler configuration...");
+    await this.stop();
+    await this.start();
   }
 
-  private async logJobError(jobName: string, error: unknown): Promise<void> {
-    const message = error instanceof Error ? error.message : "Unknown error";
-
-    await prisma.botRunLog.create({
-      data: {
-        botName: "Scheduler",
-        runType: jobName,
-        status: "ERROR",
-        resultSummary: `Job failed: ${message}`,
-        recordsProcessed: 0,
-        insightsGenerated: 0,
-        errorsEncountered: 1,
-        durationMs: 0,
-      },
-    });
-
-    // Create OpsInsight for critical job failures
-    await prisma.opsInsight.create({
-      data: {
-        source: "Scheduler",
-        category: "JOB_FAILURE",
-        severity: "HIGH",
-        title: `Scheduled job failed: ${jobName}`,
-        description: message,
-        data: { jobName, error: message },
-        status: "OPEN",
-      },
-    });
-  }
-
-  private async loadDynamicConfig(): Promise<Record<string, boolean>> {
-    try {
-      const config = await prisma.founderConfig.findFirst({
-        where: { key: "scheduler" },
-      });
-
-      if (config?.value) {
-        return config.value as Record<string, boolean>;
-      }
-    } catch {
-      // Config not found, use defaults
-    }
-
-    return {};
+  /**
+   * Check if scheduler is running
+   */
+  isActive(): boolean {
+    return this.isRunning;
   }
 }
 
 // =============================================================================
-// EXPORT SINGLETON
+// GRACEFUL SHUTDOWN
 // =============================================================================
 
-export const scheduler = new Scheduler();
+const scheduler = new Scheduler();
 
+// Handle graceful shutdown
+const gracefulShutdown = async (signal: string) => {
+  logger.info(`Received ${signal}, initiating graceful shutdown...`);
+  await scheduler.stop();
+  await prisma.$disconnect();
+  process.exit(0);
+};
+
+process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
+process.on("SIGINT", () => gracefulShutdown("SIGINT"));
+
+// =============================================================================
+// EXPORTS
+// =============================================================================
+
+export { scheduler, jobs };
 export default scheduler;
