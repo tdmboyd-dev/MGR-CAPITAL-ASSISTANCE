@@ -1,10 +1,12 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { Navbar } from "@/components/Navbar";
 import { Sidebar } from "@/components/Sidebar";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { OfflineHandler } from "@/components/OfflineHandler";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -14,6 +16,7 @@ interface DashboardLayoutProps {
 export function DashboardLayout({ children, allowedRoles }: DashboardLayoutProps) {
   const router = useRouter();
   const { user, accessToken } = useAuth();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
     if (!accessToken) {
@@ -22,7 +25,6 @@ export function DashboardLayout({ children, allowedRoles }: DashboardLayoutProps
     }
 
     if (user && !allowedRoles.includes(user.role)) {
-      // Redirect to appropriate dashboard based on role
       switch (user.role) {
         case "FOUNDER":
           router.replace("/founder/dashboard");
@@ -42,6 +44,11 @@ export function DashboardLayout({ children, allowedRoles }: DashboardLayoutProps
     }
   }, [user, accessToken, router, allowedRoles]);
 
+  // Close sidebar on route change (mobile)
+  useEffect(() => {
+    setSidebarOpen(false);
+  }, []);
+
   if (!accessToken || !user) {
     return (
       <div className="flex h-screen items-center justify-center bg-background">
@@ -55,12 +62,24 @@ export function DashboardLayout({ children, allowedRoles }: DashboardLayoutProps
   }
 
   return (
-    <div className="flex flex-col h-screen bg-background">
-      <Navbar />
-      <div className="flex flex-1 overflow-hidden">
-        <Sidebar role={user.role} />
-        <main className="flex-1 p-6 overflow-auto">{children}</main>
+    <ErrorBoundary>
+      <div className="flex flex-col h-screen bg-background">
+        <Navbar
+          onMenuToggle={() => setSidebarOpen(!sidebarOpen)}
+          isSidebarOpen={sidebarOpen}
+        />
+        <div className="flex flex-1 overflow-hidden">
+          <Sidebar
+            role={user.role}
+            isOpen={sidebarOpen}
+            onClose={() => setSidebarOpen(false)}
+          />
+          <main className="flex-1 p-4 md:p-6 overflow-auto">
+            <ErrorBoundary>{children}</ErrorBoundary>
+          </main>
+        </div>
+        <OfflineHandler />
       </div>
-    </div>
+    </ErrorBoundary>
   );
 }

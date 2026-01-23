@@ -35,6 +35,9 @@ import complianceRoutes from "./routes/complianceRoutes.js";
 // Internal Communication (Comms Chamber)
 import commsRoutes from "./routes/comms.js";
 
+// Analytics (Forecasting)
+import analyticsRoutes from "./routes/analytics.js";
+
 // Rate limiting
 import { loginRateLimit, passwordResetRateLimit } from "./middleware/rateLimit.js";
 
@@ -95,6 +98,9 @@ app.use("/api/compliance", complianceRoutes);
 
 // Internal Communication (Comms Chamber)
 app.use("/api/comms", commsRoutes);
+
+// Analytics (Forecasting)
+app.use("/api/analytics", analyticsRoutes);
 
 // ============================================
 // HEALTH CHECK
@@ -160,6 +166,9 @@ Role-Based Panels:
 
 Internal Communication:
   - /api/comms          Comms Chamber (chat rooms/messages)
+
+Analytics:
+  - /api/analytics      Forecasting & predictions (Founder/Admin only)
   `);
 });
 

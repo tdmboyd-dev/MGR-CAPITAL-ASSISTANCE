@@ -14,11 +14,15 @@ import {
   Bell,
   Upload,
   Shield,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 
 interface SidebarProps {
   role: string;
+  isOpen?: boolean;
+  onClose?: () => void;
 }
 
 interface NavLink {
@@ -60,35 +64,65 @@ const linksByRole: Record<string, NavLink[]> = {
   ],
 };
 
-export function Sidebar({ role }: SidebarProps) {
+export function Sidebar({ role, isOpen, onClose }: SidebarProps) {
   const pathname = usePathname();
   const links = linksByRole[role.toLowerCase()] || [];
 
   return (
-    <nav className="w-64 border-r bg-card p-4 space-y-2 hidden md:block">
-      <div className="mb-6">
-        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-3">
-          Navigation
-        </p>
-      </div>
-      {links.map(({ href, label, icon: Icon }) => {
-        const isActive = pathname === href || pathname.startsWith(href + "/");
-        return (
-          <Link
-            key={href}
-            href={href}
-            className={cn(
-              "flex items-center space-x-3 px-3 py-2.5 rounded-lg transition-colors",
-              isActive
-                ? "bg-primary text-primary-foreground"
-                : "text-muted-foreground hover:bg-muted hover:text-foreground"
-            )}
-          >
-            <Icon className="h-5 w-5" />
-            <span className="font-medium">{label}</span>
-          </Link>
-        );
-      })}
-    </nav>
+    <>
+      {/* Mobile overlay */}
+      {isOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-40 md:hidden"
+          onClick={onClose}
+          aria-hidden="true"
+        />
+      )}
+
+      {/* Sidebar */}
+      <nav
+        className={cn(
+          "fixed md:relative inset-y-0 left-0 z-50 w-64 border-r bg-card p-4 space-y-2 transition-transform duration-300 ease-in-out md:translate-x-0 md:block",
+          isOpen ? "translate-x-0" : "-translate-x-full"
+        )}
+      >
+        {/* Mobile close button */}
+        <div className="flex items-center justify-between mb-6 md:hidden">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+            Navigation
+          </p>
+          <Button variant="ghost" size="icon" onClick={onClose}>
+            <X className="h-5 w-5" />
+          </Button>
+        </div>
+
+        {/* Desktop header */}
+        <div className="mb-6 hidden md:block">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-3">
+            Navigation
+          </p>
+        </div>
+
+        {links.map(({ href, label, icon: Icon }) => {
+          const isActive = pathname === href || pathname.startsWith(href + "/");
+          return (
+            <Link
+              key={href}
+              href={href}
+              onClick={onClose}
+              className={cn(
+                "flex items-center space-x-3 px-3 py-2.5 rounded-lg transition-colors",
+                isActive
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
+              )}
+            >
+              <Icon className="h-5 w-5 flex-shrink-0" />
+              <span className="font-medium">{label}</span>
+            </Link>
+          );
+        })}
+      </nav>
+    </>
   );
 }

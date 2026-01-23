@@ -21,9 +21,12 @@ import {
   DollarSign,
   Users,
   TrendingUp,
+  TrendingDown,
+  Minus,
   AlertTriangle,
   CheckCircle,
   ArrowRight,
+  BarChart3,
 } from "lucide-react";
 
 export default function FounderDashboard() {
@@ -42,6 +45,28 @@ export default function FounderDashboard() {
       return data;
     },
   });
+
+  const { data: forecast } = useQuery({
+    queryKey: ["analytics-forecast"],
+    queryFn: async () => {
+      const { data } = await api.get("/analytics/forecast");
+      return data.data;
+    },
+  });
+
+  const TrendIcon =
+    forecast?.summary?.trend === "up"
+      ? TrendingUp
+      : forecast?.summary?.trend === "down"
+      ? TrendingDown
+      : Minus;
+
+  const trendColor =
+    forecast?.summary?.trend === "up"
+      ? "text-green-500"
+      : forecast?.summary?.trend === "down"
+      ? "text-red-500"
+      : "text-yellow-500";
 
   if (isLoading) {
     return (
@@ -114,6 +139,48 @@ export default function FounderDashboard() {
           </Card>
         ))}
       </div>
+
+      {/* Forecast Summary */}
+      {forecast && (
+        <Card className="border-primary/20 bg-primary/5">
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2">
+              <BarChart3 className="h-5 w-5" />
+              30-Day Forecast
+            </CardTitle>
+            <CardDescription>Based on linear regression of last 90 days</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div>
+                <p className="text-sm text-muted-foreground">Predicted Revenue</p>
+                <p className="text-xl font-bold text-primary">
+                  {formatCurrency(forecast.summary?.predictedRevenue30d || 0)}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Predicted Cases</p>
+                <p className="text-xl font-bold">{forecast.summary?.predictedCases30d || 0}</p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Trend</p>
+                <div className={`flex items-center gap-1 text-lg font-medium ${trendColor}`}>
+                  <TrendIcon className="h-5 w-5" />
+                  <span className="capitalize">{forecast.summary?.trend || "stable"}</span>
+                </div>
+              </div>
+              <div className="flex items-end">
+                <Link
+                  href="/founder/ops"
+                  className="text-sm text-primary flex items-center gap-1 hover:underline"
+                >
+                  View Full Forecast <ArrowRight className="h-4 w-4" />
+                </Link>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Analytics Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
