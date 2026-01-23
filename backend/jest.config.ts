@@ -9,10 +9,13 @@ import type { Config } from "jest";
 
 const config: Config = {
   // Use ts-jest for TypeScript
-  preset: "ts-jest",
+  preset: "ts-jest/presets/default-esm",
 
   // Test environment
   testEnvironment: "node",
+
+  // Enable ESM
+  extensionsToTreatAsEsm: [".ts"],
 
   // Root directories
   roots: ["<rootDir>/src", "<rootDir>/tests"],
@@ -33,7 +36,16 @@ const config: Config = {
       "ts-jest",
       {
         useESM: true,
-        tsconfig: "tsconfig.json",
+        isolatedModules: true,
+        tsconfig: {
+          module: "ESNext",
+          target: "ES2022",
+          moduleResolution: "node",
+          esModuleInterop: true,
+          allowSyntheticDefaultImports: true,
+          strict: true,
+          skipLibCheck: true,
+        },
       },
     ],
   },
@@ -84,6 +96,9 @@ const config: Config = {
 
   // Detect open handles
   detectOpenHandles: true,
+
+  // Workaround for Windows path issues
+  testPathIgnorePatterns: ["/node_modules/"],
 };
 
 export default config;

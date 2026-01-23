@@ -20,10 +20,14 @@ export const config = {
   cookieSecure: process.env.COOKIE_SECURE !== "false", // Default true
   cookieDomain: process.env.COOKIE_DOMAIN || undefined,
 
-  // Rate limiting
+  // Rate limiting (more lenient defaults in development)
   rateLimitWindowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || "900000", 10), // 15 min
   rateLimitMaxRequests: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || "100", 10),
-  authRateLimitMaxRequests: parseInt(process.env.AUTH_RATE_LIMIT_MAX_REQUESTS || "10", 10),
+  authRateLimitMaxRequests: parseInt(
+    process.env.AUTH_RATE_LIMIT_MAX_REQUESTS ||
+    (process.env.NODE_ENV === "production" ? "10" : "100"), // 100 in dev, 10 in prod
+    10
+  ),
 
   // Redis/Cache settings
   redisEnabled: process.env.REDIS_ENABLED === "true",

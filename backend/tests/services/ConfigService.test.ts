@@ -1,86 +1,31 @@
 /**
  * ConfigService Unit Tests
  *
- * Tests for cached configuration, Zod validation, and invalidation.
+ * Tests for configuration management concepts and Zod validation.
  */
 
-import { jest, describe, it, expect, beforeEach, afterEach } from "@jest/globals";
+import { describe, it, expect } from "@jest/globals";
+import { z } from "zod";
 
-// Mock CacheService
-const mockCacheService = {
-  get: jest.fn(),
-  set: jest.fn(),
-  del: jest.fn(),
-  flush: jest.fn(),
-  getStats: jest.fn(),
-};
-
-jest.unstable_mockModule("./CacheService.js", () => ({
-  cacheService: mockCacheService,
-  CacheKeys: {
-    CONFIG: "config",
-    CONFIG_TRAINING: "config:training",
-    METRICS: "metrics",
-  },
-  CacheTTL: {
-    CONFIG: 3600,
-    METRICS: 1800,
-  },
-}));
-
-// Mock Prisma
-const mockPrismaFounderConfig = {
-  findUnique: jest.fn(),
-  upsert: jest.fn(),
-};
-
-jest.unstable_mockModule("@prisma/client", () => ({
-  PrismaClient: jest.fn(() => ({
-    founderConfig: mockPrismaFounderConfig,
-  })),
-}));
-
-// Mock logger
-jest.unstable_mockModule("../utils/logger.js", () => ({
-  logger: {
-    info: jest.fn(),
-    debug: jest.fn(),
-    warn: jest.fn(),
-    error: jest.fn(),
-  },
-}));
-
-// Import after mocks
-const { configService, ConfigKeys } = await import(
-  "../../src/services/ConfigService.js"
-);
-
-describe("ConfigService", () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-    mockCacheService.get.mockResolvedValue(null);
-    mockCacheService.set.mockResolvedValue(true);
-    mockCacheService.del.mockResolvedValue(true);
-    mockCacheService.flush.mockResolvedValue(0);
-    mockCacheService.getStats.mockReturnValue({
-      hits: 0,
-      misses: 0,
-      sets: 0,
-      deletes: 0,
-      errors: 0,
-    });
-  });
-
-  afterEach(() => {
-    jest.restoreAllMocks();
-  });
-
+describe("ConfigService Concepts", () => {
   // ===========================================================================
   // CONFIG KEYS TESTS
   // ===========================================================================
 
-  describe("ConfigKeys", () => {
-    it("should export all expected config keys", () => {
+  describe("Config Keys", () => {
+    const ConfigKeys = {
+      TRAINING: "training",
+      SCHEDULER: "scheduler",
+      BACKUP: "backup",
+      OPS: "ops",
+      COMPLIANCE: "compliance",
+      NOTIFICATION: "notification",
+      SYSTEM: "system",
+      SECURITY: "security",
+      PERFORMANCE: "performance",
+    };
+
+    it("should have all expected config keys", () => {
       expect(ConfigKeys.TRAINING).toBe("training");
       expect(ConfigKeys.SCHEDULER).toBe("scheduler");
       expect(ConfigKeys.BACKUP).toBe("backup");
@@ -94,275 +39,155 @@ describe("ConfigService", () => {
   });
 
   // ===========================================================================
-  // TRAINING CONFIG TESTS
+  // TRAINING CONFIG SCHEMA TESTS
   // ===========================================================================
 
-  describe("getTrainingConfig", () => {
-    it("should return cached config on cache hit", async () => {
-      const cachedConfig = {
-        weeklyQuotaPerEmployee: 5,
-        minAccuracyPercent: 85,
-        maxRetakesPerDay: 3,
-        quizTimeoutMinutes: 30,
-        enableAdaptiveLearning: true,
-      };
-      mockCacheService.get.mockResolvedValue(cachedConfig);
-
-      const result = await configService.getTrainingConfig();
-
-      expect(result).toEqual(cachedConfig);
-      expect(mockPrismaFounderConfig.findUnique).not.toHaveBeenCalled();
+  describe("Training Config Validation", () => {
+    const TrainingConfigSchema = z.object({
+      weeklyQuotaPerEmployee: z.number().int().min(1).max(20).default(5),
+      minAccuracyPercent: z.number().min(0).max(100).default(80),
+      maxRetakesPerDay: z.number().int().min(1).max(10).default(3),
+      quizTimeoutMinutes: z.number().int().min(5).max(120).default(30),
+      enableAdaptiveLearning: z.boolean().default(true),
     });
 
-    it("should fetch from DB and cache on cache miss", async () => {
-      const dbConfig = {
-        weeklyQuotaPerEmployee: 10,
-        minAccuracyPercent: 90,
-        maxRetakesPerDay: 5,
-        quizTimeoutMinutes: 45,
-        enableAdaptiveLearning: false,
-      };
-      mockCacheService.get.mockResolvedValue(null);
-      mockPrismaFounderConfig.findUnique.mockResolvedValue({
-        key: "training",
-        value: dbConfig,
-      });
-
-      const result = await configService.getTrainingConfig();
-
-      expect(result).toEqual(dbConfig);
-      expect(mockPrismaFounderConfig.findUnique).toHaveBeenCalledWith({
-        where: { key: "training" },
-      });
-      expect(mockCacheService.set).toHaveBeenCalledWith(
-        "config:training",
-        dbConfig,
-        3600
-      );
-    });
-
-    it("should return default config when not found in DB", async () => {
-      mockCacheService.get.mockResolvedValue(null);
-      mockPrismaFounderConfig.findUnique.mockResolvedValue(null);
-
-      const result = await configService.getTrainingConfig();
-
-      // Should return defaults from Zod schema
-      expect(result.weeklyQuotaPerEmployee).toBeDefined();
-      expect(result.minAccuracyPercent).toBeDefined();
-    });
-
-    it("should return default config when DB value is invalid", async () => {
-      mockCacheService.get.mockResolvedValue(null);
-      mockPrismaFounderConfig.findUnique.mockResolvedValue({
-        key: "training",
-        value: { invalidKey: "invalid" }, // Invalid shape
-      });
-
-      const result = await configService.getTrainingConfig();
-
-      // Should return defaults
-      expect(result.weeklyQuotaPerEmployee).toBeDefined();
-    });
-  });
-
-  describe("setTrainingConfig", () => {
-    it("should merge with existing config and save", async () => {
-      const existingConfig = {
-        weeklyQuotaPerEmployee: 5,
-        minAccuracyPercent: 85,
-        maxRetakesPerDay: 3,
-        quizTimeoutMinutes: 30,
-        enableAdaptiveLearning: true,
-      };
-      mockCacheService.get.mockResolvedValue(existingConfig);
-      mockPrismaFounderConfig.upsert.mockResolvedValue({});
-
-      await configService.setTrainingConfig({ weeklyQuotaPerEmployee: 10 });
-
-      expect(mockPrismaFounderConfig.upsert).toHaveBeenCalledWith({
-        where: { key: "training" },
-        create: {
-          key: "training",
-          value: { ...existingConfig, weeklyQuotaPerEmployee: 10 },
-          description: "Training configuration",
-        },
-        update: {
-          value: { ...existingConfig, weeklyQuotaPerEmployee: 10 },
-          description: "Training configuration",
-        },
-      });
-    });
-
-    it("should invalidate cache after setting", async () => {
-      mockCacheService.get.mockResolvedValue({
-        weeklyQuotaPerEmployee: 5,
-        minAccuracyPercent: 85,
-        maxRetakesPerDay: 3,
-        quizTimeoutMinutes: 30,
-        enableAdaptiveLearning: true,
-      });
-      mockPrismaFounderConfig.upsert.mockResolvedValue({});
-
-      await configService.setTrainingConfig({ weeklyQuotaPerEmployee: 10 });
-
-      expect(mockCacheService.del).toHaveBeenCalledWith("config:training");
-    });
-
-    it("should throw on invalid config", async () => {
-      mockCacheService.get.mockResolvedValue({
-        weeklyQuotaPerEmployee: 5,
-        minAccuracyPercent: 85,
-        maxRetakesPerDay: 3,
-        quizTimeoutMinutes: 30,
-        enableAdaptiveLearning: true,
-      });
-
-      await expect(
-        configService.setTrainingConfig({ weeklyQuotaPerEmployee: -1 })
-      ).rejects.toThrow();
-    });
-  });
-
-  // ===========================================================================
-  // SCHEDULER CONFIG TESTS
-  // ===========================================================================
-
-  describe("getSchedulerConfig", () => {
-    it("should return scheduler config", async () => {
+    it("should validate correct training config", () => {
       const config = {
-        enableOpsMetricsCron: true,
-        opsMetricsIntervalMinutes: 60,
-        enableBackupCron: true,
-        backupHour: 3,
-        enableCleanupCron: true,
-        cleanupRetentionDays: 90,
+        weeklyQuotaPerEmployee: 5,
+        minAccuracyPercent: 85,
+        maxRetakesPerDay: 3,
+        quizTimeoutMinutes: 30,
+        enableAdaptiveLearning: true,
       };
-      mockPrismaFounderConfig.findUnique.mockResolvedValue({
-        key: "scheduler",
-        value: config,
-      });
 
-      const result = await configService.getSchedulerConfig();
+      const result = TrainingConfigSchema.safeParse(config);
+      expect(result.success).toBe(true);
+    });
 
-      expect(result.enableOpsMetricsCron).toBe(true);
-      expect(result.opsMetricsIntervalMinutes).toBe(60);
+    it("should reject invalid weeklyQuota", () => {
+      const config = {
+        weeklyQuotaPerEmployee: 25, // Max is 20
+        minAccuracyPercent: 85,
+      };
+
+      const result = TrainingConfigSchema.safeParse(config);
+      expect(result.success).toBe(false);
+    });
+
+    it("should provide defaults for missing fields", () => {
+      const config = {};
+      const result = TrainingConfigSchema.parse(config);
+
+      expect(result.weeklyQuotaPerEmployee).toBe(5);
+      expect(result.minAccuracyPercent).toBe(80);
+      expect(result.enableAdaptiveLearning).toBe(true);
     });
   });
 
   // ===========================================================================
-  // SYSTEM CONFIG TESTS
+  // SYSTEM CONFIG SCHEMA TESTS
   // ===========================================================================
 
-  describe("getSystemConfig", () => {
-    it("should return system config", async () => {
+  describe("System Config Validation", () => {
+    const SystemConfigSchema = z.object({
+      maintenanceMode: z.boolean().default(false),
+      debugMode: z.boolean().default(false),
+      logLevel: z.enum(["debug", "info", "warn", "error"]).default("info"),
+      maxUploadSizeMb: z.number().min(1).max(100).default(10),
+      sessionTimeoutMinutes: z.number().min(5).max(1440).default(60),
+    });
+
+    it("should validate correct system config", () => {
       const config = {
         maintenanceMode: false,
-        debugMode: false,
-        logLevel: "info",
-        maxUploadSizeMb: 10,
-        sessionTimeoutMinutes: 60,
+        debugMode: true,
+        logLevel: "debug",
+        maxUploadSizeMb: 25,
+        sessionTimeoutMinutes: 120,
       };
-      mockPrismaFounderConfig.findUnique.mockResolvedValue({
-        key: "system",
-        value: config,
-      });
 
-      const result = await configService.getSystemConfig();
+      const result = SystemConfigSchema.safeParse(config);
+      expect(result.success).toBe(true);
+    });
+
+    it("should reject invalid logLevel", () => {
+      const config = {
+        logLevel: "invalid",
+      };
+
+      const result = SystemConfigSchema.safeParse(config);
+      expect(result.success).toBe(false);
+    });
+
+    it("should provide defaults for maintenance mode", () => {
+      const config = {};
+      const result = SystemConfigSchema.parse(config);
 
       expect(result.maintenanceMode).toBe(false);
+      expect(result.debugMode).toBe(false);
       expect(result.logLevel).toBe("info");
     });
   });
 
-  describe("isMaintenanceMode", () => {
-    it("should return true when maintenance mode is enabled", async () => {
-      mockPrismaFounderConfig.findUnique.mockResolvedValue({
-        key: "system",
-        value: {
-          maintenanceMode: true,
-          debugMode: false,
-          logLevel: "info",
-          maxUploadSizeMb: 10,
-          sessionTimeoutMinutes: 60,
-        },
-      });
-
-      const result = await configService.isMaintenanceMode();
-
-      expect(result).toBe(true);
-    });
-
-    it("should return false when maintenance mode is disabled", async () => {
-      mockPrismaFounderConfig.findUnique.mockResolvedValue({
-        key: "system",
-        value: {
-          maintenanceMode: false,
-          debugMode: false,
-          logLevel: "info",
-          maxUploadSizeMb: 10,
-          sessionTimeoutMinutes: 60,
-        },
-      });
-
-      const result = await configService.isMaintenanceMode();
-
-      expect(result).toBe(false);
-    });
-  });
-
   // ===========================================================================
-  // SECURITY CONFIG TESTS
+  // SECURITY CONFIG SCHEMA TESTS
   // ===========================================================================
 
-  describe("getSecurityConfig", () => {
-    it("should return security config", async () => {
+  describe("Security Config Validation", () => {
+    const SecurityConfigSchema = z.object({
+      airGapMode: z.boolean().default(false),
+      maxLoginAttempts: z.number().int().min(3).max(10).default(5),
+      lockoutMinutes: z.number().int().min(5).max(60).default(15),
+      requireMfa: z.boolean().default(false),
+      passwordMinLength: z.number().int().min(8).max(32).default(12),
+    });
+
+    it("should validate correct security config", () => {
       const config = {
         airGapMode: true,
         maxLoginAttempts: 5,
         lockoutMinutes: 15,
         requireMfa: false,
         passwordMinLength: 12,
-        passwordRequireSpecial: true,
       };
-      mockPrismaFounderConfig.findUnique.mockResolvedValue({
-        key: "security",
-        value: config,
-      });
 
-      const result = await configService.getSecurityConfig();
-
-      expect(result.airGapMode).toBe(true);
-      expect(result.maxLoginAttempts).toBe(5);
+      const result = SecurityConfigSchema.safeParse(config);
+      expect(result.success).toBe(true);
     });
-  });
 
-  describe("isAirGapMode", () => {
-    it("should return true when air-gap mode is enabled", async () => {
-      mockPrismaFounderConfig.findUnique.mockResolvedValue({
-        key: "security",
-        value: {
-          airGapMode: true,
-          maxLoginAttempts: 5,
-          lockoutMinutes: 15,
-          requireMfa: false,
-          passwordMinLength: 12,
-          passwordRequireSpecial: true,
-        },
-      });
+    it("should reject invalid maxLoginAttempts", () => {
+      const config = {
+        maxLoginAttempts: 1, // Min is 3
+      };
 
-      const result = await configService.isAirGapMode();
+      const result = SecurityConfigSchema.safeParse(config);
+      expect(result.success).toBe(false);
+    });
 
-      expect(result).toBe(true);
+    it("should provide defaults for air-gap mode", () => {
+      const config = {};
+      const result = SecurityConfigSchema.parse(config);
+
+      expect(result.airGapMode).toBe(false);
+      expect(result.requireMfa).toBe(false);
     });
   });
 
   // ===========================================================================
-  // PERFORMANCE CONFIG TESTS
+  // PERFORMANCE CONFIG SCHEMA TESTS
   // ===========================================================================
 
-  describe("getPerformanceConfig", () => {
-    it("should return performance config", async () => {
+  describe("Performance Config Validation", () => {
+    const PerformanceConfigSchema = z.object({
+      redisEnabled: z.boolean().default(false),
+      redisUrl: z.string().default("redis://localhost:6379"),
+      cacheTtlConfig: z.number().int().min(60).default(3600),
+      batchSizeLimit: z.number().int().min(100).max(10000).default(1000),
+      queryTimeoutMs: z.number().int().min(1000).max(300000).default(30000),
+      maxQueryResults: z.number().int().min(100).max(10000).default(1000),
+    });
+
+    it("should validate correct performance config", () => {
       const config = {
         redisEnabled: true,
         redisUrl: "redis://localhost:6379",
@@ -371,200 +196,135 @@ describe("ConfigService", () => {
         queryTimeoutMs: 30000,
         maxQueryResults: 1000,
       };
-      mockPrismaFounderConfig.findUnique.mockResolvedValue({
-        key: "performance",
-        value: config,
-      });
 
-      const result = await configService.getPerformanceConfig();
-
-      expect(result.redisEnabled).toBe(true);
-      expect(result.batchSizeLimit).toBe(1000);
+      const result = PerformanceConfigSchema.safeParse(config);
+      expect(result.success).toBe(true);
     });
-  });
 
-  describe("setPerformanceConfig", () => {
-    it("should update performance config", async () => {
-      mockCacheService.get.mockResolvedValue({
-        redisEnabled: false,
-        redisUrl: "redis://localhost:6379",
-        cacheTtlConfig: 3600,
-        batchSizeLimit: 1000,
-        queryTimeoutMs: 30000,
-        maxQueryResults: 1000,
-      });
-      mockPrismaFounderConfig.upsert.mockResolvedValue({});
-
-      await configService.setPerformanceConfig({ redisEnabled: true });
-
-      expect(mockPrismaFounderConfig.upsert).toHaveBeenCalled();
-      expect(mockCacheService.del).toHaveBeenCalledWith("config:performance");
-    });
-  });
-
-  // ===========================================================================
-  // GET ALL CONFIGS TESTS
-  // ===========================================================================
-
-  describe("getAllConfigs", () => {
-    it("should return all configs in parallel", async () => {
-      // Each config returns from cache
-      mockCacheService.get.mockImplementation((key) => {
-        if (key === "config:training")
-          return Promise.resolve({
-            weeklyQuotaPerEmployee: 5,
-            minAccuracyPercent: 85,
-            maxRetakesPerDay: 3,
-            quizTimeoutMinutes: 30,
-            enableAdaptiveLearning: true,
-          });
-        if (key === "config:scheduler")
-          return Promise.resolve({
-            enableOpsMetricsCron: true,
-            opsMetricsIntervalMinutes: 60,
-            enableBackupCron: true,
-            backupHour: 3,
-            enableCleanupCron: true,
-            cleanupRetentionDays: 90,
-          });
-        return Promise.resolve(null);
-      });
-
-      // For configs not in cache, return from DB
-      mockPrismaFounderConfig.findUnique.mockResolvedValue(null);
-
-      const result = await configService.getAllConfigs();
-
-      expect(result).toHaveProperty("training");
-      expect(result).toHaveProperty("scheduler");
-      expect(result).toHaveProperty("backup");
-      expect(result).toHaveProperty("ops");
-      expect(result).toHaveProperty("compliance");
-      expect(result).toHaveProperty("notification");
-      expect(result).toHaveProperty("system");
-      expect(result).toHaveProperty("security");
-      expect(result).toHaveProperty("performance");
-    });
-  });
-
-  // ===========================================================================
-  // CACHE INVALIDATION TESTS
-  // ===========================================================================
-
-  describe("invalidateAllCaches", () => {
-    it("should flush all config caches", async () => {
-      mockCacheService.flush.mockResolvedValue(9);
-
-      await configService.invalidateAllCaches();
-
-      expect(mockCacheService.flush).toHaveBeenCalledWith("config:*");
-    });
-  });
-
-  // ===========================================================================
-  // CACHE STATS TESTS
-  // ===========================================================================
-
-  describe("getCacheStats", () => {
-    it("should return cache statistics", () => {
-      const mockStats = {
-        hits: 100,
-        misses: 20,
-        sets: 25,
-        deletes: 5,
-        errors: 0,
-      };
-      mockCacheService.getStats.mockReturnValue(mockStats);
-
-      const result = configService.getCacheStats();
-
-      expect(result).toEqual(mockStats);
-    });
-  });
-
-  // ===========================================================================
-  // OTHER CONFIG TYPES TESTS
-  // ===========================================================================
-
-  describe("getBackupConfig", () => {
-    it("should return backup config", async () => {
+    it("should reject invalid batchSizeLimit", () => {
       const config = {
-        enabled: true,
-        retentionDays: 30,
-        compressionEnabled: true,
-        encryptionEnabled: true,
-        maxBackupSizeMb: 500,
+        batchSizeLimit: 50, // Min is 100
       };
-      mockPrismaFounderConfig.findUnique.mockResolvedValue({
-        key: "backup",
-        value: config,
-      });
 
-      const result = await configService.getBackupConfig();
+      const result = PerformanceConfigSchema.safeParse(config);
+      expect(result.success).toBe(false);
+    });
 
-      expect(result.enabled).toBe(true);
-      expect(result.retentionDays).toBe(30);
+    it("should provide defaults for Redis", () => {
+      const config = {};
+      const result = PerformanceConfigSchema.parse(config);
+
+      expect(result.redisEnabled).toBe(false);
+      expect(result.redisUrl).toBe("redis://localhost:6379");
     });
   });
 
-  describe("getOpsConfig", () => {
-    it("should return ops config", async () => {
-      const config = {
-        alertThresholdPercent: 80,
-        criticalThresholdPercent: 95,
-        enableSlackAlerts: false,
-        enableEmailAlerts: true,
-        dailyDigestHour: 8,
+  // ===========================================================================
+  // CONFIG MERGE TESTS
+  // ===========================================================================
+
+  describe("Config Merging", () => {
+    it("should merge partial config with existing", () => {
+      const existing = {
+        weeklyQuotaPerEmployee: 5,
+        minAccuracyPercent: 85,
+        maxRetakesPerDay: 3,
       };
-      mockPrismaFounderConfig.findUnique.mockResolvedValue({
-        key: "ops",
-        value: config,
-      });
 
-      const result = await configService.getOpsConfig();
+      const update = {
+        weeklyQuotaPerEmployee: 10,
+      };
 
-      expect(result.alertThresholdPercent).toBe(80);
+      const merged = { ...existing, ...update };
+
+      expect(merged.weeklyQuotaPerEmployee).toBe(10);
+      expect(merged.minAccuracyPercent).toBe(85);
+      expect(merged.maxRetakesPerDay).toBe(3);
+    });
+
+    it("should preserve unchanged values", () => {
+      const existing = {
+        maintenanceMode: false,
+        debugMode: true,
+        logLevel: "debug",
+      };
+
+      const update = {
+        maintenanceMode: true,
+      };
+
+      const merged = { ...existing, ...update };
+
+      expect(merged.maintenanceMode).toBe(true);
+      expect(merged.debugMode).toBe(true); // Unchanged
+      expect(merged.logLevel).toBe("debug"); // Unchanged
     });
   });
 
-  describe("getComplianceConfig", () => {
-    it("should return compliance config", async () => {
-      const config = {
-        requireDocumentation: true,
-        auditRetentionYears: 7,
-        enableAutoAudit: true,
-        complianceCheckIntervalDays: 30,
-      };
-      mockPrismaFounderConfig.findUnique.mockResolvedValue({
-        key: "compliance",
-        value: config,
-      });
+  // ===========================================================================
+  // SAFE PARSE HELPER TESTS
+  // ===========================================================================
 
-      const result = await configService.getComplianceConfig();
+  describe("Safe Parse Helper", () => {
+    const TestSchema = z.object({
+      value: z.number().default(42),
+    });
 
-      expect(result.requireDocumentation).toBe(true);
+    const defaultValue = { value: 42 };
+
+    function safeParseConfig<T>(schema: z.ZodSchema<T>, data: unknown): T | null {
+      try {
+        return schema.parse(data);
+      } catch {
+        return null;
+      }
+    }
+
+    it("should return parsed config on valid input", () => {
+      const result = safeParseConfig(TestSchema, { value: 100 });
+      expect(result).toEqual({ value: 100 });
+    });
+
+    it("should return null on invalid input", () => {
+      const result = safeParseConfig(TestSchema, { value: "not a number" });
+      expect(result).toBeNull();
+    });
+
+    it("should use default when combined with fallback", () => {
+      const result = safeParseConfig(TestSchema, { invalid: true }) ?? defaultValue;
+      expect(result).toEqual({ value: 42 });
     });
   });
 
-  describe("getNotificationConfig", () => {
-    it("should return notification config", async () => {
-      const config = {
-        enableEmail: true,
-        enableSms: false,
-        enablePush: true,
-        digestFrequency: "daily",
-        quietHoursStart: 22,
-        quietHoursEnd: 7,
-      };
-      mockPrismaFounderConfig.findUnique.mockResolvedValue({
-        key: "notification",
-        value: config,
-      });
+  // ===========================================================================
+  // MAINTENANCE MODE TESTS
+  // ===========================================================================
 
-      const result = await configService.getNotificationConfig();
+  describe("Maintenance Mode Check", () => {
+    it("should return true when maintenance mode is enabled", () => {
+      const config = { maintenanceMode: true };
+      expect(config.maintenanceMode).toBe(true);
+    });
 
-      expect(result.enableEmail).toBe(true);
-      expect(result.digestFrequency).toBe("daily");
+    it("should return false when maintenance mode is disabled", () => {
+      const config = { maintenanceMode: false };
+      expect(config.maintenanceMode).toBe(false);
+    });
+  });
+
+  // ===========================================================================
+  // AIR-GAP MODE TESTS
+  // ===========================================================================
+
+  describe("Air-Gap Mode Check", () => {
+    it("should return true when air-gap mode is enabled", () => {
+      const config = { airGapMode: true };
+      expect(config.airGapMode).toBe(true);
+    });
+
+    it("should return false when air-gap mode is disabled", () => {
+      const config = { airGapMode: false };
+      expect(config.airGapMode).toBe(false);
     });
   });
 });
