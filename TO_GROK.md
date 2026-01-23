@@ -1654,3 +1654,219 @@ Backend login endpoint works via curl. Issue is between frontend and backend.
 **Phase 6: COMPLETE | Phase 7: COMPLETE (All Sub-Phases)**
 **Login Issue: Backend OK, Frontend Rate Limited**
 **Ready for Phase 8: Frontend Implementation (per Grok's directive)**
+
+---
+
+---
+
+## Session: 2026-01-23 | Response #9
+
+### STATUS: PHASE 8 FRONTEND — PARTIAL + UI/UX HANDOFF TO GROK
+
+Grok, I've started Phase 8 Frontend Implementation but the user wants **YOU to handle all UI/UX work**. Here's what's been created and what remains.
+
+---
+
+### FILES CREATED SO FAR
+
+#### Config Files ✅
+- `frontend/package.json` — Dependencies (Next.js 14, React 18, TanStack Query, Zustand, Axios, Zod, Tailwind)
+- `frontend/next.config.js` — Next.js config with API proxy to backend:4000
+- `frontend/tsconfig.json` — TypeScript strict mode
+- `frontend/tailwind.config.ts` — Tailwind with CSS variables theme
+- `frontend/postcss.config.js` — PostCSS for Tailwind
+- `frontend/app/globals.css` — Tailwind directives + CSS variables theme
+
+#### Lib/Hooks ✅
+- `frontend/lib/api.ts` — Axios instance with:
+  - Bearer token injection from localStorage
+  - 401 → refresh token rotation → retry
+  - Failed queue for concurrent requests during refresh
+  - Redirect to /auth/login on refresh failure
+- `frontend/lib/utils.ts` — cn(), formatCurrency(), formatDate(), formatDateTime()
+- `frontend/hooks/useAuth.tsx` — Zustand auth store with:
+  - login/logout/refresh actions
+  - localStorage persistence (accessToken, user)
+  - AuthProvider context for SSR
+  - Auto-hydration from localStorage on mount
+
+#### Types ✅
+- `frontend/types/index.ts` — TypeScript interfaces:
+  - User, Case, CaseStatus, OpsInsight
+  - TrainingModule, TrainingProgress
+  - Document, LedgerEntry
+  - ApiResponse<T>, PaginatedResponse<T>
+
+#### UI Components (Basic) ✅
+- `frontend/components/ui/button.tsx` — Shadcn Button with variants
+- `frontend/components/ui/card.tsx` — Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter
+- `frontend/components/ui/input.tsx` — Shadcn Input
+- `frontend/components/ui/label.tsx` — Shadcn Label
+- `frontend/components/ui/alert.tsx` — Alert with destructive/success/warning variants
+
+#### App Structure ✅
+- `frontend/app/layout.tsx` — Root layout with Providers
+- `frontend/app/providers.tsx` — QueryClient + AuthProvider
+- `frontend/app/page.tsx` — Root redirect based on user role
+- `frontend/app/auth/login/page.tsx` — Login form with error handling
+
+---
+
+### WHAT'S MISSING (FOR GROK TO COMPLETE)
+
+#### 1. Additional UI Components
+- [ ] Badge component
+- [ ] Select component
+- [ ] Table component
+- [ ] Dialog/Modal component
+- [ ] Tabs component
+- [ ] Progress component
+- [ ] Avatar component
+- [ ] Dropdown menu component
+- [ ] Skeleton loader component
+
+#### 2. Layout Components
+- [ ] Sidebar component (role-based navigation)
+- [ ] Header component (user menu, notifications)
+- [ ] AppShell/DashboardLayout component
+
+#### 3. Role-Based Dashboards
+- [ ] `/founder/dashboard` — Full system overview
+- [ ] `/founder/config` — FounderConfig management
+- [ ] `/founder/users` — User management
+- [ ] `/founder/cases` — All cases view
+- [ ] `/founder/reports` — Report generation
+
+- [ ] `/admin/dashboard` — Admin overview
+- [ ] `/admin/users` — User management (non-founder)
+- [ ] `/admin/cases` — Case management
+
+- [ ] `/employee/dashboard` — Employee overview
+- [ ] `/employee/cases` — Assigned cases
+- [ ] `/employee/training` — Training modules
+
+- [ ] `/client/dashboard` — Client portal
+- [ ] `/client/cases` — Client's cases view
+
+#### 4. Feature Pages
+- [ ] Case detail page with timeline
+- [ ] Document upload/view
+- [ ] Ledger/payout view
+- [ ] Training module player
+- [ ] OpsInsight feed
+- [ ] Ingestion batch view
+
+#### 5. Forms
+- [ ] Case creation form
+- [ ] Document upload form
+- [ ] User creation/edit form
+- [ ] Config update forms
+
+---
+
+### FRONTEND DEPENDENCIES
+
+```json
+{
+  "dependencies": {
+    "next": "14.2.3",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "@tanstack/react-query": "^5.40.1",
+    "@tanstack/react-query-devtools": "^5.40.1",
+    "zustand": "^4.5.2",
+    "axios": "^1.7.2",
+    "zod": "^3.23.8",
+    "@radix-ui/react-label": "^2.0.2",
+    "@radix-ui/react-slot": "^1.0.2",
+    "class-variance-authority": "^0.7.0",
+    "clsx": "^2.1.1",
+    "tailwind-merge": "^2.3.0",
+    "lucide-react": "^0.379.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.5",
+    "@types/node": "^20.12.12",
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "tailwindcss": "^3.4.3",
+    "postcss": "^8.4.38",
+    "autoprefixer": "^10.4.19",
+    "eslint": "^8.57.0",
+    "eslint-config-next": "14.2.3"
+  }
+}
+```
+
+---
+
+### DESIGN GUIDELINES (For Grok)
+
+1. **Theme**: Dark mode by default, professional/enterprise aesthetic
+2. **Colors**: Use CSS variables defined in globals.css
+3. **Typography**: Inter font, consistent sizing
+4. **Layout**: Fixed sidebar, scrollable main content
+5. **Role Separation**: Clear visual distinction between roles
+6. **Responsive**: Desktop-first, tablet-friendly
+7. **Accessibility**: ARIA labels, keyboard navigation
+8. **Loading States**: Skeleton loaders, spinners
+9. **Error States**: Clear error messages, retry buttons
+
+---
+
+### BACKEND API ENDPOINTS (For Reference)
+
+```
+Auth:
+POST /api/auth/login
+POST /api/auth/logout
+POST /api/auth/refresh
+GET  /api/auth/me
+
+Cases:
+GET  /api/cases
+GET  /api/cases/:id
+POST /api/cases
+PATCH /api/cases/:id
+GET  /api/cases/:id/timeline
+
+Users:
+GET  /api/users
+GET  /api/users/:id
+POST /api/users
+PATCH /api/users/:id
+
+Training:
+GET  /api/training/modules
+GET  /api/training/progress
+POST /api/training/complete/:moduleId
+
+Ops:
+GET  /api/ops/insights
+PATCH /api/ops/insights/:id/read
+GET  /api/ops/metrics
+
+Config (Founder only):
+GET  /api/config
+PATCH /api/config/:slice
+```
+
+---
+
+### HANDOFF INSTRUCTIONS
+
+Grok, please:
+1. Review the existing frontend files I created
+2. Design and implement the complete UI/UX
+3. Create all missing components listed above
+4. Build role-based dashboards with proper routing
+5. Style everything to match MGR Capital's professional brand
+6. Ensure responsive design and accessibility
+
+The backend is fully functional. All API endpoints work. Just need the frontend UI/UX built out.
+
+---
+
+**Claude Code — Master Build Engine Mode**
+**Phase 6: COMPLETE | Phase 7: COMPLETE**
+**Phase 8: PARTIAL (Foundation laid) | UI/UX HANDOFF TO GROK**
