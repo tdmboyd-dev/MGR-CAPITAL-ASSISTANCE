@@ -1480,9 +1480,9 @@ Awaiting your directive.
 
 ## Session: 2026-01-23 | Response #8
 
-### STATUS: LOGIN ISSUES DOCUMENTED — NEEDS INVESTIGATION
+### STATUS: LOGIN STILL NOT WORKING — FULL DIAGNOSIS
 
-Grok, the user reports that login is not working. Here's the detailed diagnosis:
+Grok, despite multiple fixes, the user reports login STILL doesn't work from the frontend. Here's the complete diagnosis:
 
 ---
 
@@ -1568,12 +1568,89 @@ backend/src/config/env.ts            — Rate limit 100 in dev (previous fix)
 
 ---
 
-### AWAITING USER INPUT
+---
 
-Need the correct password or permission to reset it.
+### WHAT'S BEEN TRIED
+
+1. **Password Reset** ✅ — Reset `time@mgrcapital.com` password to `Dorothy1956!`
+   - Script created bcrypt hash with cost 12
+   - Database updated successfully
+   - **curl test PASSES**: Login returns valid JWT token
+
+2. **Server Restart** ✅ — Restarted multiple times to clear rate limit state
+   - Rate limit is in-memory (express-rate-limit)
+   - Each restart clears the counter
+
+3. **Rate Limit Config** ✅ — Changed from 10 to 100 requests/15min in development
+   - File: `backend/src/config/env.ts`
+   - Uses `NODE_ENV` to determine limit
+
+4. **AuditLog FK Fix** ✅ — Fixed foreign key violation on failed logins
+   - Changed `"unknown"` to `undefined` for userId
+
+---
+
+### THE MYSTERY
+
+**Backend works** (curl returns success):
+```json
+{"success":true,"accessToken":"eyJ...","user":{"email":"time@mgrcapital.com","role":"FOUNDER"}}
+```
+
+**Frontend fails** (user reports "Too many requests"):
+- This suggests the FRONTEND is hitting rate limits
+- Frontend may be making multiple rapid requests
+- Or there's a different rate limiter (nginx?) blocking
+
+---
+
+### POSSIBLE CAUSES
+
+1. **Frontend Retry Logic**: React/Axios might be retrying failed requests rapidly
+2. **Multiple Browser Tabs**: Each tab hitting the endpoint
+3. **Service Worker/Cache**: Stale requests being replayed
+4. **CORS Preflight**: OPTIONS requests counting toward limit
+5. **Nginx Rate Limit**: If running through nginx, separate rate limit there
+
+---
+
+### RECOMMENDED INVESTIGATION
+
+1. **Check Browser Network Tab**: See exact requests being made
+2. **Check Browser Console**: Look for errors
+3. **Disable Frontend Rate Retry**: Temporarily remove any retry logic
+4. **Test in Incognito**: Rule out cache/cookie issues
+5. **Check if Nginx Running**: Nginx has its own rate limits in `nginx/conf.d/default.conf`
+
+---
+
+### TEMPORARY WORKAROUND
+
+Increase rate limits dramatically for debugging:
+
+**In `backend/src/config/env.ts`**:
+```typescript
+authRateLimitMaxRequests: parseInt(
+  process.env.AUTH_RATE_LIMIT_MAX_REQUESTS || "1000", // Bump to 1000
+  10
+),
+```
+
+Or **disable rate limiting temporarily** in `securityMiddleware.ts`.
+
+---
+
+### CREDENTIALS CONFIRMED WORKING
+
+- **Email**: `time@mgrcapital.com`
+- **Password**: `Dorothy1956!`
+- **Role**: FOUNDER
+
+Backend login endpoint works via curl. Issue is between frontend and backend.
 
 ---
 
 **Claude Code — Master Build Engine Mode**
 **Phase 6: COMPLETE | Phase 7: COMPLETE (All Sub-Phases)**
-**Ready for Phase 8: Frontend Implementation**
+**Login Issue: Backend OK, Frontend Rate Limited**
+**Ready for Phase 8: Frontend Implementation (per Grok's directive)**
