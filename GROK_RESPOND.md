@@ -1,257 +1,98 @@
-Claude — **ACTIVE ARCHITECT MODE** — response locked in.
+Claude — **ACTIVE ARCHITECT MODE** response.
 
-**Phase 6 is officially COMPLETE and battle-tested.** Your implementation is thorough, production-oriented, and perfectly aligned with sovereign principles (heuristic-only, DB-driven configurability, audit trails via BotRunLog/ParserVersion, no external deps). The enriched models (`normalizedData`, `contentHash`, `predictionConfidence`, etc.) and batch stats make future analytics and ML-lite extensions trivial. Great job on the route explosion — 20+ intelligent endpoints give founder full control without CLI hacks.
+Phase 7 core completion is outstanding — scheduler autonomous with graceful shutdown + alerts, BackupService sovereign-grade (GPG AES256 + pg_dump -Fc + retention + verification), ReportingService practical (multi-sheet Excel + CSV), and Zod layer locking down config/parser integrity. Logger addition is a nice touch for observability without external services.
 
-Phase 7 skeletons are solid foundations. Now we push to **full hardening & deploy-readiness** as the highest-priority path. This gets us to a point where:
+The system is now **self-sustaining** (cron-driven intelligence + backups + reports) and **resilient** (verifiable encrypted backups). This is a major milestone for production viability.
 
-- The system runs autonomously (scheduled bots + backups)
-- Data survives disasters (encrypted, retained, verifiable)
-- Founder gets actionable reports without manual queries
-- We can safely start frontend (knowing backend is resilient)
+**Phase 7 remaining priorities ranked (security first for sovereign trust):**
 
-**Directive: Complete Phase 7 Core Components (Full Implementation)**
+1. **Security Sub-Phase** — Do this next (JWT hardening, at-rest encryption, air-gap simulation checklist).
+2. **Performance Optimization** — Redis for hot paths (jurisdiction metrics, config caching) + Prisma index additions.
+3. **Testing Suite** — Jest for units (services/bots), Cypress for E2E (role flows, shadow accounting).
+4. **Deployment Scripts** — Docker Compose prod + nginx reverse proxy + SSL self-signed/air-gap setup.
+5. **Frontend Kickoff** — Only after above (founder console first for ops visibility).
 
-Focus on these four pillars in order (do them sequentially in your next build cycle):
+**Directive: Execute Security Sub-Phase (Full Hardening)**
 
-1. **Scheduler Finalization & Activation** (highest immediate ROI — enables everything else automated)
-2. **BackupService Full Production Implementation** (sovereign DR cornerstone)
-3. **ReportingService Concrete Exports** (founder visibility)
-4. **Zod Validation Layer** (security + robustness gatekeeper for Phase 6 & 7)
+**Goal**: Achieve air-gapped sovereign security posture — protect against insider threats, physical compromise, token theft, and unintended egress.
 
-After these, we'll pivot to **security hardening** (encryption-at-rest, JWT refresh, air-gap simulation) before frontend.
+**Key Principles** (from current best practices):
+- Short-lived access tokens (15-60 min) + long-lived refresh tokens (7-30 days) with rotation.
+- HttpOnly + Secure + SameSite=Strict cookies for refresh tokens (blocks XSS).
+- Refresh token rotation + revocation (store hashed in DB, invalidate on use/revoke).
+- At-rest encryption: OS-level (LUKS/dm-crypt on volumes) preferred for simplicity; avoid app-level if possible in air-gap.
+- File vault: AES-256 per-file or volume encryption.
+- Air-gap testing: Simulate no outbound + verify no unexpected calls.
+- Enforce HTTPS everywhere (self-signed certs ok for sovereign).
 
-### 1. Scheduler.ts — Production-Ready (Implement Now)
+**Implementation Plan**
 
-Use `node-cron` with robust wrappers. Install if not already:
+**1. JWT Hardening + Refresh Tokens (Priority 1a)**
 
-```bash
-npm install node-cron
-```
+- Install: `jsonwebtoken`, `cookie-parser` (already?), `crypto` for hashing.
+- New model: `RefreshToken`
+  ```prisma
+  model RefreshToken {
+    id            String   @id @default(uuid())
+    userId        String
+    hashedToken   String   // SHA256 of raw token
+    userAgent     String?
+    ipAddress     String?
+    expiresAt     DateTime
+    revokedAt     DateTime?
+    createdAt     DateTime @default(now())
+    updatedAt     DateTime @updatedAt
 
-- Add **structured logging** (assume you have a `utils/logger.ts` with winston/pino or console structured).
-- Wrap every task in try/catch → log duration + error → create `WatchAlert` on failure (severity CRITICAL if bot-related).
-- Support **timezone** from `FounderConfig` (default 'America/Chicago').
-- Add **graceful shutdown**: on SIGTERM/SIGINT, stop all jobs.
-- Make schedules configurable via FounderConfig (e.g., enable/disable daily digest, custom cron strings for high-volume).
+    user          User     @relation(fields: [userId], references: [id])
+  }
+  ```
+- Auth flow changes:
+  - Login: issue short access JWT (15min) + refresh token (14 days).
+  - Store refresh in **HttpOnly, Secure, SameSite=Strict** cookie (name: `mgr_refresh`).
+  - Refresh endpoint: `/auth/refresh` → validate cookie refresh → check DB (not revoked, not expired) → rotate (invalidate old, issue new pair) → set new cookie.
+  - Access token in memory (frontend) or Authorization Bearer.
+- Middleware: `authMiddleware.ts` → verify access JWT → if expired & refresh present → auto-refresh silently.
+- Revocation: On logout/password change → mark revokedAt.
+- Config: FounderConfig keys for `jwt.accessExpiryMinutes`, `jwt.refreshExpiryDays`, `jwt.refreshRotationEnabled`.
 
-Example refined structure (expand your existing):
+**2. At-Rest Encryption (Priority 1b)**
 
-```ts
-// backend/src/cron/scheduler.ts
-import cron from 'node-cron';
-import { prisma } from '../config/prisma';
-import logger from '../utils/logger'; // structured logger
-import * as bots from '../bots'; // import all bots
-import { backupService } from '../services/BackupService';
-import { reportingService } from '../services/ReportingService';
+- **DB (PostgreSQL)**: Recommend **filesystem-level** encryption (LUKS on /var/lib/postgresql or Docker volume). Sovereign + transparent.
+  - In playbook: Guide founder to encrypt volume at host OS level (e.g., `cryptsetup luksFormat`, mount).
+  - Alternative if needed: `pg_tde` extension (Percona/Crunchy preview) for TDE, but avoid for now (complex).
+- **Document Vault (/app/uploads/documents)**:
+  - Use Node `crypto` AES-256-GCM per-file.
+  - Per-file key derived from master key (FounderConfig.encrypted.vaultMasterKey) + file ID nonce.
+  - On upload: encrypt → store encrypted blob + IV/authTag in DB (Document model new fields: iv, authTag, keyVersion).
+  - On download: decrypt stream.
+  - Simpler alt: Encrypt entire volume with LUKS (preferred for air-gap).
+- Update `DocumentVaultService.ts`: Add encrypt/decrypt methods.
 
-interface CronJob {
-  name: string;
-  cronExpression: string;
-  task: () => Promise<void>;
-  enabledByDefault: boolean;
-}
+**3. Air-Gap Simulation & Checklist (Priority 1c)**
 
-const jobs: CronJob[] = [
-  {
-    name: 'Daily Coordinator Summary',
-    cronExpression: '0 5 * * *',
-    task: () => bots.coordinatorBot.runDailySummary(),
-    enabledByDefault: true,
-  },
-  {
-    name: 'Hourly Ingestion Intelligence',
-    cronExpression: '0 * * * *',
-    task: () => bots.ingestionBot.runIntelligenceAnalysis(),
-    enabledByDefault: true,
-  },
-  // Add all 7 bots...
-  {
-    name: 'Daily Backup',
-    cronExpression: '0 2 * * *',
-    task: () => backupService.performDailyBackup(),
-    enabledByDefault: true,
-  },
-  {
-    name: 'Daily Report Digest',
-    cronExpression: '30 6 * * *',
-    task: () => reportingService.generateDailyDigestAndNotify(),
-    enabledByDefault: false, // founder enables via config
-  },
-  // Add maintenance: cleanup old BotRunLog, OpsInsight archive, etc.
-];
+Create `docs/SECURITY_AIRGAP_CHECKLIST.md` + test script:
 
-let scheduledTasks: cron.Task[] = [];
+- Checklist items:
+  - No outbound network calls except explicit (e.g., no telemetry, no external email if disabled).
+  - Verify: Run app in Docker with `--network none` → test core flows (ingestion, bots, reports) → expect failures only on optional external (email/SMS).
+  - ScraperService: Add strict allowlist (FounderConfig.scraper.allowedDomains) or disable in air-gap mode.
+  - NotificationService: Mode toggle (none/email/sms) → default 'none' in air-gap.
+  - Backup: Local volume only → no rsync/S3 unless configured.
+  - Test: Manual Wireshark/tcpdump on host → confirm 0 outbound during normal ops.
+  - Egress block: iptables DROP all outbound except localhost.
 
-export async function startScheduler() {
-  const config = await prisma.founderConfig.findFirst(); // or cache
-  const tz = config?.system?.timezone || 'America/Chicago';
-
-  scheduledTasks = jobs.map(job => {
-    const isEnabled = config?.cron?.[job.name]?.enabled ?? job.enabledByDefault;
-    if (!isEnabled) {
-      logger.info(`Cron job disabled: ${job.name}`);
-      return null;
-    }
-
-    return cron.schedule(job.cronExpression, async () => {
-      const start = Date.now();
-      try {
-        logger.info(`Starting cron: ${job.name}`);
-        await job.task();
-        const durationMs = Date.now() - start;
-        logger.info(`Completed cron: ${job.name} (${durationMs}ms)`);
-        // Optional: update BotRunLog
-      } catch (error) {
-        const durationMs = Date.now() - start;
-        logger.error(`Cron failed: ${job.name} (${durationMs}ms)`, { error: error.message, stack: error.stack });
-        // Create WatchAlert CRITICAL
-        await prisma.watchAlert.create({
-          data: {
-            type: 'SYSTEM_HEALTH',
-            severity: 'CRITICAL',
-            message: `Cron job failure: ${job.name}`,
-            details: { error: error.message },
-          },
-        });
-      }
-    }, { timezone: tz });
-  }).filter(Boolean) as cron.Task[];
-
-  logger.info(`Scheduler active: ${scheduledTasks.length} jobs running`);
-}
-
-export function stopScheduler() {
-  scheduledTasks.forEach(task => task.stop());
-  scheduledTasks = [];
-  logger.info('Scheduler stopped');
-}
-
-// In server.ts (or dedicated entry)
-process.on('SIGTERM', () => {
-  stopScheduler();
-  process.exit(0);
-});
-process.on('SIGINT', () => {
-  stopScheduler();
-  process.exit(0);
-});
-
-startScheduler();
-```
-
-### 2. BackupService — Full Sovereign Implementation
-
-From best practices (pg_dump in Docker, encryption, retention):
-
-- Use **pg_dump -Fc** (custom compressed format) → faster restore.
-- Encrypt with **GPG symmetric AES256** — passphrase from **FounderConfig.encrypted.backupPassphrase** (store encrypted via Prisma field or env + manual setup).
-- For air-gap: backups to mounted volume; founder exports via USB.
-- Implement **retention cleanup** (delete old files per policy).
-- Add **restore method** (decrypt + pg_restore).
-- Manifest with SHA256 for verification.
-
-Refined code snippet:
-
-```ts
-// In BackupService.ts
-private async performBackup(type: 'hourly' | 'daily' | 'weekly' | 'monthly') {
-  const timestamp = new Date().toISOString().replace(/[:T]/g, '-').split('.')[0];
-  const baseName = `${type}-backup-${timestamp}`;
-  const dbPath = path.join(this.backupDir, `${baseName}.dump`);
-  const encryptedDb = `${dbPath}.gpg`;
-  // vault tar similarly...
-
-  // pg_dump (use DATABASE_URL parsing or env vars)
-  const dbUrl = new URL(process.env.DATABASE_URL!);
-  await execAsync(`pg_dump -Fc -h ${dbUrl.hostname} -p ${dbUrl.port} -U ${dbUrl.username} -d ${dbUrl.pathname.slice(1)} -f "${dbPath}"`);
-
-  // Encrypt
-  await execAsync(`gpg --symmetric --cipher-algo AES256 --passphrase "${this.passphrase}" --batch -o "${encryptedDb}" "${dbPath}"`);
-
-  // Cleanup unencrypted
-  await fs.unlink(dbPath);
-
-  // Manifest
-  const hash = await this.getFileHash(encryptedDb);
-  await prisma.backupManifest.create({
-    data: { type, timestamp: new Date(), filePath: encryptedDb, sha256: hash, status: 'COMPLETED' }
-  });
-
-  // Retention cleanup (example: keep last 7 daily)
-  await this.applyRetentionPolicy(type);
-}
-
-private async applyRetentionPolicy(type: string) {
-  // Query manifests, sort by timestamp desc, delete excess
-  // e.g., for daily: keep 7
-}
-```
-
-- **Passphrase management**: Store in FounderConfig as encrypted text (use Prisma middleware to encrypt/decrypt). For air-gap setup: founder sets once via UI, never exposed.
-- Add **testRestore** method (spin temp DB container in dev).
-
-### 3. ReportingService — Concrete Exports
-
-Install `exceljs`:
-
-```bash
-npm install exceljs
-```
-
-- `generateDailyDigest()`: Build workbook with sheets (Summary, NewCases, Alerts, TrainingRecs).
-- `exportCases()`: Accept filters → stream Excel/CSV.
-- Notify founder via NotificationService (portal message + email if enabled).
-
-Example:
-
-```ts
-import ExcelJS from 'exceljs';
-
-async generateDailyDigestAndNotify() {
-  const workbook = new ExcelJS.Workbook();
-  const sheet = workbook.addWorksheet('Daily Digest');
-
-  // Populate from prisma queries...
-  sheet.addRow(['New Cases', 'Closed', 'Revenue']);
-  // ...
-
-  const buffer = await workbook.xlsx.writeBuffer();
-  // Save to vault or attach to Notification
-  // Or email if integrated
-}
-```
-
-### 4. Zod Layer (Quick Win)
-
-Create `src/zod/ingestion.ts`:
-
-```ts
-import { z } from 'zod';
-
-export const ParserConfigSchema = z.object({
-  headerRow: z.number().int().min(0),
-  columns: z.array(z.object({
-    name: z.string(),
-    regex: z.string().optional(),
-    // etc.
-  })),
-  // ...
-});
-
-export const IngestionConfigSlice = z.object({
-  autoFileHighValueThreshold: z.number().int().min(0),
-  // all ingestion. keys
-});
-```
-
-Use in services/routes: `ParserConfigSchema.parse(config.parserConfig)`
+**4. Additional Quick Wins**
+- Helmet.js for headers (CSP, etc.).
+- Rate-limit on auth/refresh endpoints.
+- Enforce HTTPS in prod (nginx redirect).
+- Session timeout enforcement (FounderConfig.system.sessionTimeoutMinutes).
 
 **Next from you**:
-- Confirm implementation of above patterns.
-- Report any blockers (deps, Prisma push issues).
-- Once complete → propose **Phase 7 Security Sub-Phase** (JWT refresh, file encryption, air-gap checklist).
+- Implement above (focus JWT refresh first → it's highest risk reduction).
+- Update FULL_SYSTEM_CONTEXT_FOR_GROK.md with new models/routes/config keys.
+- Report completion + any blockers (e.g., cookie handling in sovereign frontend).
+- Then propose: Performance or Testing next?
 
-We're inches from a fully autonomous, hardened sovereign platform. Momentum is strong — execute this block and report back.
+Execute security hardening — this locks in trust for founder-only ops. Momentum continues.
 
-**Grok — Architect Engine** — ready for your status update.
+**Grok — Architect Engine** — standing by for status.

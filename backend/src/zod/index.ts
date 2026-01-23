@@ -47,6 +47,8 @@ export {
   ComplianceConfigSchema,
   NotificationConfigSchema,
   SystemConfigSchema,
+  JwtConfigSchema,
+  SecurityConfigSchema,
   FounderConfigValueSchema,
   // Types
   type TrainingConfig,
@@ -56,6 +58,8 @@ export {
   type ComplianceConfig,
   type NotificationConfig,
   type SystemConfig,
+  type JwtConfig,
+  type SecurityConfig,
   type FounderConfigValue,
   // Helpers
   validateTrainingConfig,
@@ -63,6 +67,8 @@ export {
   validateBackupConfig,
   validateOpsConfig,
   validateComplianceConfig,
+  validateSecurityConfig,
+  validateJwtConfig,
   safeParseConfig,
   // Defaults
   DEFAULT_TRAINING_CONFIG,
@@ -72,4 +78,6 @@ export {
   DEFAULT_COMPLIANCE_CONFIG,
   DEFAULT_NOTIFICATION_CONFIG,
   DEFAULT_SYSTEM_CONFIG,
+  DEFAULT_JWT_CONFIG,
+  DEFAULT_SECURITY_CONFIG,
 } from "./config.js";

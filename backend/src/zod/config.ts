@@ -197,6 +197,60 @@ export const SystemConfigSchema = z.object({
   features: z.record(z.boolean()).default({}),
 });
 
+// =============================================================================
+// JWT / SECURITY CONFIG SCHEMAS
+// =============================================================================
+
+export const JwtConfigSchema = z.object({
+  // Access token settings
+  accessExpiryMinutes: z.number().int().min(5).max(120).default(15),
+
+  // Refresh token settings
+  refreshExpiryDays: z.number().int().min(1).max(90).default(14),
+  refreshRotationEnabled: z.boolean().default(true),
+  refreshMaxReuse: z.number().int().min(0).max(3).default(0), // 0 = no reuse allowed
+
+  // Token security
+  algorithm: z.enum(["HS256", "HS384", "HS512"]).default("HS256"),
+  issuer: z.string().default("mgr-capital"),
+  audience: z.string().default("mgr-capital-app"),
+});
+
+export type JwtConfig = z.infer<typeof JwtConfigSchema>;
+
+export const SecurityConfigSchema = z.object({
+  // JWT settings
+  jwt: JwtConfigSchema.default({}),
+
+  // Rate limiting
+  rateLimitEnabled: z.boolean().default(true),
+  rateLimitWindowMs: z.number().int().min(1000).default(900000), // 15 min
+  rateLimitMaxRequests: z.number().int().min(1).default(100),
+  authRateLimitMaxRequests: z.number().int().min(1).default(10), // stricter for auth
+
+  // Cookie settings
+  cookieSecure: z.boolean().default(true), // Set false only for local dev
+  cookieSameSite: z.enum(["strict", "lax", "none"]).default("strict"),
+  cookieDomain: z.string().optional(),
+
+  // Password policy
+  passwordMinLength: z.number().int().min(8).default(12),
+  passwordRequireUppercase: z.boolean().default(true),
+  passwordRequireLowercase: z.boolean().default(true),
+  passwordRequireNumbers: z.boolean().default(true),
+  passwordRequireSpecial: z.boolean().default(true),
+
+  // Brute-force protection
+  maxLoginAttempts: z.number().int().min(3).default(5),
+  lockoutDurationMinutes: z.number().int().min(1).default(15),
+
+  // Air-gap mode
+  airGapMode: z.boolean().default(false),
+  allowedExternalDomains: z.array(z.string()).default([]),
+});
+
+export type SecurityConfig = z.infer<typeof SecurityConfigSchema>;
+
 export type SystemConfig = z.infer<typeof SystemConfigSchema>;
 
 // =============================================================================
@@ -277,10 +331,26 @@ export const DEFAULT_OPS_CONFIG: OpsConfig = OpsConfigSchema.parse({});
 export const DEFAULT_COMPLIANCE_CONFIG: ComplianceConfig = ComplianceConfigSchema.parse({});
 export const DEFAULT_NOTIFICATION_CONFIG: NotificationConfig = NotificationConfigSchema.parse({});
 export const DEFAULT_SYSTEM_CONFIG: SystemConfig = SystemConfigSchema.parse({});
+export const DEFAULT_JWT_CONFIG: JwtConfig = JwtConfigSchema.parse({});
+export const DEFAULT_SECURITY_CONFIG: SecurityConfig = SecurityConfigSchema.parse({});
 
 // =============================================================================
 // EXPORTS
 // =============================================================================
+
+/**
+ * Validate security config
+ */
+export function validateSecurityConfig(config: unknown): SecurityConfig {
+  return SecurityConfigSchema.parse(config);
+}
+
+/**
+ * Validate JWT config
+ */
+export function validateJwtConfig(config: unknown): JwtConfig {
+  return JwtConfigSchema.parse(config);
+}
 
 export default {
   TrainingConfigSchema,
@@ -290,11 +360,15 @@ export default {
   ComplianceConfigSchema,
   NotificationConfigSchema,
   SystemConfigSchema,
+  JwtConfigSchema,
+  SecurityConfigSchema,
   validateTrainingConfig,
   validateSchedulerConfig,
   validateBackupConfig,
   validateOpsConfig,
   validateComplianceConfig,
+  validateSecurityConfig,
+  validateJwtConfig,
   safeParseConfig,
   DEFAULT_TRAINING_CONFIG,
   DEFAULT_SCHEDULER_CONFIG,
@@ -303,4 +377,6 @@ export default {
   DEFAULT_COMPLIANCE_CONFIG,
   DEFAULT_NOTIFICATION_CONFIG,
   DEFAULT_SYSTEM_CONFIG,
+  DEFAULT_JWT_CONFIG,
+  DEFAULT_SECURITY_CONFIG,
 };

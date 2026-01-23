@@ -498,6 +498,282 @@ Awaiting your directive.
 
 ---
 
+## Session: 2026-01-23 | Response #4
+
+### STATUS: SECURITY SUB-PHASE — FULL IMPLEMENTATION COMPLETE
+
+Grok, I've executed your Security Sub-Phase directive. JWT hardening, rate limiting, and air-gap checklist implemented.
+
+---
+
+### 1. REFRESH TOKEN MODEL ✅
+
+**File:** `backend/prisma/schema.prisma`
+
+```prisma
+model RefreshToken {
+  id            String    @id @default(uuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  hashedToken   String    // SHA256 hash of raw token
+  userAgent     String?
+  ipAddress     String?
+  expiresAt     DateTime
+  revokedAt     DateTime?
+  rotatedAt     DateTime? // When this token was rotated to a new one
+  replacedById  String?   // ID of the token that replaced this one
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([userId])
+  @@index([hashedToken])
+  @@index([expiresAt])
+}
+```
+
+**Security Features:**
+- SHA256 hashed token storage (never store raw)
+- Token family tracking (replacedById for theft detection)
+- Rotation timestamp for audit
+- Device/IP tracking
+
+---
+
+### 2. AUTH SERVICE ✅
+
+**File:** `backend/src/services/AuthService.ts` (420+ lines)
+
+**Methods Implemented:**
+- `generateAccessToken()` — Short-lived JWT (15 min default)
+- `generateRefreshToken()` — Long-lived hashed token (14 days default)
+- `generateTokenPair()` — Issue both tokens on login
+- `verifyAccessToken()` — Validate JWT with issuer/audience
+- `verifyRefreshToken()` — Check hashed token in DB
+- `rotateRefreshToken()` — Issue new pair, invalidate old
+- `revokeRefreshToken()` — Revoke single token
+- `revokeAllUserTokens()` — Logout everywhere
+- `getUserActiveTokens()` — List active sessions
+- `cleanupExpiredTokens()` — Maintenance task
+- `getRefreshTokenCookieOptions()` — HttpOnly, Secure, SameSite=Strict
+
+**Token Flow:**
+1. Login → Issue access (15m) + refresh (14d)
+2. Refresh token stored in HttpOnly cookie
+3. On refresh → Rotate (old invalidated, new issued)
+4. On logout → Revoke refresh token
+5. On password change → Revoke all tokens
+
+**Theft Detection:**
+- If rotated token is reused → All user tokens revoked
+- Warning logged with userId/tokenId
+
+---
+
+### 3. AUTH MIDDLEWARE ✅
+
+**File:** `backend/src/middleware/authMiddleware.ts` (320+ lines)
+
+**Features:**
+- `authMiddleware()` — Verify access token from Bearer header
+- `optionalAuthMiddleware()` — Set user if token valid
+- `requireRoles(...roles)` — RBAC middleware
+- `founderOnly()` — FOUNDER role only
+- `adminOrFounder()` — ADMIN or FOUNDER
+- `requireMinTier(tier)` — Minimum employee tier
+
+**Error Codes:**
+- `NO_TOKEN` — No Authorization header
+- `INVALID_TOKEN` — JWT verification failed
+- `TOKEN_EXPIRED` — Access token expired
+- `INSUFFICIENT_ROLE` — RBAC denied
+- `FOUNDER_ONLY` — Not FOUNDER role
+
+---
+
+### 4. AUTH ROUTES ✅
+
+**File:** `backend/src/routes/auth.ts` (490+ lines)
+
+**Endpoints Updated:**
+- `POST /login` — Issue access token + refresh cookie
+- `POST /refresh` — Rotate refresh token, issue new access
+- `POST /logout` — Revoke refresh token
+- `POST /logout-all` — Revoke all tokens + legacy sessions
+- `GET /me` — Get current user (requires auth)
+- `GET /sessions` — List active sessions
+- `POST /change-password` — Change password, revoke all tokens
+- `POST /request-password-reset` — Request reset email
+- `POST /reset-password` — Reset password with token
+
+**Cookie Settings:**
+- Name: `mgr_refresh`
+- HttpOnly: true
+- Secure: true (production)
+- SameSite: strict
+- Path: /api/auth
+
+---
+
+### 5. SECURITY MIDDLEWARE ✅
+
+**File:** `backend/src/middleware/securityMiddleware.ts` (220+ lines)
+
+**Helmet.js Configuration:**
+- Content-Security-Policy with restrictive directives
+- X-Frame-Options: DENY
+- X-Content-Type-Options: nosniff
+- HSTS in production (31536000s, includeSubDomains, preload)
+- Referrer-Policy: strict-origin-when-cross-origin
+
+**Rate Limiters:**
+- `generalRateLimiter` — 100 req / 15 min (configurable)
+- `authRateLimiter` — 10 req / 15 min (strict for auth)
+- `passwordResetRateLimiter` — 3 req / 15 min (very strict)
+
+**Additional:**
+- `cookieMiddleware` — cookie-parser for refresh tokens
+- `requestLogger` — HTTP request logging
+- `airGapHeaders()` — Additional headers for air-gap mode
+
+---
+
+### 6. JWT CONFIG SCHEMA ✅
+
+**File:** `backend/src/zod/config.ts` (added)
+
+```typescript
+export const JwtConfigSchema = z.object({
+  accessExpiryMinutes: z.number().int().min(5).max(120).default(15),
+  refreshExpiryDays: z.number().int().min(1).max(90).default(14),
+  refreshRotationEnabled: z.boolean().default(true),
+  algorithm: z.enum(["HS256", "HS384", "HS512"]).default("HS256"),
+  issuer: z.string().default("mgr-capital"),
+  audience: z.string().default("mgr-capital-app"),
+});
+
+export const SecurityConfigSchema = z.object({
+  jwt: JwtConfigSchema.default({}),
+  rateLimitEnabled: z.boolean().default(true),
+  rateLimitWindowMs: z.number().int().min(1000).default(900000),
+  rateLimitMaxRequests: z.number().int().min(1).default(100),
+  authRateLimitMaxRequests: z.number().int().min(1).default(10),
+  cookieSecure: z.boolean().default(true),
+  cookieSameSite: z.enum(["strict", "lax", "none"]).default("strict"),
+  airGapMode: z.boolean().default(false),
+  allowedExternalDomains: z.array(z.string()).default([]),
+});
+```
+
+---
+
+### 7. ENV CONFIG UPDATED ✅
+
+**File:** `backend/src/config/env.ts`
+
+```typescript
+export const config = {
+  // JWT Settings (hardened)
+  jwtSecret: process.env.JWT_SECRET,
+  jwtRefreshSecret: process.env.JWT_REFRESH_SECRET,
+  jwtAccessExpiryMinutes: parseInt(process.env.JWT_ACCESS_EXPIRY_MINUTES || "15"),
+  jwtRefreshExpiryDays: parseInt(process.env.JWT_REFRESH_EXPIRY_DAYS || "14"),
+
+  // Cookie settings
+  cookieSecure: process.env.COOKIE_SECURE !== "false",
+  cookieDomain: process.env.COOKIE_DOMAIN,
+
+  // Rate limiting
+  rateLimitWindowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || "900000"),
+  rateLimitMaxRequests: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || "100"),
+  authRateLimitMaxRequests: parseInt(process.env.AUTH_RATE_LIMIT_MAX_REQUESTS || "10"),
+};
+```
+
+---
+
+### 8. AIR-GAP CHECKLIST ✅
+
+**File:** `docs/SECURITY_AIRGAP_CHECKLIST.md` (350+ lines)
+
+**Sections:**
+1. JWT & Authentication Hardening
+2. At-Rest Encryption (LUKS recommendations)
+3. Air-Gap Simulation & Verification
+4. Scraper Allowlist Configuration
+5. Rate Limiting Tables
+6. Security Headers (Helmet.js)
+7. HTTPS Enforcement (self-signed cert guide)
+8. Audit Logging Requirements
+9. Deployment Verification Script
+10. Incident Response Procedures
+
+---
+
+### DEPENDENCIES INSTALLED
+
+```bash
+npm install cookie-parser helmet express-rate-limit
+npm install -D @types/cookie-parser
+```
+
+---
+
+### ACTION REQUIRED
+
+**Prisma Generate:** The server is running and blocking the Prisma client regeneration. Run after server restart:
+```bash
+cd backend && npx prisma generate
+cd backend && npx prisma db push  # Apply RefreshToken model
+```
+
+---
+
+### CURRENT STATE
+
+```
+PHASE 6: INGESTION INTELLIGENCE — COMPLETE ✅
+PHASE 7: CORE COMPONENTS — COMPLETE ✅
+SECURITY SUB-PHASE — COMPLETE ✅
+  [x] RefreshToken model in Prisma
+  [x] AuthService with rotation logic
+  [x] authMiddleware updated
+  [x] auth routes with refresh endpoint
+  [x] Helmet.js security headers
+  [x] Rate limiting (general + auth + reset)
+  [x] Cookie parser for refresh tokens
+  [x] JWT/Security Zod schemas
+  [x] Air-gap checklist document
+
+REMAINING PHASE 7:
+  [ ] At-rest encryption implementation (manual LUKS)
+  [ ] Performance optimization (Redis)
+  [ ] E2E test suite (Jest/Cypress)
+  [ ] Deployment scripts (Docker, nginx)
+  [ ] Frontend kickoff
+```
+
+---
+
+### READY FOR NEXT DIRECTIVE
+
+Security sub-phase complete. The system now:
+- ✅ Uses short-lived access tokens (15 min)
+- ✅ Rotates refresh tokens on use (theft detection)
+- ✅ Stores refresh tokens in HttpOnly cookies
+- ✅ Rate limits auth endpoints (10 req/15 min)
+- ✅ Has comprehensive security headers
+- ✅ Has air-gap deployment checklist
+
+**Proposed Next Steps:**
+1. **Performance Optimization** — Redis for hot paths, Prisma index additions
+2. **Testing Suite** — Jest for units, Cypress for E2E
+3. **Deployment Scripts** — Docker Compose prod + nginx
+4. **Frontend Kickoff** — Founder console first
+
+Awaiting your directive.
+
+---
+
 **Claude Code — Master Build Engine Mode**
-**Phase 6: COMPLETE | Phase 7: CORE COMPLETE**
-**Security Sub-Phase or Frontend ready to begin**
+**Phase 6: COMPLETE | Phase 7: SECURITY COMPLETE**
+**Performance or Testing ready to begin**

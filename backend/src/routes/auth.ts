@@ -1,15 +1,26 @@
-// ============================================
-// AUTH ROUTES — MGR CAPITAL ASSISTANCE
-// Production-ready authentication endpoints
-// ============================================
+/**
+ * AUTH ROUTES — MGR CAPITAL ASSISTANCE
+ * Production-ready authentication endpoints with JWT hardening
+ *
+ * SECURITY FEATURES:
+ * - Short-lived access tokens (15 min)
+ * - Long-lived refresh tokens (14 days) with rotation
+ * - HttpOnly cookies for refresh tokens
+ * - Rate limiting on auth endpoints
+ * - Brute-force protection
+ * - Audit logging
+ *
+ * FOUNDER-ONLY OPS LAYER COMPONENT
+ */
 
-import { Router, Request, Response, NextFunction } from "express";
-import jwt from "jsonwebtoken";
+import { Router, Request, Response } from "express";
 import bcrypt from "bcrypt";
 import { PrismaClient } from "@prisma/client";
-import { config } from "../config/env.js";
+import { authService } from "../services/AuthService.js";
 import { asyncHandler, AppError, Errors } from "../middleware/errorHandler.js";
 import { AuditActions } from "../middleware/auditLogger.js";
+import { authMiddleware, AuthenticatedRequest } from "../middleware/authMiddleware.js";
+import { logger } from "../utils/logger.js";
 import {
   isLockedOut,
   recordFailedLogin,
@@ -18,469 +29,461 @@ import {
   verifyPasswordResetToken,
   validatePasswordComplexity,
   sanitizeEmail,
-  invalidateAllSessions
+  invalidateAllSessions,
 } from "../utils/security.js";
 
 const router = Router();
 const prisma = new PrismaClient();
 
-// ============================================
-// LOGIN
-// ============================================
+// Cookie name for refresh token
+const REFRESH_COOKIE_NAME = "mgr_refresh";
 
-router.post("/login", asyncHandler(async (req: Request, res: Response) => {
-  const { email, password } = req.body;
+// =============================================================================
+// LOGIN — Issue access + refresh tokens
+// =============================================================================
 
-  // Validate input
-  if (!email || !password) {
-    throw Errors.badRequest("Email and password required");
-  }
+router.post(
+  "/login",
+  asyncHandler(async (req: Request, res: Response) => {
+    const { email, password } = req.body;
 
-  const normalizedEmail = sanitizeEmail(email);
-  const identifier = `${normalizedEmail}:${req.ip}`; // Combine email + IP for brute-force tracking
-
-  // Check if locked out due to too many failed attempts
-  const lockoutStatus = isLockedOut(identifier);
-  if (lockoutStatus.locked) {
-    const minutesRemaining = Math.ceil(lockoutStatus.remainingMs / 60000);
-    await AuditActions.login("unknown", false, req);
-    throw new AppError(
-      "Account locked",
-      429,
-      `Too many failed login attempts. Please try again in ${minutesRemaining} minute${minutesRemaining === 1 ? "" : "s"}.`
-    );
-  }
-
-  // Find user by email
-  const user = await prisma.user.findUnique({
-    where: { email: normalizedEmail },
-    select: {
-      id: true,
-      email: true,
-      passwordHash: true,
-      role: true,
-      name: true,
-      isActive: true,
-      emailVerified: true,
-      employeeTier: true
+    if (!email || !password) {
+      throw Errors.badRequest("Email and password required");
     }
-  });
 
-  // User not found - use generic message to prevent enumeration
-  if (!user) {
-    recordFailedLogin(identifier);
-    await AuditActions.login("unknown", false, req);
-    throw Errors.unauthorized();
-  }
+    const normalizedEmail = sanitizeEmail(email);
+    const identifier = `${normalizedEmail}:${req.ip}`;
 
-  // Account disabled
-  if (!user.isActive) {
-    recordFailedLogin(identifier);
-    await AuditActions.login(user.id, false, req);
-    throw new AppError("Account disabled", 403, "Account is disabled. Contact administrator.");
-  }
-
-  // Verify password
-  const passwordValid = await bcrypt.compare(password, user.passwordHash);
-  if (!passwordValid) {
-    const result = recordFailedLogin(identifier);
-    await AuditActions.login(user.id, false, req);
-
-    if (result.locked) {
+    // Check brute-force lockout
+    const lockoutStatus = isLockedOut(identifier);
+    if (lockoutStatus.locked) {
+      const minutesRemaining = Math.ceil(lockoutStatus.remainingMs / 60000);
+      await AuditActions.login("unknown", false, req);
       throw new AppError(
         "Account locked",
         429,
-        "Too many failed login attempts. Please try again in 15 minutes."
+        `Too many failed login attempts. Please try again in ${minutesRemaining} minute${minutesRemaining === 1 ? "" : "s"}.`
       );
     }
 
-    throw Errors.unauthorized();
-  }
+    // Attempt login
+    const result = await authService.login(
+      normalizedEmail,
+      password,
+      req.get("User-Agent"),
+      req.ip
+    );
 
-  // Successful login - clear any failed attempts
-  clearLoginAttempts(identifier);
-
-  // Update last login
-  await prisma.user.update({
-    where: { id: user.id },
-    data: { lastLoginAt: new Date() }
-  });
-
-  // Create session token
-  const token = jwt.sign(
-    {
-      userId: user.id,
-      email: user.email,
-      role: user.role,
-      tier: user.employeeTier
-    },
-    config.jwtSecret,
-    { expiresIn: "7d" }
-  );
-
-  // Create session record
-  await prisma.userSession.create({
-    data: {
-      userId: user.id,
-      token,
-      ipAddress: req.ip,
-      userAgent: req.get("User-Agent"),
-      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days
+    if (!result.success || !result.tokens || !result.user) {
+      recordFailedLogin(identifier);
+      await AuditActions.login("unknown", false, req);
+      throw Errors.unauthorized();
     }
-  });
 
-  // Log successful login
-  await AuditActions.login(user.id, true, req);
+    // Clear failed attempts on success
+    clearLoginAttempts(identifier);
 
-  // Return user data (without sensitive fields)
-  res.json({
-    success: true,
-    token,
-    user: {
-      id: user.id,
-      email: user.email,
-      role: user.role,
-      name: user.name,
-      tier: user.employeeTier
+    // Log successful login
+    await AuditActions.login(result.user.id, true, req);
+
+    // Set refresh token in HttpOnly cookie
+    res.cookie(
+      REFRESH_COOKIE_NAME,
+      result.tokens.refreshToken,
+      authService.getRefreshTokenCookieOptions()
+    );
+
+    // Return access token and user info
+    res.json({
+      success: true,
+      accessToken: result.tokens.accessToken,
+      expiresAt: result.tokens.accessExpiresAt,
+      user: result.user,
+    });
+  })
+);
+
+// =============================================================================
+// REFRESH — Rotate refresh token, issue new access token
+// =============================================================================
+
+router.post(
+  "/refresh",
+  asyncHandler(async (req: Request, res: Response) => {
+    // Get refresh token from cookie
+    const refreshToken = req.cookies?.[REFRESH_COOKIE_NAME];
+
+    if (!refreshToken) {
+      throw new AppError(
+        "No refresh token",
+        401,
+        "Refresh token not found. Please log in again."
+      );
     }
-  });
-}));
 
-// ============================================
-// VERIFY TOKEN / GET CURRENT USER
-// ============================================
+    // Rotate token
+    const result = await authService.rotateRefreshToken(
+      refreshToken,
+      req.get("User-Agent"),
+      req.ip
+    );
 
-router.get("/me", asyncHandler(async (req: Request, res: Response) => {
-  const authHeader = req.headers.authorization;
-  if (!authHeader?.startsWith("Bearer ")) {
-    throw new AppError("No token provided", 401, "Authentication required.");
-  }
-
-  const token = authHeader.substring(7);
-
-  // Verify JWT
-  let decoded: any;
-  try {
-    decoded = jwt.verify(token, config.jwtSecret);
-  } catch (err) {
-    throw new AppError("Invalid token", 401, "Your session has expired. Please log in again.");
-  }
-
-  // Check session exists and is valid
-  const session = await prisma.userSession.findFirst({
-    where: {
-      token,
-      expiresAt: { gt: new Date() }
+    if (!result.success || !result.tokens) {
+      // Clear invalid cookie
+      res.clearCookie(REFRESH_COOKIE_NAME, { path: "/api/auth" });
+      throw new AppError(
+        "Invalid refresh token",
+        401,
+        result.error || "Refresh token is invalid or expired. Please log in again."
+      );
     }
-  });
 
-  if (!session) {
-    throw new AppError("Session expired", 401, "Your session has expired. Please log in again.");
-  }
+    // Set new refresh token in cookie
+    res.cookie(
+      REFRESH_COOKIE_NAME,
+      result.tokens.refreshToken,
+      authService.getRefreshTokenCookieOptions()
+    );
 
-  // Get fresh user data
-  const user = await prisma.user.findUnique({
-    where: { id: decoded.userId },
-    select: {
-      id: true,
-      email: true,
-      role: true,
-      name: true,
-      phone: true,
-      isActive: true,
-      employeeTier: true,
-      trainingCompleted: true
+    // Return new access token
+    res.json({
+      success: true,
+      accessToken: result.tokens.accessToken,
+      expiresAt: result.tokens.accessExpiresAt,
+    });
+  })
+);
+
+// =============================================================================
+// LOGOUT — Revoke refresh token
+// =============================================================================
+
+router.post(
+  "/logout",
+  asyncHandler(async (req: Request, res: Response) => {
+    const refreshToken = req.cookies?.[REFRESH_COOKIE_NAME];
+
+    if (refreshToken) {
+      await authService.revokeRefreshToken(refreshToken);
     }
-  });
 
-  if (!user || !user.isActive) {
-    throw new AppError("User inactive", 401, "Your account is no longer active.");
-  }
-
-  res.json({
-    success: true,
-    user: {
-      id: user.id,
-      email: user.email,
-      role: user.role,
-      name: user.name,
-      phone: user.phone,
-      tier: user.employeeTier,
-      trainingCompleted: user.trainingCompleted
+    // Also handle legacy Bearer token logout
+    const authHeader = req.headers.authorization;
+    if (authHeader?.startsWith("Bearer ")) {
+      const accessToken = authHeader.substring(7);
+      const decoded = authService.verifyAccessToken(accessToken);
+      if (decoded) {
+        await AuditActions.logout(decoded.userId, req);
+      }
     }
-  });
-}));
 
-// ============================================
-// LOGOUT
-// ============================================
+    // Clear refresh cookie
+    res.clearCookie(REFRESH_COOKIE_NAME, { path: "/api/auth" });
 
-router.post("/logout", asyncHandler(async (req: Request, res: Response) => {
-  const authHeader = req.headers.authorization;
+    res.json({
+      success: true,
+      message: "Logged out successfully",
+    });
+  })
+);
 
-  if (authHeader?.startsWith("Bearer ")) {
-    const token = authHeader.substring(7);
+// =============================================================================
+// LOGOUT ALL — Revoke all refresh tokens for user
+// =============================================================================
 
-    // Get user ID before deleting session for audit
-    const session = await prisma.userSession.findFirst({
-      where: { token },
-      select: { userId: true }
+router.post(
+  "/logout-all",
+  authMiddleware,
+  asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    if (!req.user) {
+      throw Errors.unauthorized();
+    }
+
+    const count = await authService.revokeAllUserTokens(req.user.id);
+
+    // Also invalidate legacy sessions
+    await invalidateAllSessions(req.user.id);
+
+    // Log the action
+    await prisma.auditLog.create({
+      data: {
+        userId: req.user.id,
+        action: "LOGOUT_ALL_SESSIONS",
+        entityType: "User",
+        entityId: req.user.id,
+        ipAddress: req.ip,
+        userAgent: req.get("User-Agent"),
+        details: { tokensRevoked: count },
+      },
     });
 
-    // Delete session
-    await prisma.userSession.deleteMany({
-      where: { token }
+    // Clear refresh cookie
+    res.clearCookie(REFRESH_COOKIE_NAME, { path: "/api/auth" });
+
+    res.json({
+      success: true,
+      message: `Logged out of all ${count} session${count === 1 ? "" : "s"}`,
+    });
+  })
+);
+
+// =============================================================================
+// GET CURRENT USER
+// =============================================================================
+
+router.get(
+  "/me",
+  authMiddleware,
+  asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    if (!req.user) {
+      throw Errors.unauthorized();
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.id },
+      select: {
+        id: true,
+        email: true,
+        role: true,
+        name: true,
+        phone: true,
+        isActive: true,
+        employeeTier: true,
+        trainingCompleted: true,
+      },
     });
 
-    // Log logout
-    if (session?.userId) {
-      await AuditActions.logout(session.userId, req);
+    if (!user || !user.isActive) {
+      throw new AppError("User inactive", 401, "Your account is no longer active.");
     }
-  }
 
-  res.json({
-    success: true,
-    message: "Logged out successfully"
-  });
-}));
+    res.json({
+      success: true,
+      user: {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        name: user.name,
+        phone: user.phone,
+        tier: user.employeeTier,
+        trainingCompleted: user.trainingCompleted,
+      },
+    });
+  })
+);
 
-// ============================================
+// =============================================================================
+// GET ACTIVE SESSIONS
+// =============================================================================
+
+router.get(
+  "/sessions",
+  authMiddleware,
+  asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    if (!req.user) {
+      throw Errors.unauthorized();
+    }
+
+    const sessions = await authService.getUserActiveTokens(req.user.id);
+
+    res.json({
+      success: true,
+      sessions: sessions.map((s) => ({
+        userAgent: s.userAgent,
+        ipAddress: s.ipAddress,
+        createdAt: s.createdAt,
+        expiresAt: s.expiresAt,
+      })),
+    });
+  })
+);
+
+// =============================================================================
 // CHANGE PASSWORD
-// ============================================
+// =============================================================================
 
-router.post("/change-password", asyncHandler(async (req: Request, res: Response) => {
-  const authHeader = req.headers.authorization;
-  if (!authHeader?.startsWith("Bearer ")) {
-    throw new AppError("Not authenticated", 401, "Authentication required.");
-  }
-
-  const token = authHeader.substring(7);
-  let decoded: any;
-  try {
-    decoded = jwt.verify(token, config.jwtSecret);
-  } catch {
-    throw new AppError("Invalid token", 401, "Your session has expired. Please log in again.");
-  }
-
-  const { currentPassword, newPassword } = req.body;
-
-  if (!currentPassword || !newPassword) {
-    throw Errors.badRequest("Current password and new password required");
-  }
-
-  // Password complexity requirements
-  if (newPassword.length < 8) {
-    throw Errors.badRequest("New password must be at least 8 characters");
-  }
-
-  if (!/[A-Z]/.test(newPassword)) {
-    throw Errors.badRequest("New password must contain at least one uppercase letter");
-  }
-
-  if (!/[a-z]/.test(newPassword)) {
-    throw Errors.badRequest("New password must contain at least one lowercase letter");
-  }
-
-  if (!/[0-9]/.test(newPassword)) {
-    throw Errors.badRequest("New password must contain at least one number");
-  }
-
-  // Get user with password hash
-  const user = await prisma.user.findUnique({
-    where: { id: decoded.userId },
-    select: { id: true, passwordHash: true }
-  });
-
-  if (!user) {
-    throw Errors.notFound("User");
-  }
-
-  // Verify current password
-  const currentValid = await bcrypt.compare(currentPassword, user.passwordHash);
-  if (!currentValid) {
-    throw new AppError("Wrong password", 401, "Current password is incorrect");
-  }
-
-  // Hash new password
-  const newHash = await bcrypt.hash(newPassword, 12);
-
-  // Update password
-  await prisma.user.update({
-    where: { id: user.id },
-    data: { passwordHash: newHash }
-  });
-
-  // Invalidate all sessions except current
-  await prisma.userSession.deleteMany({
-    where: {
-      userId: user.id,
-      token: { not: token }
+router.post(
+  "/change-password",
+  authMiddleware,
+  asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    if (!req.user) {
+      throw Errors.unauthorized();
     }
-  });
 
-  // Log password change (audit middleware will capture this, but explicit log is good)
-  await prisma.auditLog.create({
-    data: {
-      userId: user.id,
-      action: "PASSWORD_CHANGE",
-      entityType: "User",
-      entityId: user.id,
-      ipAddress: req.ip,
-      userAgent: req.get("User-Agent")
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      throw Errors.badRequest("Current password and new password required");
     }
-  });
 
-  res.json({
-    success: true,
-    message: "Password changed successfully"
-  });
-}));
+    // Password complexity requirements
+    const validation = validatePasswordComplexity(newPassword);
+    if (!validation.valid) {
+      throw Errors.badRequest(validation.errors.join(". "));
+    }
 
-// ============================================
-// PASSWORD RESET — REQUEST RESET
-// ============================================
+    // Get user with password hash
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.id },
+      select: { id: true, passwordHash: true },
+    });
 
-router.post("/request-password-reset", asyncHandler(async (req: Request, res: Response) => {
-  const { email } = req.body;
+    if (!user) {
+      throw Errors.notFound("User");
+    }
 
-  if (!email) {
-    throw Errors.badRequest("Email required");
-  }
+    // Verify current password
+    const currentValid = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!currentValid) {
+      throw new AppError("Wrong password", 401, "Current password is incorrect");
+    }
 
-  const normalizedEmail = sanitizeEmail(email);
+    // Hash new password
+    const newHash = await bcrypt.hash(newPassword, 12);
 
-  // Always return success to prevent email enumeration
-  // But only create token if user exists
-  const user = await prisma.user.findUnique({
-    where: { email: normalizedEmail },
-    select: { id: true, email: true, name: true, isActive: true }
-  });
+    // Update password
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { passwordHash: newHash },
+    });
 
-  if (user && user.isActive) {
-    // Create reset token
-    const { token, expiresAt } = await createPasswordResetToken(user.id);
+    // Revoke all refresh tokens except current
+    await authService.revokeAllUserTokens(user.id);
 
-    // Log the request
+    // Also invalidate legacy sessions
+    await prisma.userSession.deleteMany({
+      where: { userId: user.id },
+    });
+
+    // Log password change
     await prisma.auditLog.create({
       data: {
         userId: user.id,
-        action: "PASSWORD_RESET_REQUESTED",
+        action: "PASSWORD_CHANGE",
         entityType: "User",
         entityId: user.id,
         ipAddress: req.ip,
         userAgent: req.get("User-Agent"),
-        details: { expiresAt: expiresAt.toISOString() }
-      }
+      },
     });
 
-    // TODO: Send email with reset link
-    // In production, this would send an email like:
-    // https://app.mgrcapital.com/reset-password?userId=${user.id}&token=${token}
-    console.log(`[DEV] Password reset token for ${user.email}: ${token}`);
-  }
+    logger.info("Password changed", { userId: user.id });
 
-  // Always return success (prevents email enumeration)
-  res.json({
-    success: true,
-    message: "If an account exists with this email, a password reset link will be sent."
-  });
-}));
+    res.json({
+      success: true,
+      message: "Password changed successfully. Please log in again on all devices.",
+    });
+  })
+);
 
-// ============================================
-// PASSWORD RESET — VERIFY & RESET
-// ============================================
+// =============================================================================
+// REQUEST PASSWORD RESET
+// =============================================================================
 
-router.post("/reset-password", asyncHandler(async (req: Request, res: Response) => {
-  const { userId, token, newPassword } = req.body;
+router.post(
+  "/request-password-reset",
+  asyncHandler(async (req: Request, res: Response) => {
+    const { email } = req.body;
 
-  if (!userId || !token || !newPassword) {
-    throw Errors.badRequest("User ID, token, and new password required");
-  }
-
-  // Validate password complexity
-  const passwordValidation = validatePasswordComplexity(newPassword);
-  if (!passwordValidation.valid) {
-    throw Errors.badRequest(passwordValidation.errors.join(". "));
-  }
-
-  // Verify the reset token
-  const isValid = await verifyPasswordResetToken(userId, token);
-  if (!isValid) {
-    throw new AppError(
-      "Invalid or expired token",
-      400,
-      "Password reset link is invalid or has expired. Please request a new one."
-    );
-  }
-
-  // Hash new password
-  const newHash = await bcrypt.hash(newPassword, 12);
-
-  // Update password
-  await prisma.user.update({
-    where: { id: userId },
-    data: { passwordHash: newHash }
-  });
-
-  // Invalidate all existing sessions for security
-  await invalidateAllSessions(userId);
-
-  // Log the password reset
-  await prisma.auditLog.create({
-    data: {
-      userId,
-      action: "PASSWORD_RESET_COMPLETED",
-      entityType: "User",
-      entityId: userId,
-      ipAddress: req.ip,
-      userAgent: req.get("User-Agent")
+    if (!email) {
+      throw Errors.badRequest("Email required");
     }
-  });
 
-  res.json({
-    success: true,
-    message: "Password has been reset successfully. Please log in with your new password."
-  });
-}));
+    const normalizedEmail = sanitizeEmail(email);
 
-// ============================================
-// LOGOUT ALL SESSIONS
-// ============================================
+    // Always return success to prevent email enumeration
+    const user = await prisma.user.findUnique({
+      where: { email: normalizedEmail },
+      select: { id: true, email: true, name: true, isActive: true },
+    });
 
-router.post("/logout-all", asyncHandler(async (req: Request, res: Response) => {
-  const authHeader = req.headers.authorization;
-  if (!authHeader?.startsWith("Bearer ")) {
-    throw new AppError("Not authenticated", 401, "Authentication required.");
-  }
+    if (user && user.isActive) {
+      const { token, expiresAt } = await createPasswordResetToken(user.id);
 
-  const token = authHeader.substring(7);
-  let decoded: any;
-  try {
-    decoded = jwt.verify(token, config.jwtSecret);
-  } catch {
-    throw new AppError("Invalid token", 401, "Your session has expired. Please log in again.");
-  }
+      await prisma.auditLog.create({
+        data: {
+          userId: user.id,
+          action: "PASSWORD_RESET_REQUESTED",
+          entityType: "User",
+          entityId: user.id,
+          ipAddress: req.ip,
+          userAgent: req.get("User-Agent"),
+          details: { expiresAt: expiresAt.toISOString() },
+        },
+      });
 
-  // Invalidate all sessions
-  const count = await invalidateAllSessions(decoded.userId);
-
-  // Log the action
-  await prisma.auditLog.create({
-    data: {
-      userId: decoded.userId,
-      action: "LOGOUT_ALL_SESSIONS",
-      entityType: "User",
-      entityId: decoded.userId,
-      ipAddress: req.ip,
-      userAgent: req.get("User-Agent"),
-      details: { sessionsInvalidated: count }
+      // TODO: Send email with reset link
+      logger.info("Password reset requested", {
+        userId: user.id,
+        email: user.email,
+      });
     }
-  });
 
-  res.json({
-    success: true,
-    message: `Logged out of ${count} session${count === 1 ? "" : "s"}`
-  });
-}));
+    res.json({
+      success: true,
+      message:
+        "If an account exists with this email, a password reset link will be sent.",
+    });
+  })
+);
+
+// =============================================================================
+// RESET PASSWORD
+// =============================================================================
+
+router.post(
+  "/reset-password",
+  asyncHandler(async (req: Request, res: Response) => {
+    const { userId, token, newPassword } = req.body;
+
+    if (!userId || !token || !newPassword) {
+      throw Errors.badRequest("User ID, token, and new password required");
+    }
+
+    const validation = validatePasswordComplexity(newPassword);
+    if (!validation.valid) {
+      throw Errors.badRequest(validation.errors.join(". "));
+    }
+
+    const isValid = await verifyPasswordResetToken(userId, token);
+    if (!isValid) {
+      throw new AppError(
+        "Invalid or expired token",
+        400,
+        "Password reset link is invalid or has expired. Please request a new one."
+      );
+    }
+
+    const newHash = await bcrypt.hash(newPassword, 12);
+
+    await prisma.user.update({
+      where: { id: userId },
+      data: { passwordHash: newHash },
+    });
+
+    // Revoke all tokens for security
+    await authService.revokeAllUserTokens(userId);
+    await invalidateAllSessions(userId);
+
+    await prisma.auditLog.create({
+      data: {
+        userId,
+        action: "PASSWORD_RESET_COMPLETED",
+        entityType: "User",
+        entityId: userId,
+        ipAddress: req.ip,
+        userAgent: req.get("User-Agent"),
+      },
+    });
+
+    logger.info("Password reset completed", { userId });
+
+    res.json({
+      success: true,
+      message:
+        "Password has been reset successfully. Please log in with your new password.",
+    });
+  })
+);
 
 export default router;

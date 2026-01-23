@@ -228,6 +228,7 @@ model User {
   trainingProgress    EmployeeTrainingProgress[]
   callScores          CallScore[]
   sessions            UserSession[]
+  refreshTokens       RefreshToken[]
   auditLogs           AuditLog[]
 
   @@index([email])
@@ -247,6 +248,30 @@ model UserSession {
 
   @@index([userId])
   @@index([token])
+}
+
+// ============================================
+// REFRESH TOKENS — JWT HARDENING
+// Secure refresh token storage with rotation
+// ============================================
+
+model RefreshToken {
+  id            String    @id @default(uuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  hashedToken   String    // SHA256 hash of raw token
+  userAgent     String?
+  ipAddress     String?
+  expiresAt     DateTime
+  revokedAt     DateTime?
+  rotatedAt     DateTime? // When this token was rotated to a new one
+  replacedById  String?   // ID of the token that replaced this one
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([userId])
+  @@index([hashedToken])
+  @@index([expiresAt])
 }
 
 // ============================================
