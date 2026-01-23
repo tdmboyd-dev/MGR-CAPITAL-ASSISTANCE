@@ -283,48 +283,96 @@ router.get("/client/:token", async (req: Request, res: Response) => {
 // ============================================
 
 /**
- * GET /api/cases - List all cases (FOUNDER ONLY)
+ * GET /api/cases - List cases with pagination and filtering
+ * - FOUNDER: all cases
+ * - ADMIN: all cases
+ * - EMPLOYEE: only assigned cases
+ * - CLIENT: only their cases
  */
-router.get("/", authMiddleware, roleGuard(["ADMIN"]), async (_req: Request, res: Response) => {
+router.get("/", authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
-    const cases = await prisma.case.findMany({
-      include: {
-        client: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            phone: true,
-            city: true,
-            state: true
-          }
+    const user = req.user!;
+    const {
+      page = "1",
+      pageSize = "20",
+      status,
+      state,
+      search,
+      assignedEmployeeId
+    } = req.query;
+
+    const pageNum = Math.max(1, parseInt(page as string, 10));
+    const pageSizeNum = Math.min(100, Math.max(1, parseInt(pageSize as string, 10)));
+    const skip = (pageNum - 1) * pageSizeNum;
+
+    // Build where clause based on role
+    const where: any = {};
+
+    if (user.role === "EMPLOYEE") {
+      where.assignedEmployeeId = user.id;
+    } else if (user.role === "CLIENT") {
+      where.clientId = user.id;
+    } else if (user.role === "ADMIN" || user.role === "FOUNDER") {
+      // Admin/Founder can filter by employee
+      if (assignedEmployeeId) {
+        where.assignedEmployeeId = assignedEmployeeId;
+      }
+    } else {
+      return res.status(403).json({ success: false, error: "Access denied" });
+    }
+
+    // Apply filters
+    if (status) {
+      where.status = status;
+    }
+    if (state) {
+      where.state = state;
+    }
+    if (search) {
+      where.OR = [
+        { internalCode: { contains: search as string, mode: "insensitive" } },
+        { propertyAddress: { contains: search as string, mode: "insensitive" } },
+        { county: { contains: search as string, mode: "insensitive" } },
+      ];
+    }
+
+    const [cases, total] = await Promise.all([
+      prisma.case.findMany({
+        where,
+        include: {
+          client: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              phone: true,
+            }
+          },
+          assignedEmployee: {
+            select: {
+              id: true,
+              name: true,
+              email: true
+            }
+          },
         },
-        assignedEmployee: {
-          select: {
-            id: true,
-            name: true,
-            email: true
-          }
-        },
-        documents: {
-          select: {
-            id: true,
-            type: true,
-            status: true,
-            signedAt: true
-          }
-        }
-      },
-      orderBy: [
-        { priority: "desc" },
-        { createdAt: "desc" }
-      ]
-    });
+        orderBy: [
+          { priority: "desc" },
+          { createdAt: "desc" }
+        ],
+        skip,
+        take: pageSizeNum,
+      }),
+      prisma.case.count({ where }),
+    ]);
 
     res.json({
       success: true,
-      count: cases.length,
-      data: cases
+      data: cases,
+      total,
+      page: pageNum,
+      pageSize: pageSizeNum,
+      totalPages: Math.ceil(total / pageSizeNum),
     });
   } catch (error: any) {
     console.error("List cases error:", error);
