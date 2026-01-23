@@ -222,7 +222,7 @@ export async function logAction(
 
 // Specific logging functions for common actions
 export const AuditActions = {
-  async login(userId: string, success: boolean, req: Request): Promise<void> {
+  async login(userId: string | undefined, success: boolean, req: Request): Promise<void> {
     await logAction(userId, success ? "LOGIN_SUCCESS" : "LOGIN_FAILED", "Authentication", undefined, { success }, req);
   },
 

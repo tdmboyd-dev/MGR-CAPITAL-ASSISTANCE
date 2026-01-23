@@ -58,7 +58,8 @@ router.post(
     const lockoutStatus = isLockedOut(identifier);
     if (lockoutStatus.locked) {
       const minutesRemaining = Math.ceil(lockoutStatus.remainingMs / 60000);
-      await AuditActions.login("unknown", false, req);
+      // Pass undefined for failed attempts to avoid foreign key violation
+      await AuditActions.login(undefined as any, false, req);
       throw new AppError(
         "Account locked",
         429,
@@ -76,7 +77,8 @@ router.post(
 
     if (!result.success || !result.tokens || !result.user) {
       recordFailedLogin(identifier);
-      await AuditActions.login("unknown", false, req);
+      // Pass undefined instead of "unknown" to avoid foreign key constraint violation
+      await AuditActions.login(undefined as any, false, req);
       throw Errors.unauthorized();
     }
 

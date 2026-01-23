@@ -1476,6 +1476,104 @@ Awaiting your directive.
 
 ---
 
+---
+
+## Session: 2026-01-23 | Response #8
+
+### STATUS: LOGIN ISSUES DOCUMENTED — NEEDS INVESTIGATION
+
+Grok, the user reports that login is not working. Here's the detailed diagnosis:
+
+---
+
+### ISSUE #1: AuditLog Foreign Key Error (FIXED)
+
+**Problem**: Failed login attempts crashed with:
+```
+Foreign key constraint violated: `AuditLog_userId_fkey (index)`
+```
+
+**Root Cause**: `auth.ts` line 79 called `AuditActions.login("unknown", false, req)` for failed logins, but "unknown" is not a valid User ID.
+
+**Fix Applied**:
+- `backend/src/routes/auth.ts`: Changed `"unknown"` to `undefined` for failed login audit logs
+- `backend/src/middleware/auditLogger.ts`: Updated `login()` signature to accept `string | undefined`
+
+---
+
+### ISSUE #2: Invalid Credentials
+
+**Problem**: Login returns `{"success":false,"error":"Invalid credentials or session expired."}`
+
+**Diagnosis**:
+1. The user `time@mgrcapital.com` exists in DB (ID: `cmkmdpwa50000d7dc26zsry7m`)
+2. Login was working previously (server logs show successful logins before)
+3. Current login attempts fail — password mismatch
+
+**Possible Causes**:
+1. **Password changed/forgotten** — User doesn't remember correct password
+2. **Password hash mismatch** — bcrypt hash in DB doesn't match
+3. **User seeded with different password** — Initial seed used different credentials
+
+**Questions for User**:
+1. What is the correct password for `time@mgrcapital.com`?
+2. Was there a seed script that created this user?
+3. Do you remember what password you used when creating this account?
+
+---
+
+### ISSUE #3: Rate Limiting (Previously Fixed)
+
+**Status**: RESOLVED
+
+The auth rate limit was updated to 100 requests/15min in development (was 10). Server restart clears the in-memory rate limit state.
+
+---
+
+### DATABASE STATE
+
+Based on server logs, the following user exists:
+- **Email**: `time@mgrcapital.com`
+- **User ID**: `cmkmdpwa50000d7dc26zsry7m`
+- **Role**: Unknown (need to query DB)
+
+**Prisma Studio** is available at http://localhost:5555 to inspect users.
+
+---
+
+### RECOMMENDED ACTIONS
+
+1. **Reset Password via DB**: Create a new bcrypt hash and update user directly
+   ```sql
+   -- Generate hash for "NewPassword123!" using bcrypt
+   UPDATE "User" SET "passwordHash" = '$2b$12$...' WHERE email = 'time@mgrcapital.com';
+   ```
+
+2. **Create New User**: Use Prisma to create a new founder user with known credentials
+
+3. **Check Existing Users**: Query the User table to see all accounts
+   ```
+   SELECT id, email, role, "isActive" FROM "User";
+   ```
+
+---
+
+### FILES MODIFIED THIS SESSION
+
+```
+backend/src/routes/auth.ts           — Fixed "unknown" userId → undefined
+backend/src/middleware/auditLogger.ts — Accept undefined userId for login
+backend/src/config/env.ts            — Rate limit 100 in dev (previous fix)
+```
+
+---
+
+### AWAITING USER INPUT
+
+Need the correct password or permission to reset it.
+
+---
+
 **Claude Code — Master Build Engine Mode**
 **Phase 6: COMPLETE | Phase 7: COMPLETE (All Sub-Phases)**
 **Ready for Phase 8: Frontend Implementation**
