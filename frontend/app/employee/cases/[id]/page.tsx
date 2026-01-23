@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useParams, useRouter } from "next/navigation";
@@ -13,6 +14,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { DocumentUploader } from "@/components/ui/document-uploader";
 import { formatCurrency, formatDate, formatDateTime } from "@/lib/utils";
 import {
   ArrowLeft,
@@ -24,6 +26,10 @@ import {
   Clock,
   CheckCircle,
   AlertCircle,
+  Download,
+  Eye,
+  Upload,
+  Plus,
 } from "lucide-react";
 
 const STATUS_COLORS: Record<string, string> = {
@@ -42,6 +48,7 @@ export default function CaseDetailPage() {
   const params = useParams();
   const router = useRouter();
   const caseId = params.id as string;
+  const [showUploader, setShowUploader] = useState(false);
 
   const { data: caseData, isLoading } = useQuery({
     queryKey: ["case", caseId],
@@ -232,8 +239,12 @@ export default function CaseDetailPage() {
                 <Mail className="h-4 w-4 mr-2" />
                 Send Email
               </Button>
-              <Button className="w-full" variant="outline">
-                <FileText className="h-4 w-4 mr-2" />
+              <Button
+                className="w-full"
+                variant="outline"
+                onClick={() => setShowUploader(true)}
+              >
+                <Upload className="h-4 w-4 mr-2" />
                 Upload Document
               </Button>
             </CardContent>
@@ -242,31 +253,81 @@ export default function CaseDetailPage() {
           {/* Documents */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <FileText className="h-5 w-5" />
-                Documents
-              </CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  <FileText className="h-5 w-5" />
+                  Documents
+                </CardTitle>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setShowUploader(!showUploader)}
+                >
+                  <Plus className="h-4 w-4 mr-1" />
+                  Add
+                </Button>
+              </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-4">
+              {showUploader && (
+                <div className="border rounded-lg p-4 bg-muted/30">
+                  <DocumentUploader
+                    caseId={caseId}
+                    onSuccess={() => setShowUploader(false)}
+                  />
+                </div>
+              )}
+
               {caseInfo.documents?.length > 0 ? (
                 <div className="space-y-2">
                   {caseInfo.documents.map((doc: any) => (
                     <div
                       key={doc.id}
-                      className="flex items-center justify-between p-2 rounded bg-muted"
+                      className="flex items-center justify-between p-3 rounded-lg border bg-card"
                     >
-                      <span className="text-sm">{doc.type}</span>
-                      <Badge variant={doc.status === "SIGNED" ? "success" : "outline"}>
-                        {doc.status}
-                      </Badge>
+                      <div className="flex items-center gap-3">
+                        <FileText className="h-5 w-5 text-muted-foreground" />
+                        <div>
+                          <p className="text-sm font-medium">
+                            {doc.fileName || doc.type.replace(/_/g, " ")}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {formatDate(doc.createdAt)}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge
+                          variant={doc.status === "SIGNED" ? "success" : "outline"}
+                          className="text-xs"
+                        >
+                          {doc.status}
+                        </Badge>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-8 w-8"
+                          onClick={() => window.open(`${api.defaults.baseURL}/documents/${doc.id}/view`, "_blank")}
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-8 w-8"
+                          onClick={() => window.open(`${api.defaults.baseURL}/documents/${doc.id}/download`, "_blank")}
+                        >
+                          <Download className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
                   ))}
                 </div>
-              ) : (
+              ) : !showUploader ? (
                 <p className="text-sm text-muted-foreground text-center py-4">
-                  No documents yet
+                  No documents yet. Click Add to upload.
                 </p>
-              )}
+              ) : null}
             </CardContent>
           </Card>
 

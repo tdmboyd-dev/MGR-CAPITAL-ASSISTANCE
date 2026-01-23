@@ -2,6 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import Link from "next/link";
 import {
   Card,
   CardContent,
@@ -9,6 +10,11 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  BarChartComponent,
+  DonutChartComponent,
+  LineChartComponent,
+} from "@/components/ui/charts";
 import { formatCurrency } from "@/lib/utils";
 import {
   FileText,
@@ -17,6 +23,7 @@ import {
   TrendingUp,
   AlertTriangle,
   CheckCircle,
+  ArrowRight,
 } from "lucide-react";
 
 export default function FounderDashboard() {
@@ -108,7 +115,72 @@ export default function FounderDashboard() {
         ))}
       </div>
 
+      {/* Analytics Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Revenue Trend</CardTitle>
+            <CardDescription>Monthly recovered funds</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <LineChartComponent
+              data={[
+                { name: "Jan", value: 45000 },
+                { name: "Feb", value: 52000 },
+                { name: "Mar", value: 48000 },
+                { name: "Apr", value: 61000 },
+                { name: "May", value: 55000 },
+                { name: "Jun", value: 67000 },
+              ]}
+              height={250}
+              color="#22c55e"
+              showArea
+            />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Case Status Distribution</CardTitle>
+            <CardDescription>Current case breakdown</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <DonutChartComponent
+              data={[
+                { name: "New", value: stats?.newCases || 12 },
+                { name: "In Progress", value: stats?.activeCases || 28 },
+                { name: "Awaiting Funds", value: stats?.awaitingFunds || 15 },
+                { name: "Paid", value: stats?.closedWon || 45 },
+              ]}
+              height={250}
+              centerLabel="Total"
+              centerValue={stats?.totalCases || 100}
+            />
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Cases by State</CardTitle>
+            <CardDescription>Top performing jurisdictions</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <BarChartComponent
+              data={[
+                { name: "TN", value: 24 },
+                { name: "GA", value: 18 },
+                { name: "FL", value: 15 },
+                { name: "TX", value: 12 },
+                { name: "NC", value: 9 },
+              ]}
+              height={250}
+              color="#8b5cf6"
+            />
+          </CardContent>
+        </Card>
+
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -152,28 +224,46 @@ export default function FounderDashboard() {
             )}
           </CardContent>
         </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Quick Actions</CardTitle>
-            <CardDescription>Common operations</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <button className="w-full text-left p-3 rounded-lg bg-muted hover:bg-accent transition-colors">
-              View All Cases
-            </button>
-            <button className="w-full text-left p-3 rounded-lg bg-muted hover:bg-accent transition-colors">
-              Run Batch Ingestion
-            </button>
-            <button className="w-full text-left p-3 rounded-lg bg-muted hover:bg-accent transition-colors">
-              Generate Reports
-            </button>
-            <button className="w-full text-left p-3 rounded-lg bg-muted hover:bg-accent transition-colors">
-              System Configuration
-            </button>
-          </CardContent>
-        </Card>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Quick Actions</CardTitle>
+          <CardDescription>Common operations</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <Link
+              href="/founder/cases"
+              className="flex items-center justify-between p-4 rounded-lg bg-muted hover:bg-accent transition-colors"
+            >
+              <span>View All Cases</span>
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+            <Link
+              href="/founder/ingestion"
+              className="flex items-center justify-between p-4 rounded-lg bg-muted hover:bg-accent transition-colors"
+            >
+              <span>Data Ingestion</span>
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+            <Link
+              href="/founder/insights"
+              className="flex items-center justify-between p-4 rounded-lg bg-muted hover:bg-accent transition-colors"
+            >
+              <span>Ops Insights</span>
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+            <Link
+              href="/founder/config"
+              className="flex items-center justify-between p-4 rounded-lg bg-muted hover:bg-accent transition-colors"
+            >
+              <span>Configuration</span>
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

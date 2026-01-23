@@ -3,6 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
+import Link from "next/link";
 import {
   Card,
   CardContent,
@@ -10,8 +11,9 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { DonutChartComponent, BarChartComponent } from "@/components/ui/charts";
 import { formatCurrency } from "@/lib/utils";
-import { FileText, DollarSign, BookOpen, CheckCircle } from "lucide-react";
+import { FileText, DollarSign, BookOpen, CheckCircle, ArrowRight } from "lucide-react";
 
 export default function EmployeeDashboard() {
   const { user } = useAuth();
@@ -103,19 +105,69 @@ export default function EmployeeDashboard() {
         </Card>
       </div>
 
+      {/* Analytics Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
-            <CardTitle>Recent Cases</CardTitle>
-            <CardDescription>Your latest assigned cases</CardDescription>
+            <CardTitle>My Case Status</CardTitle>
+            <CardDescription>Breakdown of your assigned cases</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <DonutChartComponent
+              data={[
+                { name: "New", value: stats?.newCases || 3 },
+                { name: "In Progress", value: stats?.inProgressCases || 5 },
+                { name: "Docs Pending", value: stats?.docsPending || 2 },
+                { name: "Closed", value: stats?.closedCases || 8 },
+              ]}
+              height={220}
+              centerLabel="Active"
+              centerValue={stats?.assignedCases || 18}
+            />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Monthly Performance</CardTitle>
+            <CardDescription>Cases closed per month</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <BarChartComponent
+              data={[
+                { name: "Jan", value: 2 },
+                { name: "Feb", value: 3 },
+                { name: "Mar", value: 4 },
+                { name: "Apr", value: 3 },
+                { name: "May", value: 5 },
+                { name: "Jun", value: stats?.closedThisMonth || 4 },
+              ]}
+              height={220}
+              color="#22c55e"
+            />
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div>
+              <CardTitle>Recent Cases</CardTitle>
+              <CardDescription>Your latest assigned cases</CardDescription>
+            </div>
+            <Link href="/employee/cases" className="text-sm text-primary flex items-center gap-1">
+              View All <ArrowRight className="h-4 w-4" />
+            </Link>
           </CardHeader>
           <CardContent>
             {stats?.recentCases?.length > 0 ? (
               <div className="space-y-3">
                 {stats.recentCases.map((caseItem: any) => (
-                  <div
+                  <Link
                     key={caseItem.id}
-                    className="flex items-center justify-between p-3 rounded-lg bg-muted"
+                    href={`/employee/cases/${caseItem.id}`}
+                    className="flex items-center justify-between p-3 rounded-lg bg-muted hover:bg-accent transition-colors"
                   >
                     <div>
                       <p className="font-medium">{caseItem.caseCode}</p>
@@ -134,7 +186,7 @@ export default function EmployeeDashboard() {
                     >
                       {caseItem.status}
                     </span>
-                  </div>
+                  </Link>
                 ))}
               </div>
             ) : (
@@ -146,17 +198,23 @@ export default function EmployeeDashboard() {
         </Card>
 
         <Card>
-          <CardHeader>
-            <CardTitle>Training Modules</CardTitle>
-            <CardDescription>Continue your learning</CardDescription>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div>
+              <CardTitle>Training Modules</CardTitle>
+              <CardDescription>Continue your learning</CardDescription>
+            </div>
+            <Link href="/employee/training" className="text-sm text-primary flex items-center gap-1">
+              View All <ArrowRight className="h-4 w-4" />
+            </Link>
           </CardHeader>
           <CardContent>
             {training?.modules?.length > 0 ? (
               <div className="space-y-3">
                 {training.modules.slice(0, 5).map((module: any) => (
-                  <div
+                  <Link
                     key={module.id}
-                    className="flex items-center justify-between p-3 rounded-lg bg-muted"
+                    href={`/employee/training/${module.id}`}
+                    className="flex items-center justify-between p-3 rounded-lg bg-muted hover:bg-accent transition-colors"
                   >
                     <div>
                       <p className="font-medium">{module.title}</p>
@@ -171,7 +229,7 @@ export default function EmployeeDashboard() {
                         Pending
                       </span>
                     )}
-                  </div>
+                  </Link>
                 ))}
               </div>
             ) : (

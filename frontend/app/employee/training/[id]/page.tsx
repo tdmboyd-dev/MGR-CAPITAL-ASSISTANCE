@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Confetti } from "@/components/ui/confetti";
 import { toast } from "sonner";
 import {
   ArrowLeft,
@@ -21,7 +22,20 @@ import {
   BookOpen,
   Clock,
   Award,
+  XCircle,
+  AlertCircle,
 } from "lucide-react";
+
+interface QuizResult {
+  passed: boolean;
+  score: number;
+  required: number;
+  feedback: Array<{
+    questionIndex: number;
+    correct: boolean;
+    explanation: string;
+  }>;
+}
 
 export default function TrainingModulePage() {
   const params = useParams();
@@ -29,7 +43,9 @@ export default function TrainingModulePage() {
   const queryClient = useQueryClient();
   const moduleId = params.id as string;
   const [showQuiz, setShowQuiz] = useState(false);
-  const [quizAnswers, setQuizAnswers] = useState<Record<number, string>>({});
+  const [quizAnswers, setQuizAnswers] = useState<Record<number, number>>({});
+  const [quizResult, setQuizResult] = useState<QuizResult | null>(null);
+  const [showConfetti, setShowConfetti] = useState(false);
 
   const { data, isLoading } = useQuery({
     queryKey: ["training-module", moduleId],
@@ -39,21 +55,46 @@ export default function TrainingModulePage() {
     },
   });
 
-  const completeMutation = useMutation({
+  const quizMutation = useMutation({
     mutationFn: async () => {
-      const { data } = await api.post(`/training/complete/${moduleId}`, {
-        answers: quizAnswers,
+      const answersArray = Object.values(quizAnswers);
+      const { data } = await api.post(`/training/${moduleId}/quiz`, {
+        answers: answersArray,
       });
       return data;
     },
     onSuccess: (data) => {
       if (data.success) {
-        toast.success("Module completed successfully!");
-        queryClient.invalidateQueries({ queryKey: ["training-modules"] });
-        router.push("/employee/training");
+        const result = data.data as QuizResult;
+        setQuizResult(result);
+        if (result.passed) {
+          setShowConfetti(true);
+          toast.success(`Congratulations! You passed with ${result.score}%!`);
+          queryClient.invalidateQueries({ queryKey: ["training-modules"] });
+          setTimeout(() => setShowConfetti(false), 4000);
+        } else {
+          toast.error(`You scored ${result.score}%. Need ${result.required}% to pass. Try again!`);
+        }
       } else {
-        toast.error(data.error || "Failed to complete module");
+        toast.error(data.error || "Failed to submit quiz");
       }
+    },
+    onError: () => {
+      toast.error("Failed to submit quiz");
+    },
+  });
+
+  const completeMutation = useMutation({
+    mutationFn: async () => {
+      const { data } = await api.post(`/training/${moduleId}/quiz`, {
+        answers: [],
+      });
+      return data;
+    },
+    onSuccess: () => {
+      toast.success("Module completed successfully!");
+      queryClient.invalidateQueries({ queryKey: ["training-modules"] });
+      router.push("/employee/training");
     },
     onError: () => {
       toast.error("Failed to complete module");
@@ -85,6 +126,8 @@ export default function TrainingModulePage() {
 
   return (
     <div className="space-y-6">
+      <Confetti active={showConfetti} />
+
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" onClick={() => router.back()}>
           <ArrowLeft className="h-5 w-5" />
@@ -187,11 +230,100 @@ export default function TrainingModulePage() {
             </CardTitle>
             <CardDescription>
               Answer the following questions to complete this module.
-              You need {module.passingScore || 70}% to pass.
+              You need {module.passingScore || 80}% to pass.
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {module.questions?.length > 0 ? (
+            {quizResult ? (
+              /* Quiz Results */
+              <div className="space-y-6">
+                <div className={`p-6 rounded-lg text-center ${
+                  quizResult.passed
+                    ? "bg-green-500/10 border border-green-500/20"
+                    : "bg-red-500/10 border border-red-500/20"
+                }`}>
+                  {quizResult.passed ? (
+                    <>
+                      <CheckCircle className="h-12 w-12 mx-auto mb-3 text-green-500" />
+                      <h3 className="text-xl font-bold text-green-600 dark:text-green-400">
+                        Congratulations! You Passed!
+                      </h3>
+                    </>
+                  ) : (
+                    <>
+                      <XCircle className="h-12 w-12 mx-auto mb-3 text-red-500" />
+                      <h3 className="text-xl font-bold text-red-600 dark:text-red-400">
+                        Not Quite There Yet
+                      </h3>
+                    </>
+                  )}
+                  <p className="text-3xl font-bold mt-2">{quizResult.score}%</p>
+                  <p className="text-muted-foreground">
+                    Required: {quizResult.required}%
+                  </p>
+                </div>
+
+                {/* Feedback */}
+                <div className="space-y-4">
+                  <h4 className="font-semibold">Question Review</h4>
+                  {quizResult.feedback.map((fb, index) => (
+                    <div
+                      key={index}
+                      className={`p-4 rounded-lg border ${
+                        fb.correct
+                          ? "border-green-500/30 bg-green-500/5"
+                          : "border-red-500/30 bg-red-500/5"
+                      }`}
+                    >
+                      <div className="flex items-start gap-3">
+                        {fb.correct ? (
+                          <CheckCircle className="h-5 w-5 text-green-500 mt-0.5" />
+                        ) : (
+                          <XCircle className="h-5 w-5 text-red-500 mt-0.5" />
+                        )}
+                        <div>
+                          <p className="font-medium">Question {index + 1}</p>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            {fb.explanation}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="flex justify-between pt-4 border-t">
+                  {quizResult.passed ? (
+                    <Button onClick={() => router.push("/employee/training")}>
+                      <CheckCircle className="h-4 w-4 mr-2" />
+                      Continue to Training
+                    </Button>
+                  ) : (
+                    <>
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setQuizResult(null);
+                          setQuizAnswers({});
+                        }}
+                      >
+                        Try Again
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setShowQuiz(false);
+                          setQuizResult(null);
+                          setQuizAnswers({});
+                        }}
+                      >
+                        Review Content
+                      </Button>
+                    </>
+                  )}
+                </div>
+              </div>
+            ) : module.questions?.length > 0 ? (
               <div className="space-y-6">
                 {module.questions.map((q: any, index: number) => (
                   <div key={index} className="p-4 rounded-lg border">
@@ -202,17 +334,21 @@ export default function TrainingModulePage() {
                       {q.options.map((option: string, optIndex: number) => (
                         <label
                           key={optIndex}
-                          className="flex items-center gap-3 p-2 rounded hover:bg-muted cursor-pointer"
+                          className={`flex items-center gap-3 p-2 rounded cursor-pointer transition-colors ${
+                            quizAnswers[index] === optIndex
+                              ? "bg-primary/10 border border-primary/30"
+                              : "hover:bg-muted"
+                          }`}
                         >
                           <input
                             type="radio"
                             name={`question-${index}`}
-                            value={option}
-                            checked={quizAnswers[index] === option}
+                            value={optIndex}
+                            checked={quizAnswers[index] === optIndex}
                             onChange={() =>
                               setQuizAnswers((prev) => ({
                                 ...prev,
-                                [index]: option,
+                                [index]: optIndex,
                               }))
                             }
                             className="h-4 w-4"
@@ -229,13 +365,13 @@ export default function TrainingModulePage() {
                     Back to Content
                   </Button>
                   <Button
-                    onClick={() => completeMutation.mutate()}
+                    onClick={() => quizMutation.mutate()}
                     disabled={
-                      completeMutation.isPending ||
+                      quizMutation.isPending ||
                       Object.keys(quizAnswers).length < (module.questions?.length || 0)
                     }
                   >
-                    Submit Quiz
+                    {quizMutation.isPending ? "Submitting..." : "Submit Quiz"}
                   </Button>
                 </div>
               </div>
