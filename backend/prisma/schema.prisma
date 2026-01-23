@@ -105,6 +105,8 @@ enum TrainingModuleSourceType {
   CLAIM_PATTERN
   COMPLIANCE_UPDATE
   JURISDICTION_CHANGE
+  INGESTION_PATTERN      // Auto-generated from ingestion error patterns
+  PARSER_SUGGESTION      // Generated when parser improvements suggested
 }
 
 enum TrainingRecommendationPriority {
@@ -971,11 +973,19 @@ model IngestionBatch {
   fileName        String?
   fileUrl         String?
 
-  // Processing
+  // Processing stats
   status          String           @default("pending") // pending, processing, completed, failed
   totalRecords    Int              @default(0)
   processedRecords Int             @default(0)
   createdCases    Int              @default(0)
+
+  // Phase 6 Intelligence stats
+  recordCount     Int              @default(0)   // Total records in batch
+  successCount    Int              @default(0)   // Successfully parsed/imported
+  errorCount      Int              @default(0)   // Failed to parse
+  highValueCount  Int              @default(0)   // High-value records detected
+  duplicateCount  Int              @default(0)   // Duplicates detected
+
   errors          String?          @db.Text
 
   processedAt     DateTime?
@@ -985,6 +995,7 @@ model IngestionBatch {
 
   @@index([sourceId])
   @@index([status])
+  @@index([createdAt])
 }
 
 model IngestionRecord {
@@ -992,10 +1003,20 @@ model IngestionRecord {
   batchId         String
   batch           IngestionBatch  @relation(fields: [batchId], references: [id], onDelete: Cascade)
 
-  // Raw data
-  rawData         Json
+  // Source type for routing to correct parser
+  sourceType      String?
 
-  // Parsed data
+  // Raw data from source
+  rawData         Json
+  rawPayload      Json?           // Original payload before normalization
+
+  // Normalized data (standardized fields)
+  normalizedData  Json?           // { ownerName, propertyAddress, state, county, amountCents, ... }
+
+  // Content hash for duplicate detection
+  contentHash     String?
+
+  // Legacy parsed data (kept for compatibility)
   ownerName       String?
   propertyAddress String?
   parcelNumber    String?
@@ -1003,10 +1024,16 @@ model IngestionRecord {
   saleAmount      Int?            // In cents
   surplusAmount   Int?            // In cents
 
+  // Intelligence Layer (Phase 6)
+  predictedValueCents   Int?      // Value predicted by IngestionIntelligenceService
+  predictionConfidence  Float?    // 0-100 confidence score
+  propertyClassCode     String?   // Links to PropertyClass.code
+
   // Processing
-  status          String          @default("pending") // pending, processed, skipped, error
+  status          String          @default("pending") // pending, processing, imported, skipped, error
   caseId          String?         // If a case was created
   errorMessage    String?
+  errorDetails    String?         @db.Text  // Detailed error info for analysis
 
   // Founder flags
   isHighValue     Boolean         @default(false)
@@ -1017,6 +1044,59 @@ model IngestionRecord {
   @@index([batchId])
   @@index([status])
   @@index([isHighValue])
+  @@index([contentHash])
+  @@index([sourceType])
+}
+
+// ============================================
+// PARSER VERSIONING (Phase 6)
+// ============================================
+
+model ParserVersion {
+  id                Int                 @id @default(autoincrement())
+  sourceType        IngestionSourceType
+  version           String              // "1.0", "2026-03-tax-sale-v2", etc.
+
+  // Jurisdiction scope (null = national/generic)
+  stateCode         String?
+  countyFips        String?
+
+  // Parser configuration (column mappings, regex patterns, date formats, etc.)
+  parserConfig      Json                // { headerRow: number, columns: [...], dateFormat: string }
+
+  // Performance metrics
+  successRate       Float?              @default(0)
+  recordsProcessed  Int                 @default(0)
+  recordsFailed     Int                 @default(0)
+
+  // Status
+  isActive          Boolean             @default(true)
+  notes             String?             @db.Text
+
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  @@index([sourceType])
+  @@index([stateCode])
+  @@index([isActive])
+}
+
+// ============================================
+// PROPERTY CLASSIFICATION (Phase 6)
+// ============================================
+
+model PropertyClass {
+  id              Int       @id @default(autoincrement())
+  code            String    @unique  // "RESIDENTIAL", "COMMERCIAL", "VACANT", etc.
+  description     String?
+
+  // Prediction defaults (in cents)
+  defaultMinValueCents    Int?      @default(50000)    // $500 minimum
+  defaultMedianValueCents Int?      @default(500000)   // $5,000 median
+  defaultMaxValueCents    Int?      @default(10000000) // $100,000 max
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 }
 
 // ============================================
