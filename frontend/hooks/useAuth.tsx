@@ -16,21 +16,47 @@ export interface User {
 interface AuthState {
   user: User | null;
   accessToken: string | null;
+  theme: "light" | "dark";
   isLoading: boolean;
   error: string | null;
+  setTheme: (theme: "light" | "dark") => void;
   login: (email: string, password: string) => Promise<boolean>;
   logout: () => Promise<void>;
   refresh: () => Promise<boolean>;
   clearError: () => void;
 }
 
+const getInitialTheme = (): "light" | "dark" => {
+  if (typeof window !== "undefined") {
+    const saved = localStorage.getItem("auth-storage");
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (parsed.state?.theme) return parsed.state.theme;
+      } catch {}
+    }
+    return window.matchMedia("(prefers-color-scheme: dark)").matches
+      ? "dark"
+      : "light";
+  }
+  return "dark";
+};
+
 export const useAuthStore = create<AuthState>()(
   persist(
     (set, get) => ({
       user: null,
       accessToken: null,
+      theme: "dark",
       isLoading: false,
       error: null,
+
+      setTheme: (theme) => {
+        set({ theme });
+        if (typeof document !== "undefined") {
+          document.documentElement.setAttribute("data-theme", theme);
+        }
+      },
 
       login: async (email: string, password: string) => {
         set({ isLoading: true, error: null });
@@ -92,6 +118,7 @@ export const useAuthStore = create<AuthState>()(
       partialize: (state) => ({
         accessToken: state.accessToken,
         user: state.user,
+        theme: state.theme,
       }),
     }
   )
@@ -103,11 +130,16 @@ const AuthContext = createContext<AuthState | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const store = useAuthStore();
 
+  // Hydrate theme on mount
+  useEffect(() => {
+    const theme = store.theme || getInitialTheme();
+    document.documentElement.setAttribute("data-theme", theme);
+  }, []);
+
   // Hydrate from localStorage on mount
   useEffect(() => {
     const token = localStorage.getItem("accessToken");
     if (token && !store.user) {
-      // Try to get user info
       api
         .get("/auth/me")
         .then(({ data }) => {
@@ -116,7 +148,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
         })
         .catch(() => {
-          // Token invalid, clear it
           localStorage.removeItem("accessToken");
           useAuthStore.setState({ user: null, accessToken: null });
         });

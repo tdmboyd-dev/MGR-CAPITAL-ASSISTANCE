@@ -32,6 +32,9 @@ import hrRoutes from "./routes/hrRoutes.js";
 import hrTrainingRoutes from "./routes/hrTrainingRoutes.js";
 import complianceRoutes from "./routes/complianceRoutes.js";
 
+// Internal Communication (Comms Chamber)
+import commsRoutes from "./routes/comms.js";
+
 // Rate limiting
 import { loginRateLimit, passwordResetRateLimit } from "./middleware/rateLimit.js";
 
@@ -89,6 +92,9 @@ app.use("/api/ops/watch", opsWatchRoutes);
 app.use("/api/hr", hrRoutes);
 app.use("/api/hr/training", hrTrainingRoutes);
 app.use("/api/compliance", complianceRoutes);
+
+// Internal Communication (Comms Chamber)
+app.use("/api/comms", commsRoutes);
 
 // ============================================
 // HEALTH CHECK
@@ -151,6 +157,9 @@ Role-Based Panels:
   - /api/hr             HR management
   - /api/hr/training    Training Intelligence (HR)
   - /api/compliance     Compliance monitoring
+
+Internal Communication:
+  - /api/comms          Comms Chamber (chat rooms/messages)
   `);
 });
 

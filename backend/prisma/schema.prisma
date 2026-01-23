@@ -230,6 +230,7 @@ model User {
   sessions            UserSession[]
   refreshTokens       RefreshToken[]
   auditLogs           AuditLog[]
+  chatMessages        ChatMessage[]
 
   @@index([email])
   @@index([role])
@@ -1625,4 +1626,63 @@ model OpsInsight {
   // Performance indexes (compound for hot queries)
   @@index([priority, type, createdAt(sort: Desc)])
   @@index([isRead, priority, createdAt(sort: Desc)])
+}
+
+// ============================================
+// INTERNAL COMMUNICATION (COMMS CHAMBER)
+// ============================================
+
+enum ChatRoomType {
+  COMPANY     // All employees
+  TEAM        // Team-specific
+  PRIVATE     // Private/locked rooms
+}
+
+model ChatRoom {
+  id          String         @id @default(cuid())
+  name        String
+  type        ChatRoomType   @default(TEAM)
+  description String?
+
+  // Access control
+  locked      Boolean        @default(false)
+  password    String?        // Hashed if locked
+
+  // For team rooms
+  teamLeaderId String?       // Team lead who owns the room
+
+  isActive    Boolean        @default(true)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  messages    ChatMessage[]
+
+  @@index([type])
+  @@index([isActive])
+}
+
+model ChatMessage {
+  id          String    @id @default(cuid())
+  roomId      String
+  room        ChatRoom  @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User      @relation(fields: [userId], references: [id])
+
+  content     String    @db.Text
+  isEncrypted Boolean   @default(false)  // For air-gap mode
+
+  // Edit tracking
+  isEdited    Boolean   @default(false)
+  editedAt    DateTime?
+
+  // Soft delete
+  isDeleted   Boolean   @default(false)
+  deletedAt   DateTime?
+
+  createdAt   DateTime  @default(now())
+
+  @@index([roomId])
+  @@index([userId])
+  @@index([createdAt])
+  @@index([roomId, createdAt(sort: Desc)])
 }
