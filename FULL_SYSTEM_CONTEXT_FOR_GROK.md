@@ -2,8 +2,8 @@
 ## For Grok AI to Review, Validate, and Suggest Additional Implementations
 
 **Generated:** 2026-01-22
-**Updated:** 2026-01-22
-**Current Phase:** Phase 5 & 6 COMPLETE, Phase 7 PENDING
+**Updated:** 2026-01-23
+**Current Phase:** Phase 5 & 6 COMPLETE, Phase 7 SKELETONS CREATED
 
 ---
 
@@ -53,7 +53,7 @@ enum CommunicationDirection { INBOUND, OUTBOUND }
 
 // TRAINING
 enum TrainingModuleStatus { LOCKED, AVAILABLE, IN_PROGRESS, COMPLETED }
-enum TrainingModuleSourceType { STATIC, OPS_INSIGHT, SCRAPED_ITEM, CLAIM_PATTERN, COMPLIANCE_UPDATE, JURISDICTION_CHANGE }
+enum TrainingModuleSourceType { STATIC, OPS_INSIGHT, SCRAPED_ITEM, CLAIM_PATTERN, COMPLIANCE_UPDATE, JURISDICTION_CHANGE, INGESTION_PATTERN, PARSER_SUGGESTION }
 enum TrainingRecommendationPriority { LOW, NORMAL, HIGH, URGENT, MANDATORY }
 enum TrainingRecommendationReason { LOW_CONVERSION, MISSING_SKILLS, TIER_REQUIREMENT, COMPLIANCE_GAP, JURISDICTION_UPDATE, NEW_HIRE, PERFORMANCE_DECLINE, SKILL_REFRESH, PROMOTION_PATH }
 enum TierProgressionStatus { NOT_ELIGIBLE, IN_PROGRESS, REQUIREMENTS_MET, PENDING_REVIEW, APPROVED, DENIED }
@@ -76,7 +76,7 @@ enum NotificationType { EMAIL, SMS, PUSH, IN_APP }
 enum NotificationStatus { PENDING, SENT, DELIVERED, FAILED, BOUNCED }
 ```
 
-## All Models (37 total)
+## All Models (39 total)
 
 ### Core Business Models
 | Model | Purpose |
@@ -111,8 +111,10 @@ enum NotificationStatus { PENDING, SENT, DELIVERED, FAILED, BOUNCED }
 | Model | Purpose |
 |-------|---------|
 | `IngestionSource` | Data source configurations |
-| `IngestionBatch` | Processing batches |
-| `IngestionRecord` | Individual records with parsing status |
+| `IngestionBatch` | Processing batches (enhanced with stats fields) |
+| `IngestionRecord` | Individual records with parsing status (enhanced with prediction fields) |
+| `ParserVersion` | DB-driven parser versioning per jurisdiction (Phase 6) |
+| `PropertyClass` | Property classification for prediction accuracy (Phase 6) |
 
 ### OPS Layer Models (FOUNDER ONLY)
 | Model | Purpose |
@@ -143,6 +145,8 @@ enum NotificationStatus { PENDING, SENT, DELIVERED, FAILED, BOUNCED }
 
 ```
 backend/src/
+├── cron/
+│   └── scheduler.ts          ✅ SKELETON (Phase 7)
 ├── bots/
 │   ├── ingestionBot.ts      ✅ COMPLETE
 │   ├── payoutBot.ts         ✅ COMPLETE
@@ -204,9 +208,13 @@ backend/src/
 │   ├── trainingService.ts            ✅ COMPLETE
 │   ├── watchService.ts               ✅ COMPLETE
 │   ├── parserService.ts              ✅ COMPLETE
-│   └── TrainingIntelligenceService.ts ✅ COMPLETE (Phase 5)
+│   ├── TrainingIntelligenceService.ts ✅ COMPLETE (Phase 5)
+│   ├── IngestionIntelligenceService.ts ✅ COMPLETE (Phase 6)
+│   ├── BackupService.ts              ✅ SKELETON (Phase 7)
+│   └── ReportingService.ts           ✅ SKELETON (Phase 7)
 ├── types/
-│   └── trainingTypes.ts     ✅ COMPLETE (Phase 5)
+│   ├── trainingTypes.ts     ✅ COMPLETE (Phase 5)
+│   └── ingestionTypes.ts    ✅ COMPLETE (Phase 6)
 ├── utils/
 │   ├── caseLifecycle.ts     ✅ COMPLETE
 │   ├── documentLifecycle.ts ✅ COMPLETE
@@ -599,12 +607,99 @@ lowSuccessRateThreshold: 40
 - `runAutoFileBatch()` — Process eligible auto-files
 - New pattern types: jurisdiction_issue, auto_file_opportunity
 
-## Phase 7: Final System Hardening, QA, and Sovereign Ops Playbook (PENDING)
+## Phase 7: Final System Hardening, QA, and Sovereign Ops Playbook (SKELETONS CREATED)
 
 ### Goal
 Production hardening for sovereign, air-gapped operation.
 
-### Components Needed
+### Skeleton Files Created
+
+**1. `backend/src/cron/scheduler.ts`** — Cron job scheduler
+- 15+ pre-configured schedules for bots, backups, reports
+- Bot schedules: coordinator (daily 6AM), ingestion (6h), payout (daily 7AM), compliance (daily 5AM), training (weekly Monday 4AM), outreach (weekdays 9AM), docket (daily 6AM)
+- Backup schedules: hourly, daily (2AM), weekly (Sunday 3AM)
+- Report schedules: daily digest (weekdays 7AM), weekly summary (Monday 8AM), monthly metrics (1st 9AM)
+- Maintenance: cleanup expired insights (daily 3AM), old bot logs (Sunday 4AM)
+- Dynamic config loading from FounderConfig
+- BotRunLog + OpsInsight integration for job tracking
+
+**2. `backend/src/services/BackupService.ts`** — Sovereign backup infrastructure
+- Backup tiers: hourly (24 retained), daily (7 days), weekly (4 weeks), monthly (12 months)
+- `runHourlyBackup()`, `runDailyBackup()`, `runWeeklyBackup()`, `runMonthlyBackup()`
+- Database backup via pg_dump (TODO: implement actual command)
+- Document vault backup via tar
+- GPG encryption support
+- Offsite copy support (rsync/s3 ready)
+- Backup verification with SHA-256 checksums
+- Manifest tracking
+- `restoreDatabase()` method
+- OpsInsight notification for monthly archives
+
+**3. `backend/src/services/ReportingService.ts`** — Report generation for FOUNDER
+- `generateDailyDigest()` — Cases, payouts, revenue, alerts, recommendations
+- `generateWeeklySummary()` — Cases by status, top employees, jurisdictions
+- `generateMonthlyMetrics()` — Financial/operations/growth/trends report
+- `exportCases()` — CSV/Excel export with configurable fields
+- `exportLedger()` — Financial ledger export
+- `exportEmployeeMetrics()` — Employee performance export
+- `exportAuditLogs()` — Compliance audit export
+
+### New Database Models (Phase 6)
+
+**ParserVersion** — DB-driven parser versioning
+```prisma
+model ParserVersion {
+  id                Int                 @id @default(autoincrement())
+  sourceType        IngestionSourceType
+  version           String              // "1.0", "2026-03-tax-sale-v2"
+  stateCode         String?             // null = national/generic
+  countyFips        String?
+  parserConfig      Json                // { headerRow, columns[], dateFormat }
+  successRate       Float?              @default(0)
+  recordsProcessed  Int                 @default(0)
+  recordsFailed     Int                 @default(0)
+  isActive          Boolean             @default(true)
+  notes             String?             @db.Text
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+}
+```
+
+**PropertyClass** — Value prediction accuracy
+```prisma
+model PropertyClass {
+  id                      Int       @id @default(autoincrement())
+  code                    String    @unique  // "RESIDENTIAL", "COMMERCIAL"
+  description             String?
+  defaultMinValueCents    Int?      @default(50000)      // $500
+  defaultMedianValueCents Int?      @default(500000)     // $5,000
+  defaultMaxValueCents    Int?      @default(10000000)   // $100,000
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+}
+```
+
+**Enhanced IngestionRecord** — New fields for intelligence
+```prisma
+normalizedData          Json?     // Standardized JSON after parsing
+contentHash             String?   // SHA256 for duplicate detection
+rawPayload              Json?     // Original raw data
+predictedValueCents     Int?      // AI-predicted value
+predictionConfidence    Float?    // 0-100 confidence score
+propertyClassCode       String?   // Link to PropertyClass
+errorDetails            Json?     // Structured error JSON
+```
+
+**Enhanced IngestionBatch** — Batch statistics
+```prisma
+recordCount     Int?  @default(0)
+successCount    Int?  @default(0)
+errorCount      Int?  @default(0)
+highValueCount  Int?  @default(0)
+duplicateCount  Int?  @default(0)
+```
+
+### Components Remaining
 1. **Security Audit**
    - Air-gap testing
    - Encryption at rest
@@ -661,11 +756,12 @@ Phase 3 mentioned PdfEngineService but file doesn't exist. Need:
 ### 3. Notification Template Service
 Phase 3 mentioned NotificationTemplateService. Need verification if complete.
 
-### 4. Cron Job Scheduling
-Bots are designed to run on schedules but no cron implementation:
-- `backend/src/cron/scheduler.ts` (CREATE)
-- Bot scheduling configuration
-- Error handling for failed runs
+### 4. Cron Job Scheduling — SKELETON CREATED
+Bots are designed to run on schedules:
+- `backend/src/cron/scheduler.ts` ✅ SKELETON EXISTS
+- Bot scheduling configuration ✅ 15+ schedules defined
+- Error handling for failed runs ✅ BotRunLog + OpsInsight integration
+- **TODO:** Install node-cron, enable in production
 
 ### 5. Email/SMS Integration
 NotificationService exists but may need:
@@ -686,23 +782,26 @@ Public-facing client portal needs:
 - Communication history
 - Secure authentication (magic link?)
 
-### 8. Reporting Engine
-No reporting service found:
-- `backend/src/services/ReportingService.ts` (CREATE)
-- CSV/Excel exports
-- Scheduled reports
-- Founder daily digest
+### 8. Reporting Engine — SKELETON CREATED
+Reporting service skeleton exists:
+- `backend/src/services/ReportingService.ts` ✅ SKELETON EXISTS
+- CSV/Excel exports ✅ Methods defined
+- Scheduled reports ✅ Integrated with scheduler
+- Founder daily digest ✅ generateDailyDigest() method
+- **TODO:** Install exceljs, implement actual file generation
 
 ### 9. Webhook System
 For external integrations:
 - Incoming webhooks (email delivery, payment)
 - Outgoing webhooks (case updates)
 
-### 10. Data Backup Service
+### 10. Data Backup Service — SKELETON CREATED
 Critical for sovereign operation:
-- Automated database backups
-- Point-in-time recovery
-- Backup verification
+- `backend/src/services/BackupService.ts` ✅ SKELETON EXISTS
+- Automated database backups ✅ pg_dump methods defined
+- Point-in-time recovery ✅ restoreDatabase() method
+- Backup verification ✅ SHA-256 checksum verification
+- **TODO:** Implement actual pg_dump/tar commands, configure retention
 
 ### 11. Search Service
 No full-text search implementation:
