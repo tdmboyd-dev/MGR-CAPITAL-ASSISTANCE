@@ -1,0 +1,33 @@
+{
+  "founder": {
+    "email": "founder@mgrtest.com",
+    "password": "FounderPassword123!",
+    "name": "Test Founder",
+    "role": "FOUNDER"
+  },
+  "admin": {
+    "email": "admin@mgrtest.com",
+    "password": "AdminPassword123!",
+    "name": "Test Admin",
+    "role": "ADMIN"
+  },
+  "employee": {
+    "email": "employee@mgrtest.com",
+    "password": "EmployeePassword123!",
+    "name": "Test Employee",
+    "role": "EMPLOYEE",
+    "tier": "TIER_1_ASSOCIATE"
+  },
+  "client": {
+    "email": "client@mgrtest.com",
+    "password": "ClientPassword123!",
+    "name": "Test Client",
+    "role": "CLIENT"
+  },
+  "invalid": {
+    "email": "invalid@mgrtest.com",
+    "password": "WrongPassword123!",
+    "name": "Invalid User",
+    "role": "EMPLOYEE"
+  }
+}
