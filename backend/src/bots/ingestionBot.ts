@@ -1,14 +1,23 @@
 // ============================================
 // INGESTION BOT — MGR CAPITAL ASSISTANCE
-// Analyzes ingestion batches, flags suspicious patterns
-// Suggests priority cases, summarizes data quality
+// Enhanced with Intelligence Layer (Phase 6)
+// Analyzes batches, predicts values, auto-files high-value cases,
+// generates training modules from ingestion patterns
 // ============================================
 
 import { PrismaClient, OpsInsightType, OpsInsightPriority } from "@prisma/client";
+import { ingestionIntelligenceService } from "../services/IngestionIntelligenceService.js";
+import {
+  IngestionBotAnalysis,
+  IngestionBotFinding,
+  IngestionFindingType,
+  BatchIntelligenceResult,
+  JurisdictionKey,
+} from "../types/ingestionTypes.js";
 
 const prisma = new PrismaClient();
 
-const BOT_NAME = "ingestionBot";
+const BOT_NAME = "IngestionBot";
 
 interface IngestionAnalysis {
   period: string;
@@ -20,13 +29,21 @@ interface IngestionAnalysis {
   patterns: IngestionPattern[];
   recommendations: string[];
   alerts: IngestionAlert[];
+  // Phase 6 additions
+  intelligenceResults?: {
+    predictionsGenerated: number;
+    autoFileCandidates: number;
+    parserSuggestionsGenerated: number;
+    duplicatesDetected: number;
+    trainingModulesGenerated: number;
+  };
 }
 
 interface IngestionPattern {
-  type: "high_error_rate" | "high_value_cluster" | "duplicate_suspected" | "source_quality";
+  type: "high_error_rate" | "high_value_cluster" | "duplicate_suspected" | "source_quality" | "jurisdiction_issue" | "auto_file_opportunity";
   description: string;
   severity: "low" | "medium" | "high";
-  data: any;
+  data: Record<string, unknown>;
 }
 
 interface IngestionAlert {
@@ -37,13 +54,14 @@ interface IngestionAlert {
 
 class IngestionBot {
   // ============================================
-  // MAIN ANALYSIS
+  // MAIN ANALYSIS (Enhanced with Intelligence)
   // ============================================
 
   /**
-   * Run full ingestion analysis
+   * Run full ingestion analysis with intelligence layer
    */
   async analyze(days: number = 7): Promise<IngestionAnalysis> {
+    const startTime = Date.now();
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - days);
 
@@ -56,10 +74,10 @@ class IngestionBot {
           select: {
             id: true,
             status: true,
-            surplusAmount: true,
-            caseId: true,
-            ownerName: true,
-            propertyAddress: true,
+            isHighValue: true,
+            priority: true,
+            normalizedData: true,
+            errorDetails: true,
           },
         },
       },
@@ -68,53 +86,255 @@ class IngestionBot {
 
     // Calculate metrics
     const totalBatches = batches.length;
-    const totalRecords = batches.reduce((sum, b) => sum + b.totalRecords, 0);
-    const createdCases = batches.reduce((sum, b) => sum + b.createdCases, 0);
-    const errors = totalRecords - createdCases;
-    const errorRate = totalRecords > 0 ? (errors / totalRecords) * 100 : 0;
+    const totalRecords = batches.reduce((sum, b) => sum + b.recordCount, 0);
+    const successRecords = batches.reduce((sum, b) => sum + b.successCount, 0);
+    const errorRate = totalRecords > 0 ? ((totalRecords - successRecords) / totalRecords) * 100 : 0;
 
-    // Count high-value records ($10,000+)
+    // Count high-value records
     let highValueCount = 0;
     for (const batch of batches) {
       for (const record of batch.records) {
-        if (record.surplusAmount && record.surplusAmount >= 1000000) {
+        if (record.isHighValue) {
           highValueCount++;
         }
       }
     }
 
-    // Detect patterns
+    // Detect patterns (enhanced)
     const patterns = await this.detectPatterns(batches);
 
-    // Generate recommendations
-    const recommendations = this.generateRecommendations(patterns, errorRate, highValueCount);
+    // Run intelligence analysis on recent batches
+    const intelligenceResults = await this.runIntelligenceAnalysis(batches);
 
-    // Generate alerts
-    const alerts = this.generateAlerts(patterns, errorRate);
+    // Generate recommendations (enhanced)
+    const recommendations = this.generateRecommendations(patterns, errorRate, highValueCount, intelligenceResults);
+
+    // Generate alerts (enhanced)
+    const alerts = this.generateAlerts(patterns, errorRate, intelligenceResults);
 
     const analysis: IngestionAnalysis = {
       period: `${days} days`,
       totalBatches,
       totalRecords,
-      createdCases,
+      createdCases: successRecords,
       errorRate: Math.round(errorRate * 100) / 100,
       highValueCount,
       patterns,
       recommendations,
       alerts,
+      intelligenceResults,
     };
 
     // Save insight to database
     await this.saveInsight(analysis);
 
+    // Log the run
+    await prisma.botRunLog.create({
+      data: {
+        botName: BOT_NAME,
+        runType: "FULL_ANALYSIS",
+        status: alerts.some((a) => a.severity === "critical") ? "WARNING" : "SUCCESS",
+        resultSummary: `Analyzed ${totalRecords} records with ${errorRate.toFixed(1)}% error rate. ${highValueCount} high-value found.`,
+        recordsProcessed: totalRecords,
+        insightsGenerated: patterns.length + (intelligenceResults?.parserSuggestionsGenerated || 0),
+        errorsEncountered: Math.round((totalRecords * errorRate) / 100),
+        durationMs: Date.now() - startTime,
+      },
+    });
+
     return analysis;
   }
 
   // ============================================
-  // PATTERN DETECTION
+  // INTELLIGENCE ANALYSIS (Phase 6)
   // ============================================
 
-  private async detectPatterns(batches: any[]): Promise<IngestionPattern[]> {
+  private async runIntelligenceAnalysis(batches: Array<{ id: string; records: Array<{ id: string }> }>): Promise<{
+    predictionsGenerated: number;
+    autoFileCandidates: number;
+    parserSuggestionsGenerated: number;
+    duplicatesDetected: number;
+    trainingModulesGenerated: number;
+  }> {
+    let predictionsGenerated = 0;
+    let autoFileCandidates = 0;
+    let parserSuggestionsGenerated = 0;
+    let duplicatesDetected = 0;
+    let trainingModulesGenerated = 0;
+
+    // Analyze failed records for parser suggestions
+    try {
+      const failedAnalysis = await ingestionIntelligenceService.analyzeFailedRecords({ limit: 500 });
+
+      // Generate suggestions for top clusters
+      for (const cluster of failedAnalysis.clusters.slice(0, 3)) {
+        if (cluster.recordCount >= 10) {
+          try {
+            await ingestionIntelligenceService.generateParserSuggestion(cluster.clusterId);
+            parserSuggestionsGenerated++;
+
+            // Generate training module for this pattern
+            await this.generateTrainingModuleFromPattern(cluster);
+            trainingModulesGenerated++;
+          } catch {
+            // Skip individual suggestion errors
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Failed record analysis error:", error);
+    }
+
+    // Get auto-file candidates
+    try {
+      const candidates = await ingestionIntelligenceService.getAutoFileCandidates();
+      autoFileCandidates = candidates.filter((c) => c.isEligible).length;
+
+      // Predict values for pending records in recent batches
+      for (const batch of batches.slice(0, 5)) {
+        const pendingRecordIds = batch.records.slice(0, 20).map((r) => r.id);
+        if (pendingRecordIds.length > 0) {
+          try {
+            const predictions = await ingestionIntelligenceService.predictBatchValues(pendingRecordIds);
+            predictionsGenerated += predictions.length;
+          } catch {
+            // Skip prediction errors
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Auto-file analysis error:", error);
+    }
+
+    // Detect duplicates in recent batches
+    for (const batch of batches.slice(0, 3)) {
+      try {
+        const duplicates = await ingestionIntelligenceService.detectBatchDuplicates(batch.id);
+        duplicatesDetected += duplicates.length;
+      } catch {
+        // Skip duplicate detection errors
+      }
+    }
+
+    return {
+      predictionsGenerated,
+      autoFileCandidates,
+      parserSuggestionsGenerated,
+      duplicatesDetected,
+      trainingModulesGenerated,
+    };
+  }
+
+  // ============================================
+  // TRAINING MODULE GENERATION
+  // ============================================
+
+  private async generateTrainingModuleFromPattern(cluster: {
+    clusterId: string;
+    errorPattern: string;
+    recordCount: number;
+    commonJurisdiction?: JurisdictionKey;
+    potentialValueCents: number;
+  }): Promise<void> {
+    // Check if module already exists for this pattern
+    const existingModule = await prisma.dynamicTrainingModule.findFirst({
+      where: {
+        title: { contains: cluster.clusterId },
+      },
+    });
+
+    if (existingModule) return;
+
+    // Create dynamic training module
+    const moduleContent = this.buildModuleContentFromPattern(cluster);
+
+    await prisma.dynamicTrainingModule.create({
+      data: {
+        title: `Ingestion Pattern: ${cluster.errorPattern.slice(0, 50)}`,
+        description: `Training module auto-generated from ingestion error pattern affecting ${cluster.recordCount} records`,
+        sourceType: "OPS_INSIGHT",
+        dynamicContent: moduleContent,
+        targetRoles: ["ADMIN", "EMPLOYEE"],
+        priority: cluster.recordCount > 50 ? "HIGH" : "MEDIUM",
+        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
+      },
+    });
+
+    // Create OpsInsight for the new module
+    await prisma.opsInsight.create({
+      data: {
+        source: BOT_NAME,
+        category: "TRAINING_MODULE_GENERATED",
+        severity: "LOW",
+        title: `Training module created for ingestion pattern`,
+        description: `Auto-generated training for pattern affecting ${cluster.recordCount} records. Potential value: $${(cluster.potentialValueCents / 100).toLocaleString()}`,
+        data: { clusterId: cluster.clusterId, recordCount: cluster.recordCount },
+        status: "OPEN",
+      },
+    });
+  }
+
+  private buildModuleContentFromPattern(cluster: {
+    errorPattern: string;
+    recordCount: number;
+    commonJurisdiction?: JurisdictionKey;
+  }): Record<string, unknown> {
+    return {
+      type: "ingestion_pattern",
+      sections: [
+        {
+          title: "Pattern Overview",
+          content: `This pattern has affected ${cluster.recordCount} ingestion records. Understanding and addressing this pattern will improve data quality.`,
+        },
+        {
+          title: "Error Pattern",
+          content: cluster.errorPattern,
+        },
+        {
+          title: "Affected Jurisdiction",
+          content: cluster.commonJurisdiction || "Multiple jurisdictions",
+        },
+        {
+          title: "Resolution Steps",
+          content: [
+            "Review the error pattern to understand the data format issue",
+            "Check if source data format has changed",
+            "Update parser configuration if needed",
+            "Re-process affected records after fix",
+          ],
+        },
+      ],
+      quiz: {
+        questions: [
+          {
+            question: "What should you do when you encounter this error pattern?",
+            options: [
+              "Ignore it",
+              "Report to FOUNDER and await parser update",
+              "Manually fix each record",
+              "Delete the records",
+            ],
+            correctAnswer: 1,
+          },
+        ],
+      },
+    };
+  }
+
+  // ============================================
+  // PATTERN DETECTION (Enhanced)
+  // ============================================
+
+  private async detectPatterns(batches: Array<{
+    source: { name: string; state?: string | null } | null;
+    recordCount: number;
+    successCount: number;
+    records: Array<{
+      isHighValue: boolean;
+      normalizedData: unknown;
+      status: string;
+    }>;
+  }>): Promise<IngestionPattern[]> {
     const patterns: IngestionPattern[] = [];
 
     // Group by source
@@ -122,8 +342,8 @@ class IngestionBot {
     for (const batch of batches) {
       const sourceKey = batch.source?.name || "unknown";
       const existing = bySource.get(sourceKey) || { totalRecords: 0, errors: 0, batches: 0 };
-      existing.totalRecords += batch.totalRecords;
-      existing.errors += batch.totalRecords - batch.createdCases;
+      existing.totalRecords += batch.recordCount;
+      existing.errors += batch.recordCount - batch.successCount;
       existing.batches++;
       bySource.set(sourceKey, existing);
     }
@@ -145,7 +365,7 @@ class IngestionBot {
     const highValueByState = new Map<string, number>();
     for (const batch of batches) {
       for (const record of batch.records) {
-        if (record.surplusAmount && record.surplusAmount >= 1000000) {
+        if (record.isHighValue) {
           const state = batch.source?.state || "unknown";
           highValueByState.set(state, (highValueByState.get(state) || 0) + 1);
         }
@@ -163,13 +383,64 @@ class IngestionBot {
       }
     }
 
-    // Detect potential duplicates (same address appearing multiple times)
+    // Detect jurisdiction issues (low success rate)
+    try {
+      const jurisdictionMetrics = await ingestionIntelligenceService.getAllJurisdictionMetrics();
+      const problematicJurisdictions = jurisdictionMetrics.filter(
+        (j) => j.successRate < 50 && j.totalRecords >= 20
+      );
+
+      for (const jurisdiction of problematicJurisdictions.slice(0, 5)) {
+        patterns.push({
+          type: "jurisdiction_issue",
+          description: `${jurisdiction.state}/${jurisdiction.county} has ${jurisdiction.successRate}% success rate`,
+          severity: jurisdiction.successRate < 30 ? "high" : "medium",
+          data: {
+            jurisdiction: jurisdiction.key,
+            successRate: jurisdiction.successRate,
+            totalRecords: jurisdiction.totalRecords,
+            needsParserUpdate: jurisdiction.needsParserUpdate,
+          },
+        });
+      }
+    } catch {
+      // Skip jurisdiction analysis if it fails
+    }
+
+    // Detect auto-file opportunities
+    try {
+      const candidates = await ingestionIntelligenceService.getAutoFileCandidates();
+      const eligibleCount = candidates.filter((c) => c.isEligible).length;
+
+      if (eligibleCount >= 3) {
+        patterns.push({
+          type: "auto_file_opportunity",
+          description: `${eligibleCount} records eligible for auto-filing`,
+          severity: "low",
+          data: {
+            eligibleCount,
+            totalCandidates: candidates.length,
+            topCandidates: candidates.slice(0, 3).map((c) => ({
+              ownerName: c.ownerName,
+              predictedValue: c.predictedValueCents,
+              priorityScore: c.priorityScore,
+            })),
+          },
+        });
+      }
+    } catch {
+      // Skip auto-file analysis if it fails
+    }
+
+    // Detect potential duplicates
     const addressCounts = new Map<string, number>();
     for (const batch of batches) {
       for (const record of batch.records) {
-        if (record.propertyAddress) {
-          const normalized = record.propertyAddress.toLowerCase().trim();
-          addressCounts.set(normalized, (addressCounts.get(normalized) || 0) + 1);
+        const normalized = record.normalizedData as Record<string, unknown>;
+        const address = (normalized?.propertyAddress as string) || "";
+        if (address) {
+          const normalizedAddr = address.toLowerCase().trim();
+          addressCounts.set(normalizedAddr, (addressCounts.get(normalizedAddr) || 0) + 1);
         }
       }
     }
@@ -191,20 +462,25 @@ class IngestionBot {
   }
 
   // ============================================
-  // RECOMMENDATIONS
+  // RECOMMENDATIONS (Enhanced)
   // ============================================
 
   private generateRecommendations(
     patterns: IngestionPattern[],
     errorRate: number,
-    highValueCount: number
+    highValueCount: number,
+    intelligenceResults?: {
+      autoFileCandidates: number;
+      parserSuggestionsGenerated: number;
+      duplicatesDetected: number;
+    }
   ): string[] {
     const recommendations: string[] = [];
 
     // High error rate
     if (errorRate > 30) {
       recommendations.push(
-        "Consider reviewing ingestion source quality - error rate is above 30%"
+        "Review ingestion source quality - error rate is above 30%. Check parser suggestions for fixes."
       );
     }
 
@@ -212,6 +488,27 @@ class IngestionBot {
     if (highValueCount > 0) {
       recommendations.push(
         `Review ${highValueCount} high-value cases for priority processing`
+      );
+    }
+
+    // Auto-file opportunities
+    if (intelligenceResults?.autoFileCandidates && intelligenceResults.autoFileCandidates > 0) {
+      recommendations.push(
+        `${intelligenceResults.autoFileCandidates} records are eligible for auto-filing. Review in Intelligence panel.`
+      );
+    }
+
+    // Parser suggestions
+    if (intelligenceResults?.parserSuggestionsGenerated && intelligenceResults.parserSuggestionsGenerated > 0) {
+      recommendations.push(
+        `${intelligenceResults.parserSuggestionsGenerated} new parser suggestions generated. Review and apply to improve parsing.`
+      );
+    }
+
+    // Duplicates
+    if (intelligenceResults?.duplicatesDetected && intelligenceResults.duplicatesDetected > 0) {
+      recommendations.push(
+        `${intelligenceResults.duplicatesDetected} potential duplicate records detected. Review before processing.`
       );
     }
 
@@ -226,6 +523,16 @@ class IngestionBot {
         case "high_value_cluster":
           recommendations.push(
             `Prioritize cases from ${pattern.data.state} - multiple high-value opportunities`
+          );
+          break;
+        case "jurisdiction_issue":
+          recommendations.push(
+            `Update parser for ${pattern.data.jurisdiction} - success rate is ${pattern.data.successRate}%`
+          );
+          break;
+        case "auto_file_opportunity":
+          recommendations.push(
+            `Enable auto-filing to process ${pattern.data.eligibleCount} eligible high-value records automatically`
           );
           break;
         case "duplicate_suspected":
@@ -244,10 +551,17 @@ class IngestionBot {
   }
 
   // ============================================
-  // ALERTS
+  // ALERTS (Enhanced)
   // ============================================
 
-  private generateAlerts(patterns: IngestionPattern[], errorRate: number): IngestionAlert[] {
+  private generateAlerts(
+    patterns: IngestionPattern[],
+    errorRate: number,
+    intelligenceResults?: {
+      autoFileCandidates: number;
+      duplicatesDetected: number;
+    }
+  ): IngestionAlert[] {
     const alerts: IngestionAlert[] = [];
 
     if (errorRate > 50) {
@@ -261,6 +575,24 @@ class IngestionBot {
         title: "Warning: Elevated Error Rate",
         message: `Ingestion error rate is ${errorRate.toFixed(1)}%. Consider investigating.`,
         severity: "high",
+      });
+    }
+
+    // Auto-file opportunity alert
+    if (intelligenceResults?.autoFileCandidates && intelligenceResults.autoFileCandidates >= 5) {
+      alerts.push({
+        title: "Auto-File Opportunity",
+        message: `${intelligenceResults.autoFileCandidates} high-value records ready for auto-filing`,
+        severity: "medium",
+      });
+    }
+
+    // Duplicate alert
+    if (intelligenceResults?.duplicatesDetected && intelligenceResults.duplicatesDetected >= 10) {
+      alerts.push({
+        title: "Duplicate Records Detected",
+        message: `${intelligenceResults.duplicatesDetected} potential duplicates found. Review required.`,
+        severity: "medium",
       });
     }
 
@@ -297,8 +629,8 @@ class IngestionBot {
         type: "INGESTION_ANALYSIS" as OpsInsightType,
         priority: priority as OpsInsightPriority,
         title: `Ingestion Analysis (${analysis.period})`,
-        summary: `${analysis.totalRecords} records processed with ${analysis.errorRate}% error rate. ${analysis.highValueCount} high-value records found.`,
-        details: analysis as any,
+        summary: `${analysis.totalRecords} records processed with ${analysis.errorRate}% error rate. ${analysis.highValueCount} high-value records found. ${analysis.intelligenceResults?.autoFileCandidates || 0} auto-file candidates.`,
+        details: analysis as unknown as Record<string, unknown>,
         plainEnglish,
         recommendations: analysis.recommendations,
         relatedCaseIds: [],
@@ -331,6 +663,23 @@ class IngestionBot {
       );
     }
 
+    // Intelligence results
+    if (analysis.intelligenceResults) {
+      const ir = analysis.intelligenceResults;
+      if (ir.autoFileCandidates > 0) {
+        parts.push(`${ir.autoFileCandidates} records are eligible for automatic case creation.`);
+      }
+      if (ir.parserSuggestionsGenerated > 0) {
+        parts.push(`Generated ${ir.parserSuggestionsGenerated} parser improvement suggestions.`);
+      }
+      if (ir.duplicatesDetected > 0) {
+        parts.push(`Detected ${ir.duplicatesDetected} potential duplicate records.`);
+      }
+      if (ir.trainingModulesGenerated > 0) {
+        parts.push(`Created ${ir.trainingModulesGenerated} training modules for new patterns.`);
+      }
+    }
+
     if (analysis.patterns.length > 0) {
       parts.push(`\nI noticed some patterns:`);
       for (const pattern of analysis.patterns) {
@@ -349,6 +698,17 @@ class IngestionBot {
   }
 
   // ============================================
+  // INTELLIGENT BATCH PROCESSING
+  // ============================================
+
+  /**
+   * Run intelligent processing on a specific batch
+   */
+  async processIntelligentBatch(batchId: string): Promise<BatchIntelligenceResult> {
+    return ingestionIntelligenceService.runIntelligentProcess(batchId);
+  }
+
+  // ============================================
   // QUICK CHECKS
   // ============================================
 
@@ -358,6 +718,11 @@ class IngestionBot {
   async checkRecentBatch(batchId: string): Promise<{
     quality: "good" | "warning" | "critical";
     message: string;
+    intelligenceSummary?: {
+      predictedTotalValue: number;
+      autoFileEligible: number;
+      duplicatesFound: number;
+    };
   }> {
     const batch = await prisma.ingestionBatch.findUnique({
       where: { id: batchId },
@@ -369,25 +734,85 @@ class IngestionBot {
     }
 
     const errorRate =
-      batch.totalRecords > 0
-        ? ((batch.totalRecords - batch.createdCases) / batch.totalRecords) * 100
+      batch.recordCount > 0
+        ? ((batch.recordCount - batch.successCount) / batch.recordCount) * 100
         : 0;
+
+    // Run quick intelligence check
+    let intelligenceSummary;
+    try {
+      const result = await ingestionIntelligenceService.runIntelligentProcess(batchId);
+      intelligenceSummary = {
+        predictedTotalValue: result.predictions.reduce((sum, p) => sum + p.predictedAmountCents, 0),
+        autoFileEligible: result.summary.autoFileEligibleCount,
+        duplicatesFound: result.summary.duplicateCount,
+      };
+    } catch {
+      // Skip intelligence if it fails
+    }
 
     if (errorRate > 50) {
       return {
         quality: "critical",
         message: `Batch has ${errorRate.toFixed(1)}% error rate - review source quality`,
+        intelligenceSummary,
       };
     } else if (errorRate > 20) {
       return {
         quality: "warning",
         message: `Batch has elevated error rate (${errorRate.toFixed(1)}%)`,
+        intelligenceSummary,
       };
     }
 
     return {
       quality: "good",
-      message: `Batch processed successfully with ${batch.createdCases} cases created`,
+      message: `Batch processed successfully with ${batch.successCount} records imported`,
+      intelligenceSummary,
+    };
+  }
+
+  // ============================================
+  // AUTO-FILE BATCH PROCESSING
+  // ============================================
+
+  /**
+   * Process all eligible auto-file candidates
+   */
+  async runAutoFileBatch(): Promise<{
+    processed: number;
+    successful: number;
+    failed: number;
+    results: Array<{ candidateId: string; success: boolean; caseId?: string; error?: string }>;
+  }> {
+    const results = await ingestionIntelligenceService.processAutoFileBatch();
+
+    const successful = results.filter((r) => r.success).length;
+
+    // Log the run
+    await prisma.botRunLog.create({
+      data: {
+        botName: BOT_NAME,
+        runType: "AUTO_FILE_BATCH",
+        status: successful > 0 ? "SUCCESS" : "WARNING",
+        resultSummary: `Auto-filed ${successful}/${results.length} candidates`,
+        recordsProcessed: results.length,
+        insightsGenerated: successful,
+        errorsEncountered: results.length - successful,
+        durationMs: 0,
+      },
+    });
+
+    return {
+      processed: results.length,
+      successful,
+      failed: results.length - successful,
+      results: results.map((r) => ({
+        candidateId: r.candidateId,
+        success: r.success,
+        caseId: r.caseId,
+        error: r.error,
+      })),
     };
   }
 }

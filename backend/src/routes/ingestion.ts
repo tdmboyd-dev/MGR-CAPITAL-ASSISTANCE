@@ -18,6 +18,8 @@ import parserService, {
   SourceType,
 } from "../services/parserService.js";
 import { scraperService } from "../services/scraperService.js";
+import { ingestionIntelligenceService } from "../services/IngestionIntelligenceService.js";
+import { JurisdictionKey } from "../types/ingestionTypes.js";
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -903,6 +905,435 @@ router.delete(
         deletedBatchId: id,
         deletedRecords: batch._count.records,
       },
+    });
+  })
+);
+
+// ============================================
+// INGESTION INTELLIGENCE ENDPOINTS (Phase 6)
+// ============================================
+
+/**
+ * POST /api/ingestion/batches/:id/intelligent-process
+ * Run intelligent processing on a batch - auto-parse, predict values, detect duplicates
+ */
+router.post(
+  "/batches/:id/intelligent-process",
+  authMiddleware,
+  roleGuard(["ADMIN"]),
+  asyncHandler(async (req: AuthRequest, res: Response) => {
+    const { id } = req.params;
+
+    // Verify batch exists
+    const batch = await prisma.ingestionBatch.findUnique({
+      where: { id },
+    });
+
+    if (!batch) {
+      throw Errors.notFound("Ingestion batch");
+    }
+
+    // Run intelligent processing
+    const result = await ingestionIntelligenceService.runIntelligentProcess(id);
+
+    // Log audit
+    await prisma.auditLog.create({
+      data: {
+        userId: req.user!.id,
+        action: "INGESTION_INTELLIGENT_PROCESS",
+        entityType: "INGESTION_BATCH",
+        entityId: id,
+        details: {
+          totalRecords: result.totalRecords,
+          highValueCount: result.summary.highValueCount,
+          autoFileEligible: result.summary.autoFileEligibleCount,
+          duplicatesFound: result.summary.duplicateCount,
+        },
+      },
+    });
+
+    res.json({
+      success: true,
+      data: result,
+    });
+  })
+);
+
+/**
+ * GET /api/ingestion/intelligence/config
+ * Get current ingestion intelligence configuration
+ */
+router.get("/intelligence/config", authMiddleware, roleGuard(["ADMIN"]), async (_req: Request, res: Response) => {
+  try {
+    const config = await ingestionIntelligenceService.getConfig();
+    res.json({ success: true, data: config });
+  } catch (error: unknown) {
+    console.error("Config error:", error);
+    res.status(500).json({ success: false, error: "Failed to get config" });
+  }
+});
+
+/**
+ * PATCH /api/ingestion/intelligence/config
+ * Update ingestion intelligence configuration
+ */
+router.patch(
+  "/intelligence/config",
+  authMiddleware,
+  roleGuard(["ADMIN"]),
+  asyncHandler(async (req: AuthRequest, res: Response) => {
+    const updates = req.body;
+
+    await ingestionIntelligenceService.updateConfig(updates);
+
+    // Log audit
+    await prisma.auditLog.create({
+      data: {
+        userId: req.user!.id,
+        action: "INGESTION_CONFIG_UPDATED",
+        entityType: "FOUNDER_CONFIG",
+        entityId: "ingestion_intelligence",
+        details: { updates },
+      },
+    });
+
+    const newConfig = await ingestionIntelligenceService.getConfig();
+    res.json({ success: true, data: newConfig });
+  })
+);
+
+/**
+ * GET /api/ingestion/intelligence/failed-analysis
+ * Analyze failed records to find patterns and suggest fixes
+ */
+router.get(
+  "/intelligence/failed-analysis",
+  authMiddleware,
+  roleGuard(["ADMIN"]),
+  asyncHandler(async (req: Request, res: Response) => {
+    const { batchId, limit } = req.query;
+
+    const analysis = await ingestionIntelligenceService.analyzeFailedRecords({
+      batchId: batchId as string,
+      limit: limit ? parseInt(limit as string) : undefined,
+    });
+
+    res.json({ success: true, data: analysis });
+  })
+);
+
+/**
+ * GET /api/ingestion/intelligence/parser-suggestions
+ * Get pending parser suggestions
+ */
+router.get("/intelligence/parser-suggestions", authMiddleware, roleGuard(["ADMIN"]), async (req: Request, res: Response) => {
+  try {
+    const { status } = req.query;
+    const suggestions = await ingestionIntelligenceService.getParserSuggestions(status as string);
+    res.json({ success: true, count: suggestions.length, data: suggestions });
+  } catch (error: unknown) {
+    console.error("Suggestions error:", error);
+    res.status(500).json({ success: false, error: "Failed to get suggestions" });
+  }
+});
+
+/**
+ * POST /api/ingestion/intelligence/parser-suggestions/:clusterId/generate
+ * Generate a parser suggestion from a failed record cluster
+ */
+router.post(
+  "/intelligence/parser-suggestions/:clusterId/generate",
+  authMiddleware,
+  roleGuard(["ADMIN"]),
+  asyncHandler(async (req: AuthRequest, res: Response) => {
+    const { clusterId } = req.params;
+
+    const suggestion = await ingestionIntelligenceService.generateParserSuggestion(clusterId);
+
+    // Log audit
+    await prisma.auditLog.create({
+      data: {
+        userId: req.user!.id,
+        action: "PARSER_SUGGESTION_GENERATED",
+        entityType: "PARSER_SUGGESTION",
+        entityId: suggestion.id,
+        details: { clusterId, affectedRecords: suggestion.potentialImpact.affectedRecords },
+      },
+    });
+
+    res.json({ success: true, data: suggestion });
+  })
+);
+
+/**
+ * POST /api/ingestion/intelligence/parser-suggestions/:id/apply
+ * Apply a parser suggestion
+ */
+router.post(
+  "/intelligence/parser-suggestions/:id/apply",
+  authMiddleware,
+  roleGuard(["ADMIN"]),
+  asyncHandler(async (req: AuthRequest, res: Response) => {
+    const { id } = req.params;
+
+    const result = await ingestionIntelligenceService.applyParserSuggestion(id);
+
+    if (result.success) {
+      await prisma.auditLog.create({
+        data: {
+          userId: req.user!.id,
+          action: "PARSER_SUGGESTION_APPLIED",
+          entityType: "PARSER_SUGGESTION",
+          entityId: id,
+          details: { message: result.message },
+        },
+      });
+    }
+
+    res.json({ success: result.success, data: result });
+  })
+);
+
+/**
+ * GET /api/ingestion/intelligence/jurisdiction-metrics
+ * Get metrics for all jurisdictions or a specific one
+ */
+router.get(
+  "/intelligence/jurisdiction-metrics",
+  authMiddleware,
+  roleGuard(["ADMIN"]),
+  asyncHandler(async (req: Request, res: Response) => {
+    const { jurisdiction } = req.query;
+
+    if (jurisdiction) {
+      const metrics = await ingestionIntelligenceService.getJurisdictionMetrics(jurisdiction as JurisdictionKey);
+      res.json({ success: true, data: metrics });
+    } else {
+      const allMetrics = await ingestionIntelligenceService.getAllJurisdictionMetrics();
+      res.json({ success: true, count: allMetrics.length, data: allMetrics });
+    }
+  })
+);
+
+/**
+ * POST /api/ingestion/intelligence/predict-value
+ * Predict value for a single record
+ */
+router.post(
+  "/intelligence/predict-value",
+  authMiddleware,
+  roleGuard(["ADMIN"]),
+  asyncHandler(async (req: AuthRequest, res: Response) => {
+    const { state, county, propertyType, parcelId, rawAmountHint } = req.body;
+
+    if (!state || !county) {
+      throw Errors.badRequest("state and county are required");
+    }
+
+    const prediction = await ingestionIntelligenceService.predictValue({
+      state,
+      county,
+      propertyType,
+      parcelId,
+      rawAmountHint,
+    });
+
+    res.json({ success: true, data: prediction });
+  })
+);
+
+/**
+ * POST /api/ingestion/intelligence/predict-batch
+ * Predict values for multiple records
+ */
+router.post(
+  "/intelligence/predict-batch",
+  authMiddleware,
+  roleGuard(["ADMIN"]),
+  asyncHandler(async (req: AuthRequest, res: Response) => {
+    const { recordIds } = req.body;
+
+    if (!recordIds || !Array.isArray(recordIds)) {
+      throw Errors.badRequest("recordIds must be an array");
+    }
+
+    const predictions = await ingestionIntelligenceService.predictBatchValues(recordIds);
+
+    res.json({
+      success: true,
+      count: predictions.length,
+      data: predictions,
+    });
+  })
+);
+
+/**
+ * GET /api/ingestion/intelligence/auto-file-candidates
+ * Get records eligible for auto-filing
+ */
+router.get("/intelligence/auto-file-candidates", authMiddleware, roleGuard(["ADMIN"]), async (req: Request, res: Response) => {
+  try {
+    const { status } = req.query;
+    const candidates = await ingestionIntelligenceService.getAutoFileCandidates(status as string);
+    res.json({
+      success: true,
+      count: candidates.length,
+      data: candidates,
+    });
+  } catch (error: unknown) {
+    console.error("Auto-file candidates error:", error);
+    res.status(500).json({ success: false, error: "Failed to get candidates" });
+  }
+});
+
+/**
+ * POST /api/ingestion/intelligence/auto-file/:recordId/evaluate
+ * Evaluate a record for auto-filing eligibility
+ */
+router.post(
+  "/intelligence/auto-file/:recordId/evaluate",
+  authMiddleware,
+  roleGuard(["ADMIN"]),
+  asyncHandler(async (req: Request, res: Response) => {
+    const { recordId } = req.params;
+
+    const candidate = await ingestionIntelligenceService.evaluateAutoFileCandidate(recordId);
+
+    res.json({ success: true, data: candidate });
+  })
+);
+
+/**
+ * POST /api/ingestion/intelligence/auto-file/:candidateId/approve
+ * Approve and execute auto-filing for a candidate
+ */
+router.post(
+  "/intelligence/auto-file/:candidateId/approve",
+  authMiddleware,
+  roleGuard(["ADMIN"]),
+  asyncHandler(async (req: AuthRequest, res: Response) => {
+    const { candidateId } = req.params;
+
+    const result = await ingestionIntelligenceService.approveAutoFile(candidateId);
+
+    if (result.success) {
+      await prisma.auditLog.create({
+        data: {
+          userId: req.user!.id,
+          action: "AUTO_FILE_APPROVED",
+          entityType: "CASE",
+          entityId: result.caseId || candidateId,
+          details: { candidateId, action: result.action },
+        },
+      });
+    }
+
+    res.json({ success: result.success, data: result });
+  })
+);
+
+/**
+ * POST /api/ingestion/intelligence/auto-file/:candidateId/reject
+ * Reject an auto-file candidate
+ */
+router.post(
+  "/intelligence/auto-file/:candidateId/reject",
+  authMiddleware,
+  roleGuard(["ADMIN"]),
+  asyncHandler(async (req: AuthRequest, res: Response) => {
+    const { candidateId } = req.params;
+    const { reason } = req.body;
+
+    await ingestionIntelligenceService.rejectAutoFile(candidateId, reason || "Rejected by FOUNDER");
+
+    await prisma.auditLog.create({
+      data: {
+        userId: req.user!.id,
+        action: "AUTO_FILE_REJECTED",
+        entityType: "INGESTION_RECORD",
+        entityId: candidateId,
+        details: { reason },
+      },
+    });
+
+    res.json({ success: true, message: "Auto-file candidate rejected" });
+  })
+);
+
+/**
+ * POST /api/ingestion/intelligence/auto-file/process-batch
+ * Process all eligible auto-file candidates
+ */
+router.post(
+  "/intelligence/auto-file/process-batch",
+  authMiddleware,
+  roleGuard(["ADMIN"]),
+  asyncHandler(async (req: AuthRequest, res: Response) => {
+    const results = await ingestionIntelligenceService.processAutoFileBatch();
+
+    const successCount = results.filter((r) => r.success).length;
+
+    await prisma.auditLog.create({
+      data: {
+        userId: req.user!.id,
+        action: "AUTO_FILE_BATCH_PROCESSED",
+        entityType: "INGESTION_BATCH",
+        entityId: "batch",
+        details: {
+          processed: results.length,
+          successful: successCount,
+          failed: results.length - successCount,
+        },
+      },
+    });
+
+    res.json({
+      success: true,
+      count: results.length,
+      successful: successCount,
+      data: results,
+    });
+  })
+);
+
+/**
+ * GET /api/ingestion/intelligence/duplicates/:recordId
+ * Find duplicates for a specific record
+ */
+router.get(
+  "/intelligence/duplicates/:recordId",
+  authMiddleware,
+  roleGuard(["ADMIN"]),
+  asyncHandler(async (req: Request, res: Response) => {
+    const { recordId } = req.params;
+
+    const duplicates = await ingestionIntelligenceService.findDuplicates(recordId);
+
+    res.json({
+      success: true,
+      count: duplicates.length,
+      data: duplicates,
+    });
+  })
+);
+
+/**
+ * POST /api/ingestion/intelligence/duplicates/batch/:batchId
+ * Detect duplicates in an entire batch
+ */
+router.post(
+  "/intelligence/duplicates/batch/:batchId",
+  authMiddleware,
+  roleGuard(["ADMIN"]),
+  asyncHandler(async (req: Request, res: Response) => {
+    const { batchId } = req.params;
+
+    const duplicates = await ingestionIntelligenceService.detectBatchDuplicates(batchId);
+
+    res.json({
+      success: true,
+      count: duplicates.length,
+      data: duplicates,
     });
   })
 );

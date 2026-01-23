@@ -2,7 +2,8 @@
 ## For Grok AI to Review, Validate, and Suggest Additional Implementations
 
 **Generated:** 2026-01-22
-**Current Phase:** Phase 5 COMPLETE, Phase 6 & 7 PENDING
+**Updated:** 2026-01-22
+**Current Phase:** Phase 5 & 6 COMPLETE, Phase 7 PENDING
 
 ---
 
@@ -515,45 +516,88 @@ Complete API for HR Panel training management.
 
 # PART 8: WHAT'S STILL NEEDED / PENDING
 
-## Phase 6: Ingestion Intelligence Expansion (PENDING)
+## Phase 6: Ingestion Intelligence Expansion (COMPLETE)
 
-### Goal
-Enhance IngestionBot/ParserService with ML-like heuristics to:
-- Auto-detect new parsers needed for new data formats
-- Predict claim value from partial data
-- Auto-file high-value cases
-- Jurisdiction-specific ingestion rules via FounderConfig
+### What Was Implemented
 
-### Files to Create/Update
+**Files Created:**
+- `backend/src/types/ingestionTypes.ts` — 250+ lines of type definitions
+- `backend/src/services/IngestionIntelligenceService.ts` — 600+ lines core service
+
+**Files Updated:**
+- `backend/src/routes/ingestion.ts` — 20+ new intelligence endpoints
+- `backend/src/bots/ingestionBot.ts` — Complete rewrite with intelligence
+
+### New API Endpoints (/api/ingestion/intelligence/)
+
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/config` | GET/PATCH | FounderConfig management |
+| `/failed-analysis` | GET | Analyze failed records |
+| `/parser-suggestions` | GET | Get parser suggestions |
+| `/parser-suggestions/:id/generate` | POST | Generate from cluster |
+| `/parser-suggestions/:id/apply` | POST | Apply suggestion |
+| `/jurisdiction-metrics` | GET | Success rates by state/county |
+| `/predict-value` | POST | Predict single value |
+| `/predict-batch` | POST | Predict batch values |
+| `/auto-file-candidates` | GET | Get eligible records |
+| `/auto-file/:id/evaluate` | POST | Evaluate record |
+| `/auto-file/:id/approve` | POST | Approve and create case |
+| `/auto-file/:id/reject` | POST | Reject candidate |
+| `/auto-file/process-batch` | POST | Process all eligible |
+| `/duplicates/:id` | GET | Find duplicates |
+| `/duplicates/batch/:id` | POST | Detect batch duplicates |
+
+### IngestionIntelligenceService Methods
+
+```typescript
+// Config
+getConfig(), updateConfig()
+
+// Parser Suggestions
+analyzeFailedRecords(), generateParserSuggestion()
+getParserSuggestions(), applyParserSuggestion()
+
+// Value Prediction
+predictValue(), predictBatchValues()
+
+// Jurisdiction Intelligence
+getJurisdictionMetrics(), getAllJurisdictionMetrics()
+
+// Auto-Filing
+evaluateAutoFileCandidate(), getAutoFileCandidates()
+approveAutoFile(), rejectAutoFile(), processAutoFileBatch()
+
+// Batch Intelligence
+runIntelligentProcess()
+
+// Duplicates
+findDuplicates(), detectBatchDuplicates()
 ```
-backend/src/services/IngestionIntelligenceService.ts (CREATE)
-backend/src/services/parserService.ts (ENHANCE)
-backend/src/bots/ingestionBot.ts (ENHANCE)
-backend/src/types/ingestionTypes.ts (CREATE)
-backend/src/routes/ingestion.ts (ENHANCE)
-frontend/src/app/founder/ingestion/page.tsx (CREATE)
+
+### FounderConfig Keys Added
+
+```typescript
+autoFileHighValueThreshold: 1000000  // $10,000
+autoFileMinSuccessRate: 70
+autoFileEnabled: false  // FOUNDER must enable
+duplicateCheckEnabled: true
+duplicateSimilarityThreshold: 85
+parserRetryAttempts: 3
+priorityValueWeight: 0.5
+prioritySuccessRateWeight: 0.3
+priorityVolatilityPenalty: 0.2
+highValueThreshold: 500000
+lowSuccessRateThreshold: 40
 ```
 
-### Key Features Needed
-1. **Auto-Parser Detection**
-   - Analyze failed records to identify pattern
-   - Suggest parser configuration
-   - FounderConfig for parser templates
+### Enhanced IngestionBot
 
-2. **Value Prediction**
-   - Based on jurisdiction, property type, sale date
-   - Priority scoring algorithm
-   - High-value auto-flagging
-
-3. **Auto-Filing**
-   - Rules engine for auto-file thresholds
-   - FounderConfig for auto-file rules
-   - Notification on auto-filed cases
-
-4. **Jurisdiction Intelligence**
-   - Per-jurisdiction parsing rules
-   - Success rate tracking by source
-   - Parser versioning
+- `runIntelligenceAnalysis()` — Run predictions, auto-file, duplicates
+- `generateTrainingModuleFromPattern()` — Create DynamicTrainingModule from errors
+- `processIntelligentBatch()` — Run intelligence on batch
+- `runAutoFileBatch()` — Process eligible auto-files
+- New pattern types: jurisdiction_issue, auto_file_opportunity
 
 ## Phase 7: Final System Hardening, QA, and Sovereign Ops Playbook (PENDING)
 
