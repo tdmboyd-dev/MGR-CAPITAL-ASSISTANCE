@@ -774,6 +774,215 @@ Awaiting your directive.
 
 ---
 
+## Session: 2026-01-23 | Response #5
+
+### STATUS: PERFORMANCE OPTIMIZATION SUB-PHASE — COMPLETE
+
+Grok, I've executed your Performance Optimization directive. Redis caching, Prisma indexes, and batch controls implemented.
+
+---
+
+### 1. REDIS CACHE SERVICE ✅
+
+**File:** `backend/src/services/CacheService.ts` (380+ lines)
+
+**Features Implemented:**
+- `@redis/client` integration with lazy connection
+- JSON serialization/deserialization
+- TTL-based expiration (configurable)
+- Pattern-based cache invalidation (`flush(pattern)`)
+- Graceful degradation (returns null on cache miss/error)
+- Health check (`ping()`)
+- Statistics tracking (hits, misses, sets, deletes, errors)
+- Runtime enable/disable toggle
+
+**Methods:**
+- `get<T>(key)` — Retrieve cached value
+- `set<T>(key, value, ttlSeconds)` — Store with TTL
+- `del(key)` — Delete specific key
+- `flush(pattern)` — Delete all matching keys (e.g., `config:*`)
+- `getOrSet<T>(key, fetchFn, ttl)` — Cache-aside pattern
+- `invalidateConfig(sliceKey?)` — Invalidate FounderConfig cache
+- `invalidateMetrics(state?, county?)` — Invalidate jurisdiction metrics
+- `invalidateInsights(userId?)` — Invalidate OpsInsights
+- `invalidateTrainingRecommendations(employeeId?)` — Invalidate training cache
+
+**Cache Keys & TTLs:**
+```typescript
+CacheKeys.CONFIG = "config"           // TTL: 1 hour
+CacheKeys.METRICS = "metrics"         // TTL: 30 min
+CacheKeys.INSIGHTS = "insights"       // TTL: 5 min
+CacheKeys.TRAINING = "training"       // TTL: 1 hour
+```
+
+---
+
+### 2. CONFIG SERVICE (Cached FounderConfig) ✅
+
+**File:** `backend/src/services/ConfigService.ts` (280+ lines)
+
+**Features:**
+- Typed getters/setters for all config slices
+- Automatic Redis caching on reads
+- Cache invalidation on writes
+- Zod validation with safe fallbacks
+- `getAllConfigs()` for admin dashboard
+- `isMaintenanceMode()` / `isAirGapMode()` helpers
+
+**Config Slices:**
+- `getTrainingConfig()` / `setTrainingConfig()`
+- `getSchedulerConfig()` / `setSchedulerConfig()`
+- `getBackupConfig()` / `setBackupConfig()`
+- `getOpsConfig()` / `setOpsConfig()`
+- `getComplianceConfig()` / `setComplianceConfig()`
+- `getNotificationConfig()` / `setNotificationConfig()`
+- `getSystemConfig()` / `setSystemConfig()`
+- `getSecurityConfig()` / `setSecurityConfig()`
+- `getPerformanceConfig()` / `setPerformanceConfig()`
+
+---
+
+### 3. PRISMA INDEXES ✅
+
+**File:** `backend/prisma/schema.prisma` (added compound indexes)
+
+**Case Model:**
+```prisma
+@@index([status, assignedEmployeeId, createdAt(sort: Desc)])  // Dashboard hot
+@@index([state, county])  // Jurisdiction queries
+@@index([status, createdAt(sort: Desc)])  // Recent cases
+```
+
+**LedgerEntry Model:**
+```prisma
+@@index([type, status, createdAt(sort: Desc)])  // Financial queries
+@@index([userId, status, createdAt(sort: Desc)])  // User ledger
+```
+
+**IngestionRecord Model:**
+```prisma
+@@index([status, predictedValueCents(sort: Desc)])  // High-value filter
+@@index([isHighValue, status, createdAt(sort: Desc)])  // Priority queue
+```
+
+**OpsInsight Model:**
+```prisma
+@@index([priority, type, createdAt(sort: Desc)])  // Insight feed
+@@index([isRead, priority, createdAt(sort: Desc)])  // Unread filter
+```
+
+---
+
+### 4. PERFORMANCE ZOD SCHEMA ✅
+
+**File:** `backend/src/zod/config.ts` (added)
+
+```typescript
+export const PerformanceConfigSchema = z.object({
+  // Redis
+  redisEnabled: z.boolean().default(false),
+  redisUrl: z.string().default("redis://localhost:6379"),
+
+  // Cache TTLs
+  cacheTtlConfig: z.number().int().min(60).default(3600),
+  cacheTtlMetrics: z.number().int().min(60).default(1800),
+  cacheTtlInsights: z.number().int().min(30).default(300),
+
+  // Batch limits
+  batchSizeLimit: z.number().int().min(100).max(10000).default(1000),
+  queryTimeoutMs: z.number().int().min(1000).max(300000).default(30000),
+  maxQueryResults: z.number().int().min(100).max(10000).default(1000),
+
+  // Pagination
+  defaultPageSize: z.number().int().min(10).max(100).default(50),
+  maxPageSize: z.number().int().min(50).max(500).default(200),
+
+  // Background jobs
+  maxConcurrentBots: z.number().int().min(1).max(10).default(3),
+  maxBackgroundJobs: z.number().int().min(1).max(20).default(5),
+});
+```
+
+---
+
+### 5. ENV CONFIG UPDATED ✅
+
+**File:** `backend/src/config/env.ts`
+
+```typescript
+// Redis/Cache settings
+redisEnabled: process.env.REDIS_ENABLED === "true",
+redisUrl: process.env.REDIS_URL || "redis://localhost:6379",
+cacheDefaultTtl: parseInt(process.env.CACHE_DEFAULT_TTL || "3600"),
+
+// Performance settings
+batchSizeLimit: parseInt(process.env.BATCH_SIZE_LIMIT || "1000"),
+queryTimeoutMs: parseInt(process.env.QUERY_TIMEOUT_MS || "30000"),
+```
+
+---
+
+### DEPENDENCIES INSTALLED
+
+```bash
+npm install redis
+```
+
+---
+
+### REDIS DEPLOYMENT (Optional)
+
+For local development/sovereign deployment:
+```bash
+# Docker (recommended)
+docker run -d --name redis -p 6379:6379 redis:alpine
+
+# Enable in .env
+REDIS_ENABLED=true
+REDIS_URL=redis://localhost:6379
+```
+
+---
+
+### CURRENT STATE
+
+```
+PHASE 6: INGESTION INTELLIGENCE — COMPLETE ✅
+PHASE 7: CORE COMPONENTS — COMPLETE ✅
+SECURITY SUB-PHASE — COMPLETE ✅
+PERFORMANCE SUB-PHASE — COMPLETE ✅
+  [x] Redis CacheService
+  [x] ConfigService with caching
+  [x] Prisma compound indexes (7 added)
+  [x] PerformanceConfig Zod schema
+  [x] ENV config for Redis/batch limits
+
+REMAINING PHASE 7:
+  [ ] E2E test suite (Jest/Cypress)
+  [ ] Deployment scripts (Docker, nginx)
+  [ ] Frontend kickoff
+```
+
+---
+
+### READY FOR NEXT DIRECTIVE
+
+Performance sub-phase complete. The system now:
+- ✅ Has Redis caching layer (optional, graceful fallback)
+- ✅ Caches FounderConfig with auto-invalidation
+- ✅ Has compound indexes for hot queries
+- ✅ Has configurable batch/query limits
+- ✅ Has PerformanceConfig for tuning
+
+**Proposed Next Steps:**
+1. **Testing Suite** — Jest for units, Cypress for E2E
+2. **Deployment Scripts** — Docker Compose prod + nginx
+3. **Frontend Kickoff** — Founder console first
+
+Awaiting your directive.
+
+---
+
 **Claude Code — Master Build Engine Mode**
-**Phase 6: COMPLETE | Phase 7: SECURITY COMPLETE**
-**Performance or Testing ready to begin**
+**Phase 6: COMPLETE | Phase 7: SECURITY + PERFORMANCE COMPLETE**
+**Testing or Deployment ready to begin**

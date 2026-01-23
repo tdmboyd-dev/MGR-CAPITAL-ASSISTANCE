@@ -49,6 +49,7 @@ export {
   SystemConfigSchema,
   JwtConfigSchema,
   SecurityConfigSchema,
+  PerformanceConfigSchema,
   FounderConfigValueSchema,
   // Types
   type TrainingConfig,
@@ -60,6 +61,7 @@ export {
   type SystemConfig,
   type JwtConfig,
   type SecurityConfig,
+  type PerformanceConfig,
   type FounderConfigValue,
   // Helpers
   validateTrainingConfig,
@@ -69,6 +71,7 @@ export {
   validateComplianceConfig,
   validateSecurityConfig,
   validateJwtConfig,
+  validatePerformanceConfig,
   safeParseConfig,
   // Defaults
   DEFAULT_TRAINING_CONFIG,
@@ -80,4 +83,5 @@ export {
   DEFAULT_SYSTEM_CONFIG,
   DEFAULT_JWT_CONFIG,
   DEFAULT_SECURITY_CONFIG,
+  DEFAULT_PERFORMANCE_CONFIG,
 } from "./config.js";

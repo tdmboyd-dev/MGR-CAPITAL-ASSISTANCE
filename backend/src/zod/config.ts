@@ -251,6 +251,44 @@ export const SecurityConfigSchema = z.object({
 
 export type SecurityConfig = z.infer<typeof SecurityConfigSchema>;
 
+// =============================================================================
+// PERFORMANCE CONFIG SCHEMAS
+// =============================================================================
+
+export const PerformanceConfigSchema = z.object({
+  // Redis caching
+  redisEnabled: z.boolean().default(false),
+  redisUrl: z.string().default("redis://localhost:6379"),
+
+  // Cache TTLs (in seconds)
+  cacheTtlConfig: z.number().int().min(60).default(3600), // 1 hour
+  cacheTtlMetrics: z.number().int().min(60).default(1800), // 30 min
+  cacheTtlInsights: z.number().int().min(30).default(300), // 5 min
+  cacheTtlTraining: z.number().int().min(60).default(3600), // 1 hour
+
+  // Batch processing limits
+  batchSizeLimit: z.number().int().min(100).max(10000).default(1000),
+  batchProcessingDelayMs: z.number().int().min(0).default(100),
+
+  // Query limits
+  queryTimeoutMs: z.number().int().min(1000).max(300000).default(30000),
+  maxQueryResults: z.number().int().min(100).max(10000).default(1000),
+
+  // Pagination defaults
+  defaultPageSize: z.number().int().min(10).max(100).default(50),
+  maxPageSize: z.number().int().min(50).max(500).default(200),
+
+  // Memory management
+  maxConcurrentBots: z.number().int().min(1).max(10).default(3),
+  botMemoryLimitMb: z.number().int().min(128).max(2048).default(512),
+
+  // Background job limits
+  maxBackgroundJobs: z.number().int().min(1).max(20).default(5),
+  jobTimeoutMinutes: z.number().int().min(1).max(60).default(10),
+});
+
+export type PerformanceConfig = z.infer<typeof PerformanceConfigSchema>;
+
 export type SystemConfig = z.infer<typeof SystemConfigSchema>;
 
 // =============================================================================
@@ -333,6 +371,7 @@ export const DEFAULT_NOTIFICATION_CONFIG: NotificationConfig = NotificationConfi
 export const DEFAULT_SYSTEM_CONFIG: SystemConfig = SystemConfigSchema.parse({});
 export const DEFAULT_JWT_CONFIG: JwtConfig = JwtConfigSchema.parse({});
 export const DEFAULT_SECURITY_CONFIG: SecurityConfig = SecurityConfigSchema.parse({});
+export const DEFAULT_PERFORMANCE_CONFIG: PerformanceConfig = PerformanceConfigSchema.parse({});
 
 // =============================================================================
 // EXPORTS
@@ -352,6 +391,13 @@ export function validateJwtConfig(config: unknown): JwtConfig {
   return JwtConfigSchema.parse(config);
 }
 
+/**
+ * Validate performance config
+ */
+export function validatePerformanceConfig(config: unknown): PerformanceConfig {
+  return PerformanceConfigSchema.parse(config);
+}
+
 export default {
   TrainingConfigSchema,
   SchedulerConfigSchema,
@@ -362,6 +408,7 @@ export default {
   SystemConfigSchema,
   JwtConfigSchema,
   SecurityConfigSchema,
+  PerformanceConfigSchema,
   validateTrainingConfig,
   validateSchedulerConfig,
   validateBackupConfig,
@@ -369,6 +416,7 @@ export default {
   validateComplianceConfig,
   validateSecurityConfig,
   validateJwtConfig,
+  validatePerformanceConfig,
   safeParseConfig,
   DEFAULT_TRAINING_CONFIG,
   DEFAULT_SCHEDULER_CONFIG,
@@ -379,4 +427,5 @@ export default {
   DEFAULT_SYSTEM_CONFIG,
   DEFAULT_JWT_CONFIG,
   DEFAULT_SECURITY_CONFIG,
+  DEFAULT_PERFORMANCE_CONFIG,
 };

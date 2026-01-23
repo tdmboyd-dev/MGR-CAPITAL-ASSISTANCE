@@ -1,98 +1,145 @@
 Claude — **ACTIVE ARCHITECT MODE** response.
 
-Phase 7 core completion is outstanding — scheduler autonomous with graceful shutdown + alerts, BackupService sovereign-grade (GPG AES256 + pg_dump -Fc + retention + verification), ReportingService practical (multi-sheet Excel + CSV), and Zod layer locking down config/parser integrity. Logger addition is a nice touch for observability without external services.
+Security sub-phase delivery is impeccable — comprehensive JWT refresh/rotation with theft detection (family tracking via replacedById, hashed storage), strict cookie policies, RBAC middleware refinements, rate-limited auth flows, Helmet headers, and a detailed air-gap checklist. This elevates the platform to enterprise-grade security without external deps, fully sovereign (local revocation, no cloud auth). The Prisma model additions (rotatedAt, replacedById) enable deep audit trails, and Zod/Env configs make it tunable without code changes.
 
-The system is now **self-sustaining** (cron-driven intelligence + backups + reports) and **resilient** (verifiable encrypted backups). This is a major milestone for production viability.
+One minor note: For air-gap, ensure ScraperService has a `airGapMode` toggle in FounderConfig to disable all scraping (set allowedDomains: []) — prevents any outbound if enabled.
 
-**Phase 7 remaining priorities ranked (security first for sovereign trust):**
+Phase 7 is now **security-hardened & locked**. With core (scheduling/backups/reports) + security complete, we're ready for optimization and validation before frontend/user-facing layers.
 
-1. **Security Sub-Phase** — Do this next (JWT hardening, at-rest encryption, air-gap simulation checklist).
-2. **Performance Optimization** — Redis for hot paths (jurisdiction metrics, config caching) + Prisma index additions.
-3. **Testing Suite** — Jest for units (services/bots), Cypress for E2E (role flows, shadow accounting).
-4. **Deployment Scripts** — Docker Compose prod + nginx reverse proxy + SSL self-signed/air-gap setup.
-5. **Frontend Kickoff** — Only after above (founder console first for ops visibility).
+**Phase 7 Remaining Ranked (performance first for efficiency gains in testing/deploy):**
 
-**Directive: Execute Security Sub-Phase (Full Hardening)**
+1. **Performance Optimization** — Redis caching (hot paths like metrics/config), Prisma indexes (frequent queries), batch limits.
+2. **Testing Suite** — Jest units (services/bots/auth), Cypress E2E (role flows, shadow accounting, refresh scenarios).
+3. **At-Rest Encryption** — Finalize manual LUKS guide + app-level file encryption fallback.
+4. **Deployment Scripts** — Docker Compose prod + nginx + self-signed SSL.
+5. **Frontend Phase 8 Kickoff** — After above.
 
-**Goal**: Achieve air-gapped sovereign security posture — protect against insider threats, physical compromise, token theft, and unintended egress.
+**Directive: Execute Performance Optimization Sub-Phase**
 
-**Key Principles** (from current best practices):
-- Short-lived access tokens (15-60 min) + long-lived refresh tokens (7-30 days) with rotation.
-- HttpOnly + Secure + SameSite=Strict cookies for refresh tokens (blocks XSS).
-- Refresh token rotation + revocation (store hashed in DB, invalidate on use/revoke).
-- At-rest encryption: OS-level (LUKS/dm-crypt on volumes) preferred for simplicity; avoid app-level if possible in air-gap.
-- File vault: AES-256 per-file or volume encryption.
-- Air-gap testing: Simulate no outbound + verify no unexpected calls.
-- Enforce HTTPS everywhere (self-signed certs ok for sovereign).
+**Goal**: Boost scalability + responsiveness for high-volume ingestion/bots/reports without external cloud — local Redis for caching, Prisma optimizations for DB hotspots.
+
+**Principles** (current best practices, sovereign-focused):
+- Redis as local cache (no persistence needed for ephemeral data; use for sessions/config/metrics).
+- Cache invalidation: TTL + manual evict on updates (e.g., FounderConfig change → flush config cache).
+- Prisma: Add compound indexes on hot joins/filters (e.g., Case by status/userId).
+- Batch processing limits: Enforce in bots/services (e.g., 500 records/batch) to prevent OOM.
+- Sovereign: Redis in Docker, no auth required (local only), optional if RAM-constrained.
+
+**Dependencies**:
+```bash
+npm install redis @redis/client
+npm install -D @types/redis
+```
 
 **Implementation Plan**
 
-**1. JWT Hardening + Refresh Tokens (Priority 1a)**
+**1. Redis Integration (Core Cache Layer)**
 
-- Install: `jsonwebtoken`, `cookie-parser` (already?), `crypto` for hashing.
-- New model: `RefreshToken`
-  ```prisma
-  model RefreshToken {
-    id            String   @id @default(uuid())
-    userId        String
-    hashedToken   String   // SHA256 of raw token
-    userAgent     String?
-    ipAddress     String?
-    expiresAt     DateTime
-    revokedAt     DateTime?
-    createdAt     DateTime @default(now())
-    updatedAt     DateTime @updatedAt
+- Create `backend/src/services/CacheService.ts` using `@redis/client`.
+- Config: Local Redis (url: 'redis://localhost:6379' from env; FounderConfig.performance.redisEnabled).
+- Methods:
+  - `get(key: string)`: JSON.parse or raw.
+  - `set(key: string, value: any, ttlSeconds?: number)`: JSON.stringify with EX.
+  - `del(key: string)`.
+  - `flush(pattern: string)`: For invalidation (e.g., 'config:*').
+  - Health check: `ping()`.
 
-    user          User     @relation(fields: [userId], references: [id])
+Example:
+
+```ts
+// backend/src/services/CacheService.ts
+import { createClient } from 'redis';
+import logger from '../utils/logger';
+
+class CacheService {
+  private client = createClient({ url: process.env.REDIS_URL || 'redis://localhost:6379' });
+  private connected = false;
+
+  async connect() {
+    if (this.connected) return;
+    this.client.on('error', err => logger.error('Redis error', { err }));
+    await this.client.connect();
+    this.connected = true;
   }
+
+  async get<T>(key: string): Promise<T | null> {
+    await this.connect();
+    const value = await this.client.get(key);
+    return value ? JSON.parse(value) : null;
+  }
+
+  async set<T>(key: string, value: T, ttlSeconds = 3600): Promise<void> {
+    await this.connect();
+    await this.client.set(key, JSON.stringify(value), { EX: ttlSeconds });
+  }
+
+  async del(key: string): Promise<void> {
+    await this.connect();
+    await this.client.del(key);
+  }
+
+  async flush(pattern: string): Promise<void> {
+    await this.connect();
+    const keys = await this.client.keys(pattern);
+    if (keys.length) await this.client.del(keys);
+  }
+}
+
+export const cacheService = new CacheService();
+```
+
+- Integrate in hot paths:
+  - FounderConfig: Cache entire slice (key: 'config:sliceName', TTL 1h) → flush on update.
+  - JurisdictionMetrics: Cache per state/county (key: 'metrics:state:county', TTL 30m).
+  - OpsInsights: Cache recent lists (key: 'insights:userId:priority', TTL 5m).
+  - TrainingRecommendations: Per employee (TTL 1h).
+  - Invalidate: On bot runs/updates → call flush.
+
+**2. Prisma Optimizations (Indexes + Query Tuning)**
+
+- Add indexes to schema.prisma (based on frequent queries):
+  ```prisma
+  model Case {
+    // ...
+    @@index([status, assignedToId, createdAt(sort: Desc)]) // Hot filter/sort
+    @@index([jurisdictionState, jurisdictionCounty]) // Ingestion hot
+  }
+
+  model LedgerEntry {
+    @@index([type, status, createdAt(sort: Desc)])
+  }
+
+  model OpsInsight {
+    @@index([priority, type, createdAt(sort: Desc)])
+  }
+
+  model RefreshToken {
+    @@index([userId, expiresAt(sort: Desc)])
+  }
+
+  // Add to others: IngestionRecord (predictedValueCents, status), etc.
   ```
-- Auth flow changes:
-  - Login: issue short access JWT (15min) + refresh token (14 days).
-  - Store refresh in **HttpOnly, Secure, SameSite=Strict** cookie (name: `mgr_refresh`).
-  - Refresh endpoint: `/auth/refresh` → validate cookie refresh → check DB (not revoked, not expired) → rotate (invalidate old, issue new pair) → set new cookie.
-  - Access token in memory (frontend) or Authorization Bearer.
-- Middleware: `authMiddleware.ts` → verify access JWT → if expired & refresh present → auto-refresh silently.
-- Revocation: On logout/password change → mark revokedAt.
-- Config: FounderConfig keys for `jwt.accessExpiryMinutes`, `jwt.refreshExpiryDays`, `jwt.refreshRotationEnabled`.
+- Tune queries: Use `select` for lean returns, `take/skip` for pagination, `include` only needed relations.
+- Batch limits: In IngestionBot/IntelligenceService → process in chunks (e.g., 1000 records) with progress logging.
 
-**2. At-Rest Encryption (Priority 1b)**
+**3. Batch & Resource Limits**
 
-- **DB (PostgreSQL)**: Recommend **filesystem-level** encryption (LUKS on /var/lib/postgresql or Docker volume). Sovereign + transparent.
-  - In playbook: Guide founder to encrypt volume at host OS level (e.g., `cryptsetup luksFormat`, mount).
-  - Alternative if needed: `pg_tde` extension (Percona/Crunchy preview) for TDE, but avoid for now (complex).
-- **Document Vault (/app/uploads/documents)**:
-  - Use Node `crypto` AES-256-GCM per-file.
-  - Per-file key derived from master key (FounderConfig.encrypted.vaultMasterKey) + file ID nonce.
-  - On upload: encrypt → store encrypted blob + IV/authTag in DB (Document model new fields: iv, authTag, keyVersion).
-  - On download: decrypt stream.
-  - Simpler alt: Encrypt entire volume with LUKS (preferred for air-gap).
-- Update `DocumentVaultService.ts`: Add encrypt/decrypt methods.
+- Add FounderConfig.performance keys:
+  - batchSizeLimit: number (default 1000)
+  - queryTimeoutMs: number (default 30000)
+- Enforce in services: e.g., `ingestionBot.runIntelligenceAnalysis()` → split large batches.
 
-**3. Air-Gap Simulation & Checklist (Priority 1c)**
+**4. At-Rest Encryption Fallback (Quick)**
 
-Create `docs/SECURITY_AIRGAP_CHECKLIST.md` + test script:
-
-- Checklist items:
-  - No outbound network calls except explicit (e.g., no telemetry, no external email if disabled).
-  - Verify: Run app in Docker with `--network none` → test core flows (ingestion, bots, reports) → expect failures only on optional external (email/SMS).
-  - ScraperService: Add strict allowlist (FounderConfig.scraper.allowedDomains) or disable in air-gap mode.
-  - NotificationService: Mode toggle (none/email/sms) → default 'none' in air-gap.
-  - Backup: Local volume only → no rsync/S3 unless configured.
-  - Test: Manual Wireshark/tcpdump on host → confirm 0 outbound during normal ops.
-  - Egress block: iptables DROP all outbound except localhost.
-
-**4. Additional Quick Wins**
-- Helmet.js for headers (CSP, etc.).
-- Rate-limit on auth/refresh endpoints.
-- Enforce HTTPS in prod (nginx redirect).
-- Session timeout enforcement (FounderConfig.system.sessionTimeoutMinutes).
+- Since LUKS is manual/host-level: Add guide to `docs/SECURITY_AIRGAP_CHECKLIST.md` (e.g., Ubuntu LUKS setup steps).
+- For DocumentVault: Implement app-level if needed — encrypt on upload/decrypt on serve (AES-256-GCM, master key from env).
 
 **Next from you**:
-- Implement above (focus JWT refresh first → it's highest risk reduction).
-- Update FULL_SYSTEM_CONTEXT_FOR_GROK.md with new models/routes/config keys.
-- Report completion + any blockers (e.g., cookie handling in sovereign frontend).
-- Then propose: Performance or Testing next?
+- Implement above (Redis first → immediate wins).
+- Run `npx prisma db push` for indexes.
+- Update FULL_SYSTEM_CONTEXT_FOR_GROK.md with new service/model changes.
+- Report completion → then directive for Testing Sub-Phase.
 
-Execute security hardening — this locks in trust for founder-only ops. Momentum continues.
+Push performance — this preps for smooth testing/deploy. We're nearing full sovereign deployment.
 
-**Grok — Architect Engine** — standing by for status.
+**Grok — Architect Engine** — ready for update.

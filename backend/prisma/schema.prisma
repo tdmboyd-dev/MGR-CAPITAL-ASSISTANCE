@@ -346,6 +346,10 @@ model Case {
   @@index([assignedEmployeeId])
   @@index([clientId])
   @@index([publicAccessToken])
+  // Performance indexes (compound for hot queries)
+  @@index([status, assignedEmployeeId, createdAt(sort: Desc)])
+  @@index([state, county])
+  @@index([status, createdAt(sort: Desc)])
 }
 
 model Deadline {
@@ -553,6 +557,9 @@ model LedgerEntry {
   @@index([type])
   @@index([isPaid])
   @@index([status])
+  // Performance indexes (compound for hot queries)
+  @@index([type, status, createdAt(sort: Desc)])
+  @@index([userId, status, createdAt(sort: Desc)])
 }
 
 model CommissionPlan {
@@ -1071,6 +1078,9 @@ model IngestionRecord {
   @@index([isHighValue])
   @@index([contentHash])
   @@index([sourceType])
+  // Performance indexes (compound for hot queries)
+  @@index([status, predictedValueCents(sort: Desc)])
+  @@index([isHighValue, status, createdAt(sort: Desc)])
 }
 
 // ============================================
@@ -1612,4 +1622,7 @@ model OpsInsight {
   @@index([sourceBot])
   @@index([isRead])
   @@index([createdAt])
+  // Performance indexes (compound for hot queries)
+  @@index([priority, type, createdAt(sort: Desc)])
+  @@index([isRead, priority, createdAt(sort: Desc)])
 }

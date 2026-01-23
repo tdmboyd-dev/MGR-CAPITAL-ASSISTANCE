@@ -24,4 +24,13 @@ export const config = {
   rateLimitWindowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || "900000", 10), // 15 min
   rateLimitMaxRequests: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || "100", 10),
   authRateLimitMaxRequests: parseInt(process.env.AUTH_RATE_LIMIT_MAX_REQUESTS || "10", 10),
+
+  // Redis/Cache settings
+  redisEnabled: process.env.REDIS_ENABLED === "true",
+  redisUrl: process.env.REDIS_URL || "redis://localhost:6379",
+  cacheDefaultTtl: parseInt(process.env.CACHE_DEFAULT_TTL || "3600", 10), // 1 hour
+
+  // Performance settings
+  batchSizeLimit: parseInt(process.env.BATCH_SIZE_LIMIT || "1000", 10),
+  queryTimeoutMs: parseInt(process.env.QUERY_TIMEOUT_MS || "30000", 10),
 };
