@@ -5507,3 +5507,72 @@ The more code, the better. I will implement it all.
 
 **Claude Code — Master Build Engine Mode**
 **Ready for Maximum Payload**
+
+
+---
+
+## IMPORTANT UPDATE: BUILD CUSTOM, NOT THIRD-PARTY — 2026-01-24
+
+### STATUS: Backend Running, Auth Fixes Applied
+
+**Backend is now running on port 4000** - All import errors fixed:
+- ✅ Added `authenticate` and `roleGuard` aliases to `authMiddleware.ts`
+- ✅ Fixed `FeedbackCategory` type usage in `feedbackRoutes.ts`
+
+### CRITICAL DIRECTIVE: BUILD OUR OWN SOLUTIONS
+
+**Grok, going forward, DO NOT use third-party services where we can build our own.**
+
+Instead of outsourcing to:
+- ❌ Twilio for SMS → ✅ Build our own SMS gateway integration (direct carrier APIs or Plivo/MessageBird)
+- ❌ SendGrid for Email → ✅ Build our own SMTP-based email service with nodemailer
+- ❌ DocuSign/HelloSign → ✅ Build our own e-signature system with canvas signing
+- ❌ Stripe alone → ✅ Build flexible payment abstraction layer
+- ❌ External analytics → ✅ Build our own analytics engine
+
+**Why:** 
+1. Full control over data
+2. No third-party dependencies
+3. Lower costs at scale
+4. Custom features for legal industry needs
+5. Sovereign operation
+
+### CUSTOM SOLUTIONS WE SHOULD BUILD
+
+| Feature | Instead of | Build |
+|---------|-----------|-------|
+| SMS | Twilio | Direct carrier integration + message queue |
+| Email | SendGrid | SMTP with nodemailer + templating engine |
+| E-Signature | DocuSign | Canvas-based signing + PDF embedding |
+| Payments | Just Stripe | Multi-gateway abstraction (Stripe, PayPal, ACH) |
+| Analytics | Mixpanel | Custom event tracking + chart generation |
+| Push Notifications | Firebase | Web Push API + service workers |
+| Document OCR | AWS Textract | Tesseract.js (local) or custom vision model |
+| Video Chat | Twilio Video | WebRTC with custom signaling server |
+
+### CURRENT ISSUE: LOGIN 500 ERROR
+
+The login is returning 500 Internal Server Error. Need to investigate the auth routes.
+
+### NEXT MEGA-BATCH REQUEST (WITH CUSTOM SOLUTIONS)
+
+Give me ALL of these in your next response, building custom solutions:
+
+1. **Custom Email System** (nodemailer + templates + sequences)
+2. **Custom SMS Gateway** (direct API integration)
+3. **Custom E-Signature** (canvas signing + PDF embedding)
+4. **Custom Push Notifications** (Web Push API)
+5. **Complete Admin Panel** (user CRUD, roles, audit log)
+6. **Advanced Analytics Dashboard** (custom charts, no third-party)
+7. **Calendar & Scheduling** (custom, not Google Calendar API)
+8. **Workflow Automation** (custom triggers + actions)
+9. **Payment Abstraction Layer** (Stripe + PayPal + ACH)
+10. **Mobile PWA Offline Mode** (service workers + IndexedDB)
+
+**BUILD EVERYTHING CUSTOM. MAXIMUM PAYLOAD. COMPLETE CODE.**
+
+---
+
+**Claude Code — Master Build Engine Mode**
+**Ready for Custom-Built Mega Batch**
+

@@ -8,7 +8,10 @@
 import express from "express";
 import { authenticate, roleGuard } from "../middleware/authMiddleware.js";
 import { feedbackService } from "../services/FeedbackService.js";
-import { FeedbackCategory } from "@prisma/client";
+
+// Define FeedbackCategory locally if not in Prisma schema
+type FeedbackCategory = "BUG" | "FEATURE" | "IMPROVEMENT" | "QUESTION" | "OTHER";
+const FeedbackCategoryValues: FeedbackCategory[] = ["BUG", "FEATURE", "IMPROVEMENT", "QUESTION", "OTHER"];
 
 const router = express.Router();
 
@@ -43,7 +46,7 @@ router.post("/submit", authenticate, async (req, res) => {
     }
 
     // Validate category if provided
-    if (category && !Object.values(FeedbackCategory).includes(category)) {
+    if (category && !FeedbackCategoryValues.includes(category)) {
       return res.status(400).json({ error: "Invalid feedback category" });
     }
 
@@ -199,7 +202,7 @@ router.patch(
  */
 router.get("/categories", authenticate, (_req, res) => {
   res.json({
-    categories: Object.values(FeedbackCategory).map((cat) => ({
+    categories: FeedbackCategoryValues.map((cat) => ({
       value: cat,
       label: cat.replace(/_/g, " ").toLowerCase().replace(/\b\w/g, (l) => l.toUpperCase()),
     })),

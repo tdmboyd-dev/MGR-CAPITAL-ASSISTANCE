@@ -312,13 +312,27 @@ export function requireMinTier(minTier: EmployeeTier) {
 }
 
 // =============================================================================
+// ALIASES FOR COMMON NAMING CONVENTIONS
+// =============================================================================
+
+// authenticate is an alias for authMiddleware
+export const authenticate = authMiddleware;
+
+// roleGuard is an alias for requireRoles (takes array instead of spread)
+export function roleGuard(allowedRoles: string[]) {
+  return requireRoles(...(allowedRoles as UserRole[]));
+}
+
+// =============================================================================
 // EXPORTS
 // =============================================================================
 
 export default {
   authMiddleware,
+  authenticate,
   optionalAuthMiddleware,
   requireRoles,
+  roleGuard,
   founderOnly,
   adminOrFounder,
   requireMinTier,
