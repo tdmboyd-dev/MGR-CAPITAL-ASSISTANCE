@@ -520,6 +520,316 @@ class BackupService {
     }
   }
 
+  /**
+   * Full restore from backup dump (Phase 17)
+   * Handles GPG decryption, pg_restore, and vault file extraction
+   *
+   * @param filePath - Path to backup file (can be .dump, .dump.gpg, .tar.gz, or .tar.gz.gpg)
+   * @param options - Restore options
+   */
+  async restoreFromDump(
+    filePath: string,
+    options: {
+      restoreDb?: boolean;
+      restoreVault?: boolean;
+      runMigrations?: boolean;
+      verifyChecksum?: boolean;
+    } = {}
+  ): Promise<{
+    success: boolean;
+    message: string;
+    details: {
+      dbRestored: boolean;
+      vaultRestored: boolean;
+      migrationsRun: boolean;
+      checksumVerified: boolean;
+      durationMs: number;
+    };
+  }> {
+    await this.loadConfig();
+    const startTime = Date.now();
+
+    const {
+      restoreDb = true,
+      restoreVault = true,
+      runMigrations = true,
+      verifyChecksum = true,
+    } = options;
+
+    const details = {
+      dbRestored: false,
+      vaultRestored: false,
+      migrationsRun: false,
+      checksumVerified: false,
+      durationMs: 0,
+    };
+
+    try {
+      // Verify file exists
+      await fs.promises.access(filePath);
+      logger.warn("Starting full restore from dump", { filePath, options });
+
+      // Determine file type
+      const isEncrypted = filePath.endsWith(".gpg");
+      const isVaultBackup = filePath.includes("vault_") || filePath.endsWith(".tar.gz") || filePath.endsWith(".tar.gz.gpg");
+      const isDbBackup = filePath.includes("db_") || filePath.endsWith(".dump") || filePath.endsWith(".dump.gpg");
+
+      // Verify checksum if enabled
+      if (verifyChecksum) {
+        const manifest = await this.loadManifest();
+        const entry = manifest.backups.find((b) => filePath.endsWith(b.filename));
+
+        if (entry) {
+          const currentChecksum = await this.calculateChecksum(filePath);
+          if (currentChecksum !== entry.checksum) {
+            return {
+              success: false,
+              message: "Checksum verification failed - backup may be corrupted",
+              details: { ...details, durationMs: Date.now() - startTime },
+            };
+          }
+          details.checksumVerified = true;
+          logger.info("Checksum verified successfully", { filePath });
+        } else {
+          logger.warn("No manifest entry found, skipping checksum verification", { filePath });
+        }
+      }
+
+      // Decrypt if encrypted
+      let workingFile = filePath;
+      if (isEncrypted) {
+        if (!this.config.encryptionPassphrase) {
+          return {
+            success: false,
+            message: "Encryption passphrase not configured",
+            details: { ...details, durationMs: Date.now() - startTime },
+          };
+        }
+
+        const decryptedFile = filePath.replace(".gpg", "");
+        logger.info("Decrypting backup file", { filePath });
+        await this.decryptFile(filePath, decryptedFile);
+        workingFile = decryptedFile;
+      }
+
+      // Restore database if applicable
+      if (restoreDb && isDbBackup) {
+        const dbResult = await this.performDatabaseRestore(workingFile);
+        if (!dbResult.success) {
+          // Clean up decrypted file
+          if (isEncrypted) {
+            await fs.promises.unlink(workingFile).catch(() => {});
+          }
+          return {
+            success: false,
+            message: `Database restore failed: ${dbResult.message}`,
+            details: { ...details, durationMs: Date.now() - startTime },
+          };
+        }
+        details.dbRestored = true;
+      }
+
+      // Restore vault files if applicable
+      if (restoreVault && isVaultBackup) {
+        const vaultResult = await this.performVaultRestore(workingFile);
+        if (!vaultResult.success) {
+          // Clean up decrypted file
+          if (isEncrypted) {
+            await fs.promises.unlink(workingFile).catch(() => {});
+          }
+          return {
+            success: false,
+            message: `Vault restore failed: ${vaultResult.message}`,
+            details: { ...details, durationMs: Date.now() - startTime },
+          };
+        }
+        details.vaultRestored = true;
+      }
+
+      // Run Prisma migrations if enabled
+      if (runMigrations && details.dbRestored) {
+        const migrationResult = await this.runPrismaMigrations();
+        if (!migrationResult.success) {
+          logger.warn("Prisma migrations failed, database may be in inconsistent state", {
+            error: migrationResult.message,
+          });
+        } else {
+          details.migrationsRun = true;
+        }
+      }
+
+      // Clean up decrypted file
+      if (isEncrypted && workingFile !== filePath) {
+        await fs.promises.unlink(workingFile).catch(() => {});
+      }
+
+      // Log restore action
+      await prisma.auditLog.create({
+        data: {
+          action: "FULL_RESTORE_COMPLETED",
+          entityType: "BACKUP",
+          entityId: path.basename(filePath),
+          details: {
+            filePath,
+            dbRestored: details.dbRestored,
+            vaultRestored: details.vaultRestored,
+            migrationsRun: details.migrationsRun,
+            restoredAt: new Date().toISOString(),
+          },
+        },
+      });
+
+      details.durationMs = Date.now() - startTime;
+      logger.info("Full restore completed successfully", { filePath, details });
+
+      return {
+        success: true,
+        message: `Restore completed: DB=${details.dbRestored}, Vault=${details.vaultRestored}, Migrations=${details.migrationsRun}`,
+        details,
+      };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      logger.error("Full restore failed", { filePath, error: message });
+      return {
+        success: false,
+        message,
+        details: { ...details, durationMs: Date.now() - startTime },
+      };
+    }
+  }
+
+  /**
+   * Perform database restore using pg_restore
+   */
+  private async performDatabaseRestore(
+    dumpFile: string
+  ): Promise<{ success: boolean; message: string }> {
+    try {
+      const dbUrl = process.env.DATABASE_URL;
+      if (!dbUrl) {
+        return { success: false, message: "DATABASE_URL not set" };
+      }
+
+      const url = new URL(dbUrl);
+      const host = url.hostname;
+      const port = url.port || "5432";
+      const user = url.username;
+      const password = url.password;
+      const database = url.pathname.slice(1).split("?")[0];
+
+      const env = { ...process.env, PGPASSWORD: password };
+
+      // Use pg_restore with --clean to drop existing objects first
+      // --if-exists prevents errors if objects don't exist
+      // --no-owner prevents ownership issues
+      const pgRestoreCmd = `"${this.config.pgRestorePath}" -h ${host} -p ${port} -U ${user} -d ${database} --clean --if-exists --no-owner "${dumpFile}"`;
+
+      logger.info("Running pg_restore", { dumpFile });
+      await execAsync(pgRestoreCmd, { env, timeout: 1800000 }); // 30 min timeout
+
+      return { success: true, message: "Database restored successfully" };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      // pg_restore may return non-zero exit code even on partial success
+      if (message.includes("warning") || message.includes("does not exist")) {
+        logger.warn("pg_restore completed with warnings", { message });
+        return { success: true, message: "Database restored with warnings" };
+      }
+      return { success: false, message };
+    }
+  }
+
+  /**
+   * Perform vault files restore from tar archive
+   */
+  private async performVaultRestore(
+    tarFile: string
+  ): Promise<{ success: boolean; message: string }> {
+    try {
+      // Ensure vault directory parent exists
+      const vaultParent = path.dirname(this.config.vaultDir);
+      await fs.promises.mkdir(vaultParent, { recursive: true });
+
+      // Backup existing vault if it exists
+      try {
+        await fs.promises.access(this.config.vaultDir);
+        const backupVaultPath = `${this.config.vaultDir}_restore_backup_${Date.now()}`;
+        await fs.promises.rename(this.config.vaultDir, backupVaultPath);
+        logger.info("Backed up existing vault directory", { to: backupVaultPath });
+      } catch {
+        // Vault directory doesn't exist, nothing to backup
+      }
+
+      // Extract tar archive
+      const tarCmd = `tar -xzf "${tarFile}" -C "${vaultParent}"`;
+      logger.info("Extracting vault backup", { tarFile, to: vaultParent });
+      await execAsync(tarCmd, { timeout: 600000 }); // 10 min timeout
+
+      return { success: true, message: "Vault files restored successfully" };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      return { success: false, message };
+    }
+  }
+
+  /**
+   * Run Prisma migrations after restore
+   */
+  private async runPrismaMigrations(): Promise<{ success: boolean; message: string }> {
+    try {
+      logger.info("Running Prisma migrations");
+      await execAsync("npx prisma migrate deploy", { timeout: 300000 }); // 5 min timeout
+      return { success: true, message: "Migrations applied successfully" };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      return { success: false, message };
+    }
+  }
+
+  /**
+   * List available backups for restore
+   */
+  async listAvailableBackups(): Promise<
+    Array<{
+      filename: string;
+      type: string;
+      createdAt: string;
+      sizeBytes: number;
+      encrypted: boolean;
+      verified: boolean;
+    }>
+  > {
+    await this.loadConfig();
+
+    const manifest = await this.loadManifest();
+    return manifest.backups
+      .map((b) => ({
+        filename: b.filename,
+        type: b.type,
+        createdAt: b.createdAt,
+        sizeBytes: b.sizeBytes,
+        encrypted: b.encrypted,
+        verified: b.verified,
+      }))
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }
+
+  /**
+   * Get latest backup of a specific type
+   */
+  async getLatestBackup(
+    type: "hourly" | "daily" | "weekly" | "monthly" | "vault"
+  ): Promise<BackupManifestEntry | null> {
+    await this.loadConfig();
+
+    const manifest = await this.loadManifest();
+    const backups = manifest.backups
+      .filter((b) => b.type.includes(type))
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+    return backups[0] || null;
+  }
+
   // ---------------------------------------------------------------------------
   // ENCRYPTION
   // ---------------------------------------------------------------------------

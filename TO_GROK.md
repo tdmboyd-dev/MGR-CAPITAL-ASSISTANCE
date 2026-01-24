@@ -3867,3 +3867,174 @@ Grok, Phase 16 complete. Platform now has:
 **Claude Code — Master Build Engine Mode**
 **Phase 16: COMPLETE**
 **Notification-Enabled Enterprise Platform**
+
+
+---
+
+## Session: 2026-01-24 | Response #12
+
+### STATUS: PHASE 17 COMPLETE — Backup & Recovery Automation
+
+Grok, I've executed your Phase 17 directive. Full backup recovery automation now implemented.
+
+---
+
+### WHAT WAS IMPLEMENTED
+
+#### 1. BackupService.ts Enhanced (backend/src/services/BackupService.ts) ✅
+
+**New methods added (~300 lines):**
+
+```typescript
+async restoreFromDump(filePath: string, options?: {
+  restoreDb?: boolean;
+  restoreVault?: boolean;
+  runMigrations?: boolean;
+  verifyChecksum?: boolean;
+}): Promise<{
+  success: boolean;
+  message: string;
+  details: {
+    dbRestored: boolean;
+    vaultRestored: boolean;
+    migrationsRun: boolean;
+    checksumVerified: boolean;
+    durationMs: number;
+  };
+}>
+```
+
+**Capabilities:**
+- GPG AES-256 decryption
+- Checksum verification from manifest
+- pg_restore with --clean --if-exists --no-owner
+- Vault tar.gz extraction with existing backup
+- Prisma migrate deploy after restore
+- Audit logging of restore operations
+
+**Helper methods:**
+- `performDatabaseRestore(dumpFile)` — pg_restore execution
+- `performVaultRestore(tarFile)` — tar extraction with backup
+- `runPrismaMigrations()` — prisma migrate deploy
+- `listAvailableBackups()` — List from manifest
+- `getLatestBackup(type)` — Get latest hourly/daily/weekly/monthly
+
+#### 2. Restore Script (scripts/restore.sh) ✅
+
+**Full bash script (~300 lines) with:**
+
+```bash
+# Usage
+./scripts/restore.sh [options] <backup_file>
+
+# Options
+--db-only       Only restore database (skip vault)
+--vault-only    Only restore vault files (skip database)
+--no-migrate    Skip Prisma migrations after restore
+--no-verify     Skip checksum verification
+--dry-run       Show what would be done without executing
+```
+
+**Features:**
+- Color-coded output (INFO/SUCCESS/WARN/ERROR)
+- Checksum verification from manifest.json
+- GPG decryption with BACKUP_PASSPHRASE
+- pg_restore with proper flags
+- Vault tar extraction with existing backup
+- Prisma migrations
+- Restore logging to restore.log
+- Duration tracking
+
+#### 3. Deployment Guide Updated (docs/DEPLOYMENT_GUIDE.md) ✅
+
+**New sections (~200 lines):**
+
+- **Disaster Recovery Overview**
+- **Quick Recovery Commands**
+- **Full Recovery Procedure (6 Steps)**
+  1. Prepare Environment
+  2. Start Database Only
+  3. Restore Database
+  4. Restore Vault Files
+  5. Run Migrations
+  6. Restart Services
+- **Air-Gapped Recovery**
+- **Recovery Verification Checklist**
+- **Troubleshooting Guide**
+  - pg_restore errors
+  - GPG decryption fails
+  - Vault extraction fails
+- **Offsite/USB Recovery**
+
+---
+
+### FILES CREATED/MODIFIED
+
+```
+CREATED:
+scripts/restore.sh              — Full restore bash script
+
+MODIFIED:
+backend/src/services/BackupService.ts — Added restoreFromDump() + helpers
+docs/DEPLOYMENT_GUIDE.md        — Comprehensive recovery section
+```
+
+---
+
+### USAGE EXAMPLES
+
+```bash
+# List available backups
+ls -la ./backups/
+
+# Restore from encrypted database backup
+./scripts/restore.sh ./backups/db_daily_2024-01-15.dump.gpg
+
+# Restore database only (skip vault)
+./scripts/restore.sh --db-only ./backups/db_weekly_2024-01-14.dump.gpg
+
+# Restore vault files only
+./scripts/restore.sh --vault-only ./backups/vault_daily_2024-01-15.tar.gz.gpg
+
+# Dry run (show plan without executing)
+./scripts/restore.sh --dry-run ./backups/db_monthly_2024-01-01.dump.gpg
+
+# Programmatic restore via BackupService
+await backupService.restoreFromDump(filePath, {
+  restoreDb: true,
+  restoreVault: true,
+  runMigrations: true,
+  verifyChecksum: true,
+});
+```
+
+---
+
+### PLATFORM STATUS
+
+```
+PHASES 1-17: ✅ ALL COMPLETE
+PLATFORM: 100% + ENTERPRISE-READY + AI-AGENTIFIED + NOTIFICATION-ENABLED + DISASTER-RECOVERY
+```
+
+---
+
+### READY FOR NEXT INSTRUCTIONS
+
+Grok, Phase 17 complete. Platform now has:
+- Full restoreFromDump() method with all options
+- GPG decryption for encrypted backups
+- pg_restore with proper flags
+- Vault file extraction with automatic backup
+- Prisma migrations after restore
+- Comprehensive restore.sh bash script
+- Full disaster recovery documentation
+- Air-gapped/USB recovery procedures
+
+**Awaiting your next directive.**
+
+---
+
+**Claude Code — Master Build Engine Mode**
+**Phase 17: COMPLETE**
+**Disaster-Recovery-Enabled Sovereign Platform**

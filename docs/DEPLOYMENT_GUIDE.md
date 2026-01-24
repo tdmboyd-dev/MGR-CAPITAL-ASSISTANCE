@@ -292,16 +292,271 @@ docker volume rm mgr-capital-assistance_db_data
 
 Backups are stored in `./backups/` with timestamps.
 
-If `BACKUP_PASSPHRASE` is set, backups are encrypted with AES-256.
+If `BACKUP_PASSPHRASE` is set, backups are encrypted with AES-256-GPG.
+
+### Backup Types
+
+| Type | Frequency | Contents | Retention |
+|------|-----------|----------|-----------|
+| Hourly | Every hour | Database incremental | 24 backups |
+| Daily | Every day | Database + Vault | 7 days |
+| Weekly | Every week | Full backup + verification | 4 weeks |
+| Monthly | Every month | Archive for air-gap | 12 months |
 
 ### Automated Backups (Cron)
 
 ```bash
-# Daily backup at 2 AM
-0 2 * * * /path/to/scripts/deploy.sh backup
+# Hourly database backup
+0 * * * * /path/to/scripts/deploy.sh backup --type hourly
 
-# Weekly cleanup of old backups
-0 3 * * 0 find /path/to/backups -name "*.sql.gz*" -mtime +30 -delete
+# Daily full backup at 2 AM
+0 2 * * * /path/to/scripts/deploy.sh backup --type daily
+
+# Weekly backup with verification on Sunday 3 AM
+0 3 * * 0 /path/to/scripts/deploy.sh backup --type weekly
+
+# Monthly archive on 1st of month at 4 AM
+0 4 1 * * /path/to/scripts/deploy.sh backup --type monthly
+
+# Cleanup old backups (handled automatically by BackupService)
+```
+
+---
+
+## Disaster Recovery
+
+### Recovery Overview
+
+MGR Capital Assistance provides comprehensive disaster recovery capabilities:
+
+1. **Full Restore Script** (`scripts/restore.sh`) — Automated recovery
+2. **BackupService API** — Programmatic restore via `restoreFromDump()`
+3. **Manual Procedures** — Step-by-step for air-gapped systems
+
+### Quick Recovery (Automated)
+
+```bash
+# List available backups
+ls -la ./backups/
+
+# Restore from latest daily backup
+./scripts/restore.sh ./backups/db_daily_2024-01-15_02-00.dump.gpg
+
+# Restore database only (skip vault files)
+./scripts/restore.sh --db-only ./backups/db_weekly_2024-01-14.dump.gpg
+
+# Restore vault files only
+./scripts/restore.sh --vault-only ./backups/vault_daily_2024-01-15.tar.gz.gpg
+
+# Restore without running migrations
+./scripts/restore.sh --no-migrate ./backups/db_daily_2024-01-15.dump.gpg
+```
+
+### Environment Variables for Restore
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `BACKUP_PASSPHRASE` | Yes (encrypted) | GPG decryption passphrase |
+| `DATABASE_URL` | Yes (DB restore) | PostgreSQL connection string |
+| `VAULT_DIR` | No | Vault directory (default: ./vault) |
+| `BACKUP_DIR` | No | Backup directory (default: ./backups) |
+
+### Full Recovery Procedure
+
+#### Step 1: Prepare Environment
+
+```bash
+# Ensure Docker services are stopped
+./scripts/deploy.sh stop
+
+# Set required environment variables
+export BACKUP_PASSPHRASE="your-backup-passphrase"
+export DATABASE_URL="postgresql://user:pass@host:5432/mgr_capital"
+```
+
+#### Step 2: Start Database Only
+
+```bash
+# Start only the database container
+docker-compose -f docker-compose.prod.yml up -d db
+
+# Wait for database to be ready
+docker-compose -f docker-compose.prod.yml exec db pg_isready -U postgres
+```
+
+#### Step 3: Restore Database
+
+```bash
+# Using restore script (recommended)
+./scripts/restore.sh ./backups/db_daily_2024-01-15_02-00.dump.gpg
+
+# Or manually:
+# 1. Decrypt
+gpg --decrypt --batch --passphrase "$BACKUP_PASSPHRASE" \
+    -o backup.dump ./backups/db_daily_2024-01-15_02-00.dump.gpg
+
+# 2. Restore with pg_restore
+export PGPASSWORD="your-db-password"
+pg_restore -h localhost -p 5432 -U postgres -d mgr_capital \
+    --clean --if-exists --no-owner backup.dump
+
+# 3. Cleanup
+rm backup.dump
+```
+
+#### Step 4: Restore Vault Files
+
+```bash
+# Using restore script
+./scripts/restore.sh --vault-only ./backups/vault_daily_2024-01-15.tar.gz.gpg
+
+# Or manually:
+# 1. Decrypt
+gpg --decrypt --batch --passphrase "$BACKUP_PASSPHRASE" \
+    -o vault_backup.tar.gz ./backups/vault_daily_2024-01-15.tar.gz.gpg
+
+# 2. Backup existing vault
+mv ./vault ./vault_old_$(date +%s)
+
+# 3. Extract
+tar -xzf vault_backup.tar.gz -C .
+
+# 4. Cleanup
+rm vault_backup.tar.gz
+```
+
+#### Step 5: Run Migrations
+
+```bash
+# Navigate to backend
+cd backend
+
+# Apply any pending migrations
+npx prisma migrate deploy
+
+# Verify schema
+npx prisma db pull --print
+
+cd ..
+```
+
+#### Step 6: Restart Services
+
+```bash
+# Start all services
+./scripts/deploy.sh deploy
+
+# Verify health
+curl http://localhost:4000/health
+```
+
+### Air-Gapped Recovery
+
+For systems without internet access:
+
+```bash
+# On air-gapped system, all steps are the same but ensure:
+# 1. All Docker images are pre-loaded (from airgap_bundle)
+# 2. Prisma client is already generated
+# 3. All dependencies are installed offline
+
+# Skip npm/prisma commands that require internet:
+./scripts/restore.sh --no-migrate ./backups/db_monthly_2024-01-01.dump.gpg
+
+# Migrations should already be included in the backup
+# If schema changes are needed, they must be pre-applied to the backup
+```
+
+### Recovery Verification
+
+After restore, verify system integrity:
+
+```bash
+# 1. Check database connectivity
+docker-compose -f docker-compose.prod.yml exec db pg_isready -U postgres
+
+# 2. Verify tables exist
+docker-compose -f docker-compose.prod.yml exec db psql -U postgres -d mgr_capital -c "\dt"
+
+# 3. Check record counts
+docker-compose -f docker-compose.prod.yml exec db psql -U postgres -d mgr_capital -c "
+SELECT 'Users' as table_name, COUNT(*) FROM \"User\"
+UNION ALL
+SELECT 'Cases', COUNT(*) FROM \"Case\"
+UNION ALL
+SELECT 'Documents', COUNT(*) FROM \"Document\";
+"
+
+# 4. Verify vault files
+ls -la ./vault/
+
+# 5. Test API health
+curl http://localhost:4000/api/health
+
+# 6. Test authentication
+curl -X POST http://localhost:4000/api/auth/login \
+    -H "Content-Type: application/json" \
+    -d '{"email": "founder@mgrcapital.com", "password": "your-password"}'
+```
+
+### Recovery Troubleshooting
+
+#### pg_restore errors
+
+```bash
+# "relation already exists" — Use --clean flag
+pg_restore --clean --if-exists ...
+
+# "permission denied" — Use --no-owner flag
+pg_restore --no-owner ...
+
+# "invalid dump format" — Ensure file is not corrupted
+file backup.dump  # Should show "PostgreSQL custom database dump"
+```
+
+#### GPG decryption fails
+
+```bash
+# Verify passphrase is correct
+echo "test" | gpg --symmetric --batch --passphrase "$BACKUP_PASSPHRASE" | \
+    gpg --decrypt --batch --passphrase "$BACKUP_PASSPHRASE"
+
+# Check GPG version compatibility
+gpg --version
+```
+
+#### Vault extraction fails
+
+```bash
+# Verify tar archive integrity
+tar -tzf vault_backup.tar.gz
+
+# Check for disk space
+df -h
+
+# Extract with verbose output
+tar -xzvf vault_backup.tar.gz -C . 2>&1 | head -20
+```
+
+### Offsite/USB Recovery
+
+For air-gapped systems with USB transfer:
+
+```bash
+# 1. Mount USB drive
+sudo mount /dev/sdb1 /mnt/usb
+
+# 2. Copy backup files
+cp /mnt/usb/backups/* ./backups/
+
+# 3. Verify checksums (from manifest)
+sha256sum ./backups/db_monthly_*.dump.gpg
+
+# 4. Proceed with standard restore
+./scripts/restore.sh ./backups/db_monthly_2024-01-01.dump.gpg
+
+# 5. Unmount USB
+sudo umount /mnt/usb
 ```
 
 ### Restore from Backup
@@ -310,7 +565,7 @@ If `BACKUP_PASSPHRASE` is set, backups are encrypted with AES-256.
 ./scripts/deploy.sh restore ./backups/backup_20240101_020000.sql.gz.enc
 ```
 
-### Manual Restore
+### Manual Restore (Legacy)
 
 ```bash
 # Decrypt if encrypted
