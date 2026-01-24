@@ -187,6 +187,38 @@ enum WatchAlertSeverity {
 }
 
 // ============================================
+// MULTI-TENANT SUPPORT
+// ============================================
+
+model Tenant {
+  id              String    @id @default(cuid())
+  name            String    @unique
+  slug            String    @unique  // URL-friendly identifier
+  domain          String?   @unique  // Custom domain if applicable
+  isActive        Boolean   @default(true)
+  plan            String    @default("standard")  // standard, premium, enterprise
+  maxUsers        Int       @default(50)
+  maxCases        Int       @default(1000)
+  settings        Json?     // Tenant-specific settings
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // Relations
+  users           User[]
+  cases           Case[]
+  ledgerEntries   LedgerEntry[]
+  documents       Document[]
+  trainingModules TrainingModule[]
+  chatRooms       ChatRoom[]
+  opsInsights     OpsInsight[]
+  watchAlerts     WatchAlert[]
+  auditLogs       AuditLog[]
+
+  @@index([slug])
+  @@index([isActive])
+}
+
+// ============================================
 // USER & AUTHENTICATION
 // ============================================
 
@@ -206,6 +238,10 @@ model User {
   lastLoginAt         DateTime?
   createdAt           DateTime     @default(now())
   updatedAt           DateTime     @updatedAt
+
+  // Multi-tenant support
+  tenantId            String?
+  tenant              Tenant?      @relation(fields: [tenantId], references: [id])
 
   // Employee-specific fields
   employeeTier        EmployeeTier?
@@ -235,6 +271,7 @@ model User {
   @@index([email])
   @@index([role])
   @@index([employeeTier])
+  @@index([tenantId])
 }
 
 model UserSession {
@@ -283,7 +320,12 @@ model Case {
   id                    String       @id @default(cuid())
   internalCode          String       @unique
   publicAccessToken     String       @unique @default(cuid())
+  caseNumber            String?      // Human-readable case number
   status                CaseStatus   @default(NEW)
+
+  // Multi-tenant support
+  tenantId              String?
+  tenant                Tenant?      @relation(fields: [tenantId], references: [id])
 
   // Client info
   clientId              String
@@ -347,10 +389,12 @@ model Case {
   @@index([assignedEmployeeId])
   @@index([clientId])
   @@index([publicAccessToken])
+  @@index([tenantId])
   // Performance indexes (compound for hot queries)
   @@index([status, assignedEmployeeId, createdAt(sort: Desc)])
   @@index([state, county])
   @@index([status, createdAt(sort: Desc)])
+  @@index([tenantId, status, createdAt(sort: Desc)])
 }
 
 model Deadline {
@@ -378,6 +422,10 @@ model Document {
   case            Case           @relation(fields: [caseId], references: [id], onDelete: Cascade)
   type            DocumentType
   status          DocumentStatus @default(DRAFT)
+
+  // Multi-tenant support
+  tenantId        String?
+  tenant          Tenant?        @relation(fields: [tenantId], references: [id])
 
   // File info
   fileName        String
@@ -410,6 +458,7 @@ model Document {
   @@index([caseId])
   @@index([type])
   @@index([status])
+  @@index([tenantId])
 }
 
 model DocumentTemplate {
@@ -528,6 +577,10 @@ model LedgerEntry {
   userId                String?
   user                  User?             @relation(fields: [userId], references: [id])
 
+  // Multi-tenant support
+  tenantId              String?
+  tenant                Tenant?           @relation(fields: [tenantId], references: [id])
+
   type                  LedgerEntryType
   amountCents           Int
   displayedAmountCents  Int?              // For shadow accounting - what employee sees
@@ -558,9 +611,11 @@ model LedgerEntry {
   @@index([type])
   @@index([isPaid])
   @@index([status])
+  @@index([tenantId])
   // Performance indexes (compound for hot queries)
   @@index([type, status, createdAt(sort: Desc)])
   @@index([userId, status, createdAt(sort: Desc)])
+  @@index([tenantId, type, status])
 }
 
 model CommissionPlan {
@@ -685,6 +740,10 @@ model TrainingModule {
   description     String                    @db.Text
   content         String                    @db.Text  // Full training content
 
+  // Multi-tenant support
+  tenantId        String?
+  tenant          Tenant?                   @relation(fields: [tenantId], references: [id])
+
   // Ordering
   orderIndex      Int
 
@@ -719,6 +778,7 @@ model TrainingModule {
   @@index([orderIndex])
   @@index([sourceType])
   @@index([requiredForTier])
+  @@index([tenantId])
 }
 
 model TrainingQuestion {
@@ -1144,6 +1204,10 @@ model AuditLog {
   userId          String?
   user            User?    @relation(fields: [userId], references: [id])
 
+  // Multi-tenant support
+  tenantId        String?
+  tenant          Tenant?  @relation(fields: [tenantId], references: [id])
+
   action          String   // "CREATE", "UPDATE", "DELETE", "VIEW", "LOGIN", etc.
   entityType      String   // "Case", "Document", "User", etc.
   entityId        String?
@@ -1156,6 +1220,7 @@ model AuditLog {
   // Request info
   ipAddress       String?
   userAgent       String?
+  timestamp       DateTime @default(now())
 
   createdAt       DateTime @default(now())
 
@@ -1163,6 +1228,8 @@ model AuditLog {
   @@index([entityType])
   @@index([action])
   @@index([createdAt])
+  @@index([tenantId])
+  @@index([timestamp])
 }
 
 model SystemConfig {
@@ -1216,9 +1283,14 @@ model WatchAlert {
   id              String               @id @default(cuid())
   type            WatchAlertType
   severity        WatchAlertSeverity   @default(MEDIUM)
+  status          String               @default("OPEN")
+
+  // Multi-tenant support
+  tenantId        String?
+  tenant          Tenant?              @relation(fields: [tenantId], references: [id])
 
   // Alert content
-  title           String
+  title           String?
   message         String               @db.Text
   details         Json?                // Structured alert data
 
@@ -1246,6 +1318,8 @@ model WatchAlert {
   @@index([state])
   @@index([isResolved])
   @@index([createdAt])
+  @@index([tenantId])
+  @@index([status])
 }
 
 // ============================================
@@ -1582,12 +1656,23 @@ enum OpsInsightPriority {
 
 model OpsInsight {
   id              String              @id @default(cuid())
-  type            OpsInsightType
+  type            OpsInsightType?
   priority        OpsInsightPriority  @default(NORMAL)
+  source          String?             // Source of insight
+  category        String?             // Category for grouping
+  severity        String?             // INFO, LOW, MEDIUM, HIGH, CRITICAL
+  status          String              @default("OPEN")
+  description     String?             @db.Text
+  data            Json?               // Raw data blob
+  actionRequired  Boolean             @default(false)
+
+  // Multi-tenant support
+  tenantId        String?
+  tenant          Tenant?             @relation(fields: [tenantId], references: [id])
 
   // Content
-  title           String
-  summary         String              @db.Text
+  title           String?
+  summary         String?             @db.Text
   details         Json?               // Structured data
 
   // Plain-English explanation
@@ -1602,7 +1687,7 @@ model OpsInsight {
   relatedAlertIds String[]
 
   // Source bot
-  sourceBot       String              // "ingestionBot", "payoutBot", etc.
+  sourceBot       String?             // "ingestionBot", "payoutBot", etc.
   generatedAt     DateTime            @default(now())
 
   // Validity
@@ -1623,6 +1708,7 @@ model OpsInsight {
   @@index([sourceBot])
   @@index([isRead])
   @@index([createdAt])
+  @@index([tenantId])
   // Performance indexes (compound for hot queries)
   @@index([priority, type, createdAt(sort: Desc)])
   @@index([isRead, priority, createdAt(sort: Desc)])
@@ -1644,6 +1730,10 @@ model ChatRoom {
   type        ChatRoomType   @default(TEAM)
   description String?
 
+  // Multi-tenant support
+  tenantId    String?
+  tenant      Tenant?        @relation(fields: [tenantId], references: [id])
+
   // Access control
   locked      Boolean        @default(false)
   password    String?        // Hashed if locked
@@ -1659,6 +1749,7 @@ model ChatRoom {
 
   @@index([type])
   @@index([isActive])
+  @@index([tenantId])
 }
 
 model ChatMessage {
