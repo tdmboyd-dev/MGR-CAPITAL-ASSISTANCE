@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useRef } from "react";
-import { Mic, MicOff, Loader2, Volume2, X } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import { Mic, MicOff, Loader2, Volume2, History, ChevronDown, ChevronUp } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,6 +15,13 @@ import { useAuth } from "@/hooks/useAuth";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
+interface VoiceInteraction {
+  id: string;
+  timestamp: Date;
+  transcript: string;
+  response: string;
+}
+
 export function VoiceAiButton() {
   const { user, accessToken } = useAuth();
   const [isRecording, setIsRecording] = useState(false);
@@ -23,10 +30,44 @@ export function VoiceAiButton() {
   const [response, setResponse] = useState("");
   const [loading, setLoading] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
+  const [history, setHistory] = useState<VoiceInteraction[]>([]);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  // Load history from localStorage on mount
+  useEffect(() => {
+    if (user) {
+      const savedHistory = localStorage.getItem(`voice-history-${user.id}`);
+      if (savedHistory) {
+        try {
+          const parsed = JSON.parse(savedHistory);
+          setHistory(parsed.map((h: any) => ({ ...h, timestamp: new Date(h.timestamp) })));
+        } catch (e) {
+          console.error("Failed to parse voice history:", e);
+        }
+      }
+    }
+  }, [user]);
+
+  // Save history to localStorage
+  const saveToHistory = (newTranscript: string, newResponse: string) => {
+    const newInteraction: VoiceInteraction = {
+      id: Date.now().toString(),
+      timestamp: new Date(),
+      transcript: newTranscript,
+      response: newResponse,
+    };
+
+    const updatedHistory = [newInteraction, ...history].slice(0, 10); // Keep last 10
+    setHistory(updatedHistory);
+
+    if (user) {
+      localStorage.setItem(`voice-history-${user.id}`, JSON.stringify(updatedHistory));
+    }
+  };
 
   const startRecording = async () => {
     try {
@@ -102,7 +143,11 @@ export function VoiceAiButton() {
 
       if (!aiRes.ok) throw new Error("AI processing failed");
       const aiData = await aiRes.json();
-      setResponse(aiData.response || aiData.result || "No response generated");
+      const aiResponse = aiData.response || aiData.result || "No response generated";
+      setResponse(aiResponse);
+
+      // Save to history
+      saveToHistory(text, aiResponse);
 
       // Step 3: Text-to-Speech for response
       const ttsRes = await fetch(`${API_URL}/api/voice/tts`, {
@@ -111,7 +156,7 @@ export function VoiceAiButton() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${accessToken}`,
         },
-        body: JSON.stringify({ text: aiData.response || aiData.result }),
+        body: JSON.stringify({ text: aiResponse }),
       });
 
       if (ttsRes.ok) {
@@ -144,6 +189,20 @@ export function VoiceAiButton() {
     setTranscript("");
     setResponse("");
     setIsPlaying(false);
+    setShowHistory(false);
+  };
+
+  const formatTime = (date: Date) => {
+    const now = new Date();
+    const diff = now.getTime() - date.getTime();
+    const minutes = Math.floor(diff / 60000);
+    const hours = Math.floor(diff / 3600000);
+    const days = Math.floor(diff / 86400000);
+
+    if (minutes < 1) return "Just now";
+    if (minutes < 60) return `${minutes}m ago`;
+    if (hours < 24) return `${hours}h ago`;
+    return `${days}d ago`;
   };
 
   // Only show for logged-in users
@@ -170,13 +229,31 @@ export function VoiceAiButton() {
 
       {/* Voice AI Dialog */}
       <Dialog open={isOpen} onOpenChange={handleClose}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-full bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center">
-                <Mic className="h-4 w-4 text-white" />
+            <DialogTitle className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="h-8 w-8 rounded-full bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center">
+                  <Mic className="h-4 w-4 text-white" />
+                </div>
+                Voice AI Assistant
               </div>
-              Voice AI Assistant
+              {history.length > 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowHistory(!showHistory)}
+                  className="text-muted-foreground"
+                >
+                  <History className="h-4 w-4 mr-1" />
+                  History
+                  {showHistory ? (
+                    <ChevronUp className="h-4 w-4 ml-1" />
+                  ) : (
+                    <ChevronDown className="h-4 w-4 ml-1" />
+                  )}
+                </Button>
+              )}
             </DialogTitle>
           </DialogHeader>
 
@@ -264,6 +341,49 @@ export function VoiceAiButton() {
                     )}
                   </div>
                   <p className="text-foreground">{response}</p>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Voice History */}
+            <AnimatePresence>
+              {showHistory && history.length > 0 && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="space-y-3 border-t pt-4"
+                >
+                  <p className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                    <History className="h-4 w-4" />
+                    Recent Conversations ({history.length})
+                  </p>
+                  <div className="space-y-3 max-h-60 overflow-y-auto">
+                    {history.slice(0, 5).map((item) => (
+                      <motion.div
+                        key={item.id}
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        className="rounded-lg bg-muted/50 p-3 text-sm"
+                      >
+                        <div className="flex justify-between items-start mb-2">
+                          <span className="font-medium text-foreground">You:</span>
+                          <span className="text-xs text-muted-foreground">
+                            {formatTime(new Date(item.timestamp))}
+                          </span>
+                        </div>
+                        <p className="text-muted-foreground mb-2 line-clamp-2">
+                          {item.transcript}
+                        </p>
+                        <div className="pt-2 border-t border-border">
+                          <span className="font-medium text-blue-600 dark:text-blue-400">AI:</span>
+                          <p className="text-muted-foreground mt-1 line-clamp-2">
+                            {item.response}
+                          </p>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
                 </motion.div>
               )}
             </AnimatePresence>
