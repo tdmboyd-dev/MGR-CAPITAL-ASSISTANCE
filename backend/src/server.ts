@@ -60,6 +60,9 @@ import voiceRoutes from "./routes/voiceRoutes.js";
 // AI Legal Bots (Phase 25)
 import aiBotsRoutes from "./routes/aiBotsRoutes.js";
 
+// Document Generation (Voice-to-Document)
+import documentGenerationRoutes from "./routes/documentGeneration.js";
+
 // Rate limiting
 import { loginRateLimit, passwordResetRateLimit } from "./middleware/rateLimit.js";
 
@@ -145,6 +148,9 @@ app.use("/api/voice", voiceRoutes);
 
 // AI Legal Bots (Phase 25)
 app.use("/api/ai-bots", aiBotsRoutes);
+
+// Document Generation (Voice-to-Document)
+app.use("/api/documents", documentGenerationRoutes);
 
 // ============================================
 // HEALTH CHECK
