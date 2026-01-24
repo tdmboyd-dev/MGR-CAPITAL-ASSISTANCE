@@ -8,6 +8,7 @@
 
 import { PrismaClient, CaseStatus, OpsInsightType, OpsInsightPriority } from "@prisma/client";
 import { aiAgentService } from "../services/AiAgentService.js";
+import { notificationCenterService } from "../services/NotificationCenterService.js";
 
 const prisma = new PrismaClient();
 
@@ -147,7 +148,48 @@ class ComplianceBot {
 
     await this.saveInsight(analysis);
 
+    // Send notifications for critical issues (Phase 16)
+    await this.sendComplianceNotifications(analysis);
+
     return analysis;
+  }
+
+  /**
+   * Send notifications for compliance issues
+   */
+  private async sendComplianceNotifications(analysis: ComplianceAnalysis): Promise<void> {
+    // Notify about critical/overdue deadlines
+    const criticalDeadlines = analysis.deadlineRisks.filter(
+      (d) => d.severity === "critical" || d.severity === "overdue"
+    );
+
+    for (const deadline of criticalDeadlines) {
+      // Get assigned employee
+      const caseData = await prisma.case.findUnique({
+        where: { id: deadline.caseId },
+        select: { assignedEmployeeId: true },
+      });
+
+      if (caseData?.assignedEmployeeId) {
+        await notificationCenterService.notifyDeadline(
+          caseData.assignedEmployeeId,
+          deadline.caseId,
+          deadline.deadlineType,
+          deadline.daysRemaining
+        );
+      }
+    }
+
+    // Notify FOUNDER about high-risk compliance status
+    if (analysis.overallRiskLevel === "critical" || analysis.overallRiskLevel === "high") {
+      await notificationCenterService.sendToRole("FOUNDER", {
+        category: "compliance",
+        priority: analysis.overallRiskLevel === "critical" ? "urgent" : "high",
+        title: `Compliance Alert: ${analysis.overallRiskLevel.toUpperCase()} Risk`,
+        message: `Scan found ${analysis.deadlineRisks.length} deadline risks and ${analysis.documentIssues.length} document issues.`,
+        link: "/founder/compliance",
+      });
+    }
   }
 
   // ============================================

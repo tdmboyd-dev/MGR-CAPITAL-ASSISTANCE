@@ -1,10 +1,11 @@
 "use client";
 
-import { Moon, Sun, LogOut, Bell, Menu, X } from "lucide-react";
+import { Moon, Sun, LogOut, Menu, X } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { AiSearchBar } from "@/components/AiSearchBar";
+import { NotificationBell } from "@/components/NotificationBell";
 import { useRouter } from "next/navigation";
 
 interface NavbarProps {
@@ -86,9 +87,9 @@ export function Navbar({ onMenuToggle, isSidebarOpen }: NavbarProps) {
           {theme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
         </Button>
 
-        <Button variant="ghost" size="icon" title="Notifications" className="hidden sm:flex">
-          <Bell className="h-5 w-5" />
-        </Button>
+        <div className="hidden sm:block">
+          <NotificationBell />
+        </div>
 
         <div className="flex items-center space-x-2 md:space-x-3 pl-2 md:pl-4 border-l">
           <Avatar className={getRoleColor(user?.role)}>

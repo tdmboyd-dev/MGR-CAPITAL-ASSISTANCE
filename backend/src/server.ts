@@ -42,6 +42,9 @@ import analyticsRoutes from "./routes/analytics.js";
 // AI Search & Recommendations (Phase 14)
 import aiRoutes from "./routes/aiRoutes.js";
 
+// Notification Center (Phase 16)
+import notificationRoutes from "./routes/notificationRoutes.js";
+
 // Rate limiting
 import { loginRateLimit, passwordResetRateLimit } from "./middleware/rateLimit.js";
 
@@ -109,6 +112,9 @@ app.use("/api/analytics", analyticsRoutes);
 
 // AI Search & Recommendations (Phase 14)
 app.use("/api/ai", aiRoutes);
+
+// Notification Center (Phase 16)
+app.use("/api/notifications", notificationRoutes);
 
 // ============================================
 // HEALTH CHECK
