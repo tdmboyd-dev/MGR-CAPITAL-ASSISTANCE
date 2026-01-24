@@ -16,6 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DocumentUploader } from "@/components/ui/document-uploader";
 import { AiRecommendationsCard } from "@/components/AiRecommendationsCard";
+import { AiAgentButton } from "@/components/AiAgentButton";
 import { formatCurrency, formatDate, formatDateTime } from "@/lib/utils";
 import {
   ArrowLeft,
@@ -248,6 +249,30 @@ export default function CaseDetailPage() {
                 <Upload className="h-4 w-4 mr-2" />
                 Upload Document
               </Button>
+            </CardContent>
+          </Card>
+
+          {/* AI Agent Actions */}
+          <Card>
+            <CardHeader>
+              <CardTitle>AI Actions</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <AiAgentButton
+                task="outreach"
+                context={{ caseId }}
+                className="w-full"
+              />
+              <AiAgentButton
+                task="compliance"
+                context={{ caseId }}
+                className="w-full"
+              />
+              <AiAgentButton
+                task="summary"
+                context={{ caseId }}
+                className="w-full"
+              />
             </CardContent>
           </Card>
 

@@ -3,9 +3,11 @@
 // Scans cases for deadline risks
 // Detects missing documents, invalid transitions
 // Ensures regulatory compliance
+// Phase 15: AI Agent integration for enhanced analysis
 // ============================================
 
 import { PrismaClient, CaseStatus, OpsInsightType, OpsInsightPriority } from "@prisma/client";
+import { aiAgentService } from "../services/AiAgentService.js";
 
 const prisma = new PrismaClient();
 
@@ -515,6 +517,60 @@ class ComplianceBot {
         expiresAt: new Date(Date.now() + 12 * 60 * 60 * 1000), // 12 hours
       },
     });
+  }
+
+  /**
+   * Run AI-enhanced compliance check on a case
+   * Uses AI Agent for detailed analysis
+   */
+  async aiEnhancedCheck(caseId: string): Promise<{
+    isCompliant: boolean;
+    issues: string[];
+    recommendations: string[];
+    riskLevel: "low" | "medium" | "high";
+    aiAnalysis?: string;
+  }> {
+    try {
+      const result = await aiAgentService.checkCompliance(caseId);
+      return {
+        ...result,
+        aiAnalysis: "AI-powered compliance analysis completed successfully",
+      };
+    } catch (error) {
+      // Fallback to basic rule-based check
+      const caseData = await prisma.case.findUnique({
+        where: { id: caseId },
+        include: { documents: { select: { type: true, status: true } } },
+      });
+
+      if (!caseData) {
+        return {
+          isCompliant: false,
+          issues: ["Case not found"],
+          recommendations: ["Verify case ID"],
+          riskLevel: "high",
+        };
+      }
+
+      const issues: string[] = [];
+      const requiredDocs = REQUIRED_DOCS_BY_STATUS[caseData.status] || [];
+      const existingDocs = caseData.documents
+        .filter((d) => d.status === "SIGNED" || d.status === "APPROVED")
+        .map((d) => d.type);
+
+      for (const doc of requiredDocs) {
+        if (!existingDocs.includes(doc)) {
+          issues.push(`Missing required document: ${doc}`);
+        }
+      }
+
+      return {
+        isCompliant: issues.length === 0,
+        issues,
+        recommendations: issues.length > 0 ? ["Request missing documents from client"] : [],
+        riskLevel: issues.length > 2 ? "high" : issues.length > 0 ? "medium" : "low",
+      };
+    }
   }
 
   private generatePlainEnglish(analysis: ComplianceAnalysis): string {

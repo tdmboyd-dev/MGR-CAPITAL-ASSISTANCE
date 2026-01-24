@@ -3,10 +3,12 @@
 // Enhanced with Intelligence Layer (Phase 6)
 // Analyzes batches, predicts values, auto-files high-value cases,
 // generates training modules from ingestion patterns
+// Phase 15: AI Agent integration for document analysis
 // ============================================
 
 import { PrismaClient, OpsInsightType, OpsInsightPriority } from "@prisma/client";
 import { ingestionIntelligenceService } from "../services/IngestionIntelligenceService.js";
+import { aiAgentService } from "../services/AiAgentService.js";
 import {
   IngestionBotAnalysis,
   IngestionBotFinding,
@@ -814,6 +816,100 @@ class IngestionBot {
         error: r.error,
       })),
     };
+  }
+}
+
+  // ============================================
+  // AI AGENT INTEGRATION (Phase 15)
+  // ============================================
+
+  /**
+   * Use AI Agent to analyze a document for extraction suggestions
+   */
+  async aiAnalyzeDocument(documentId: string): Promise<{
+    summary: string;
+    keyPoints: string[];
+    missingInfo: string[];
+    recommendations: string[];
+    aiPowered: boolean;
+  }> {
+    try {
+      const result = await aiAgentService.reviewDocument(documentId);
+      return {
+        ...result,
+        aiPowered: true,
+      };
+    } catch (error) {
+      // Fallback to basic info
+      const doc = await prisma.document.findUnique({
+        where: { id: documentId },
+        select: { filename: true, type: true, status: true },
+      });
+
+      return {
+        summary: doc ? `Document: ${doc.filename} (${doc.type})` : "Document not found",
+        keyPoints: [],
+        missingInfo: ["AI analysis unavailable"],
+        recommendations: ["Manual review required"],
+        aiPowered: false,
+      };
+    }
+  }
+
+  /**
+   * Use AI Agent to generate research summary for ingestion source
+   */
+  async aiResearchSource(sourceId: string): Promise<{
+    summary: string;
+    insights: string[];
+    success: boolean;
+  }> {
+    try {
+      const source = await prisma.ingestionSource.findUnique({
+        where: { id: sourceId },
+        include: {
+          batches: {
+            take: 5,
+            orderBy: { createdAt: "desc" },
+            select: { recordCount: true, successCount: true },
+          },
+        },
+      });
+
+      if (!source) {
+        return {
+          summary: "Source not found",
+          insights: [],
+          success: false,
+        };
+      }
+
+      const totalRecords = source.batches.reduce((sum, b) => sum + b.recordCount, 0);
+      const successRecords = source.batches.reduce((sum, b) => sum + b.successCount, 0);
+      const successRate = totalRecords > 0 ? (successRecords / totalRecords) * 100 : 0;
+
+      const result = await aiAgentService.execute("research", {
+        customData: {
+          sourceName: source.name,
+          sourceType: source.type,
+          state: source.state,
+          recentBatches: source.batches.length,
+          successRate: successRate.toFixed(1) + "%",
+        },
+      });
+
+      return {
+        summary: result.output,
+        insights: result.success ? ["AI-powered analysis completed"] : [],
+        success: result.success,
+      };
+    } catch (error) {
+      return {
+        summary: "Analysis failed",
+        insights: [],
+        success: false,
+      };
+    }
   }
 }
 

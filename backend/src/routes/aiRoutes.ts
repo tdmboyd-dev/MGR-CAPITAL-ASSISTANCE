@@ -1,11 +1,13 @@
 // ============================================
 // MGR CAPITAL ASSISTANCE — AI ROUTES
 // Phase 14: AI-Enhanced Search & Recommendations
+// Phase 15: Advanced AI Agents
 // ============================================
 
 import express, { Request, Response, NextFunction } from "express";
 import { authenticate, authorize } from "../middleware/auth.js";
 import { aiSearchService, SearchType } from "../services/AiSearchService.js";
+import { aiAgentService, AgentTask, AgentContext } from "../services/AiAgentService.js";
 
 const router = express.Router();
 
@@ -197,5 +199,157 @@ router.get(
     }
   }
 );
+
+// ============================================
+// AI AGENT ENDPOINTS (Phase 15)
+// ============================================
+
+/**
+ * POST /api/ai/agent
+ * Execute an AI agent task
+ * Body: { task: AgentTask, context: AgentContext }
+ */
+router.post("/agent", async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { task, context } = req.body;
+
+    if (!task) {
+      return res.status(400).json({ error: "Task is required" });
+    }
+
+    const validTasks: AgentTask[] = [
+      "outreach",
+      "compliance",
+      "research",
+      "summary",
+      "follow_up",
+      "document_review",
+    ];
+
+    if (!validTasks.includes(task)) {
+      return res.status(400).json({
+        error: `Invalid task. Use: ${validTasks.join(", ")}`,
+      });
+    }
+
+    const result = await aiAgentService.execute(task, context || {});
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * POST /api/ai/agent/outreach
+ * Generate outreach email for a case
+ * Body: { caseId: string, emailType: string }
+ */
+router.post("/agent/outreach", async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { caseId, emailType = "follow_up" } = req.body;
+
+    if (!caseId) {
+      return res.status(400).json({ error: "Case ID is required" });
+    }
+
+    const email = await aiAgentService.generateOutreachEmail(caseId, emailType);
+    res.json({ success: true, email });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * POST /api/ai/agent/compliance
+ * Check compliance for a case
+ * Body: { caseId: string }
+ */
+router.post("/agent/compliance", async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { caseId } = req.body;
+
+    if (!caseId) {
+      return res.status(400).json({ error: "Case ID is required" });
+    }
+
+    const result = await aiAgentService.checkCompliance(caseId);
+    res.json({ success: true, compliance: result });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * POST /api/ai/agent/summary
+ * Generate case summary
+ * Body: { caseId: string }
+ */
+router.post("/agent/summary", async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { caseId } = req.body;
+
+    if (!caseId) {
+      return res.status(400).json({ error: "Case ID is required" });
+    }
+
+    const summary = await aiAgentService.generateCaseSummary(caseId);
+    res.json({ success: true, summary });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * POST /api/ai/agent/document-review
+ * Review a document
+ * Body: { documentId: string }
+ */
+router.post("/agent/document-review", async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { documentId } = req.body;
+
+    if (!documentId) {
+      return res.status(400).json({ error: "Document ID is required" });
+    }
+
+    const review = await aiAgentService.reviewDocument(documentId);
+    res.json({ success: true, review });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * POST /api/ai/agent/continue
+ * Continue a multi-turn conversation
+ * Body: { conversationHistory: AgentMessage[], userMessage: string }
+ */
+router.post("/agent/continue", async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { conversationHistory, userMessage } = req.body;
+
+    if (!conversationHistory || !userMessage) {
+      return res.status(400).json({ error: "Conversation history and user message required" });
+    }
+
+    const result = await aiAgentService.continueConversation(conversationHistory, userMessage);
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * GET /api/ai/agent/status
+ * Check AI agent status
+ */
+router.get("/agent/status", async (_req: Request, res: Response, next: NextFunction) => {
+  try {
+    const status = await aiAgentService.checkStatus();
+    res.json(status);
+  } catch (error) {
+    next(error);
+  }
+});
 
 export default router;
