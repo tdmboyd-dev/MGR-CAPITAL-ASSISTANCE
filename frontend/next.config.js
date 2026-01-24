@@ -5,9 +5,23 @@ const nextConfig = {
   },
   async rewrites() {
     return [
+      // API proxy to backend
       {
         source: '/api/:path*',
         destination: 'http://localhost:4000/api/:path*',
+      },
+      // Short URL aliases for auth pages
+      {
+        source: '/login',
+        destination: '/auth/login',
+      },
+      {
+        source: '/register',
+        destination: '/auth/register',
+      },
+      {
+        source: '/forgot-password',
+        destination: '/auth/forgot-password',
       },
     ];
   },
