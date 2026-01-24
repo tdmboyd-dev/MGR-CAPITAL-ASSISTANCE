@@ -7,6 +7,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { AiSearchBar } from "@/components/AiSearchBar";
 import { GlobalSearchBar } from "@/components/GlobalSearchBar";
 import { NotificationBell } from "@/components/NotificationBell";
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { useRouter } from "next/navigation";
 
 interface NavbarProps {
@@ -79,6 +80,8 @@ export function Navbar({ onMenuToggle, isSidebarOpen }: NavbarProps) {
       </div>
 
       <div className="flex items-center space-x-2 md:space-x-4">
+        <LanguageSwitcher />
+
         <Button
           variant="ghost"
           size="icon"

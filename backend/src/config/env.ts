@@ -37,4 +37,10 @@ export const config = {
   // Performance settings
   batchSizeLimit: parseInt(process.env.BATCH_SIZE_LIMIT || "1000", 10),
   queryTimeoutMs: parseInt(process.env.QUERY_TIMEOUT_MS || "30000", 10),
+
+  // Ethereum/Blockchain settings (Phase 21)
+  ethereumRpcUrl: process.env.ETHEREUM_RPC_URL || "https://sepolia.infura.io/v3/YOUR_INFURA_KEY",
+  ethereumNetwork: process.env.ETHEREUM_NETWORK || "sepolia",
+  ethereumWalletAddress: process.env.ETHEREUM_WALLET_ADDRESS,
+  ethereumPrivateKey: process.env.ETHEREUM_PRIVATE_KEY,
 };

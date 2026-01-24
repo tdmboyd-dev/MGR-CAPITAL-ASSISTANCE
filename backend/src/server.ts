@@ -51,6 +51,9 @@ import feedbackRoutes from "./routes/feedbackRoutes.js";
 // Global Search (Phase 20)
 import searchRoutes from "./routes/searchRoutes.js";
 
+// Blockchain Payouts (Phase 21)
+import blockchainRoutes from "./routes/blockchainRoutes.js";
+
 // Rate limiting
 import { loginRateLimit, passwordResetRateLimit } from "./middleware/rateLimit.js";
 
@@ -127,6 +130,9 @@ app.use("/api/feedback", feedbackRoutes);
 
 // Global Search (Phase 20)
 app.use("/api/search", searchRoutes);
+
+// Blockchain Payouts (Phase 21)
+app.use("/api/blockchain", blockchainRoutes);
 
 // ============================================
 // HEALTH CHECK
