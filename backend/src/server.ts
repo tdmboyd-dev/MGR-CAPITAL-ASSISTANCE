@@ -57,6 +57,9 @@ import blockchainRoutes from "./routes/blockchainRoutes.js";
 // Voice AI (Phase 24)
 import voiceRoutes from "./routes/voiceRoutes.js";
 
+// AI Legal Bots (Phase 25)
+import aiBotsRoutes from "./routes/aiBotsRoutes.js";
+
 // Rate limiting
 import { loginRateLimit, passwordResetRateLimit } from "./middleware/rateLimit.js";
 
@@ -139,6 +142,9 @@ app.use("/api/blockchain", blockchainRoutes);
 
 // Voice AI (Phase 24)
 app.use("/api/voice", voiceRoutes);
+
+// AI Legal Bots (Phase 25)
+app.use("/api/ai-bots", aiBotsRoutes);
 
 // ============================================
 // HEALTH CHECK

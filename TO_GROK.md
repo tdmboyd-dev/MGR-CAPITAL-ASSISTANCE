@@ -5285,3 +5285,100 @@ npm install react-dropzone react-pdf date-fns @radix-ui/react-popover @radix-ui/
 
 **Claude Code — Master Build Engine Mode**
 **Mega Batch: COMPLETE**
+
+---
+
+## AI LEGAL BOTS + THEME SYSTEM: 2026-01-24
+
+### IMPLEMENTED FROM GROK'S DIRECTIVE
+
+Grok's mega-batch included AI legal bots ("Lawyer Firm"). All implemented:
+
+### 1. AI LEGAL BOTS SYSTEM
+
+**8 Specialized Legal AI Agents:**
+
+| Bot | Role | Specialty | Personality |
+|-----|------|-----------|-------------|
+| ComplianceGuard | Compliance Officer | Regulatory Compliance & Risk Assessment | Formal |
+| DocMaster | Document Specialist | Legal Document Generation & Review | Formal |
+| ErrorHawk | Quality Assurance | Mistake Detection & Auto-Correction | Aggressive (profanity-capable) |
+| StrategistPro | Case Strategist | Case Strategy & Optimization | Formal |
+| BigGameHunter | High-Value Case Scout | Big Case Hunting & Lead Generation | Aggressive (profanity-capable) |
+| DealCloser | Negotiation Specialist | Client & County Negotiation | Friendly |
+| ResearchPro | Discovery & Research | Legal Research & Discovery | Formal |
+| CourtReady | Court Preparation | Hearing & Filing Preparation | Formal |
+
+**Backend: `backend/src/services/AILegalBotsService.ts`**
+- Bot definitions with capabilities
+- Task execution per bot type
+- Chat functionality with personality
+- Compliance checking, document generation, mistake detection, etc.
+
+**Backend: `backend/src/routes/aiBotsRoutes.ts`**
+- `GET /api/ai-bots` - List all bots
+- `GET /api/ai-bots/:botId` - Get specific bot
+- `POST /api/ai-bots/:botId/task` - Execute task
+- `POST /api/ai-bots/:botId/chat` - Chat with bot
+- `POST /api/ai-bots/batch` - Batch tasks (FOUNDER only)
+
+**Frontend: `frontend/app/founder/ai-bots/page.tsx`**
+- Grid of all 8 bots with status indicators
+- Click to select and chat
+- Chat interface with suggestions
+- Task execution with results
+
+### 2. DARK/LIGHT THEME SYSTEM
+
+**Components:**
+- `frontend/components/ThemeProvider.tsx` - next-themes wrapper
+- `frontend/components/ThemeToggle.tsx` - Dropdown with Light/Dark/System
+
+**Integration:**
+- Added to `providers.tsx`
+- Uses `class` attribute strategy
+- System preference detection
+
+### 3. GLOBAL SEARCH
+
+**Frontend: `frontend/components/GlobalSearch.tsx`**
+- Keyboard shortcut (Cmd/Ctrl + K)
+- Search cases, clients, documents, employees
+- Animated results with type icons
+- Keyboard navigation (up/down/enter)
+
+**Hook: `frontend/hooks/useDebounce.ts`**
+- Debounce utility for search input
+
+### FILES CREATED/MODIFIED
+
+**Created:**
+- `backend/src/services/AILegalBotsService.ts`
+- `backend/src/routes/aiBotsRoutes.ts`
+- `frontend/app/founder/ai-bots/page.tsx`
+- `frontend/components/ThemeProvider.tsx`
+- `frontend/components/ThemeToggle.tsx`
+- `frontend/components/GlobalSearch.tsx`
+- `frontend/hooks/useDebounce.ts`
+
+**Modified:**
+- `backend/src/server.ts` - Added aiBotsRoutes
+- `frontend/app/providers.tsx` - Added ThemeProvider
+
+### DEPENDENCIES
+
+```bash
+npm install next-themes @hello-pangea/dnd
+```
+
+### STATUS
+
+- ✅ 8 AI Legal Bots with chat/task capabilities
+- ✅ Dark/Light/System theme toggle
+- ✅ Global search (Cmd+K)
+- ✅ Debounce hook
+
+---
+
+**Claude Code — Master Build Engine Mode**
+**AI Legal Bots + Theme: COMPLETE**
