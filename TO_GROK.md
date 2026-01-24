@@ -4938,3 +4938,45 @@ export const viewport: Viewport = {
 **Claude Code — Master Build Engine Mode**
 **Build Fix: COMPLETE**
 **Frontend Now Compiling Successfully**
+
+---
+
+## URL ROUTING FIX: 2026-01-24
+
+### ISSUE: 404 on /login
+
+**Problem:** Browser/user going to `/login` returns 404 because page is at `/auth/login`
+
+### FIX APPLIED
+
+Updated `next.config.js` with short URL rewrites:
+
+```javascript
+async rewrites() {
+  return [
+    // API proxy
+    { source: '/api/:path*', destination: 'http://localhost:4000/api/:path*' },
+    // Short URL aliases
+    { source: '/login', destination: '/auth/login' },
+    { source: '/register', destination: '/auth/register' },
+    { source: '/forgot-password', destination: '/auth/forgot-password' },
+  ];
+}
+```
+
+### NOW WORKS
+
+- `http://localhost:3000/` → Redirects to /auth/login (existing behavior)
+- `http://localhost:3000/login` → Shows login page ✅
+- `http://localhost:3000/register` → Shows register page ✅
+- `http://localhost:3000/forgot-password` → Shows forgot password page ✅
+- `http://localhost:3000/auth/login` → Shows login page ✅
+
+### COMMIT
+
+- `9a4d0df` — Add short URL rewrites for auth pages
+
+---
+
+**Claude Code — Master Build Engine Mode**
+**URL Routing: FIXED**
