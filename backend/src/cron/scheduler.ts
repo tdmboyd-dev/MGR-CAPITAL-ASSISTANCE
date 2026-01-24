@@ -28,6 +28,7 @@ import { trainingBot } from "../bots/trainingBot.js";
 import { outreachBot } from "../bots/outreachBot.js";
 import { docketBot } from "../bots/docketBot.js";
 import { monitoringBot } from "../bots/monitoringBot.js";
+import { metaBot } from "../bots/metaBot.js";
 
 // Service imports
 import { backupService } from "../services/BackupService.js";
@@ -170,6 +171,17 @@ const jobs: CronJob[] = [
     category: "bot",
     task: async () => {
       await monitoringBot.runHealthChecks();
+    },
+  },
+  {
+    name: "Bot Performance Analysis",
+    key: "meta_bot_analysis",
+    cronExpression: "0 7 * * 0", // 7:00 AM every Sunday
+    description: "Analyze bot performance, generate optimization recommendations",
+    enabledByDefault: true,
+    category: "bot",
+    task: async () => {
+      await metaBot.analyzeBotPerformance(7);
     },
   },
 

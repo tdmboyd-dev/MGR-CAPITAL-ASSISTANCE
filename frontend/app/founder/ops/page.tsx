@@ -24,7 +24,19 @@ import {
   CheckCircle2,
   AlertTriangle,
   XCircle,
+  Bot,
+  Clock,
+  Zap,
 } from "lucide-react";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
 
 interface ForecastPoint {
   date: string;
@@ -53,6 +65,16 @@ interface HealthData {
   services?: { name: string; status: string }[];
 }
 
+interface BotMetrics {
+  botName: string;
+  totalRuns: number;
+  successRate: number;
+  avgDurationMs: number;
+  trend: "improving" | "degrading" | "stable";
+  lastRunAt: string | null;
+  lastStatus: string | null;
+}
+
 export default function FounderOpsPage() {
   const { data, isLoading } = useQuery({
     queryKey: ["analytics-forecast"],
@@ -69,6 +91,15 @@ export default function FounderOpsPage() {
       return data as HealthData;
     },
     refetchInterval: 60000, // Refresh every minute
+  });
+
+  const { data: botMetrics, isLoading: botsLoading } = useQuery({
+    queryKey: ["bot-metrics"],
+    queryFn: async () => {
+      const { data } = await api.get("/ops/metrics/bots");
+      return data.data as BotMetrics[];
+    },
+    refetchInterval: 300000, // Refresh every 5 minutes
   });
 
   if (isLoading) {
@@ -282,6 +313,100 @@ export default function FounderOpsPage() {
             height={300}
             color="#3b82f6"
           />
+        </CardContent>
+      </Card>
+
+      {/* Bot Performance Table */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Bot className="h-5 w-5" />
+            Bot Performance
+          </CardTitle>
+          <CardDescription>
+            Automated bot health and performance metrics (weekly analysis)
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {botsLoading ? (
+            <div className="space-y-2">
+              {[1, 2, 3, 4].map((i) => (
+                <Skeleton key={i} className="h-12 w-full" />
+              ))}
+            </div>
+          ) : botMetrics && botMetrics.length > 0 ? (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Bot</TableHead>
+                  <TableHead className="text-center">Runs</TableHead>
+                  <TableHead className="text-center">Success Rate</TableHead>
+                  <TableHead className="text-center">Avg Time</TableHead>
+                  <TableHead className="text-center">Trend</TableHead>
+                  <TableHead className="text-center">Last Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {botMetrics.map((bot) => (
+                  <TableRow key={bot.botName}>
+                    <TableCell className="font-medium">{bot.botName}</TableCell>
+                    <TableCell className="text-center">{bot.totalRuns}</TableCell>
+                    <TableCell className="text-center">
+                      <Badge
+                        variant={
+                          bot.successRate >= 90
+                            ? "default"
+                            : bot.successRate >= 70
+                            ? "secondary"
+                            : "destructive"
+                        }
+                      >
+                        {bot.successRate}%
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <span className="flex items-center justify-center gap-1">
+                        <Clock className="h-3 w-3 text-muted-foreground" />
+                        {bot.avgDurationMs > 1000
+                          ? `${(bot.avgDurationMs / 1000).toFixed(1)}s`
+                          : `${bot.avgDurationMs}ms`}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-center">
+                      {bot.trend === "improving" ? (
+                        <span className="flex items-center justify-center gap-1 text-green-500">
+                          <TrendingUp className="h-4 w-4" />
+                        </span>
+                      ) : bot.trend === "degrading" ? (
+                        <span className="flex items-center justify-center gap-1 text-red-500">
+                          <TrendingDown className="h-4 w-4" />
+                        </span>
+                      ) : (
+                        <span className="flex items-center justify-center gap-1 text-yellow-500">
+                          <Minus className="h-4 w-4" />
+                        </span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-center">
+                      {bot.lastStatus === "SUCCESS" ? (
+                        <CheckCircle2 className="h-4 w-4 text-green-500 mx-auto" />
+                      ) : bot.lastStatus === "ERROR" ? (
+                        <XCircle className="h-4 w-4 text-red-500 mx-auto" />
+                      ) : (
+                        <Minus className="h-4 w-4 text-muted-foreground mx-auto" />
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">
+              <Bot className="h-12 w-12 mx-auto mb-3 opacity-50" />
+              <p>No bot performance data available yet.</p>
+              <p className="text-sm">Data will appear after the first weekly analysis.</p>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

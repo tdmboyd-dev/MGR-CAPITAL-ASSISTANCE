@@ -7,6 +7,7 @@ import { Router, Request, Response } from "express";
 import { authMiddleware } from "../middleware/authMiddleware.js";
 import { roleGuard } from "../middleware/roleGuard.js";
 import { opsMetricsService } from "../services/opsMetricsService.js";
+import { metaBot } from "../bots/metaBot.js";
 
 const router = Router();
 
@@ -333,6 +334,45 @@ router.post("/focus-feed/:id/dismiss", async (req: Request, res: Response) => {
     res.status(500).json({
       success: false,
       error: "Failed to dismiss focus item"
+    });
+  }
+});
+
+// ============================================
+// BOT PERFORMANCE
+// ============================================
+
+/**
+ * GET /api/ops/metrics/bots
+ * Get bot performance metrics from MetaBot
+ */
+router.get("/bots", async (req: Request, res: Response) => {
+  try {
+    const metrics = await metaBot.getBotMetrics();
+    res.json({ success: true, data: metrics });
+  } catch (error: any) {
+    console.error("Bot metrics error:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to fetch bot metrics"
+    });
+  }
+});
+
+/**
+ * POST /api/ops/metrics/bots/analyze
+ * Trigger a fresh bot performance analysis
+ */
+router.post("/bots/analyze", async (req: Request, res: Response) => {
+  try {
+    const days = parseInt(req.query.days as string) || 7;
+    const report = await metaBot.analyzeBotPerformance(days);
+    res.json({ success: true, data: report });
+  } catch (error: any) {
+    console.error("Bot analysis error:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to analyze bot performance"
     });
   }
 });
