@@ -176,6 +176,73 @@ app.use(globalErrorHandler);
 
 const PORT = config.port || 3001;
 
+// ============================================
+// WEBSOCKET SERVER (Real-time collaboration)
+// ============================================
+
+import { WebSocketServer, WebSocket } from "ws";
+
+const WS_PORT = Number(process.env.WS_PORT) || 4001;
+
+const wss = new WebSocketServer({ port: WS_PORT });
+
+// Room management for collaborative editing
+const rooms: Map<string, Set<WebSocket>> = new Map();
+
+wss.on("connection", (ws, req) => {
+  const url = new URL(req.url!, `http://${req.headers.host}`);
+  const caseId = url.searchParams.get("caseId") || url.pathname.split("-")[1];
+
+  if (!caseId) {
+    ws.close(1008, "Missing caseId parameter");
+    return;
+  }
+
+  const roomKey = `case-${caseId}`;
+
+  // Join room
+  if (!rooms.has(roomKey)) {
+    rooms.set(roomKey, new Set());
+  }
+  rooms.get(roomKey)!.add(ws);
+
+  console.log(`[WS] Client joined room: ${roomKey} (${rooms.get(roomKey)!.size} users)`);
+
+  // Broadcast messages to all clients in the same room
+  ws.on("message", (message) => {
+    const room = rooms.get(roomKey);
+    if (!room) return;
+
+    room.forEach((client) => {
+      if (client !== ws && client.readyState === WebSocket.OPEN) {
+        client.send(message);
+      }
+    });
+  });
+
+  // Handle disconnection
+  ws.on("close", () => {
+    const room = rooms.get(roomKey);
+    if (room) {
+      room.delete(ws);
+      console.log(`[WS] Client left room: ${roomKey} (${room.size} users remaining)`);
+      if (room.size === 0) {
+        rooms.delete(roomKey);
+      }
+    }
+  });
+
+  ws.on("error", (error) => {
+    console.error(`[WS] Error in room ${roomKey}:`, error.message);
+  });
+});
+
+console.log(`[WS] WebSocket server running on port ${WS_PORT}`);
+
+// ============================================
+// HTTP SERVER START
+// ============================================
+
 app.listen(PORT, () => {
   console.log(`
 ╔════════════════════════════════════════════════╗
