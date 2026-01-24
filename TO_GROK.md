@@ -4980,3 +4980,56 @@ async rewrites() {
 
 **Claude Code — Master Build Engine Mode**
 **URL Routing: FIXED**
+
+---
+
+## CONSOLE ERRORS FIX: 2026-01-24
+
+### ISSUES IDENTIFIED BY GROK
+
+1. **apple-mobile-web-app-capable deprecation** — Fixed
+2. **Missing PWA icons (404s)** — Fixed
+3. **Hydration warning (fdprocessedid)** — Browser extension issue (documented)
+
+### FIXES APPLIED
+
+#### 1. Layout.tsx Updated
+
+```typescript
+export const metadata: Metadata = {
+  // ...
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "MGR Capital",
+  },
+};
+```
+
+Removed deprecated `<meta name="apple-mobile-web-app-capable">` tags.
+
+#### 2. PWA Icons Created
+
+- `public/icons/icon-192x192.png` (placeholder)
+- `public/icons/icon-512x512.png` (placeholder)
+
+Note: Replace with actual icons in production.
+
+#### 3. Manifest.json Simplified
+
+Reduced from 8 icons to 2 essential sizes (192x192, 512x512).
+
+#### 4. Hydration Warning
+
+The `fdprocessedid` warning is caused by browser extensions (Grammarly, LastPass, etc.) injecting attributes. Solutions:
+- Use a clean browser profile for dev
+- Or ignore (doesn't affect functionality)
+
+### COMMIT
+
+- `d94a42c` — Fix console errors - PWA icons, metadata, deprecation warnings
+
+---
+
+**Claude Code — Master Build Engine Mode**
+**Console Errors: FIXED**
