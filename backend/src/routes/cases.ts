@@ -9,6 +9,7 @@ import { authMiddleware, AuthRequest } from "../middleware/authMiddleware.js";
 import { roleGuard } from "../middleware/roleGuard.js";
 import { asyncHandler, AppError, Errors } from "../middleware/errorHandler.js";
 import { legalService } from "../services/legalService.js";
+import { notificationCenterService } from "../services/NotificationCenterService.js";
 import {
   isValidTransition,
   validateTransition,
@@ -744,6 +745,81 @@ router.post("/:id/documents", authMiddleware, roleGuard(["ADMIN"]), async (req: 
   } catch (error: any) {
     console.error("Cases error:", error);
     res.status(500).json({ success: false, error: "An error occurred. Please try again." });
+  }
+});
+
+/**
+ * PATCH /api/cases/:id/assign - Assign case to employee (FOUNDER/ADMIN ONLY)
+ */
+router.patch("/:id/assign", authMiddleware, roleGuard(["FOUNDER", "ADMIN"]), async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { assignedEmployeeId } = req.body;
+
+    if (!assignedEmployeeId) {
+      return res.status(400).json({ success: false, error: "assignedEmployeeId required" });
+    }
+
+    // Verify employee exists and is active
+    const employee = await prisma.user.findFirst({
+      where: {
+        id: assignedEmployeeId,
+        role: "EMPLOYEE",
+        isActive: true,
+      },
+      select: { id: true, name: true, email: true },
+    });
+
+    if (!employee) {
+      return res.status(400).json({ success: false, error: "Employee not found or inactive" });
+    }
+
+    const updatedCase = await prisma.case.update({
+      where: { id },
+      data: { assignedEmployeeId },
+      include: {
+        client: { select: { name: true } },
+        assignedEmployee: { select: { id: true, name: true, email: true } },
+      },
+    });
+
+    // Create notification for assigned employee
+    try {
+      await notificationCenterService.create({
+        userId: assignedEmployeeId,
+        category: "case",
+        priority: "high",
+        title: "New Case Assignment",
+        message: `You have been assigned to case ${updatedCase.internalCode} - ${updatedCase.client?.name || "Unknown Client"}`,
+        link: `/employee/cases/${id}`,
+      });
+    } catch (notifError) {
+      console.error("Failed to send assignment notification:", notifError);
+    }
+
+    // Log audit
+    await prisma.auditLog.create({
+      data: {
+        userId: req.user!.id,
+        action: "CASE_ASSIGNED",
+        entityType: "CASE",
+        entityId: id,
+        details: {
+          assignedToId: assignedEmployeeId,
+          assignedToName: employee.name,
+          assignedBy: req.user!.id,
+        },
+      },
+    });
+
+    res.json({
+      success: true,
+      data: updatedCase,
+      message: `Case assigned to ${employee.name}`,
+    });
+  } catch (error: any) {
+    console.error("Case assignment error:", error);
+    res.status(500).json({ success: false, error: "Failed to assign case" });
   }
 });
 

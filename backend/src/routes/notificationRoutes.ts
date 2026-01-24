@@ -9,7 +9,73 @@ import { notificationCenterService } from "../services/NotificationCenterService
 
 const router = express.Router();
 
-// All notification routes require authentication
+// ============================================
+// SSE (Server-Sent Events) for Real-time Updates
+// ============================================
+
+/**
+ * GET /api/notifications/events
+ * Real-time notification stream via SSE
+ * Query: token (for auth since SSE doesn't support headers easily)
+ */
+router.get("/events", async (req, res, next) => {
+  try {
+    // Get token from query param (SSE workaround)
+    const token = req.query.token as string;
+    if (!token) {
+      return res.status(401).json({ error: "Token required" });
+    }
+
+    // Verify token manually (since we can't use middleware with SSE easily)
+    const jwt = await import("jsonwebtoken");
+    const decoded = jwt.default.verify(token, process.env.JWT_SECRET || "dev-secret") as any;
+    const userId = decoded.userId;
+
+    if (!userId) {
+      return res.status(401).json({ error: "Invalid token" });
+    }
+
+    // Set SSE headers
+    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("Connection", "keep-alive");
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.flushHeaders();
+
+    // Send initial unread count
+    const initialUnread = await notificationCenterService.getUnread(userId);
+    res.write(`data: ${JSON.stringify({ type: "unread_count", count: initialUnread.length })}\n\n`);
+
+    // Send initial notifications list
+    res.write(`data: ${JSON.stringify({ type: "notifications_list", notifications: initialUnread.slice(0, 10) })}\n\n`);
+
+    // Poll for updates (in production, use Redis pub/sub)
+    const interval = setInterval(async () => {
+      try {
+        const unread = await notificationCenterService.getUnread(userId);
+        res.write(`data: ${JSON.stringify({ type: "unread_count", count: unread.length })}\n\n`);
+      } catch (err) {
+        console.error("SSE poll error:", err);
+      }
+    }, 15000); // Every 15 seconds
+
+    // Keep connection alive with heartbeat
+    const heartbeat = setInterval(() => {
+      res.write(":heartbeat\n\n");
+    }, 30000);
+
+    // Cleanup on close
+    req.on("close", () => {
+      clearInterval(interval);
+      clearInterval(heartbeat);
+    });
+  } catch (error: any) {
+    console.error("SSE connection error:", error);
+    res.status(401).json({ error: "Authentication failed" });
+  }
+});
+
+// All other notification routes require authentication
 router.use(authenticate);
 
 // ============================================
