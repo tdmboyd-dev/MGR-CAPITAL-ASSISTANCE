@@ -2,8 +2,8 @@
 ## For Grok AI to Review, Validate, and Suggest Additional Implementations
 
 **Generated:** 2026-01-22
-**Updated:** 2026-01-23
-**Current Phase:** Phase 8 COMPLETE — 100% Platform Completion
+**Updated:** 2026-01-24
+**Current Phase:** Phase 20 COMPLETE — 100% Platform Completion + Global Search & Dashboard Customization
 
 ---
 
@@ -17,21 +17,28 @@ A **sovereign, self-hosted surplus and tax sale recovery platform** that:
 3. Manages the full claims lifecycle (outreach → docs → filing → payout)
 4. Handles employee/contractor commissions with **shadow accounting**
 5. Provides founder-only OPS intelligence layer
+6. AI-powered multi-turn agents for case assistance
+7. Global search across all entities
+8. Customizable dashboards with drag-and-drop widgets
 
 ## Core Architecture Principles
 
 - **TypeScript/Node.js backend** with Express
+- **Next.js 14 frontend** with React 18
 - **PostgreSQL** via Prisma ORM (hosted on Neon)
+- **Redis** for caching and AI session persistence
+- **Ollama** for local AI inference
 - **No external dependencies** for core logic (no Sentry, no analytics services)
 - **Shadow accounting**: Employees see inflated commission rates (20/40/60/80/100%) but actually receive (10/20/30/40/50%)
 - **Role-based access**: FOUNDER sees everything, employees/clients see filtered data
-- **Bot-driven intelligence**: 7 internal bots analyze data and generate insights
+- **Bot-driven intelligence**: 7+ internal bots analyze data and generate insights
+- **PWA-ready**: Service worker, offline support, installable
 
 ---
 
 # PART 2: COMPLETE DATABASE SCHEMA
 
-## All Enums (30 total)
+## All Enums (35+ total)
 
 ```prisma
 // USER & ROLES
@@ -74,15 +81,22 @@ enum OpsInsightPriority { LOW, NORMAL, HIGH, URGENT }
 enum SystemErrorSeverity { DEBUG, INFO, WARNING, ERROR, CRITICAL }
 enum NotificationType { EMAIL, SMS, PUSH, IN_APP }
 enum NotificationStatus { PENDING, SENT, DELIVERED, FAILED, BOUNCED }
+enum NotificationPriority { URGENT, HIGH, NORMAL }
+enum NotificationCategory { GENERAL, COMPLIANCE, DEADLINE, SYSTEM }
+
+// FEEDBACK
+enum FeedbackCategory { GENERAL, AI_RESPONSE, FEATURE, UI_UX, BUG, PERFORMANCE, TRAINING, DOCUMENT }
 ```
 
-## All Models (39 total)
+## All Models (45+ total)
 
 ### Core Business Models
 | Model | Purpose |
 |-------|---------|
 | `User` | All users (founder, employees, clients) with role-based fields |
 | `UserSession` | JWT session tracking |
+| `RefreshToken` | Refresh token storage for rotation |
+| `ResetToken` | Password reset tokens |
 | `Case` | Core claim/case entity with financials (all in cents) |
 | `Deadline` | Case deadlines with reminder tracking |
 | `Document` | Case documents with signatures |
@@ -101,9 +115,9 @@ enum NotificationStatus { PENDING, SENT, DELIVERED, FAILED, BOUNCED }
 | `TrainingModule` | Static training modules |
 | `TrainingQuestion` | Quiz questions for modules |
 | `EmployeeTrainingProgress` | Employee progress on modules |
-| `TrainingRecommendation` | Personalized recommendations (Phase 5) |
-| `DynamicTrainingModule` | Auto-generated modules from insights (Phase 5) |
-| `TierProgressionLog` | Tier advancement evaluations (Phase 5) |
+| `TrainingRecommendation` | Personalized recommendations |
+| `DynamicTrainingModule` | Auto-generated modules from insights |
+| `TierProgressionLog` | Tier advancement evaluations |
 | `TrainingModuleDetail` | Detailed content for AI generation |
 | `TrainingAssetPlan` | Asset production plans |
 
@@ -111,10 +125,10 @@ enum NotificationStatus { PENDING, SENT, DELIVERED, FAILED, BOUNCED }
 | Model | Purpose |
 |-------|---------|
 | `IngestionSource` | Data source configurations |
-| `IngestionBatch` | Processing batches (enhanced with stats fields) |
-| `IngestionRecord` | Individual records with parsing status (enhanced with prediction fields) |
-| `ParserVersion` | DB-driven parser versioning per jurisdiction (Phase 6) |
-| `PropertyClass` | Property classification for prediction accuracy (Phase 6) |
+| `IngestionBatch` | Processing batches with statistics |
+| `IngestionRecord` | Individual records with parsing status |
+| `ParserVersion` | DB-driven parser versioning per jurisdiction |
+| `PropertyClass` | Property classification for prediction accuracy |
 
 ### OPS Layer Models (FOUNDER ONLY)
 | Model | Purpose |
@@ -126,12 +140,21 @@ enum NotificationStatus { PENDING, SENT, DELIVERED, FAILED, BOUNCED }
 | `CaseHeatmapEntry` | Case priority heat scores |
 | `FounderFocusItem` | Priority items for founder attention |
 | `OpsInsight` | Bot-generated insights |
-| `FounderConfig` | Tunable thresholds/settings (Phase 5) |
-| `BotRunLog` | Bot execution logs (Phase 5) |
+| `FounderConfig` | Tunable thresholds/settings |
+| `BotRunLog` | Bot execution logs |
+
+### Communication & Notification Models
+| Model | Purpose |
+|-------|---------|
+| `ChatRoom` | Internal team chat rooms |
+| `ChatMessage` | Chat messages with user references |
+| `Notification` | User notifications with priority/category |
+| `Feedback` | User feedback with ratings and categories |
 
 ### System Models
 | Model | Purpose |
 |-------|---------|
+| `Tenant` | Multi-tenant support |
 | `AuditLog` | All user actions logged |
 | `SystemConfig` | General system settings |
 | `SystemError` | Error tracking (no Sentry) |
@@ -146,154 +169,139 @@ enum NotificationStatus { PENDING, SENT, DELIVERED, FAILED, BOUNCED }
 ```
 backend/src/
 ├── cron/
-│   └── scheduler.ts          ✅ SKELETON (Phase 7)
+│   └── scheduler.ts          ✅ COMPLETE
 ├── bots/
-│   ├── ingestionBot.ts      ✅ COMPLETE
-│   ├── payoutBot.ts         ✅ COMPLETE
-│   ├── complianceBot.ts     ✅ COMPLETE
-│   ├── outreachBot.ts       ✅ COMPLETE
-│   ├── docketBot.ts         ✅ COMPLETE
-│   ├── coordinatorBot.ts    ✅ COMPLETE
-│   └── trainingBot.ts       ✅ COMPLETE (Phase 5 Enhanced)
+│   ├── ingestionBot.ts       ✅ COMPLETE
+│   ├── payoutBot.ts          ✅ COMPLETE
+│   ├── complianceBot.ts      ✅ COMPLETE
+│   ├── outreachBot.ts        ✅ COMPLETE
+│   ├── docketBot.ts          ✅ COMPLETE
+│   ├── coordinatorBot.ts     ✅ COMPLETE
+│   ├── trainingBot.ts        ✅ COMPLETE
+│   └── metaBot.ts            ✅ COMPLETE (Feedback Analysis)
 ├── config/
-│   └── env.ts               ✅ COMPLETE
+│   ├── env.ts                ✅ COMPLETE
+│   └── prisma.ts             ✅ COMPLETE
 ├── data/
-│   ├── stateRules.ts        ✅ COMPLETE
-│   └── documentTemplates.ts ✅ COMPLETE
+│   ├── stateRules.ts         ✅ COMPLETE
+│   └── documentTemplates.ts  ✅ COMPLETE
 ├── middleware/
-│   ├── authMiddleware.ts    ✅ COMPLETE
-│   ├── auditLogger.ts       ✅ COMPLETE
-│   ├── errorHandler.ts      ✅ COMPLETE
-│   ├── rateLimit.ts         ✅ COMPLETE
-│   └── roleGuard.ts         ✅ COMPLETE
+│   ├── authMiddleware.ts     ✅ COMPLETE
+│   ├── auditLogger.ts        ✅ COMPLETE
+│   ├── errorHandler.ts       ✅ COMPLETE
+│   ├── rateLimit.ts          ✅ COMPLETE
+│   └── roleGuard.ts          ✅ COMPLETE
 ├── models/
-│   ├── User.ts              ✅ COMPLETE
-│   ├── Role.ts              ✅ COMPLETE
-│   ├── Case.ts              ✅ COMPLETE
-│   ├── LedgerEntry.ts       ✅ COMPLETE
-│   └── CommissionPlan.ts    ✅ COMPLETE
+│   ├── User.ts               ✅ COMPLETE
+│   ├── Role.ts               ✅ COMPLETE
+│   ├── Case.ts               ✅ COMPLETE
+│   ├── LedgerEntry.ts        ✅ COMPLETE
+│   └── CommissionPlan.ts     ✅ COMPLETE
 ├── parsers/
-│   ├── probateCsvParser.ts  ✅ COMPLETE
-│   ├── taxSaleCsvParser.ts  ✅ COMPLETE
-│   └── surplusPdfParser.ts  ✅ COMPLETE
+│   ├── probateCsvParser.ts   ✅ COMPLETE
+│   ├── taxSaleCsvParser.ts   ✅ COMPLETE
+│   └── surplusPdfParser.ts   ✅ COMPLETE
 ├── routes/
-│   ├── auth.ts              ✅ COMPLETE
-│   ├── cases.ts             ✅ COMPLETE
-│   ├── clients.ts           ✅ COMPLETE
-│   ├── documents.ts         ✅ COMPLETE
-│   ├── employees.ts         ✅ COMPLETE
-│   ├── ingestion.ts         ✅ COMPLETE
-│   ├── legal.ts             ✅ COMPLETE
-│   ├── payouts.ts           ✅ COMPLETE
-│   ├── settings.ts          ✅ COMPLETE
-│   ├── training.ts          ✅ COMPLETE
-│   ├── opsMetrics.ts        ✅ COMPLETE
-│   ├── opsWatch.ts          ✅ COMPLETE
-│   ├── hrRoutes.ts          ✅ COMPLETE
-│   ├── hrTrainingRoutes.ts  ✅ COMPLETE (Phase 5)
-│   └── complianceRoutes.ts  ✅ COMPLETE
+│   ├── auth.ts               ✅ COMPLETE
+│   ├── cases.ts              ✅ COMPLETE
+│   ├── clients.ts            ✅ COMPLETE
+│   ├── documents.ts          ✅ COMPLETE
+│   ├── employees.ts          ✅ COMPLETE
+│   ├── ingestion.ts          ✅ COMPLETE
+│   ├── legal.ts              ✅ COMPLETE
+│   ├── payouts.ts            ✅ COMPLETE
+│   ├── settings.ts           ✅ COMPLETE
+│   ├── training.ts           ✅ COMPLETE
+│   ├── opsMetrics.ts         ✅ COMPLETE
+│   ├── opsWatch.ts           ✅ COMPLETE
+│   ├── hrRoutes.ts           ✅ COMPLETE
+│   ├── hrTrainingRoutes.ts   ✅ COMPLETE
+│   ├── complianceRoutes.ts   ✅ COMPLETE
+│   ├── comms.ts              ✅ COMPLETE
+│   ├── analytics.ts          ✅ COMPLETE
+│   ├── aiRoutes.ts           ✅ COMPLETE (Multi-Turn AI Agent)
+│   ├── notificationRoutes.ts ✅ COMPLETE
+│   ├── feedbackRoutes.ts     ✅ COMPLETE
+│   └── searchRoutes.ts       ✅ COMPLETE (Phase 20)
 ├── services/
-│   ├── bankingService.ts             ✅ COMPLETE
-│   ├── caseService.ts                ✅ COMPLETE
-│   ├── clientService.ts              ✅ COMPLETE
-│   ├── commissionService.ts          ✅ COMPLETE
-│   ├── documentVaultService.ts       ✅ COMPLETE
-│   ├── employeeService.ts            ✅ COMPLETE
-│   ├── ingestionService.ts           ✅ COMPLETE
-│   ├── legalService.ts               ✅ COMPLETE
-│   ├── notificationService.ts        ✅ COMPLETE
-│   ├── opsMetricsService.ts          ✅ COMPLETE
-│   ├── payoutService.ts              ✅ COMPLETE
-│   ├── scraperService.ts             ✅ COMPLETE
-│   ├── trainingService.ts            ✅ COMPLETE
-│   ├── watchService.ts               ✅ COMPLETE
-│   ├── parserService.ts              ✅ COMPLETE
-│   ├── TrainingIntelligenceService.ts ✅ COMPLETE (Phase 5)
-│   ├── IngestionIntelligenceService.ts ✅ COMPLETE (Phase 6)
-│   ├── BackupService.ts              ✅ SKELETON (Phase 7)
-│   └── ReportingService.ts           ✅ SKELETON (Phase 7)
+│   ├── bankingService.ts              ✅ COMPLETE
+│   ├── caseService.ts                 ✅ COMPLETE
+│   ├── clientService.ts               ✅ COMPLETE
+│   ├── commissionService.ts           ✅ COMPLETE
+│   ├── documentVaultService.ts        ✅ COMPLETE
+│   ├── employeeService.ts             ✅ COMPLETE
+│   ├── ingestionService.ts            ✅ COMPLETE
+│   ├── legalService.ts                ✅ COMPLETE
+│   ├── notificationService.ts         ✅ COMPLETE
+│   ├── opsMetricsService.ts           ✅ COMPLETE
+│   ├── payoutService.ts               ✅ COMPLETE
+│   ├── scraperService.ts              ✅ COMPLETE
+│   ├── trainingService.ts             ✅ COMPLETE
+│   ├── watchService.ts                ✅ COMPLETE
+│   ├── parserService.ts               ✅ COMPLETE
+│   ├── TrainingIntelligenceService.ts ✅ COMPLETE
+│   ├── IngestionIntelligenceService.ts ✅ COMPLETE
+│   ├── BackupService.ts               ✅ COMPLETE
+│   ├── ReportingService.ts            ✅ COMPLETE
+│   ├── CacheService.ts                ✅ COMPLETE (Redis)
+│   ├── ConfigService.ts               ✅ COMPLETE
+│   ├── AiAgentService.ts              ✅ COMPLETE (Ollama Multi-Turn)
+│   ├── FeedbackService.ts             ✅ COMPLETE
+│   └── GlobalSearchService.ts         ✅ COMPLETE (Phase 20)
 ├── types/
-│   ├── trainingTypes.ts     ✅ COMPLETE (Phase 5)
-│   └── ingestionTypes.ts    ✅ COMPLETE (Phase 6)
+│   ├── trainingTypes.ts      ✅ COMPLETE
+│   └── ingestionTypes.ts     ✅ COMPLETE
 ├── utils/
-│   ├── caseLifecycle.ts     ✅ COMPLETE
-│   ├── documentLifecycle.ts ✅ COMPLETE
-│   ├── fieldMasking.ts      ✅ COMPLETE
-│   └── security.ts          ✅ COMPLETE
-└── server.ts                ✅ COMPLETE
+│   ├── caseLifecycle.ts      ✅ COMPLETE
+│   ├── documentLifecycle.ts  ✅ COMPLETE
+│   ├── fieldMasking.ts       ✅ COMPLETE
+│   └── security.ts           ✅ COMPLETE
+└── server.ts                 ✅ COMPLETE
 ```
 
 ---
 
-# PART 4: ALL 7 BOTS — DETAILED BREAKDOWN
+# PART 4: ALL 7+ BOTS — DETAILED BREAKDOWN
 
 ## 1. IngestionBot (`ingestionBot.ts`)
 **Purpose:** Analyzes ingestion batches, flags suspicious patterns, suggests high-value cases
 **Triggers:** After batch processing, periodic analysis
 **Outputs:** `OpsInsight` (type: INGESTION_ANALYSIS)
-**Key Methods:**
-- `analyze(days: number)` — Full analysis over period
-- `checkRecentBatch(batchId)` — Quick batch quality check
-- Pattern detection: high error rates, high-value clusters, duplicate addresses
 
 ## 2. PayoutBot (`payoutBot.ts`)
 **Purpose:** Analyzes payouts, detects anomalies, monitors employee commissions
 **Triggers:** After payouts, periodic review
 **Outputs:** `OpsInsight` (type: PAYOUT_ANALYSIS), `WatchAlert` (type: PAYOUT_ANOMALY)
-**Key Methods:**
-- `analyze()` — Full payout analysis
-- Detects: unusual payout amounts, commission rate anomalies, timing patterns
 
 ## 3. ComplianceBot (`complianceBot.ts`)
 **Purpose:** Scans for deadline risks, missing documents, invalid status transitions
 **Triggers:** Daily compliance scan
 **Outputs:** `OpsInsight` (type: COMPLIANCE_CHECK)
-**Key Methods:**
-- `scan()` — Full compliance scan
-- Deadline scanning (filing, redemption deadlines)
-- Document requirement checking by status
-- Stale case detection
-- Jurisdiction volatility alerts
 
 ## 4. OutreachBot (`outreachBot.ts`)
 **Purpose:** Recommends outreach actions, tracks communication effectiveness
 **Triggers:** Case status changes, periodic review
 **Outputs:** `OpsInsight` (type: CASE_RECOMMENDATION)
-**Key Methods:**
-- `analyzeOutreachNeeds()` — Identify cases needing contact
-- `generateOutreachPlan(caseId)` — Create communication plan
-- Tracks: response rates, optimal contact times, script effectiveness
 
 ## 5. DocketBot (`docketBot.ts`)
 **Purpose:** Monitors court filings, deadline tracking, jurisdiction rule changes
 **Triggers:** Scraped item detection, daily review
 **Outputs:** `WatchAlert` (type: RULE_CHANGE_DETECTED, DEADLINE_PATTERN_CHANGE)
-**Key Methods:**
-- `scanJurisdictionChanges()` — Detect rule updates
-- `checkCaseDeadlines()` — Monitor all active deadlines
-- Integrates with: StateRule, CountyRule, ScrapedItem
 
 ## 6. CoordinatorBot (`coordinatorBot.ts`)
 **Purpose:** Orchestrates all bots, generates daily summaries, prioritizes founder focus
 **Triggers:** Scheduled (hourly/daily)
 **Outputs:** `OpsInsight` (type: COORDINATOR_SUMMARY), `FounderFocusItem`
-**Key Methods:**
-- `runDailySummary()` — Aggregate all bot insights
-- `generateFounderBrief()` — Plain English summary
-- `prioritizeFocusItems()` — Rank what needs attention
-- Integrates with: FounderConfig for thresholds
 
-## 7. TrainingBot (`trainingBot.ts`) — PHASE 5 ENHANCED
+## 7. TrainingBot (`trainingBot.ts`)
 **Purpose:** Full training intelligence layer with personalized recommendations
 **Triggers:** Hourly analysis, on-demand checks
 **Outputs:** `OpsInsight` (type: TRAINING_ANALYSIS), `TrainingRecommendation`, `DynamicTrainingModule`, `TierProgressionLog`
-**Key Methods:**
-- `analyze()` — Full training intelligence analysis
-- `checkEmployee(employeeId)` — Quick status check
-- `checkTierEligibility(employeeId)` — Tier progression evaluation
-- `getDashboard()` — HR Panel data
-- Dynamic module generation from OpsInsight/ScrapedItem
-- Pattern detection: high failure modules, skill gap clusters, tier bottlenecks
+
+## 8. MetaBot (`metaBot.ts`)
+**Purpose:** Analyzes feedback, runs combined insights, provides founder summaries
+**Triggers:** On-demand, scheduled analysis
+**Outputs:** `OpsInsight` with feedback trends, combined bot + feedback insights
 
 ---
 
@@ -308,6 +316,7 @@ backend/src/
 | POST | `/request-password-reset` | Password reset (rate limited) |
 | POST | `/reset-password` | Complete password reset |
 | GET | `/me` | Current user info |
+| POST | `/refresh` | Token refresh |
 
 ## Case Routes (`/api/cases`)
 | Method | Endpoint | Purpose |
@@ -329,171 +338,142 @@ backend/src/
 | POST | `/:id/sign` | Mark as signed |
 | DELETE | `/:id` | Delete document |
 
-## Employee Routes (`/api/employees`)
+## AI Routes (`/api/ai`)
 | Method | Endpoint | Purpose |
 |--------|----------|---------|
-| GET | `/` | List employees |
-| GET | `/:id` | Employee details |
-| GET | `/:id/cases` | Employee's cases |
-| GET | `/:id/performance` | Performance metrics |
-| PATCH | `/:id/tier` | Update tier |
+| POST | `/agent` | Execute AI agent task |
+| POST | `/agent/continue` | Continue multi-turn conversation |
+| GET | `/search` | Semantic AI search |
+| GET | `/recommendations` | Personalized recommendations |
 
-## Client Routes (`/api/clients`)
+## Global Search Routes (`/api/search`) — Phase 20
 | Method | Endpoint | Purpose |
 |--------|----------|---------|
-| GET | `/portal/:token` | Public case lookup |
-| GET | `/:id` | Client details |
-| GET | `/:id/cases` | Client's cases |
+| GET | `/global` | Search all entities (cases, users, docs, comms) |
+| GET | `/suggestions` | Real-time search suggestions |
+| GET | `/recent` | User's recent searches |
+| GET | `/popular` | Popular searches (anonymized) |
 
-## Payout Routes (`/api/payouts`)
+## Notification Routes (`/api/notifications`)
 | Method | Endpoint | Purpose |
 |--------|----------|---------|
-| GET | `/` | List ledger entries |
-| GET | `/pending` | Pending payouts |
-| POST | `/process` | Process payout |
-| GET | `/employee/:id` | Employee earnings |
+| GET | `/` | List notifications |
+| GET | `/unread` | Unread count |
+| PATCH | `/:id/read` | Mark as read |
+| PATCH | `/read-all` | Mark all as read |
+| DELETE | `/:id` | Delete notification |
+| GET | `/preferences` | Get preferences |
+| PATCH | `/preferences` | Update preferences |
 
-## Legal Routes (`/api/legal`) — FOUNDER ONLY
+## Feedback Routes (`/api/feedback`)
 | Method | Endpoint | Purpose |
 |--------|----------|---------|
-| GET | `/state-rules` | All state rules |
-| GET | `/state-rules/:code` | Single state rule |
-| PUT | `/state-rules/:code` | Update state rule |
-| GET | `/county-rules/:state` | County rules for state |
+| POST | `/submit` | Submit feedback |
+| GET | `/my` | User's feedback history |
+| GET | `/` | All feedback (FOUNDER/ADMIN) |
+| GET | `/stats` | Statistics |
+| GET | `/analysis` | Full analysis (FOUNDER) |
+| PATCH | `/:id/respond` | Admin response |
+| GET | `/categories` | Available categories |
 
-## Ingestion Routes (`/api/ingestion`) — FOUNDER ONLY
-| Method | Endpoint | Purpose |
-|--------|----------|---------|
-| GET | `/sources` | List ingestion sources |
-| POST | `/sources` | Create source |
-| POST | `/upload` | Upload batch file |
-| GET | `/batches` | List batches |
-| GET | `/batches/:id` | Batch details |
-| POST | `/batches/:id/process` | Process batch |
+## OPS Routes (`/api/ops/*`) — FOUNDER ONLY
+- `/api/ops/metrics/*` — Dashboard, jurisdictions, employees, heatmaps
+- `/api/ops/watch/*` — Alerts, scraped items, reviews
 
-## Training Routes (`/api/training`)
-| Method | Endpoint | Purpose |
-|--------|----------|---------|
-| GET | `/` | Available modules (employee) |
-| GET | `/modules` | All modules (admin) |
-| GET | `/modules/:id` | Module details |
-| GET | `/progress` | Employee progress |
-| POST | `/:moduleId/quiz` | Submit quiz |
-| GET | `/stats` | Training statistics |
+## HR Routes (`/api/hr/*`)
+- Dashboard, employees, onboarding, performance, teams
+- Training intelligence, tier progressions, recommendations
 
-## OPS Metrics Routes (`/api/ops/metrics`) — FOUNDER ONLY
+## Analytics Routes (`/api/analytics`)
 | Method | Endpoint | Purpose |
 |--------|----------|---------|
-| GET | `/dashboard` | Full OPS dashboard |
-| GET | `/jurisdiction/:state` | Jurisdiction metrics |
-| GET | `/employees/integrity` | Employee integrity scores |
-| GET | `/cases/heatmap` | Case heatmap data |
-| GET | `/focus-items` | Founder focus items |
-
-## OPS Watch Routes (`/api/ops/watch`) — FOUNDER ONLY
-| Method | Endpoint | Purpose |
-|--------|----------|---------|
-| GET | `/alerts` | All watch alerts |
-| GET | `/alerts/:id` | Alert details |
-| POST | `/alerts/:id/resolve` | Resolve alert |
-| GET | `/scraped` | Scraped items |
-| POST | `/scraped/:id/review` | Review scraped item |
-
-## HR Routes (`/api/hr`)
-| Method | Endpoint | Purpose |
-|--------|----------|---------|
-| GET | `/dashboard` | HR dashboard data |
-| GET | `/employees` | Employee list |
-| PATCH | `/employees/:id/status` | Update status |
-| PATCH | `/employees/:id/tier` | Update tier |
-| GET | `/onboarding` | Onboarding candidates |
-| POST | `/onboarding/:id/approve` | Approve candidate |
-| GET | `/performance` | Performance metrics |
-| GET | `/teams` | Team overview |
-
-## HR Training Routes (`/api/hr/training`) — PHASE 5
-| Method | Endpoint | Purpose |
-|--------|----------|---------|
-| GET | `/dashboard` | Training intelligence dashboard |
-| POST | `/analyze` | Run TrainingBot analysis |
-| GET | `/employees` | Employee training statuses |
-| GET | `/employees/:id/needs` | Individual training needs |
-| GET | `/employees/:id/metrics` | Full contractor metrics |
-| GET | `/employees/:id/check` | Quick training check |
-| GET | `/tier-progressions` | Pending tier advancements |
-| POST | `/tier-progressions/:id/approve` | Approve promotion |
-| POST | `/tier-progressions/:id/deny` | Deny promotion |
-| GET | `/recommendations` | Pending recommendations |
-| POST | `/recommendations/:id/assign` | Assign training |
-| POST | `/recommendations/:id/dismiss` | Dismiss recommendation |
-| GET | `/dynamic-modules` | Auto-generated modules |
-| GET | `/dynamic-modules/:id` | Dynamic module details |
-| PATCH | `/dynamic-modules/:id` | Update dynamic module |
-| GET | `/modules/stats` | Module statistics |
-| GET | `/config` | Training config (FOUNDER) |
-| PATCH | `/config` | Update training config |
-| GET | `/alerts` | Training alerts |
-| POST | `/employees/:id/remind` | Send reminder |
-
-## Compliance Routes (`/api/compliance`)
-| Method | Endpoint | Purpose |
-|--------|----------|---------|
-| GET | `/dashboard` | Compliance dashboard |
-| GET | `/cases/risk` | At-risk cases |
-| GET | `/deadlines` | Upcoming deadlines |
-| GET | `/violations` | Compliance violations |
+| GET | `/forecast` | Revenue and case predictions |
+| GET | `/dashboard` | Analytics dashboard |
 
 ---
 
-# PART 6: PHASE 5 IMPLEMENTATION DETAILS
+# PART 6: FRONTEND ARCHITECTURE
 
-## What Was Built
+## Directory Structure
 
-### 1. Training Types (`backend/src/types/trainingTypes.ts`)
-Complete type definitions for the training intelligence layer:
-- `ContractorMetrics` — All employee performance data
-- `ContractorTrainingNeeds` — Personalized analysis results
-- `SkillGap`, `ModuleRecommendation` — Gap analysis types
-- `DynamicModuleSpec`, `DynamicModuleContent` — Auto-generated module types
-- `TierProgressionRequirements`, `TierProgressionEvaluation` — Tier advancement types
-- `TrainingConfigSettings`, `DEFAULT_TRAINING_CONFIG` — Founder config
-- `TrainingDashboardData`, `TrainingAlert` — HR Panel types
+```
+frontend/
+├── app/
+│   ├── auth/
+│   │   └── login/page.tsx
+│   ├── founder/
+│   │   ├── dashboard/page.tsx
+│   │   ├── ops/
+│   │   │   ├── page.tsx (Ops Dashboard)
+│   │   │   └── dashboard/page.tsx (Customizable - Phase 20)
+│   │   └── config/page.tsx
+│   ├── employee/
+│   │   └── dashboard/page.tsx
+│   ├── client/
+│   │   └── portal/page.tsx
+│   ├── layout.tsx
+│   └── globals.css
+├── components/
+│   ├── ui/ (Radix-based components)
+│   ├── Navbar.tsx
+│   ├── Sidebar.tsx
+│   ├── DashboardLayout.tsx
+│   ├── GlobalSearchBar.tsx      ✅ Phase 20
+│   ├── CustomizableDashboard.tsx ✅ Phase 20
+│   ├── AiSearchBar.tsx
+│   ├── NotificationBell.tsx
+│   ├── FeedbackButton.tsx
+│   ├── ErrorBoundary.tsx
+│   ├── OfflineHandler.tsx
+│   └── OnboardingTour.tsx
+├── hooks/
+│   └── useAuth.tsx (Zustand store)
+├── lib/
+│   ├── api.ts (Axios with refresh)
+│   └── utils.ts
+├── types/
+│   └── index.ts
+└── public/
+    ├── manifest.json
+    ├── service-worker.js
+    └── offline.html
+```
 
-### 2. Training Intelligence Service (`backend/src/services/TrainingIntelligenceService.ts`)
-Core methods:
-- `getContractorMetrics(employeeId)` — Full metrics aggregation
-- `analyzeContractorNeeds(employeeId)` — Skill gap analysis + recommendations
-- `generateDynamicModule(source)` — Create module from OpsInsight/ScrapedItem
-- `saveDynamicModule(spec)` — Persist to database
-- `evaluateTierProgression(employeeId)` — Tier advancement evaluation
-- `saveTierProgressionLog(evaluation)` — Persist evaluation
-- `getTrainingDashboardData()` — HR Panel data
-- `analyzeAllContractors()` — Bulk analysis
-- `evaluateAllTierProgressions()` — Bulk tier checks
-- `loadConfig()`, `saveConfig()`, `getConfig()` — FounderConfig integration
+## Key Frontend Features
 
-### 3. Enhanced TrainingBot (`backend/src/bots/trainingBot.ts`)
-Enhanced capabilities:
-- Full intelligence analysis with all contractors
-- Dynamic module generation from insights
-- Training-performance correlation analysis
-- Pattern detection (high failure modules, skill gaps, tier bottlenecks)
-- BotRunLog integration
-- Plain English report generation
+### Global Search Bar (Phase 20)
+- Real-time suggestions as user types
+- Search across cases, users, documents, communications
+- Role-based access filtering
+- Results modal with type badges and scores
+- Keyboard navigation (arrows, enter, escape)
 
-### 4. HR Training Routes (`backend/src/routes/hrTrainingRoutes.ts`)
-Complete API for HR Panel training management.
+### Customizable Dashboard (Phase 20)
+- React-grid-layout for drag-and-drop widgets
+- Responsive breakpoints (lg, md, sm)
+- Locked/editing mode toggle
+- Layout persistence in localStorage per role
+- Available widgets:
+  - Revenue Forecast
+  - Recent Cases
+  - Active Alerts
+  - Team Overview
+  - System Health
+  - Bot Status
+  - Notifications
 
-### 5. New Database Models
-- `TrainingRecommendation` — Personalized recommendations
-- `DynamicTrainingModule` — Auto-generated modules
-- `TierProgressionLog` — Tier advancement tracking
-- `FounderConfig` — Tunable settings
-- `BotRunLog` — Bot execution logs
+### PWA Features
+- Service worker with cache-first strategy
+- Offline fallback page
+- Background sync for forms
+- Push notification support
+- Installable on mobile/desktop
 
-### 6. Schema Updates
-- `TrainingModule` — Added sourceType, sourceId, targetStates, isMandatory, isCertification, expiresAt
-- `EmployeeTrainingProgress` — Added deadline, assignedBy, priority, isMandatory
+### Mobile Responsiveness
+- Hamburger menu for mobile navigation
+- Drawer-style sidebar slide-in
+- Touch-friendly targets (min 44x44px)
+- Responsive grid layouts
 
 ---
 
@@ -511,884 +491,187 @@ Complete API for HR Panel training management.
    - `displayedRate`: Rate employee thinks they got
    - `actualRate`: Real rate
 
-3. **TierProgressionEvaluation** has:
-   - `actualRevenueCents`: Real revenue (FOUNDER ONLY)
-   - `displayedRevenueCents`: Inflated value shown
-
-4. **API routes filter** shadow fields based on role:
+3. **API routes filter** shadow fields based on role:
    - FOUNDER sees all values
    - Employees see only displayed values
    - Clients see no financial data
 
 ---
 
-# PART 8: WHAT'S STILL NEEDED / PENDING
+# PART 8: TESTING INFRASTRUCTURE
 
-## Phase 6: Ingestion Intelligence Expansion (COMPLETE)
-
-### What Was Implemented
-
-**Files Created:**
-- `backend/src/types/ingestionTypes.ts` — 250+ lines of type definitions
-- `backend/src/services/IngestionIntelligenceService.ts` — 600+ lines core service
-
-**Files Updated:**
-- `backend/src/routes/ingestion.ts` — 20+ new intelligence endpoints
-- `backend/src/bots/ingestionBot.ts` — Complete rewrite with intelligence
-
-### New API Endpoints (/api/ingestion/intelligence/)
-
-| Endpoint | Method | Purpose |
-|----------|--------|---------|
-| `/config` | GET/PATCH | FounderConfig management |
-| `/failed-analysis` | GET | Analyze failed records |
-| `/parser-suggestions` | GET | Get parser suggestions |
-| `/parser-suggestions/:id/generate` | POST | Generate from cluster |
-| `/parser-suggestions/:id/apply` | POST | Apply suggestion |
-| `/jurisdiction-metrics` | GET | Success rates by state/county |
-| `/predict-value` | POST | Predict single value |
-| `/predict-batch` | POST | Predict batch values |
-| `/auto-file-candidates` | GET | Get eligible records |
-| `/auto-file/:id/evaluate` | POST | Evaluate record |
-| `/auto-file/:id/approve` | POST | Approve and create case |
-| `/auto-file/:id/reject` | POST | Reject candidate |
-| `/auto-file/process-batch` | POST | Process all eligible |
-| `/duplicates/:id` | GET | Find duplicates |
-| `/duplicates/batch/:id` | POST | Detect batch duplicates |
-
-### IngestionIntelligenceService Methods
-
-```typescript
-// Config
-getConfig(), updateConfig()
-
-// Parser Suggestions
-analyzeFailedRecords(), generateParserSuggestion()
-getParserSuggestions(), applyParserSuggestion()
-
-// Value Prediction
-predictValue(), predictBatchValues()
-
-// Jurisdiction Intelligence
-getJurisdictionMetrics(), getAllJurisdictionMetrics()
-
-// Auto-Filing
-evaluateAutoFileCandidate(), getAutoFileCandidates()
-approveAutoFile(), rejectAutoFile(), processAutoFileBatch()
-
-// Batch Intelligence
-runIntelligentProcess()
-
-// Duplicates
-findDuplicates(), detectBatchDuplicates()
-```
-
-### FounderConfig Keys Added
-
-```typescript
-autoFileHighValueThreshold: 1000000  // $10,000
-autoFileMinSuccessRate: 70
-autoFileEnabled: false  // FOUNDER must enable
-duplicateCheckEnabled: true
-duplicateSimilarityThreshold: 85
-parserRetryAttempts: 3
-priorityValueWeight: 0.5
-prioritySuccessRateWeight: 0.3
-priorityVolatilityPenalty: 0.2
-highValueThreshold: 500000
-lowSuccessRateThreshold: 40
-```
-
-### Enhanced IngestionBot
-
-- `runIntelligenceAnalysis()` — Run predictions, auto-file, duplicates
-- `generateTrainingModuleFromPattern()` — Create DynamicTrainingModule from errors
-- `processIntelligentBatch()` — Run intelligence on batch
-- `runAutoFileBatch()` — Process eligible auto-files
-- New pattern types: jurisdiction_issue, auto_file_opportunity
-
-## Phase 7: Final System Hardening, QA, and Sovereign Ops Playbook (SKELETONS CREATED)
-
-### Goal
-Production hardening for sovereign, air-gapped operation.
-
-### Skeleton Files Created
-
-**1. `backend/src/cron/scheduler.ts`** — Cron job scheduler
-- 15+ pre-configured schedules for bots, backups, reports
-- Bot schedules: coordinator (daily 6AM), ingestion (6h), payout (daily 7AM), compliance (daily 5AM), training (weekly Monday 4AM), outreach (weekdays 9AM), docket (daily 6AM)
-- Backup schedules: hourly, daily (2AM), weekly (Sunday 3AM)
-- Report schedules: daily digest (weekdays 7AM), weekly summary (Monday 8AM), monthly metrics (1st 9AM)
-- Maintenance: cleanup expired insights (daily 3AM), old bot logs (Sunday 4AM)
-- Dynamic config loading from FounderConfig
-- BotRunLog + OpsInsight integration for job tracking
-
-**2. `backend/src/services/BackupService.ts`** — Sovereign backup infrastructure
-- Backup tiers: hourly (24 retained), daily (7 days), weekly (4 weeks), monthly (12 months)
-- `runHourlyBackup()`, `runDailyBackup()`, `runWeeklyBackup()`, `runMonthlyBackup()`
-- Database backup via pg_dump (TODO: implement actual command)
-- Document vault backup via tar
-- GPG encryption support
-- Offsite copy support (rsync/s3 ready)
-- Backup verification with SHA-256 checksums
-- Manifest tracking
-- `restoreDatabase()` method
-- OpsInsight notification for monthly archives
-
-**3. `backend/src/services/ReportingService.ts`** — Report generation for FOUNDER
-- `generateDailyDigest()` — Cases, payouts, revenue, alerts, recommendations
-- `generateWeeklySummary()` — Cases by status, top employees, jurisdictions
-- `generateMonthlyMetrics()` — Financial/operations/growth/trends report
-- `exportCases()` — CSV/Excel export with configurable fields
-- `exportLedger()` — Financial ledger export
-- `exportEmployeeMetrics()` — Employee performance export
-- `exportAuditLogs()` — Compliance audit export
-
-### New Database Models (Phase 6)
-
-**ParserVersion** — DB-driven parser versioning
-```prisma
-model ParserVersion {
-  id                Int                 @id @default(autoincrement())
-  sourceType        IngestionSourceType
-  version           String              // "1.0", "2026-03-tax-sale-v2"
-  stateCode         String?             // null = national/generic
-  countyFips        String?
-  parserConfig      Json                // { headerRow, columns[], dateFormat }
-  successRate       Float?              @default(0)
-  recordsProcessed  Int                 @default(0)
-  recordsFailed     Int                 @default(0)
-  isActive          Boolean             @default(true)
-  notes             String?             @db.Text
-  createdAt         DateTime            @default(now())
-  updatedAt         DateTime            @updatedAt
-}
-```
-
-**PropertyClass** — Value prediction accuracy
-```prisma
-model PropertyClass {
-  id                      Int       @id @default(autoincrement())
-  code                    String    @unique  // "RESIDENTIAL", "COMMERCIAL"
-  description             String?
-  defaultMinValueCents    Int?      @default(50000)      // $500
-  defaultMedianValueCents Int?      @default(500000)     // $5,000
-  defaultMaxValueCents    Int?      @default(10000000)   // $100,000
-  createdAt               DateTime  @default(now())
-  updatedAt               DateTime  @updatedAt
-}
-```
-
-**Enhanced IngestionRecord** — New fields for intelligence
-```prisma
-normalizedData          Json?     // Standardized JSON after parsing
-contentHash             String?   // SHA256 for duplicate detection
-rawPayload              Json?     // Original raw data
-predictedValueCents     Int?      // AI-predicted value
-predictionConfidence    Float?    // 0-100 confidence score
-propertyClassCode       String?   // Link to PropertyClass
-errorDetails            Json?     // Structured error JSON
-```
-
-**Enhanced IngestionBatch** — Batch statistics
-```prisma
-recordCount     Int?  @default(0)
-successCount    Int?  @default(0)
-errorCount      Int?  @default(0)
-highValueCount  Int?  @default(0)
-duplicateCount  Int?  @default(0)
-```
-
-### Components Remaining
-1. **Security Audit**
-   - Air-gap testing
-   - Encryption at rest
-   - JWT hardening
-   - Rate limit tuning
-
-2. **Full E2E QA Suite**
-   - All API endpoints tested
-   - Bot integration tests
-   - Shadow accounting validation
-   - Role-based access tests
-
-3. **Performance Optimization**
-   - Database query optimization
-   - Caching layer (Redis optional)
-   - Batch processing optimization
-
-4. **Sovereign Ops Playbook**
-   - PDF manual for founder
-   - Deployment scripts
-   - Backup/DR procedures
-   - Bot scheduling guide
-   - Troubleshooting guide
-
-5. **Deployment Scripts**
-   - Docker compose production
-   - Database migration scripts
-   - Environment variable templates
-   - SSL certificate setup
-
----
-
-# PART 9: POTENTIAL GAPS / MISSING PIECES
-
-## Items Grok Should Review and Suggest
-
-### 1. Frontend — LARGELY MISSING
-The frontend (`frontend/src/app/`) appears incomplete. Need:
-- Complete dashboard pages for all roles
-- Case management UI
-- Document upload/viewer
-- Training module player
-- HR Panel pages
-- Founder OPS console
-- Client portal
-
-### 2. PDF Generation Service
-Phase 3 mentioned PdfEngineService but file doesn't exist. Need:
-- `backend/src/services/PdfEngineService.ts`
-- Engagement letter generation
-- Authority form generation
-- Filing packet generation
-
-### 3. Notification Template Service
-Phase 3 mentioned NotificationTemplateService. Need verification if complete.
-
-### 4. Cron Job Scheduling — SKELETON CREATED
-Bots are designed to run on schedules:
-- `backend/src/cron/scheduler.ts` ✅ SKELETON EXISTS
-- Bot scheduling configuration ✅ 15+ schedules defined
-- Error handling for failed runs ✅ BotRunLog + OpsInsight integration
-- **TODO:** Install node-cron, enable in production
-
-### 5. Email/SMS Integration
-NotificationService exists but may need:
-- Actual email provider integration (SendGrid, SES)
-- SMS provider integration (Twilio)
-- Webhook handlers for delivery status
-
-### 6. File Storage
-DocumentVaultService exists but verify:
-- Local storage implementation
-- Backup procedures
-- File encryption at rest
-
-### 7. Client Portal
-Public-facing client portal needs:
-- Case status lookup
-- Document download
-- Communication history
-- Secure authentication (magic link?)
-
-### 8. Reporting Engine — SKELETON CREATED
-Reporting service skeleton exists:
-- `backend/src/services/ReportingService.ts` ✅ SKELETON EXISTS
-- CSV/Excel exports ✅ Methods defined
-- Scheduled reports ✅ Integrated with scheduler
-- Founder daily digest ✅ generateDailyDigest() method
-- **TODO:** Install exceljs, implement actual file generation
-
-### 9. Webhook System
-For external integrations:
-- Incoming webhooks (email delivery, payment)
-- Outgoing webhooks (case updates)
-
-### 10. Data Backup Service — SKELETON CREATED
-Critical for sovereign operation:
-- `backend/src/services/BackupService.ts` ✅ SKELETON EXISTS
-- Automated database backups ✅ pg_dump methods defined
-- Point-in-time recovery ✅ restoreDatabase() method
-- Backup verification ✅ SHA-256 checksum verification
-- **TODO:** Implement actual pg_dump/tar commands, configure retention
-
-### 11. Search Service
-No full-text search implementation:
-- Case search across all fields
-- Client lookup
-- Document content search
-
-### 12. Metrics Dashboard Backend
-OpsMetricsService exists but may need:
-- Historical trend data
-- Aggregation caching
-- Chart data formatting
-
----
-
-# PART 10: CONFIGURATION AND SETTINGS
-
-## FounderConfig Keys (from Phase 5)
-
-```typescript
-// Training settings (training.settings)
-{
-  autoGenerateModulesFromInsights: boolean,
-  insightTypesForModules: string[],
-  moduleExpirationDays: number,
-  autoTierProgression: boolean,
-  tierProgressionReviewRequired: boolean,
-  minDaysBetweenPromotions: number,
-  lowConversionThreshold: number,
-  coachingTriggerDays: number,
-  mandatoryTrainingDeadlineDays: number,
-  sendTrainingReminders: boolean,
-  reminderFrequencyDays: number,
-  notifyHROnOverdue: boolean,
-  notifyHROverdueDays: number,
-  quizPassingScore: number,
-  maxQuizAttempts: number
-}
-```
-
-## Suggested Additional FounderConfig Keys
-
-```typescript
-// OPS metrics thresholds
-"ops.jurisdictionVolatilityThreshold": number
-"ops.employeeIntegrityThreshold": number
-"ops.caseHeatScoreThreshold": number
-
-// Ingestion settings (for Phase 6)
-"ingestion.autoFileHighValueThreshold": number // cents
-"ingestion.duplicateCheckEnabled": boolean
-"ingestion.parserRetryAttempts": number
-
-// Compliance settings
-"compliance.deadlineWarningDays": number
-"compliance.staleStatusDays": Record<CaseStatus, number>
-
-// Notification settings
-"notifications.emailEnabled": boolean
-"notifications.smsEnabled": boolean
-"notifications.batchSize": number
-
-// System settings
-"system.maintenanceMode": boolean
-"system.auditRetentionDays": number
-"system.sessionTimeoutMinutes": number
-```
-
----
-
-# PART 11: ROLE PERMISSIONS MATRIX
-
-| Action | FOUNDER | ADMIN | HR | COMPLIANCE | TEAM_LEAD | EMPLOYEE | CLIENT |
-|--------|---------|-------|-----|------------|-----------|----------|--------|
-| View all cases | ✅ | ✅ | ❌ | ✅ | Team only | Own only | Own only |
-| View financials | ✅ | ✅ | ❌ | ❌ | Shadow only | Shadow only | ❌ |
-| Edit state rules | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| View OPS metrics | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| View watch alerts | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Manage employees | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Approve tier progression | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| View training dashboard | ✅ | ✅ | ✅ | ❌ | ✅ | ❌ | ❌ |
-| Complete training | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
-| Ingest data | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Process payouts | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
-
----
-
-# PART 12: GROK ACTION ITEMS
-
-Please review this entire context and provide:
-
-1. **Validation** — Confirm the architecture is sound for a sovereign surplus recovery platform
-
-2. **Gap Analysis** — Identify any missing components critical for production
-
-3. **Priority Ranking** — Rank the pending items by importance
-
-4. **Implementation Suggestions** — For any gaps, suggest implementation approach
-
-5. **Security Review** — Any security concerns with the current architecture
-
-6. **Phase 6 Detailed Spec** — Flesh out the Ingestion Intelligence Expansion
-
-7. **Phase 7 Checklist** — Complete checklist for system hardening
-
-8. **Additional Phases** — Suggest any Phase 8+ that might be needed
-
-9. **Frontend Architecture** — Recommend structure for the missing frontend
-
-10. **Deployment Strategy** — Recommend approach for sovereign deployment
-
----
-
-# PART 13: PHASE 8 IMPLEMENTATION DETAILS
-
-## Phase 8: Frontend Polish, PWA, Mobile, and Launch Block
-
-### What Was Built
-
-#### 1. Analytics Forecast Endpoint (`backend/src/routes/analytics.ts`)
-
-New route added for revenue and case forecasting:
-
-```typescript
-// GET /api/analytics/forecast
-router.get("/forecast", authMiddleware, async (req: AuthRequest, res: Response) => {
-  // Returns:
-  // - historical: Array<{ date, revenueCents, casesClosed }>
-  // - predictions: Array<{ date, predictedRevenueCents, predictedCases }>
-  // - summary: { avgDailyRevenue, avgDailyCases, predictedRevenue30d, predictedCases30d, trend }
-});
-```
-
-**Linear Regression Algorithm:**
-- Queries last 90 days of LedgerEntry and Case data
-- Calculates slope/intercept for trend line
-- Projects 30 days into the future
-- Returns "up", "down", or "stable" trend indicator
-
-#### 2. Error Boundary Component (`frontend/components/ErrorBoundary.tsx`)
-
-React Error Boundary for resilient UI:
-
-```typescript
-export class ErrorBoundary extends Component<Props, State> {
-  static getDerivedStateFromError(error: Error): Partial<State> {
-    return { hasError: true, error };
-  }
-
-  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error("ErrorBoundary caught:", error, errorInfo);
-    // Could send to internal error tracking
-  }
-
-  // Renders friendly error UI with:
-  // - "Something went wrong" message
-  // - Error details (in dev mode)
-  // - "Try Again" button (calls reset)
-  // - "Go Home" link
-}
-```
-
-#### 3. Offline Handler Component (`frontend/components/OfflineHandler.tsx`)
-
-Network status detection with toast notifications:
-
-```typescript
-export function OfflineHandler() {
-  const [isOnline, setIsOnline] = useState(true);
-
-  useEffect(() => {
-    const handleOnline = () => {
-      setIsOnline(true);
-      toast.success("Connection restored");
-    };
-
-    const handleOffline = () => {
-      setIsOnline(false);
-      toast.error("You are offline", { duration: Infinity });
-    };
-
-    window.addEventListener("online", handleOnline);
-    window.addEventListener("offline", handleOffline);
-
-    return () => {
-      window.removeEventListener("online", handleOnline);
-      window.removeEventListener("offline", handleOffline);
-    };
-  }, []);
-
-  return null; // Toast-only component
-}
-```
-
-#### 4. Mobile-Responsive Navigation
-
-**Navbar Updates (`frontend/components/Navbar.tsx`):**
-- Hamburger menu button visible on mobile (md:hidden)
-- Toggle button switches between Menu and X icons
-- Passes `onMenuToggle` and `isSidebarOpen` props
-
-**Sidebar Updates (`frontend/components/Sidebar.tsx`):**
-- Drawer-style slide-in on mobile
-- Fixed positioning with z-50
-- Overlay backdrop with click-to-close
-- Smooth translate-x transition
-- Auto-close on navigation link click
-
-**DashboardLayout Updates (`frontend/components/DashboardLayout.tsx`):**
-- State management for sidebar open/close
-- Wraps all dashboards (founder, employee, client)
-- Handles responsive breakpoint transitions
-
-#### 5. PWA Infrastructure
-
-**Manifest (`frontend/public/manifest.json`):**
-```json
-{
-  "name": "MGR Capital Assistance",
-  "short_name": "MGR Capital",
-  "start_url": "/",
-  "display": "standalone",
-  "background_color": "#030712",
-  "theme_color": "#3b82f6",
-  "icons": [
-    { "src": "/icons/icon-72x72.png", "sizes": "72x72", "type": "image/png" },
-    { "src": "/icons/icon-96x96.png", "sizes": "96x96", "type": "image/png" },
-    { "src": "/icons/icon-128x128.png", "sizes": "128x128", "type": "image/png" },
-    { "src": "/icons/icon-144x144.png", "sizes": "144x144", "type": "image/png" },
-    { "src": "/icons/icon-152x152.png", "sizes": "152x152", "type": "image/png" },
-    { "src": "/icons/icon-192x192.png", "sizes": "192x192", "type": "image/png" },
-    { "src": "/icons/icon-384x384.png", "sizes": "384x384", "type": "image/png" },
-    { "src": "/icons/icon-512x512.png", "sizes": "512x512", "type": "image/png" }
-  ]
-}
-```
-
-**Service Worker (`frontend/public/service-worker.js`):**
-- Cache-first strategy for static assets
-- Network-first strategy for API calls with cache fallback
-- Offline fallback page for navigation requests
-- Background sync for offline form submissions
-- Push notification support
-
-**Offline Page (`frontend/public/offline.html`):**
-- Styled offline fallback page
-- "You're Offline" message
-- Retry button to reload page
-- MGR Capital branding
-
-#### 6. React Native Mobile Stub (`mobile/`)
-
-**Structure:**
-```
-mobile/
-├── package.json       # Expo/React Native dependencies
-├── tsconfig.json      # TypeScript configuration
-└── App.tsx            # Main app with:
-    ├── AuthContext    # Authentication state
-    ├── LoginScreen    # Email/password login
-    ├── CasesScreen    # Case list with status badges
-    ├── CommsScreen    # Placeholder for messaging
-    ├── ProfileScreen  # User profile with logout
-    └── MainTabs       # Bottom tab navigation
-```
-
-**Dependencies:**
-- Expo ~50.0.0
-- React Native 0.73.2
-- React Navigation (native, bottom-tabs, native-stack)
-- AsyncStorage for auth persistence
-- Axios for API calls
-
-**Styling:**
-- Dark theme matching web app (#030712 background)
-- Blue accent color (#3b82f6)
-- Status badges with dynamic colors
-- Currency formatting for estimated values
-
-#### 7. Cypress E2E Test Specs
-
-**New Test Files:**
-- `backend/cypress/e2e/cases-upload.cy.ts` — Document upload flow
-- `backend/cypress/e2e/quiz-submit.cy.ts` — Quiz scoring and confetti
-- `backend/cypress/e2e/config-save.cy.ts` — Config editor persistence
-- `backend/cypress/e2e/forecast-load.cy.ts` — Forecast chart data
-- `backend/cypress/e2e/mobile-nav.cy.ts` — Hamburger menu and drawer
-
-#### 8. Additional Components
-
-**Confetti (`frontend/components/confetti.tsx`):**
-- Canvas-based confetti animation
-- Triggers on quiz pass (≥70%)
-- Customizable colors and particle count
-
-**DocumentUploader (`frontend/components/document-uploader.tsx`):**
-- Drag-and-drop file upload
-- Progress indicator
-- File type validation
-- Integration with documents API
-
-**Charts (`frontend/components/charts.tsx`):**
-- Recharts-based visualization components
-- RevenueChart — Line chart for revenue trends
-- CasesChart — Bar chart for case counts
-- ForecastChart — Combined historical + prediction view
-
-**EmptyState (`frontend/components/empty-state.tsx`):**
-- Reusable empty state component
-- Icon, title, description, action button
-- Used for no-data scenarios
-
----
-
-# PART 14: RESPONSIVE DESIGN NOTES
-
-## Breakpoint Strategy
-
-Using Tailwind CSS breakpoints:
-
-| Breakpoint | Width | Layout |
-|------------|-------|--------|
-| Default | < 768px | Mobile: hamburger menu, hidden sidebar |
-| md | ≥ 768px | Tablet: optional sidebar, hybrid nav |
-| lg | ≥ 1024px | Desktop: persistent sidebar |
-| xl | ≥ 1280px | Large desktop: wider content areas |
-
-## Mobile Patterns
-
-### Navigation
-- Hamburger icon in top-left
-- Slide-in drawer from left
-- Overlay backdrop (click to close)
-- Auto-close on link navigation
-
-### Cards & Lists
-- Full-width cards on mobile
-- Stacked layouts (flex-col)
-- Larger touch targets (min 44x44px)
-
-### Forms
-- Full-width inputs
-- Stacked labels
-- Larger font sizes (16px min to prevent iOS zoom)
-
-### Tables
-- Horizontal scroll wrapper
-- Card-style on mobile (optional)
-- Priority columns visible first
-
----
-
-# PART 15: PWA & MOBILE STUB NOTES
-
-## PWA Capabilities
-
-| Feature | Status |
-|---------|--------|
-| Installable | ✅ Via manifest.json |
-| Offline Support | ✅ Service worker caching |
-| Push Notifications | ✅ Service worker handler |
-| Background Sync | ✅ Pending request queue |
-| App Shell | ✅ Cached static assets |
-
-## Mobile App Architecture
-
-| Component | Purpose |
-|-----------|---------|
-| App.tsx | Root with auth context |
-| LoginScreen | Authentication form |
-| CasesScreen | Case list with status |
-| CommsScreen | Messaging (placeholder) |
-| ProfileScreen | User info + logout |
-| Tab.Navigator | Bottom navigation |
-
-### API Integration Points
-
-```typescript
-const API_URL = "https://api.mgrcapital.com"; // Configure for production
-
-// Endpoints used:
-// POST /api/auth/login
-// GET /api/auth/me
-// GET /api/cases (with auth header)
-// GET /api/communications (future)
-```
-
-### Future Mobile Enhancements
-1. Push notification registration
-2. Document viewer/camera capture
-3. Real-time messaging (WebSocket)
-4. Offline case viewing (SQLite cache)
-5. Biometric authentication
-
----
-
-# PART 16: FINAL FILE INVENTORY
-
-## Backend New/Updated Files (Phase 8)
-
-| File | Status |
-|------|--------|
-| `routes/analytics.ts` | ✅ NEW — Forecast endpoint |
-| `server.ts` | ✅ UPDATED — Analytics route mount |
-
-## Frontend New/Updated Files (Phase 8)
-
-| File | Status |
-|------|--------|
-| `components/ErrorBoundary.tsx` | ✅ NEW |
-| `components/OfflineHandler.tsx` | ✅ NEW |
-| `components/empty-state.tsx` | ✅ NEW |
-| `components/confetti.tsx` | ✅ NEW |
-| `components/document-uploader.tsx` | ✅ NEW |
-| `components/charts.tsx` | ✅ NEW |
-| `components/Navbar.tsx` | ✅ UPDATED — Hamburger menu |
-| `components/Sidebar.tsx` | ✅ UPDATED — Drawer style |
-| `components/DashboardLayout.tsx` | ✅ UPDATED — Mobile state |
-| `app/(dashboards)/founder/config/page.tsx` | ✅ NEW |
-| `app/(dashboards)/founder/ops/page.tsx` | ✅ NEW |
-| `public/manifest.json` | ✅ NEW |
-| `public/service-worker.js` | ✅ NEW |
-| `public/offline.html` | ✅ NEW |
-
-## Mobile New Files (Phase 8)
-
-| File | Status |
-|------|--------|
-| `mobile/package.json` | ✅ NEW |
-| `mobile/tsconfig.json` | ✅ NEW |
-| `mobile/App.tsx` | ✅ NEW |
-
-## Cypress New Files (Phase 8)
-
-| File | Status |
-|------|--------|
-| `cypress/e2e/cases-upload.cy.ts` | ✅ NEW |
-| `cypress/e2e/quiz-submit.cy.ts` | ✅ NEW |
-| `cypress/e2e/config-save.cy.ts` | ✅ NEW |
-| `cypress/e2e/forecast-load.cy.ts` | ✅ NEW |
-| `cypress/e2e/mobile-nav.cy.ts` | ✅ NEW |
-
-## Documentation Updated (Phase 8)
-
-| File | Status |
-|------|--------|
-| `docs/DEPLOYMENT_GUIDE.md` | ✅ UPDATED — Launch Verification section |
-| `FULL_SYSTEM_CONTEXT_FOR_GROK.md` | ✅ UPDATED — This document |
-
----
-
-# PART 17: PHASE 19 — INTEGRATION TESTING SUITE
-
-## Overview
-
-Comprehensive integration testing infrastructure using Supertest for API tests and Cypress E2E for multi-turn AI agent testing.
-
-## Files Created
-
-### 1. Integration Tests (`backend/tests/integration/integration.test.ts`)
-
-**~500 lines of Supertest integration tests:**
-
-```typescript
-// Test Categories:
-describe("API Integration Tests")
-  ├── Health Endpoints (/api/health, /api/health/detailed)
-  ├── Authentication (login, logout, /me, refresh tokens)
-  ├── Cases (CRUD, status transitions, assignment)
-  ├── Communications (create, list, filter)
-  ├── AI Agents (execute, continue, session persistence)
-  ├── Notifications (list, mark read, preferences)
-  ├── Feedback (submit, list, stats, admin response)
-  ├── Analytics (dashboard, forecast, training metrics)
-  ├── Rate Limiting (auth endpoint limits)
-  └── Error Handling (validation, not found, internal errors)
-```
-
-**Key Test Patterns:**
-- `apiRequest()` helper for authenticated requests
-- Token storage via `Cypress.env("testUserToken")`
-- Role-based access validation
-- Pagination and filter testing
-- Shadow accounting field verification (FOUNDER vs EMPLOYEE)
-
-### 2. AI Agent E2E Tests (`backend/cypress/e2e/ai-agent.cy.ts`)
-
-**~300 lines of Cypress E2E tests:**
-
-```typescript
-describe("AI Agent API")
-  ├── POST /api/ai/agent
-  │   ├── Reject unauthenticated requests
-  │   ├── Reject requests without task
-  │   ├── Execute summary task + return sessionId
-  │   ├── Execute outreach email generation
-  │   └── Execute compliance check
-  │
-  ├── POST /api/ai/agent/continue (Multi-Turn)
-  │   ├── Reject unauthenticated requests
-  │   ├── Reject requests without session ID
-  │   ├── Continue conversation with same session
-  │   ├── Maintain context across multiple turns
-  │   └── Handle clarify requests
-  │
-  ├── AI Agent Task Types
-  │   └── Test all task types (summary, outreach, compliance, research, follow_up, document_review)
-  │
-  ├── AI Search
-  │   ├── Reject unauthenticated search
-  │   └── Perform semantic search
-  │
-  └── AI Recommendations
-      ├── Reject unauthenticated recommendations
-      └── Return personalized recommendations
-
-describe("AI Agent UI")
-  ├── Open AI agent modal
-  ├── Display agent response
-  ├── Allow multi-turn conversation
-  └── Copy AI response to clipboard
-```
-
-**Multi-Turn Testing Pattern:**
-```typescript
-// Start conversation
-cy.apiRequest("POST", "/ai/agent", { body: { task, context } })
-  .then((startResponse) => {
-    const sessionId = startResponse.body.sessionId;
-
-    // Continue with follow-up
-    cy.apiRequest("POST", "/ai/agent/continue", {
-      body: { sessionId, followUp: "Make it shorter" }
-    }).then((continueResponse) => {
-      expect(continueResponse.body.sessionId).to.eq(sessionId);
-    });
-  });
-```
-
-## Custom Cypress Commands
-
-```typescript
-// backend/cypress/support/commands.ts
-Cypress.Commands.add("login", () => { /* Returns auth token */ });
-Cypress.Commands.add("apiRequest", (method, endpoint, options) => {
-  // Wrapper for cy.request with auth token injection
-});
-```
-
-## Test Infrastructure
-
-### Jest (Unit Tests)
+## Unit Tests (Jest)
 - Located in `backend/tests/`
 - Services: AuthService, CacheService, ConfigService
 - Middleware: authMiddleware
-- Mocks: Prisma, Redis
+- Mocks: Prisma (deep mock), Redis (in-memory)
 
-### Cypress (E2E Tests)
+## Integration Tests (Supertest)
+- Located in `backend/tests/integration/`
+- Tests for all API endpoints
+- Role-based access validation
+- Shadow accounting field verification
+
+## E2E Tests (Cypress)
 - Located in `backend/cypress/e2e/`
-- Config in `backend/cypress.config.ts`
-- Support files in `backend/cypress/support/`
+- AI agent multi-turn testing
+- Session persistence verification
+- Frontend UI interaction tests
 
-### Running Tests
+## Running Tests
 
 ```bash
 # Unit tests
-cd backend && npm test
+npm test
 
-# E2E tests (headless)
-cd backend && npm run test:e2e
+# Integration tests
+npm run test:integration
 
-# E2E tests (interactive)
-cd backend && npm run test:e2e:open
+# E2E tests
+npm run test:e2e
 
-# Full test suite
-cd backend && npm run test:all
+# All tests
+npm run test:all
 ```
 
-## Test Coverage Goals
+---
 
-| Category | Target |
-|----------|--------|
-| Branches | 60% |
-| Functions | 70% |
-| Lines | 70% |
-| Statements | 70% |
+# PART 9: DEPLOYMENT
+
+## Docker Compose Stack
+
+```yaml
+services:
+  db: postgres:15
+  redis: redis:alpine
+  ollama: ollama/ollama
+  backend: ./backend
+  frontend: ./frontend
+```
+
+## Scripts
+
+- `scripts/deploy.sh deploy` — Full deployment
+- `scripts/deploy.sh restore` — Restore from backup
+- `scripts/deploy.sh unlock-dev` — Development mode
+- `scripts/restore.sh` — Disaster recovery
+
+## Environment Variables
+
+See `.env.template` for all required variables:
+- DATABASE_URL, REDIS_URL, OLLAMA_HOST
+- JWT_SECRET, COOKIE_SECRET
+- GPG_PASSPHRASE (for backups)
+
+---
+
+# PART 10: PHASE STATUS
+
+| Phase | Description | Status |
+|-------|-------------|--------|
+| 1-4 | Core Platform | ✅ COMPLETE |
+| 5 | Training Intelligence | ✅ COMPLETE |
+| 6 | Ingestion Intelligence | ✅ COMPLETE |
+| 7 | System Hardening | ✅ COMPLETE |
+| 8 | Frontend/PWA/Mobile | ✅ COMPLETE |
+| 9-13 | Various Enhancements | ✅ COMPLETE |
+| 14 | AI Search & Recommendations | ✅ COMPLETE |
+| 15 | Multi-Turn AI Agent | ✅ COMPLETE |
+| 16 | Notification Center | ✅ COMPLETE |
+| 17 | Backup & Recovery | ✅ COMPLETE |
+| 18 | User Feedback Loop | ✅ COMPLETE |
+| 19 | Integration Testing Suite | ✅ COMPLETE |
+| 20 | Global Search & Dashboard Customization | ✅ COMPLETE |
+
+---
+
+# PART 11: PHASE 20 IMPLEMENTATION DETAILS
+
+## Global Search Service (`backend/src/services/GlobalSearchService.ts`)
+
+**~400 lines of production-ready code:**
+
+```typescript
+class GlobalSearchService {
+  // Main search across all entities
+  async globalSearch(options: GlobalSearchOptions): Promise<GlobalSearchResponse>
+
+  // Entity-specific searches with role filtering
+  private searchCases(query, userId, userRole, options): Promise<CaseSearchResult[]>
+  private searchUsers(query, userRole): Promise<UserSearchResult[]>
+  private searchDocuments(query, userId, userRole): Promise<DocumentSearchResult[]>
+  private searchCommunications(query, userId, userRole): Promise<CommunicationSearchResult[]>
+
+  // Relevance scoring
+  private calculateScore(query, values): number  // 0-100 score
+  private findMatchedField(query, fields): string
+
+  // Utilities
+  async getRecentSearches(userId): Promise<string[]>
+  async getPopularSearches(): Promise<string[]>
+}
+```
+
+**Search Result Types:**
+- `CaseSearchResult`: caseCode, status, ownerName, propertyAddress, surplus
+- `UserSearchResult`: email, firstName, lastName, role
+- `DocumentSearchResult`: fileName, documentType, caseId
+- `CommunicationSearchResult`: subject, preview, direction, caseId
+
+## Search Routes (`backend/src/routes/searchRoutes.ts`)
+
+```
+GET /api/search/global?query=...&types=...&limit=...
+GET /api/search/suggestions?query=...
+GET /api/search/recent
+GET /api/search/popular
+```
+
+## Global Search Bar (`frontend/components/GlobalSearchBar.tsx`)
+
+**Features:**
+- Debounced suggestions (200ms)
+- Keyboard navigation (arrows, enter, escape)
+- Type badges (case, user, document, communication)
+- Relevance scores displayed
+- Results modal with breakdown counts
+- Click-outside to close
+
+## Customizable Dashboard (`frontend/components/CustomizableDashboard.tsx`)
+
+**Features:**
+- React-grid-layout integration
+- 7 widget types (revenue, cases, alerts, employees, health, bots, notifications)
+- Drag-and-drop (when unlocked)
+- Resize handles
+- Layout persistence per user role
+- Reset to default layout
+
+**Widgets:**
+| Widget | Data Source | Size |
+|--------|-------------|------|
+| Revenue Forecast | /analytics/forecast | 3x2 |
+| Recent Cases | /cases?limit=5 | 4x3 |
+| Active Alerts | /ops/watch/alerts | 3x3 |
+| Team Overview | /employees?limit=5 | 3x3 |
+| System Health | /health | 2x2 |
+| Bot Status | /ops/metrics/bots | 2x2 |
+| Notifications | /notifications?unread=true | 4x3 |
+
+---
+
+# PART 12: ROLE PERMISSIONS MATRIX
+
+| Action | FOUNDER | ADMIN | HR | COMPLIANCE | TEAM_LEAD | EMPLOYEE | CLIENT |
+|--------|---------|-------|-----|------------|-----------|----------|--------|
+| Global Search | All entities | All entities | Users/Cases | Cases | Team cases | Own cases | Own cases |
+| View all cases | ✅ | ✅ | ❌ | ✅ | Team only | Own only | Own only |
+| View financials | ✅ | ✅ | ❌ | ❌ | Shadow only | Shadow only | ❌ |
+| Customize Dashboard | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ |
+| View OPS metrics | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| View watch alerts | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Submit feedback | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| View feedback analysis | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 
 ---
 
@@ -1397,15 +680,19 @@ cd backend && npm run test:all
 This document was auto-generated from the actual codebase. All models, routes, and services listed exist and are implemented unless marked as "PENDING" or "CREATE".
 
 **Phase Status:**
-- Phase 1-4: ✅ COMPLETE
-- Phase 5 (Training Intelligence): ✅ COMPLETE
-- Phase 6 (Ingestion Intelligence): ✅ COMPLETE
-- Phase 7 (Hardening Skeletons): ✅ COMPLETE
-- Phase 8 (Frontend/PWA/Mobile/Launch): ✅ COMPLETE
-- Phase 17 (Backup & Recovery): ✅ COMPLETE
-- Phase 18 (User Feedback Loop): ✅ COMPLETE
-- Phase 19 (Integration Testing Suite): ✅ COMPLETE
+- Phases 1-20: ✅ ALL COMPLETE
 
 **Platform Completion: 100%**
+
+**Key Capabilities:**
+- Sovereign, self-hosted surplus recovery platform
+- AI-powered multi-turn agents (Ollama)
+- Global search across all entities
+- Customizable drag-and-drop dashboards
+- Shadow accounting for employee commissions
+- 7+ intelligence bots
+- PWA with offline support
+- Comprehensive testing suite
+- Backup & disaster recovery
 
 For questions or clarifications, this context should provide complete visibility into the MGR Capital Assistance platform state.

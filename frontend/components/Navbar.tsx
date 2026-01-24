@@ -5,6 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { AiSearchBar } from "@/components/AiSearchBar";
+import { GlobalSearchBar } from "@/components/GlobalSearchBar";
 import { NotificationBell } from "@/components/NotificationBell";
 import { useRouter } from "next/navigation";
 
@@ -72,9 +73,9 @@ export function Navbar({ onMenuToggle, isSidebarOpen }: NavbarProps) {
         </div>
       </div>
 
-      {/* AI Search Bar - hidden on mobile */}
+      {/* Global Search Bar - hidden on mobile */}
       <div className="hidden md:flex flex-1 max-w-xl mx-4">
-        <AiSearchBar />
+        <GlobalSearchBar />
       </div>
 
       <div className="flex items-center space-x-2 md:space-x-4">

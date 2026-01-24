@@ -48,6 +48,9 @@ import notificationRoutes from "./routes/notificationRoutes.js";
 // Feedback System (Phase 18)
 import feedbackRoutes from "./routes/feedbackRoutes.js";
 
+// Global Search (Phase 20)
+import searchRoutes from "./routes/searchRoutes.js";
+
 // Rate limiting
 import { loginRateLimit, passwordResetRateLimit } from "./middleware/rateLimit.js";
 
@@ -121,6 +124,9 @@ app.use("/api/notifications", notificationRoutes);
 
 // Feedback System (Phase 18)
 app.use("/api/feedback", feedbackRoutes);
+
+// Global Search (Phase 20)
+app.use("/api/search", searchRoutes);
 
 // ============================================
 // HEALTH CHECK
