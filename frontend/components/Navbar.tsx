@@ -4,6 +4,7 @@ import { Moon, Sun, LogOut, Bell, Menu, X } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { AiSearchBar } from "@/components/AiSearchBar";
 import { useRouter } from "next/navigation";
 
 interface NavbarProps {
@@ -68,6 +69,11 @@ export function Navbar({ onMenuToggle, isSidebarOpen }: NavbarProps) {
           <span className="text-lg md:text-xl font-bold hidden sm:inline">MGR Capital</span>
           <span className="text-lg font-bold sm:hidden">MGR</span>
         </div>
+      </div>
+
+      {/* AI Search Bar - hidden on mobile */}
+      <div className="hidden md:flex flex-1 max-w-xl mx-4">
+        <AiSearchBar />
       </div>
 
       <div className="flex items-center space-x-2 md:space-x-4">

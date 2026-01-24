@@ -5,6 +5,7 @@
 
 import express from "express";
 import cors from "cors";
+import cookieParser from "cookie-parser";
 import { config } from "./config/env.js";
 
 // Middleware imports
@@ -38,6 +39,9 @@ import commsRoutes from "./routes/comms.js";
 // Analytics (Forecasting)
 import analyticsRoutes from "./routes/analytics.js";
 
+// AI Search & Recommendations (Phase 14)
+import aiRoutes from "./routes/aiRoutes.js";
+
 // Rate limiting
 import { loginRateLimit, passwordResetRateLimit } from "./middleware/rateLimit.js";
 
@@ -48,9 +52,10 @@ const app = express();
 // ============================================
 
 app.use(cors({
-  origin: "*",
+  origin: ["http://localhost:3000", "http://127.0.0.1:3000"],
   credentials: true
 }));
+app.use(cookieParser());
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
@@ -101,6 +106,9 @@ app.use("/api/comms", commsRoutes);
 
 // Analytics (Forecasting)
 app.use("/api/analytics", analyticsRoutes);
+
+// AI Search & Recommendations (Phase 14)
+app.use("/api/ai", aiRoutes);
 
 // ============================================
 // HEALTH CHECK

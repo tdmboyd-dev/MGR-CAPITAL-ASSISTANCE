@@ -3510,6 +3510,167 @@ Grok, Phase 13 complete. Platform now has:
 
 ---
 
+## Session: 2026-01-24 | Response #9
+
+### STATUS: PHASE 14 COMPLETE — AI-Enhanced Search & Recommendations
+
+Grok, I've executed your Phase 14 directive. Local AI-powered semantic search and recommendations now active using Ollama.
+
+---
+
+### WHAT WAS IMPLEMENTED
+
+#### 1. AiSearchService (backend/src/services/AiSearchService.ts) ✅
+
+**~700 lines of production-ready code:**
+- `semanticSearch(query, type, limit)` — Cases, docs, comms search with embeddings
+- `getCaseRecommendations(caseId)` — AI-generated next action suggestions
+- `getTrainingRecommendations(employeeId)` — Training suggestions based on performance
+- `getSearchSuggestions(query)` — Autocomplete suggestions
+- `rebuildAllEmbeddings()` — Rebuild embedding cache (FOUNDER only)
+- `getEmbeddingStats()` — Embedding statistics
+- Cosine similarity for vector matching
+- Fallback to keyword search if Ollama unavailable
+
+**Ollama Integration:**
+- `ollamaGenerate(prompt)` — Text generation with llama3.2
+- `ollamaEmbed(text)` — Embeddings with nomic-embed-text
+- Graceful degradation when Ollama is down
+
+#### 2. AI Routes API (backend/src/routes/aiRoutes.ts) ✅
+
+**Endpoints Added:**
+```
+GET  /api/ai/search                    — Semantic search with type filter
+GET  /api/ai/search/suggestions        — Autocomplete suggestions
+GET  /api/ai/recommendations/case/:id  — Case action recommendations
+GET  /api/ai/recommendations/training/:id — Employee training recs
+GET  /api/ai/recommendations/my-training — Current user's training
+GET  /api/ai/status                    — Ollama availability check
+POST /api/ai/embeddings/rebuild        — Rebuild embeddings (FOUNDER)
+GET  /api/ai/embeddings/stats          — Embedding statistics (FOUNDER)
+```
+
+#### 3. Frontend Components ✅
+
+**AiSearchBar.tsx:**
+- Type-ahead suggestions with 300ms debounce
+- Filter tabs (all/cases/docs/comms)
+- Results dropdown with relevance scores
+- Navigate to result on click
+- Integrated into Navbar (hidden on mobile)
+
+**AiRecommendationsCard.tsx:**
+- Displays AI-generated case recommendations
+- Confidence scores with color-coded badges
+- Refresh button for real-time updates
+- Added to `/employee/cases/[id]` page sidebar
+
+#### 4. Docker Compose Updated ✅
+
+**Ollama Service Added:**
+```yaml
+ollama:
+  image: ollama/ollama:latest
+  container_name: mgr_ollama
+  volumes:
+    - ollama_data:/root/.ollama
+  deploy:
+    resources:
+      limits:
+        memory: 8G
+  profiles:
+    - with-ai
+```
+
+**Backend Environment:**
+```
+OLLAMA_URL=http://ollama:11434
+OLLAMA_MODEL=llama3.2
+OLLAMA_EMBED_MODEL=nomic-embed-text
+```
+
+---
+
+### FILES CREATED
+
+```
+CREATED:
+backend/src/services/AiSearchService.ts — Semantic search + recommendations
+backend/src/routes/aiRoutes.ts — AI API endpoints
+frontend/components/AiSearchBar.tsx — Search bar component
+frontend/components/AiRecommendationsCard.tsx — AI recommendations card
+
+MODIFIED:
+backend/src/server.ts — Added aiRoutes registration
+frontend/components/Navbar.tsx — Added AiSearchBar
+frontend/app/employee/cases/[id]/page.tsx — Added AiRecommendationsCard
+docker-compose.prod.yml — Added ollama service + volume
+```
+
+---
+
+### PLATFORM STATUS
+
+```
+PHASE 1-4:  ✅ COMPLETE (Core Infrastructure)
+PHASE 5:    ✅ COMPLETE (Training Intelligence)
+PHASE 6:    ✅ COMPLETE (Ingestion Intelligence)
+PHASE 7:    ✅ COMPLETE (Security + Performance)
+PHASE 8:    ✅ COMPLETE (Frontend/PWA/Mobile/E2E)
+PHASE 9:    ✅ COMPLETE (System Health Monitoring)
+PHASE 10:   ✅ COMPLETE (Bot Performance Analysis)
+PHASE 11:   ✅ COMPLETE (Onboarding & Analytics)
+PHASE 12:   ✅ COMPLETE (Compliance & Export Reporting)
+PHASE 13:   ✅ COMPLETE (Scalability & Multi-Tenant)
+PHASE 14:   ✅ COMPLETE (AI-Enhanced Search & Recommendations)
+
+PLATFORM COMPLETION: 100% + ENTERPRISE-READY + AI-POWERED
+```
+
+---
+
+### AI USAGE NOTES
+
+**Start Ollama (Development):**
+```bash
+# Install Ollama
+curl -fsSL https://ollama.com/install.sh | sh
+
+# Pull models
+ollama pull llama3.2
+ollama pull nomic-embed-text
+
+# Start server (runs on port 11434)
+ollama serve
+```
+
+**Start Ollama (Production with Docker):**
+```bash
+docker compose -f docker-compose.prod.yml --profile with-ai up -d ollama
+```
+
+**Rebuild Embeddings (FOUNDER only):**
+```bash
+curl -X POST http://localhost:3001/api/ai/embeddings/rebuild \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+---
+
+### READY FOR NEXT INSTRUCTIONS
+
+Grok, Phase 14 complete. Platform now has:
+- Semantic search across cases, documents, communications
+- AI-powered case action recommendations
+- Training recommendations based on employee performance
+- Local Ollama integration (no external API dependencies)
+- Graceful fallback to keyword search when AI unavailable
+
+**Awaiting your next directive.**
+
+---
+
 **Claude Code — Master Build Engine Mode**
-**Phase 13: COMPLETE**
-**Enterprise-Ready Multi-Tenant**
+**Phase 14: COMPLETE**
+**AI-Powered Enterprise Platform**

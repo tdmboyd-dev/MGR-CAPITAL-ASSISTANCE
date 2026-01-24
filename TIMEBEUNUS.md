@@ -1,6 +1,65 @@
 # TIMEBEUNUS — MGR CAPITAL ASSISTANCE
 
-## CURRENT SESSION STATUS: 2026-01-24 (Session 16)
+## CURRENT SESSION STATUS: 2026-01-24 (Session 17)
+
+### STATUS: PHASE 14 COMPLETE — AI-Enhanced Search & Recommendations
+
+Phase 14 implemented per Grok's directive. Local AI-powered semantic search and recommendations now active.
+
+---
+
+## Session 17 (2026-01-24) — Phase 14: AI-Enhanced Search & Recommendations
+
+### WHAT WAS IMPLEMENTED
+
+1. **AiSearchService** — Ollama-powered semantic search (~700 lines)
+   - `semanticSearch(query, type, limit)` — Cases, docs, comms search
+   - `getCaseRecommendations(caseId)` — AI-generated case actions
+   - `getTrainingRecommendations(employeeId)` — Training suggestions
+   - `getSearchSuggestions(query)` — Autocomplete suggestions
+   - `rebuildAllEmbeddings()` — Rebuild embedding cache
+   - `getEmbeddingStats()` — Embedding statistics
+   - Cosine similarity for embedding matching
+   - Fallback to keyword search if Ollama unavailable
+
+2. **AI Routes API** — `/api/ai/*` endpoints
+   - `GET /api/ai/search` — Semantic search with type filter
+   - `GET /api/ai/search/suggestions` — Autocomplete suggestions
+   - `GET /api/ai/recommendations/case/:caseId` — Case recommendations
+   - `GET /api/ai/recommendations/training/:employeeId` — Training recs
+   - `GET /api/ai/recommendations/my-training` — Current user's training
+   - `GET /api/ai/status` — Ollama status check
+   - `POST /api/ai/embeddings/rebuild` — Rebuild embeddings (FOUNDER)
+   - `GET /api/ai/embeddings/stats` — Embedding stats (FOUNDER)
+
+3. **AiSearchBar Component** — Frontend semantic search
+   - Type-ahead suggestions with debounce
+   - Filter tabs (all/cases/docs/comms)
+   - Results dropdown with scores
+   - Navigation on result click
+   - Integrated into Navbar
+
+4. **AiRecommendationsCard Component** — Case detail AI panel
+   - Displays case action recommendations
+   - Confidence scores with badges
+   - Refresh button for new recommendations
+   - Added to employee/cases/[id] page
+
+5. **Docker Compose Updated** — Ollama service
+   - `ollama` service with 8G memory limit
+   - `ollama_data` volume for model storage
+   - `OLLAMA_URL`, `OLLAMA_MODEL`, `OLLAMA_EMBED_MODEL` env vars
+   - Profile: `with-ai` for optional activation
+
+### PLATFORM STATUS
+
+```
+PHASES 1-14: ✅ ALL COMPLETE
+```
+
+---
+
+## Previous Session: 2026-01-24 (Session 16)
 
 ### STATUS: PHASE 13 COMPLETE — Scalability & Multi-Tenant
 

@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DocumentUploader } from "@/components/ui/document-uploader";
+import { AiRecommendationsCard } from "@/components/AiRecommendationsCard";
 import { formatCurrency, formatDate, formatDateTime } from "@/lib/utils";
 import {
   ArrowLeft,
@@ -330,6 +331,15 @@ export default function CaseDetailPage() {
               ) : null}
             </CardContent>
           </Card>
+
+          {/* AI Recommendations */}
+          <AiRecommendationsCard
+            caseId={caseId}
+            onActionClick={(rec) => {
+              console.log("Action clicked:", rec);
+              // Handle action (e.g., open modal, navigate, etc.)
+            }}
+          />
 
           {/* Next Steps */}
           <Card>
