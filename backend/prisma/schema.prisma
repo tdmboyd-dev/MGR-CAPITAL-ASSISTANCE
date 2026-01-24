@@ -1777,3 +1777,59 @@ model ChatMessage {
   @@index([createdAt])
   @@index([roomId, createdAt(sort: Desc)])
 }
+
+// ============================================
+// FEEDBACK SYSTEM — Phase 18
+// User feedback on features and AI responses
+// ============================================
+
+enum FeedbackCategory {
+  GENERAL
+  AI_RESPONSE
+  FEATURE
+  UI_UX
+  BUG
+  PERFORMANCE
+  TRAINING
+  DOCUMENT
+}
+
+model Feedback {
+  id              String            @id @default(cuid())
+  userId          String
+
+  // Feedback content
+  category        FeedbackCategory  @default(GENERAL)
+  feature         String?           // Specific feature being rated
+  rating          Int               // 1-5 rating
+  comment         String?           @db.Text
+
+  // Context
+  pageUrl         String?           // Page where feedback was submitted
+  sessionContext  Json?             // AI session context if applicable
+  aiResponseId    String?           // Link to AI response if rating AI
+
+  // Metadata
+  userAgent       String?
+  ipAddress       String?
+
+  // Processing
+  isProcessed     Boolean           @default(false)
+  processedAt     DateTime?
+  processedBy     String?           // "metaBot" or userId
+
+  // Response
+  adminResponse   String?           @db.Text
+  respondedAt     DateTime?
+  respondedBy     String?
+
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  @@index([userId])
+  @@index([category])
+  @@index([rating])
+  @@index([isProcessed])
+  @@index([createdAt])
+  @@index([feature])
+}

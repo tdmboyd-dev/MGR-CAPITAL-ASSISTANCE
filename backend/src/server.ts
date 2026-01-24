@@ -45,6 +45,9 @@ import aiRoutes from "./routes/aiRoutes.js";
 // Notification Center (Phase 16)
 import notificationRoutes from "./routes/notificationRoutes.js";
 
+// Feedback System (Phase 18)
+import feedbackRoutes from "./routes/feedbackRoutes.js";
+
 // Rate limiting
 import { loginRateLimit, passwordResetRateLimit } from "./middleware/rateLimit.js";
 
@@ -115,6 +118,9 @@ app.use("/api/ai", aiRoutes);
 
 // Notification Center (Phase 16)
 app.use("/api/notifications", notificationRoutes);
+
+// Feedback System (Phase 18)
+app.use("/api/feedback", feedbackRoutes);
 
 // ============================================
 // HEALTH CHECK

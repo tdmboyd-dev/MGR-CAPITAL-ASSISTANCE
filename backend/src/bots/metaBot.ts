@@ -1,10 +1,12 @@
 // ============================================
 // META BOT — MGR CAPITAL ASSISTANCE
 // Phase 10: Bot Performance Analysis
+// Phase 18: Feedback Analysis Integration
 // Analyzes BotRunLog, generates optimization recommendations
 // ============================================
 
 import { PrismaClient, OpsInsightPriority } from "@prisma/client";
+import { feedbackService } from "../services/FeedbackService.js";
 
 const prisma = new PrismaClient();
 
@@ -504,6 +506,160 @@ class MetaBot {
 
     const details = latestInsight.details as unknown as BotPerformanceReport;
     return details.bots || [];
+  }
+
+  // ============================================
+  // PHASE 18: FEEDBACK ANALYSIS
+  // ============================================
+
+  /**
+   * Analyze user feedback and generate insights
+   */
+  async analyzeFeedback(days: number = 30): Promise<{
+    success: boolean;
+    stats: {
+      totalFeedback: number;
+      averageRating: number;
+      recentTrend: string;
+    };
+    insightsSaved: boolean;
+  }> {
+    console.log(`[${BOT_NAME}] Analyzing user feedback for last ${days} days...`);
+
+    try {
+      // Get feedback analysis from FeedbackService
+      const analysis = await feedbackService.analyzeFeedback(days);
+
+      // Save as OpsInsight
+      await feedbackService.saveFeedbackInsight(analysis);
+
+      // Log bot run
+      await prisma.botRunLog.create({
+        data: {
+          botName: BOT_NAME,
+          runType: "feedback_analysis",
+          status: "SUCCESS",
+          resultSummary: `Analyzed ${analysis.stats.totalFeedback} feedbacks. Avg rating: ${analysis.stats.averageRating}/5. Trend: ${analysis.stats.recentTrend}`,
+          recordsProcessed: analysis.stats.totalFeedback,
+          insightsGenerated: analysis.insights.length,
+          errorsEncountered: 0,
+          durationMs: 0,
+        },
+      });
+
+      console.log(`[${BOT_NAME}] Feedback analysis complete. ${analysis.stats.totalFeedback} feedbacks analyzed.`);
+
+      return {
+        success: true,
+        stats: {
+          totalFeedback: analysis.stats.totalFeedback,
+          averageRating: analysis.stats.averageRating,
+          recentTrend: analysis.stats.recentTrend,
+        },
+        insightsSaved: true,
+      };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      console.error(`[${BOT_NAME}] Feedback analysis failed:`, errorMessage);
+
+      await prisma.botRunLog.create({
+        data: {
+          botName: BOT_NAME,
+          runType: "feedback_analysis",
+          status: "ERROR",
+          resultSummary: `Feedback analysis failed: ${errorMessage}`,
+          recordsProcessed: 0,
+          insightsGenerated: 0,
+          errorsEncountered: 1,
+          durationMs: 0,
+        },
+      });
+
+      return {
+        success: false,
+        stats: { totalFeedback: 0, averageRating: 0, recentTrend: "unknown" },
+        insightsSaved: false,
+      };
+    }
+  }
+
+  /**
+   * Run full meta analysis (bots + feedback)
+   */
+  async runFullAnalysis(days: number = 7): Promise<{
+    botAnalysis: BotPerformanceReport;
+    feedbackAnalysis: {
+      success: boolean;
+      stats: { totalFeedback: number; averageRating: number; recentTrend: string };
+    };
+  }> {
+    console.log(`[${BOT_NAME}] Running full meta analysis...`);
+
+    const botAnalysis = await this.analyzeBotPerformance(days);
+    const feedbackAnalysis = await this.analyzeFeedback(days * 4); // 4x period for feedback
+
+    console.log(`[${BOT_NAME}] Full analysis complete.`);
+
+    return {
+      botAnalysis,
+      feedbackAnalysis,
+    };
+  }
+
+  /**
+   * Get combined insights (bots + feedback) for dashboard
+   */
+  async getCombinedInsights(): Promise<{
+    botHealth: string;
+    feedbackRating: number | null;
+    criticalIssues: number;
+    recommendations: string[];
+  }> {
+    // Get latest bot analysis
+    const botInsight = await prisma.opsInsight.findFirst({
+      where: { type: "BOT_PERFORMANCE", isStale: false },
+      orderBy: { createdAt: "desc" },
+    });
+
+    // Get latest feedback analysis
+    const feedbackInsight = await prisma.opsInsight.findFirst({
+      where: { type: "FEEDBACK_ANALYSIS", isStale: false },
+      orderBy: { createdAt: "desc" },
+    });
+
+    const recommendations: string[] = [];
+
+    // Extract bot health
+    let botHealth = "unknown";
+    if (botInsight?.details) {
+      const details = botInsight.details as unknown as BotPerformanceReport;
+      botHealth = details.overallHealth || "unknown";
+      recommendations.push(...(details.recommendations || []).slice(0, 2));
+    }
+
+    // Extract feedback rating
+    let feedbackRating: number | null = null;
+    if (feedbackInsight?.details) {
+      const details = feedbackInsight.details as unknown as { stats?: { averageRating?: number }; recommendations?: string[] };
+      feedbackRating = details.stats?.averageRating || null;
+      recommendations.push(...(details.recommendations || []).slice(0, 2));
+    }
+
+    // Count critical issues
+    const criticalIssues = await prisma.opsInsight.count({
+      where: {
+        priority: "URGENT",
+        isStale: false,
+        isActioned: false,
+      },
+    });
+
+    return {
+      botHealth,
+      feedbackRating,
+      criticalIssues,
+      recommendations: recommendations.slice(0, 5),
+    };
   }
 }
 
