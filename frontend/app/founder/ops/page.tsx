@@ -20,6 +20,10 @@ import {
   FileText,
   BarChart3,
   Calendar,
+  Activity,
+  CheckCircle2,
+  AlertTriangle,
+  XCircle,
 } from "lucide-react";
 
 interface ForecastPoint {
@@ -41,6 +45,14 @@ interface ForecastData {
   };
 }
 
+interface HealthData {
+  status: "ok" | "degraded" | "down";
+  timestamp: string;
+  version: string;
+  environment: string;
+  services?: { name: string; status: string }[];
+}
+
 export default function FounderOpsPage() {
   const { data, isLoading } = useQuery({
     queryKey: ["analytics-forecast"],
@@ -48,6 +60,15 @@ export default function FounderOpsPage() {
       const { data } = await api.get("/analytics/forecast");
       return data.data as ForecastData;
     },
+  });
+
+  const { data: healthData, isLoading: healthLoading } = useQuery({
+    queryKey: ["system-health"],
+    queryFn: async () => {
+      const { data } = await api.get("/health");
+      return data as HealthData;
+    },
+    refetchInterval: 60000, // Refresh every minute
   });
 
   if (isLoading) {
@@ -105,6 +126,51 @@ export default function FounderOpsPage() {
           Revenue and case predictions based on historical trends
         </p>
       </div>
+
+      {/* System Health Card */}
+      <Card className={`border-2 ${
+        healthData?.status === "ok"
+          ? "border-green-500/50 bg-green-500/5"
+          : healthData?.status === "degraded"
+          ? "border-yellow-500/50 bg-yellow-500/5"
+          : "border-red-500/50 bg-red-500/5"
+      }`}>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-lg font-medium flex items-center gap-2">
+            <Activity className="h-5 w-5" />
+            System Health
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              {healthLoading ? (
+                <Skeleton className="h-8 w-8 rounded-full" />
+              ) : healthData?.status === "ok" ? (
+                <CheckCircle2 className="h-8 w-8 text-green-500" />
+              ) : healthData?.status === "degraded" ? (
+                <AlertTriangle className="h-8 w-8 text-yellow-500" />
+              ) : (
+                <XCircle className="h-8 w-8 text-red-500" />
+              )}
+              <div>
+                <p className="text-xl font-bold capitalize">
+                  {healthLoading ? "Checking..." : healthData?.status || "Unknown"}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {healthData?.timestamp
+                    ? `Last check: ${new Date(healthData.timestamp).toLocaleTimeString()}`
+                    : "Checking..."}
+                </p>
+              </div>
+            </div>
+            <div className="text-right text-sm text-muted-foreground">
+              <p>v{healthData?.version || "1.0.0"}</p>
+              <p className="capitalize">{healthData?.environment || "dev"}</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

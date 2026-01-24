@@ -27,6 +27,7 @@ import { complianceBot } from "../bots/complianceBot.js";
 import { trainingBot } from "../bots/trainingBot.js";
 import { outreachBot } from "../bots/outreachBot.js";
 import { docketBot } from "../bots/docketBot.js";
+import { monitoringBot } from "../bots/monitoringBot.js";
 
 // Service imports
 import { backupService } from "../services/BackupService.js";
@@ -158,6 +159,17 @@ const jobs: CronJob[] = [
     category: "bot",
     task: async () => {
       await docketBot.analyze();
+    },
+  },
+  {
+    name: "System Health Monitoring",
+    key: "monitoring_health_check",
+    cronExpression: "0 * * * *", // Every hour
+    description: "Check DB/Redis/API health, create alerts on failure",
+    enabledByDefault: true,
+    category: "bot",
+    task: async () => {
+      await monitoringBot.runHealthChecks();
     },
   },
 
