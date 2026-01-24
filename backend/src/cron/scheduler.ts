@@ -33,6 +33,7 @@ import { metaBot } from "../bots/metaBot.js";
 // Service imports
 import { backupService } from "../services/BackupService.js";
 import { reportingService } from "../services/ReportingService.js";
+import { complianceExportService } from "../services/ComplianceExportService.js";
 
 const prisma = new PrismaClient();
 
@@ -182,6 +183,17 @@ const jobs: CronJob[] = [
     category: "bot",
     task: async () => {
       await metaBot.analyzeBotPerformance(7);
+    },
+  },
+  {
+    name: "Weekly Compliance Digest",
+    key: "compliance_weekly_digest",
+    cronExpression: "0 8 * * 1", // 8:00 AM every Monday
+    description: "Generate weekly compliance summary (would email to founder)",
+    enabledByDefault: true,
+    category: "report",
+    task: async () => {
+      await complianceExportService.generateWeeklyDigest();
     },
   },
 

@@ -5,9 +5,12 @@
 // ============================================
 
 import { Router, Response } from "express";
-import { AuthenticatedRequest, authMiddleware } from "../middleware/authMiddleware.js";
+import { AuthenticatedRequest, authMiddleware, requireRole } from "../middleware/authMiddleware.js";
 import { roleGuard, ROLE_GROUPS } from "../middleware/roleGuard.js";
 import { PrismaClient } from "@prisma/client";
+import { complianceExportService, ExportType, ExportFormat } from "../services/ComplianceExportService.js";
+import { asyncHandler, Errors } from "../middleware/errorHandler.js";
+import { logger } from "../utils/logger.js";
 
 const prisma = new PrismaClient();
 
@@ -650,5 +653,191 @@ router.get("/risk-assessment", async (_req: AuthenticatedRequest, res: Response)
     res.status(500).json({ success: false, error: error.message });
   }
 });
+
+// ============================================
+// COMPLIANCE EXPORTS (CSV/PDF)
+// ============================================
+
+router.get(
+  "/export",
+  asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    // Export requires FOUNDER role
+    if (req.user?.role !== "FOUNDER") {
+      throw Errors.forbidden();
+    }
+
+    const { type, format, startDate, endDate } = req.query;
+
+    const validTypes: ExportType[] = ["audit", "ledger", "training", "cases"];
+    if (!type || !validTypes.includes(type as ExportType)) {
+      throw Errors.badRequest(`Invalid type. Must be one of: ${validTypes.join(", ")}`);
+    }
+
+    const validFormats: ExportFormat[] = ["csv", "pdf"];
+    if (!format || !validFormats.includes(format as ExportFormat)) {
+      throw Errors.badRequest(`Invalid format. Must be one of: ${validFormats.join(", ")}`);
+    }
+
+    let parsedStartDate: Date | undefined;
+    let parsedEndDate: Date | undefined;
+
+    if (startDate) {
+      parsedStartDate = new Date(startDate as string);
+      if (isNaN(parsedStartDate.getTime())) {
+        throw Errors.badRequest("Invalid startDate format");
+      }
+    }
+
+    if (endDate) {
+      parsedEndDate = new Date(endDate as string);
+      if (isNaN(parsedEndDate.getTime())) {
+        throw Errors.badRequest("Invalid endDate format");
+      }
+      parsedEndDate.setHours(23, 59, 59, 999);
+    }
+
+    logger.info("Compliance export requested", {
+      userId: req.user?.id,
+      type,
+      format,
+      startDate: parsedStartDate?.toISOString(),
+      endDate: parsedEndDate?.toISOString(),
+    });
+
+    const result = await complianceExportService.generateExport({
+      type: type as ExportType,
+      format: format as ExportFormat,
+      startDate: parsedStartDate,
+      endDate: parsedEndDate,
+    });
+
+    if (!result.success || !result.data) {
+      throw Errors.internal(result.error || "Export failed");
+    }
+
+    res.setHeader("Content-Type", result.mimeType!);
+    res.setHeader("Content-Disposition", `attachment; filename="${result.filename}"`);
+    res.setHeader("Content-Length", result.data.length);
+
+    res.send(result.data);
+  })
+);
+
+router.get(
+  "/export/preview",
+  asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    if (req.user?.role !== "FOUNDER") {
+      throw Errors.forbidden();
+    }
+
+    const { type, startDate, endDate, limit } = req.query;
+
+    const validTypes: ExportType[] = ["audit", "ledger", "training", "cases"];
+    if (!type || !validTypes.includes(type as ExportType)) {
+      throw Errors.badRequest(`Invalid type. Must be one of: ${validTypes.join(", ")}`);
+    }
+
+    let parsedStartDate: Date | undefined;
+    let parsedEndDate: Date | undefined;
+
+    if (startDate) {
+      parsedStartDate = new Date(startDate as string);
+      if (isNaN(parsedStartDate.getTime())) {
+        throw Errors.badRequest("Invalid startDate format");
+      }
+    }
+
+    if (endDate) {
+      parsedEndDate = new Date(endDate as string);
+      if (isNaN(parsedEndDate.getTime())) {
+        throw Errors.badRequest("Invalid endDate format");
+      }
+      parsedEndDate.setHours(23, 59, 59, 999);
+    }
+
+    const result = await complianceExportService.generateExport({
+      type: type as ExportType,
+      format: "csv",
+      startDate: parsedStartDate,
+      endDate: parsedEndDate,
+    });
+
+    if (!result.success || !result.data) {
+      throw Errors.internal(result.error || "Preview failed");
+    }
+
+    const csvContent = result.data.toString("utf-8");
+    const lines = csvContent.split("\n");
+    const headers = lines[0]?.split(",").map((h) => h.replace(/"/g, "").trim()) || [];
+    const maxPreview = parseInt(limit as string) || 20;
+
+    const preview = lines.slice(1, maxPreview + 1).map((line) => {
+      const values = line.split(",").map((v) => v.replace(/"/g, "").trim());
+      const row: Record<string, string> = {};
+      headers.forEach((h, i) => {
+        row[h] = values[i] || "";
+      });
+      return row;
+    });
+
+    res.json({
+      success: true,
+      data: {
+        type,
+        headers,
+        totalRows: lines.length - 1,
+        preview,
+        dateRange: {
+          start: parsedStartDate?.toISOString() || null,
+          end: parsedEndDate?.toISOString() || null,
+        },
+      },
+    });
+  })
+);
+
+router.post(
+  "/digest",
+  asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    if (req.user?.role !== "FOUNDER") {
+      throw Errors.forbidden();
+    }
+
+    logger.info("Manual digest generation triggered", { userId: req.user?.id });
+
+    const result = await complianceExportService.generateWeeklyDigest();
+
+    if (!result.success) {
+      throw Errors.internal(result.error || "Digest generation failed");
+    }
+
+    res.json({
+      success: true,
+      message: "Weekly digest generated successfully",
+      data: result.summary,
+    });
+  })
+);
+
+router.get(
+  "/export/types",
+  asyncHandler(async (_req: AuthenticatedRequest, res: Response) => {
+    res.json({
+      success: true,
+      data: {
+        types: [
+          { id: "audit", name: "Audit Logs", description: "User actions and system events" },
+          { id: "ledger", name: "Ledger Entries", description: "Financial transactions" },
+          { id: "training", name: "Training Progress", description: "Employee training records" },
+          { id: "cases", name: "Case Filings", description: "All case records" },
+        ],
+        formats: [
+          { id: "csv", name: "CSV", description: "Comma-separated values (spreadsheet)" },
+          { id: "pdf", name: "PDF", description: "Portable document format (report)" },
+        ],
+      },
+    });
+  })
+);
 
 export default router;

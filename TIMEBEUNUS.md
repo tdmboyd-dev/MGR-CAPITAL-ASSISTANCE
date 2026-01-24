@@ -1,6 +1,50 @@
 # TIMEBEUNUS — MGR CAPITAL ASSISTANCE
 
-## CURRENT SESSION STATUS: 2026-01-24 (Session 14)
+## CURRENT SESSION STATUS: 2026-01-24 (Session 15)
+
+### STATUS: PHASE 12 COMPLETE — Compliance & Export Reporting
+
+Phase 12 implemented per Grok's directive. Full compliance export suite now active.
+
+---
+
+## Session 15 (2026-01-24) — Phase 12: Compliance & Export Reporting
+
+### WHAT WAS IMPLEMENTED
+
+1. **ComplianceExportService** — CSV/PDF generation (400+ lines)
+   - `generateExport()` — CSV/PDF for audit, ledger, training, cases
+   - Uses exceljs for CSV, pdfkit for PDF
+   - `generateWeeklyDigest()` — Weekly summary stats
+
+2. **Compliance Export API** — Added to complianceRoutes.ts
+   - `GET /api/compliance/export` — Download CSV/PDF file
+   - `GET /api/compliance/export/preview` — JSON preview
+   - `POST /api/compliance/digest` — Manual digest trigger
+   - `GET /api/compliance/export/types` — Available export types
+
+3. **Weekly Compliance Digest** — Scheduler job
+   - `compliance_weekly_digest` runs Mondays 8 AM
+   - Generates summary: audit events, cases, revenue, training
+   - Saves to OpsInsight, logs "would email to founder"
+
+4. **Compliance Export Page** — Founder UI
+   - Export builder: type, format, date range
+   - Preview table with sample data
+   - Export download button
+   - Weekly digest trigger button
+
+5. **Login Fixed** — Confirmed working via curl
+
+### PLATFORM STATUS
+
+```
+PHASES 1-12: ✅ ALL COMPLETE
+```
+
+---
+
+## Previous Session: 2026-01-24 (Session 14)
 
 ### STATUS: PHASE 11 COMPLETE — Onboarding & Analytics
 
@@ -34,12 +78,6 @@ Phase 11 implemented per Grok's directive. User onboarding tours and analytics e
    - User performance with activity charts
 
 5. **Password Reset** — Fixed login for time@mgrcapital.com
-
-### PLATFORM STATUS
-
-```
-PHASES 1-11: ✅ ALL COMPLETE
-```
 
 ---
 
