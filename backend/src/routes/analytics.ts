@@ -201,4 +201,322 @@ router.get("/forecast", authMiddleware, async (req: AuthRequest, res: Response) 
   }
 });
 
+// ============================================
+// CUSTOM REPORTS
+// ============================================
+
+interface ReportFilters {
+  startDate?: string;
+  endDate?: string;
+  type?: "cases" | "revenue" | "employees" | "training" | "all";
+  status?: string;
+  employeeId?: string;
+  format?: "json" | "csv";
+}
+
+router.get("/reports", authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const user = req.user!;
+    if (user.role !== "FOUNDER" && user.role !== "ADMIN") {
+      return res.status(403).json({ success: false, error: "Forbidden" });
+    }
+
+    const filters: ReportFilters = {
+      startDate: req.query.startDate as string,
+      endDate: req.query.endDate as string,
+      type: (req.query.type as ReportFilters["type"]) || "all",
+      status: req.query.status as string,
+      employeeId: req.query.employeeId as string,
+      format: (req.query.format as "json" | "csv") || "json",
+    };
+
+    const startDate = filters.startDate ? new Date(filters.startDate) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const endDate = filters.endDate ? new Date(filters.endDate) : new Date();
+
+    const reportData: Record<string, any> = {
+      generatedAt: new Date().toISOString(),
+      period: {
+        start: startDate.toISOString(),
+        end: endDate.toISOString(),
+      },
+    };
+
+    // Cases Report
+    if (filters.type === "cases" || filters.type === "all") {
+      const casesWhere: any = {
+        createdAt: { gte: startDate, lte: endDate },
+      };
+      if (filters.status) casesWhere.status = filters.status;
+      if (filters.employeeId) casesWhere.assignedEmployeeId = filters.employeeId;
+
+      const cases = await prisma.case.findMany({
+        where: casesWhere,
+        include: {
+          assignedEmployee: { select: { id: true, name: true, email: true, employeeTier: true } },
+          client: { select: { id: true, name: true, email: true } },
+        },
+        orderBy: { createdAt: "desc" },
+      });
+
+      const casesByStatus = await prisma.case.groupBy({
+        by: ["status"],
+        where: casesWhere,
+        _count: true,
+      });
+
+      reportData.cases = {
+        total: cases.length,
+        byStatus: casesByStatus.map((s) => ({ status: s.status, count: s._count })),
+        details: cases.map((c) => ({
+          id: c.id,
+          internalCode: c.internalCode,
+          status: c.status,
+          state: c.state,
+          county: c.county,
+          surplusAmountCents: c.surplusAmountCents,
+          createdAt: c.createdAt,
+          employee: c.assignedEmployee?.name || "Unassigned",
+          client: c.client?.name || "Unknown",
+        })),
+      };
+    }
+
+    // Revenue Report
+    if (filters.type === "revenue" || filters.type === "all") {
+      const ledgerEntries = await prisma.ledgerEntry.findMany({
+        where: {
+          createdAt: { gte: startDate, lte: endDate },
+          status: "COMPLETED",
+        },
+        orderBy: { createdAt: "desc" },
+      });
+
+      const byType = await prisma.ledgerEntry.groupBy({
+        by: ["type"],
+        where: {
+          createdAt: { gte: startDate, lte: endDate },
+          status: "COMPLETED",
+        },
+        _sum: { amountCents: true },
+        _count: true,
+      });
+
+      const totalRevenue = ledgerEntries.reduce((sum, e) => sum + e.amountCents, 0);
+
+      reportData.revenue = {
+        totalCents: totalRevenue,
+        totalFormatted: `$${(totalRevenue / 100).toLocaleString("en-US", { minimumFractionDigits: 2 })}`,
+        transactionCount: ledgerEntries.length,
+        byType: byType.map((t) => ({
+          type: t.type,
+          totalCents: t._sum.amountCents || 0,
+          count: t._count,
+        })),
+      };
+    }
+
+    // Employee Performance Report
+    if (filters.type === "employees" || filters.type === "all") {
+      const employees = await prisma.user.findMany({
+        where: {
+          role: "EMPLOYEE",
+          isActive: true,
+        },
+        include: {
+          assignedCases: {
+            where: {
+              createdAt: { gte: startDate, lte: endDate },
+            },
+          },
+          ledgerEntries: {
+            where: {
+              createdAt: { gte: startDate, lte: endDate },
+              status: "COMPLETED",
+            },
+          },
+        },
+      });
+
+      reportData.employees = {
+        total: employees.length,
+        details: employees.map((e) => ({
+          id: e.id,
+          name: e.name,
+          email: e.email,
+          tier: e.employeeTier,
+          casesAssigned: e.assignedCases.length,
+          casesClosed: e.assignedCases.filter((c) => c.status === "PAID" || c.status === "CLOSED").length,
+          earningsCents: e.ledgerEntries.reduce((sum, l) => sum + l.amountCents, 0),
+        })),
+      };
+    }
+
+    // Training Report
+    if (filters.type === "training" || filters.type === "all") {
+      const trainingProgress = await prisma.employeeTrainingProgress.findMany({
+        where: {
+          updatedAt: { gte: startDate, lte: endDate },
+        },
+        include: {
+          employee: { select: { id: true, name: true, email: true } },
+          module: { select: { id: true, title: true } },
+        },
+      });
+
+      const completedCount = trainingProgress.filter((p) => p.status === "COMPLETED").length;
+      const inProgressCount = trainingProgress.filter((p) => p.status === "IN_PROGRESS").length;
+
+      reportData.training = {
+        totalProgress: trainingProgress.length,
+        completed: completedCount,
+        inProgress: inProgressCount,
+        completionRate: trainingProgress.length > 0 ? Math.round((completedCount / trainingProgress.length) * 100) : 0,
+        details: trainingProgress.map((p) => ({
+          employee: p.employee.name,
+          module: p.module.title,
+          status: p.status,
+          score: p.quizScore,
+          completedAt: p.completedAt,
+        })),
+      };
+    }
+
+    // Export as CSV if requested
+    if (filters.format === "csv") {
+      let csvContent = "";
+
+      // Build CSV based on report type
+      if (filters.type === "cases" && reportData.cases?.details) {
+        csvContent = "ID,Internal Code,Status,State,County,Surplus,Created,Employee,Client\n";
+        for (const c of reportData.cases.details) {
+          csvContent += `${c.id},${c.internalCode},${c.status},${c.state},${c.county},${c.surplusAmountCents / 100},${c.createdAt},${c.employee},${c.client}\n`;
+        }
+      } else if (filters.type === "employees" && reportData.employees?.details) {
+        csvContent = "ID,Name,Email,Tier,Cases Assigned,Cases Closed,Earnings\n";
+        for (const e of reportData.employees.details) {
+          csvContent += `${e.id},${e.name},${e.email},${e.tier},${e.casesAssigned},${e.casesClosed},${e.earningsCents / 100}\n`;
+        }
+      } else if (filters.type === "training" && reportData.training?.details) {
+        csvContent = "Employee,Module,Status,Score,Completed At\n";
+        for (const t of reportData.training.details) {
+          csvContent += `${t.employee},${t.module},${t.status},${t.score || "N/A"},${t.completedAt || "N/A"}\n`;
+        }
+      } else if (filters.type === "revenue" && reportData.revenue?.byType) {
+        csvContent = "Type,Total (Cents),Count\n";
+        for (const r of reportData.revenue.byType) {
+          csvContent += `${r.type},${r.totalCents},${r.count}\n`;
+        }
+      }
+
+      res.setHeader("Content-Type", "text/csv");
+      res.setHeader("Content-Disposition", `attachment; filename=report-${filters.type}-${new Date().toISOString().split("T")[0]}.csv`);
+      return res.send(csvContent);
+    }
+
+    res.json({ success: true, data: reportData });
+  } catch (error) {
+    console.error("Reports error:", error);
+    res.status(500).json({ success: false, error: "Failed to generate report" });
+  }
+});
+
+// ============================================
+// USER PERFORMANCE METRICS
+// ============================================
+
+router.get("/user-performance", authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const user = req.user!;
+    if (user.role !== "FOUNDER" && user.role !== "ADMIN") {
+      return res.status(403).json({ success: false, error: "Forbidden" });
+    }
+
+    const userId = req.query.userId as string;
+    const days = parseInt(req.query.days as string) || 30;
+
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - days);
+
+    // Get user details
+    const targetUser = userId
+      ? await prisma.user.findUnique({
+          where: { id: userId },
+          select: { id: true, name: true, email: true, role: true, employeeTier: true },
+        })
+      : null;
+
+    // Get daily activity
+    const dailyActivity: { date: string; cases: number; earnings: number; training: number }[] = [];
+
+    for (let i = 0; i < days; i++) {
+      const dayStart = new Date(startDate);
+      dayStart.setDate(dayStart.getDate() + i);
+      const dayEnd = new Date(dayStart);
+      dayEnd.setDate(dayEnd.getDate() + 1);
+
+      const casesWhere: any = {
+        createdAt: { gte: dayStart, lt: dayEnd },
+      };
+      if (userId) casesWhere.assignedEmployeeId = userId;
+
+      const [casesCount, earningsSum, trainingCount] = await Promise.all([
+        prisma.case.count({ where: casesWhere }),
+        prisma.ledgerEntry.aggregate({
+          where: {
+            createdAt: { gte: dayStart, lt: dayEnd },
+            status: "COMPLETED",
+            ...(userId ? { userId } : {}),
+          },
+          _sum: { amountCents: true },
+        }),
+        prisma.employeeTrainingProgress.count({
+          where: {
+            completedAt: { gte: dayStart, lt: dayEnd },
+            ...(userId ? { employeeId: userId } : {}),
+          },
+        }),
+      ]);
+
+      dailyActivity.push({
+        date: dayStart.toISOString().split("T")[0],
+        cases: casesCount,
+        earnings: earningsSum._sum.amountCents || 0,
+        training: trainingCount,
+      });
+    }
+
+    // Get tier progression history (if user specified)
+    let tierHistory: { date: string; tier: string }[] = [];
+    if (userId) {
+      const progressionLogs = await prisma.tierProgressionLog.findMany({
+        where: { employeeId: userId },
+        orderBy: { createdAt: "asc" },
+        select: { createdAt: true, toTier: true },
+      });
+
+      tierHistory = progressionLogs.map((log) => ({
+        date: log.createdAt.toISOString().split("T")[0],
+        tier: log.toTier,
+      }));
+    }
+
+    res.json({
+      success: true,
+      data: {
+        user: targetUser,
+        dailyActivity,
+        tierHistory,
+        summary: {
+          totalCases: dailyActivity.reduce((sum, d) => sum + d.cases, 0),
+          totalEarnings: dailyActivity.reduce((sum, d) => sum + d.earnings, 0),
+          totalTraining: dailyActivity.reduce((sum, d) => sum + d.training, 0),
+        },
+      },
+    });
+  } catch (error) {
+    console.error("User performance error:", error);
+    res.status(500).json({ success: false, error: "Failed to get user performance" });
+  }
+});
+
 export default router;
