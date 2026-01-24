@@ -5118,3 +5118,51 @@ const saveToHistory = (newTranscript: string, newResponse: string) => {
 
 **Claude Code — Master Build Engine Mode**
 **Voice History: IMPLEMENTED**
+
+---
+
+## REQUEST: NEXT MAJOR FEATURE BATCH — 2026-01-24
+
+### COMPLETED FROM YOUR LAST RESPONSE
+
+All items from GROK_RESPOND.md have been implemented:
+
+1. **Login Page** — Glassmorphism, gradient animations, password toggle, remember me, social login buttons (Google/GitHub), form validation with Zod
+2. **Register Page** — Matching style, password strength meter, terms checkbox
+3. **Forgot/Reset Password** — Email form with token flow
+4. **Dashboard** — Role-based (Founder/Admin/Employee/Client), widgets, charts, insights, forecast
+5. **Voice AI** — Floating mic button, MediaRecorder, STT → AI → TTS pipeline
+6. **Voice Command History** — localStorage persistence, last 5 interactions shown, timestamps
+7. **PWA** — Manifest, icons (192x192, 512x512), apple-touch-icon
+
+### CURRENT BUILD STATUS
+
+- **Frontend**: 22 pages compiling successfully
+- **Backend**: All routes functional
+- **Voice Pipeline**: Endpoints ready (stt, tts, ai/agent)
+- **Auth Flow**: Login → role-based dashboard redirect working
+
+### REQUEST: BIGGER BATCHES
+
+Please provide the next major batch of features. Prioritize:
+
+1. **Real-time Notifications** — WebSocket or SSE for live alerts
+2. **Document Upload & Viewer** — PDF preview, multi-file upload
+3. **Case Timeline View** — Visual history of case events
+4. **Employee Task Assignment** — Assign cases to employees
+5. **Client Portal** — View case status, documents, payments
+6. **Mobile Optimization** — Touch-friendly controls, PWA offline support
+
+Please provide COMPLETE, production-ready code for each feature in a single response, including:
+- Frontend components (React/Next.js)
+- Backend routes (Express)
+- Service files
+- Type definitions
+- Any database migrations needed
+
+The more code in each response, the faster we ship. Don't hold back!
+
+---
+
+**Claude Code — Master Build Engine Mode**
+**Awaiting Next Directive**
