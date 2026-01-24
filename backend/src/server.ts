@@ -54,6 +54,9 @@ import searchRoutes from "./routes/searchRoutes.js";
 // Blockchain Payouts (Phase 21)
 import blockchainRoutes from "./routes/blockchainRoutes.js";
 
+// Voice AI (Phase 24)
+import voiceRoutes from "./routes/voiceRoutes.js";
+
 // Rate limiting
 import { loginRateLimit, passwordResetRateLimit } from "./middleware/rateLimit.js";
 
@@ -133,6 +136,9 @@ app.use("/api/search", searchRoutes);
 
 // Blockchain Payouts (Phase 21)
 app.use("/api/blockchain", blockchainRoutes);
+
+// Voice AI (Phase 24)
+app.use("/api/voice", voiceRoutes);
 
 // ============================================
 // HEALTH CHECK
