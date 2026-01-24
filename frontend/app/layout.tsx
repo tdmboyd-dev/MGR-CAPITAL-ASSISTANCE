@@ -12,6 +12,11 @@ export const metadata: Metadata = {
   title: "MGR Capital Assistance",
   description: "Sovereign Surplus & Tax Sale Recovery Platform",
   manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "MGR Capital",
+  },
 };
 
 export const viewport: Viewport = {
@@ -29,9 +34,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        <link rel="apple-touch-icon" href="/icon-192.png" />
-        <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
       </head>
       <body className={inter.className}>
         <Providers>{children}</Providers>
