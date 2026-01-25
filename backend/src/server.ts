@@ -78,6 +78,15 @@ import phoneRoutes from "./routes/phoneRoutes.js";
 // NFT Minting (Surplus Claims)
 import nftRoutes from "./routes/nftRoutes.js";
 
+// AI Heir Genealogy Trees (Phase 26)
+import genealogyRoutes from "./routes/genealogyRoutes.js";
+
+// Blockchain Surplus Auctions (Phase 27)
+import auctionRoutes from "./routes/auctionRoutes.js";
+
+// AI Fraud Detection (Phase 28)
+import fraudRoutes from "./routes/fraudRoutes.js";
+
 // Rate limiting
 import { loginRateLimit, passwordResetRateLimit } from "./middleware/rateLimit.js";
 
@@ -181,6 +190,15 @@ app.use("/api/phone", phoneRoutes);
 
 // NFT Minting (Surplus Claim Tokenization)
 app.use("/api/nft", nftRoutes);
+
+// AI Heir Genealogy Trees
+app.use("/api/genealogy", genealogyRoutes);
+
+// Blockchain Surplus Auctions
+app.use("/api/auctions", auctionRoutes);
+
+// AI Fraud Detection
+app.use("/api/fraud", fraudRoutes);
 
 // ============================================
 // HEALTH CHECK
