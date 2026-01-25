@@ -191,6 +191,26 @@ The platform is solid at ~62%. To get higher:
 - HeirGenealogyService - Database persistence + intestate rules
 - E2E Tests - Blockchain test suite
 
+**Round 3 (72% → 75%):**
+- PhoneBotService - DEMO MODE (works without Twilio)
+- PaymentService - DEMO MODE (works without Stripe)
+- API_REQUIREMENTS.md - Plain English guide for all API keys
+
+### KEY INSIGHT: MOST FEATURES DON'T NEED API KEYS
+
+| Works Self-Contained | Needs External API |
+|---------------------|-------------------|
+| Voice Biometrics (Web Audio) | Phone Calls (Twilio) |
+| Litigation Simulator (TensorFlow.js) | Real Payments (Stripe) |
+| Fraud Detection (TensorFlow.js) | SMS Messages |
+| Skip Trace (Demo Mode) | |
+| Oracle (50 states hardcoded) | |
+| Legal Auditor (Rule-based) | |
+| VR Property View (Three.js) | |
+| Lead Pipeline (Database) | |
+
+See `API_REQUIREMENTS.md` for step-by-step instructions on getting API keys when needed.
+
 ### To Get to 80%:
 - Real API credentials (Twilio, ElevenLabs, Stripe)
 - Funded Solana wallet
