@@ -1,0 +1,203 @@
+/**
+ * Payment Routes — MGR CAPITAL ASSISTANCE
+ * Nickel ACH integration for automatic fee collection
+ */
+
+import { Router } from "express";
+import { authenticate } from "../middleware/authMiddleware.js";
+import { nickelPaymentService } from "../services/NickelPaymentService.js";
+import { logger } from "../utils/logger.js";
+
+const router = Router();
+
+/**
+ * POST /api/payments/authorize
+ * Create ACH authorization for a client
+ */
+router.post("/authorize", authenticate, async (req, res) => {
+  try {
+    const {
+      clientId,
+      bankAccount,
+      ipAddress,
+      userAgent,
+    } = req.body;
+
+    if (!clientId || !bankAccount) {
+      return res.status(400).json({
+        error: "Missing required fields: clientId, bankAccount",
+      });
+    }
+
+    const authorization = await nickelPaymentService.createAuthorization(
+      clientId,
+      bankAccount,
+      ipAddress || req.ip,
+      userAgent || req.headers["user-agent"]
+    );
+
+    // Mask account number in response
+    const maskedAuth = {
+      ...authorization,
+      bankAccount: {
+        ...authorization.bankAccount,
+        accountNumber: nickelPaymentService.maskAccountNumber(
+          authorization.bankAccount.accountNumber
+        ),
+      },
+    };
+
+    res.status(201).json({
+      success: true,
+      authorization: maskedAuth,
+    });
+  } catch (error: any) {
+    logger.error("Authorization creation failed", { error: error.message });
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * POST /api/payments/initiate
+ * Initiate an ACH payment (debit client account)
+ */
+router.post("/initiate", authenticate, async (req, res) => {
+  try {
+    const { authorizationId, amount, description, caseId } = req.body;
+
+    if (!authorizationId || !amount) {
+      return res.status(400).json({
+        error: "Missing required fields: authorizationId, amount",
+      });
+    }
+
+    const result = await nickelPaymentService.initiatePayment(
+      authorizationId,
+      amount,
+      description || "MGR Capital Fee",
+      caseId
+    );
+
+    res.json(result);
+  } catch (error: any) {
+    logger.error("Payment initiation failed", { error: error.message });
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * POST /api/payments/auto-collect
+ * Trigger automatic fee collection for a case
+ */
+router.post("/auto-collect", authenticate, async (req, res) => {
+  try {
+    const { caseId, clientId, surplusAmount, contingencyPercent } = req.body;
+
+    if (!caseId || !clientId || !surplusAmount) {
+      return res.status(400).json({
+        error: "Missing required fields: caseId, clientId, surplusAmount",
+      });
+    }
+
+    const result = await nickelPaymentService.triggerAutoCollection(
+      caseId,
+      clientId,
+      surplusAmount,
+      contingencyPercent || 33
+    );
+
+    res.json(result);
+  } catch (error: any) {
+    logger.error("Auto-collection failed", { error: error.message });
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * GET /api/payments/:paymentId
+ * Get payment status
+ */
+router.get("/:paymentId", authenticate, async (req, res) => {
+  try {
+    const { paymentId } = req.params;
+
+    const payment = await nickelPaymentService.getPaymentStatus(paymentId);
+
+    if (!payment) {
+      return res.status(404).json({ error: "Payment not found" });
+    }
+
+    res.json({ payment });
+  } catch (error: any) {
+    logger.error("Payment status check failed", { error: error.message });
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * GET /api/payments/client/:clientId
+ * Get all payments for a client
+ */
+router.get("/client/:clientId", authenticate, async (req, res) => {
+  try {
+    const { clientId } = req.params;
+
+    const payments = await nickelPaymentService.getClientPayments(clientId);
+
+    res.json({ payments });
+  } catch (error: any) {
+    logger.error("Client payments fetch failed", { error: error.message });
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * DELETE /api/payments/authorize/:authorizationId
+ * Revoke an ACH authorization
+ */
+router.delete("/authorize/:authorizationId", authenticate, async (req, res) => {
+  try {
+    const { authorizationId } = req.params;
+
+    const success = await nickelPaymentService.revokeAuthorization(authorizationId);
+
+    if (!success) {
+      return res.status(404).json({ error: "Authorization not found" });
+    }
+
+    res.json({ success: true, message: "Authorization revoked" });
+  } catch (error: any) {
+    logger.error("Authorization revocation failed", { error: error.message });
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * POST /api/payments/calculate-fee
+ * Calculate fee based on surplus and contingency
+ */
+router.post("/calculate-fee", async (req, res) => {
+  const { surplusAmount, contingencyPercent } = req.body;
+
+  if (!surplusAmount) {
+    return res.status(400).json({ error: "Missing surplusAmount" });
+  }
+
+  const result = nickelPaymentService.calculateFee(
+    surplusAmount,
+    contingencyPercent || 33
+  );
+
+  res.json(result);
+});
+
+/**
+ * GET /api/payments/status
+ * Get payment service status
+ */
+router.get("/service/status", authenticate, async (_req, res) => {
+  const status = nickelPaymentService.getStatus();
+  res.json(status);
+});
+
+export default router;

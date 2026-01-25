@@ -63,6 +63,15 @@ import aiBotsRoutes from "./routes/aiBotsRoutes.js";
 // Document Generation (Voice-to-Document)
 import documentGenerationRoutes from "./routes/documentGeneration.js";
 
+// Payment Collection (Nickel ACH)
+import paymentsRoutes from "./routes/payments.js";
+
+// Skip Tracing (Tracerfy)
+import skipTraceRoutes from "./routes/skipTrace.js";
+
+// State Deadlines
+import deadlinesRoutes from "./routes/deadlines.js";
+
 // Rate limiting
 import { loginRateLimit, passwordResetRateLimit } from "./middleware/rateLimit.js";
 
@@ -151,6 +160,15 @@ app.use("/api/ai-bots", aiBotsRoutes);
 
 // Document Generation (Voice-to-Document)
 app.use("/api/documents", documentGenerationRoutes);
+
+// Payment Collection (Nickel ACH - FREE)
+app.use("/api/payments", paymentsRoutes);
+
+// Skip Tracing (Tracerfy API)
+app.use("/api/skip-trace", skipTraceRoutes);
+
+// State Deadlines & Compliance
+app.use("/api/deadlines", deadlinesRoutes);
 
 // ============================================
 // HEALTH CHECK
