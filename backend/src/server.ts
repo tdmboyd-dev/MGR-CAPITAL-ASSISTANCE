@@ -87,6 +87,15 @@ import auctionRoutes from "./routes/auctionRoutes.js";
 // AI Fraud Detection (Phase 28)
 import fraudRoutes from "./routes/fraudRoutes.js";
 
+// Legal Auditor (Phase 29)
+import legalAuditorRoutes from "./routes/legalRoutes.js";
+
+// P2P Marketplace (Phase 29)
+import marketplaceRoutes from "./routes/marketplaceRoutes.js";
+
+// Oracle Service (Phase 29)
+import oracleRoutes from "./routes/oracleRoutes.js";
+
 // Rate limiting
 import { loginRateLimit, passwordResetRateLimit } from "./middleware/rateLimit.js";
 
@@ -199,6 +208,15 @@ app.use("/api/auctions", auctionRoutes);
 
 // AI Fraud Detection
 app.use("/api/fraud", fraudRoutes);
+
+// Legal Document Auditor
+app.use("/api/legal-audit", legalAuditorRoutes);
+
+// P2P Marketplace
+app.use("/api/marketplace", marketplaceRoutes);
+
+// State Law Oracle
+app.use("/api/oracle", oracleRoutes);
 
 // ============================================
 // HEALTH CHECK

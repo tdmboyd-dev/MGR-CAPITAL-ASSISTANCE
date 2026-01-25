@@ -1,0 +1,24 @@
+service: mgr-backend
+
+provider:
+  name: aws
+  runtime: nodejs18.x
+  stage: prod
+  region: us-east-1
+  environment:
+    DATABASE_URL: ${ssm:/prod/DATABASE_URL}
+    JWT_SECRET: ${ssm:/prod/JWT_SECRET}
+    OPENAI_API_KEY: ${ssm:/prod/OPENAI_API_KEY}
+
+functions:
+  app:
+    handler: dist/server.handler
+    events:
+      - http: ANY /
+      - http: ANY /{proxy+}
+    timeout: 30
+    memorySize: 1024
+
+plugins:
+  - serverless-offline
+  - serverless-dotenv-plugin
