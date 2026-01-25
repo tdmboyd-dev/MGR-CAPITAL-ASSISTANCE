@@ -557,8 +557,37 @@ export default function LeadPipelineKanban() {
     })
   );
 
-  // Load mock data on mount
+  // Load leads from API with mock fallback
   useEffect(() => {
+    const fetchLeads = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const response = await fetch('/api/leads', {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.data && data.data.length > 0) {
+            setLeads(data.data);
+            return;
+          }
+        }
+      } catch (error) {
+        console.log('API not available, using demo data');
+      }
+
+      // Fallback to demo data if API unavailable
+      loadDemoData();
+    };
+
+    fetchLeads();
+  }, []);
+
+  const loadDemoData = () => {
     const mockLeads: Lead[] = [
       {
         id: "lead-1",
@@ -722,7 +751,24 @@ export default function LeadPipelineKanban() {
     ];
 
     setLeads(mockLeads);
-  }, []);
+  };
+
+  // Update lead stage via API
+  const updateLeadStage = async (leadId: string, newStage: string) => {
+    try {
+      const token = localStorage.getItem('token');
+      await fetch(`/api/leads/${leadId}/stage`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ stage: newStage })
+      });
+    } catch (error) {
+      console.log('Stage update API not available');
+    }
+  };
 
   // Filter leads
   const filteredLeads = leads.filter((lead) => {
@@ -798,15 +844,15 @@ export default function LeadPipelineKanban() {
     const activeLead = leads.find((l) => l.id === activeId);
     if (!activeLead) return;
 
-    // Log the stage change
+    // Log the stage change and update via API
     const newStage = PIPELINE_STAGES.find(
       (s) => s.id === activeLead.stage
     );
     if (newStage) {
       toast.success(`Moved to ${newStage.title}`);
+      // Update via API
+      updateLeadStage(activeLead.id, activeLead.stage);
     }
-
-    // In production, this would call API to update lead stage
   };
 
   const activeLead = activeId ? leads.find((l) => l.id === activeId) : null;

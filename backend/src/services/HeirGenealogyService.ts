@@ -582,38 +582,213 @@ Return as valid JSON with keys: familyStructure, inheritancePriority, percentage
     return Buffer.from(pdfBytes);
   }
 
+  // In-memory cache for trees (fallback when DB unavailable)
+  private treeCache: Map<string, GenealogyTree> = new Map();
+
   /**
    * Store tree in database
    */
   private async storeTree(tree: GenealogyTree): Promise<void> {
-    // In production, use Prisma to store tree
-    // For now, log storage
-    logger.info('Genealogy tree stored', { treeId: tree.id, caseId: tree.caseId });
+    try {
+      // Try to store in database using Document model
+      await prisma.document.upsert({
+        where: { id: tree.id },
+        update: {
+          metadata: JSON.stringify({
+            type: 'GENEALOGY_TREE',
+            decedentName: tree.decedentName,
+            state: tree.state,
+            rootMember: tree.rootMember,
+            totalHeirs: tree.totalHeirs,
+            confirmedHeirs: tree.confirmedHeirs,
+            heirDistribution: tree.heirDistribution,
+            aiGenerated: tree.aiGenerated,
+            confidenceScore: tree.confidenceScore,
+          }),
+          updatedAt: new Date(),
+        },
+        create: {
+          id: tree.id,
+          caseId: tree.caseId,
+          type: 'GENEALOGY_TREE',
+          status: 'UPLOADED',
+          filePath: `genealogy/${tree.caseId}/${tree.id}.json`,
+          metadata: JSON.stringify({
+            type: 'GENEALOGY_TREE',
+            decedentName: tree.decedentName,
+            decedentDeathDate: tree.decedentDeathDate,
+            state: tree.state,
+            rootMember: tree.rootMember,
+            totalHeirs: tree.totalHeirs,
+            confirmedHeirs: tree.confirmedHeirs,
+            heirDistribution: tree.heirDistribution,
+            aiGenerated: tree.aiGenerated,
+            confidenceScore: tree.confidenceScore,
+          }),
+        },
+      });
+      logger.info('Genealogy tree stored in DB', { treeId: tree.id });
+    } catch (error: any) {
+      // Fallback to in-memory cache
+      logger.warn('DB storage failed, using cache', { error: error.message });
+      this.treeCache.set(tree.id, tree);
+    }
   }
 
   /**
    * Get tree from database
    */
   async getTree(treeId: string): Promise<GenealogyTree | null> {
-    // In production, fetch from database
-    // Return null for now (would be implemented with Prisma)
-    return null;
+    try {
+      // Try database first
+      const doc = await prisma.document.findFirst({
+        where: {
+          id: treeId,
+          type: 'GENEALOGY_TREE',
+        },
+      });
+
+      if (doc && doc.metadata) {
+        const metadata = typeof doc.metadata === 'string'
+          ? JSON.parse(doc.metadata)
+          : doc.metadata;
+
+        return {
+          id: doc.id,
+          caseId: doc.caseId,
+          decedentName: metadata.decedentName,
+          decedentDeathDate: metadata.decedentDeathDate ? new Date(metadata.decedentDeathDate) : undefined,
+          state: metadata.state,
+          rootMember: metadata.rootMember,
+          totalHeirs: metadata.totalHeirs || 0,
+          confirmedHeirs: metadata.confirmedHeirs || 0,
+          heirDistribution: metadata.heirDistribution || {},
+          lastUpdated: doc.updatedAt,
+          aiGenerated: metadata.aiGenerated || false,
+          confidenceScore: metadata.confidenceScore || 0.5,
+        };
+      }
+    } catch (error: any) {
+      logger.warn('DB fetch failed, checking cache', { error: error.message });
+    }
+
+    // Fallback to cache
+    return this.treeCache.get(treeId) || null;
   }
 
   /**
    * List all trees for a case
    */
   async listTrees(caseId: string): Promise<GenealogyTree[]> {
-    // In production, fetch from database
-    return [];
+    try {
+      const docs = await prisma.document.findMany({
+        where: {
+          caseId,
+          type: 'GENEALOGY_TREE',
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+
+      return docs.map(doc => {
+        const metadata = typeof doc.metadata === 'string'
+          ? JSON.parse(doc.metadata)
+          : doc.metadata as any;
+
+        return {
+          id: doc.id,
+          caseId: doc.caseId,
+          decedentName: metadata.decedentName,
+          decedentDeathDate: metadata.decedentDeathDate ? new Date(metadata.decedentDeathDate) : undefined,
+          state: metadata.state,
+          rootMember: metadata.rootMember,
+          totalHeirs: metadata.totalHeirs || 0,
+          confirmedHeirs: metadata.confirmedHeirs || 0,
+          heirDistribution: metadata.heirDistribution || {},
+          lastUpdated: doc.updatedAt,
+          aiGenerated: metadata.aiGenerated || false,
+          confidenceScore: metadata.confidenceScore || 0.5,
+        };
+      });
+    } catch (error: any) {
+      logger.warn('DB list failed', { error: error.message });
+      // Return from cache
+      return Array.from(this.treeCache.values()).filter(t => t.caseId === caseId);
+    }
   }
 
   /**
    * Delete a genealogy tree
    */
   async deleteTree(treeId: string): Promise<boolean> {
-    logger.info('Genealogy tree deleted', { treeId });
-    return true;
+    try {
+      await prisma.document.delete({
+        where: { id: treeId },
+      });
+      this.treeCache.delete(treeId);
+      logger.info('Genealogy tree deleted', { treeId });
+      return true;
+    } catch (error: any) {
+      logger.error('Delete failed', { error: error.message });
+      this.treeCache.delete(treeId);
+      return false;
+    }
+  }
+
+  /**
+   * Get state-specific intestate succession rules
+   */
+  getIntestateRules(state: string): {
+    spouseShare: string;
+    childrenShare: string;
+    parentsShare: string;
+    siblingsShare: string;
+    statute: string;
+  } {
+    const rules: Record<string, any> = {
+      'CA': {
+        spouseShare: '100% if no children, else 50-100% community property + 1/3-1/2 separate property',
+        childrenShare: 'Remaining after spouse share, divided equally',
+        parentsShare: '100% if no spouse/children',
+        siblingsShare: 'If no spouse/children/parents',
+        statute: 'California Probate Code §§ 6400-6414'
+      },
+      'FL': {
+        spouseShare: '100% if no descendants, else 50% if descendants are also spouse\'s',
+        childrenShare: 'Remaining after spouse, divided equally per stirpes',
+        parentsShare: '100% if no spouse/descendants',
+        siblingsShare: 'If no spouse/descendants/parents',
+        statute: 'Florida Statutes §§ 732.101-732.111'
+      },
+      'TX': {
+        spouseShare: '100% community property + 1/3 separate property life estate',
+        childrenShare: '2/3 separate property, divided equally',
+        parentsShare: '50% if one parent survives with siblings',
+        siblingsShare: '50% divided equally if parent survives',
+        statute: 'Texas Estates Code §§ 201.001-201.152'
+      },
+      'GA': {
+        spouseShare: 'Equal share with children, minimum 1/3',
+        childrenShare: 'Equal shares with spouse',
+        parentsShare: '100% if no spouse/children',
+        siblingsShare: 'Equal shares if no spouse/children/parents',
+        statute: 'OCGA §§ 53-2-1 to 53-2-10'
+      },
+      'NY': {
+        spouseShare: '$50,000 + 50% if children, else 100%',
+        childrenShare: 'Remaining after spouse share',
+        parentsShare: '100% if no spouse/children',
+        siblingsShare: 'If no spouse/children/parents',
+        statute: 'NY EPTL §§ 4-1.1 to 4-1.6'
+      }
+    };
+
+    return rules[state.toUpperCase()] || {
+      spouseShare: 'Check state statute',
+      childrenShare: 'Check state statute',
+      parentsShare: 'Check state statute',
+      siblingsShare: 'Check state statute',
+      statute: 'Varies by state'
+    };
   }
 }
 
