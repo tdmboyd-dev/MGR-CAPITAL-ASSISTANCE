@@ -1,7 +1,12 @@
 /**
  * PhoneBotService.ts — MGR CAPITAL ASSISTANCE
- * AI Phone Bot with Twilio + ElevenLabs + OpenAI
+ * AI Phone Bot with Telnyx/Twilio + Chatterbox/ElevenLabs + DeepSeek/OpenAI
  * ADVANCED: Multi-language, sentiment analysis, call recording, auto-followup
+ *
+ * RECOMMENDED PROVIDERS (see BEST_APIS_GUIDE.md):
+ * - Phone: Telnyx ($0.007/min) - 50% cheaper than Twilio
+ * - TTS: Chatterbox (FREE) or Fish Audio ($9.99/mo)
+ * - LLM: DeepSeek V3 - 95% cheaper than OpenAI
  */
 
 import { PrismaClient } from '@prisma/client';
@@ -9,12 +14,28 @@ import { logger } from '../utils/logger.js';
 
 const prisma = new PrismaClient();
 
-// API configurations
+// API configurations - supports multiple providers
+// PHONE: Telnyx (recommended) or Twilio
+const TELNYX_API_KEY = process.env.TELNYX_API_KEY;
+const TELNYX_NUMBER = process.env.TELNYX_NUMBER;
 const TWILIO_SID = process.env.TWILIO_SID;
 const TWILIO_TOKEN = process.env.TWILIO_TOKEN;
 const TWILIO_NUMBER = process.env.TWILIO_NUMBER;
+
+// TTS: Chatterbox (FREE, local) or ElevenLabs (paid)
 const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY;
+
+// LLM: DeepSeek (recommended) or OpenAI
+const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY;
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+const GOOGLE_AI_KEY = process.env.GOOGLE_AI_KEY;
+
+// Determine which phone provider to use
+const PHONE_PROVIDER = TELNYX_API_KEY ? 'telnyx' : (TWILIO_SID ? 'twilio' : 'demo');
+const PHONE_NUMBER = TELNYX_NUMBER || TWILIO_NUMBER;
+
+// Determine which LLM provider to use (DeepSeek is 95% cheaper)
+const LLM_PROVIDER = DEEPSEEK_API_KEY ? 'deepseek' : (GOOGLE_AI_KEY ? 'gemini' : (OPENAI_API_KEY ? 'openai' : 'scripted'));
 
 interface CallResult {
   success: boolean;
@@ -86,21 +107,43 @@ Have a great day!
 export class PhoneBotService {
   private isConfigured: boolean;
   private demoMode: boolean;
+  private phoneProvider: string;
+  private llmProvider: string;
 
   constructor() {
-    this.isConfigured = !!(TWILIO_SID && TWILIO_TOKEN && TWILIO_NUMBER);
+    this.phoneProvider = PHONE_PROVIDER;
+    this.llmProvider = LLM_PROVIDER;
+    this.isConfigured = this.phoneProvider !== 'demo';
     this.demoMode = !this.isConfigured;
 
     if (this.demoMode) {
-      logger.info('[PhoneBot] Running in DEMO MODE - calls are simulated, no Twilio needed');
+      logger.info('[PhoneBot] Running in DEMO MODE - calls are simulated');
+      logger.info('[PhoneBot] To enable real calls, add TELNYX_API_KEY (recommended) or TWILIO credentials');
+    } else {
+      logger.info(`[PhoneBot] Using ${this.phoneProvider.toUpperCase()} for phone calls`);
+      logger.info(`[PhoneBot] Using ${this.llmProvider.toUpperCase()} for AI responses`);
     }
   }
 
   /**
-   * Initialize Twilio client (only when configured)
+   * Initialize phone client based on provider
+   */
+  private getPhoneClient() {
+    if (this.phoneProvider === 'telnyx') {
+      // Telnyx is 50% cheaper than Twilio
+      return { provider: 'telnyx', apiKey: TELNYX_API_KEY };
+    } else if (this.phoneProvider === 'twilio') {
+      const Twilio = require('twilio');
+      return { provider: 'twilio', client: new Twilio(TWILIO_SID, TWILIO_TOKEN) };
+    }
+    return null;
+  }
+
+  /**
+   * Initialize Twilio client (legacy support)
    */
   private getTwilioClient() {
-    if (!this.isConfigured) {
+    if (this.phoneProvider !== 'twilio') {
       return null;
     }
     const Twilio = require('twilio');
@@ -109,6 +152,7 @@ export class PhoneBotService {
 
   /**
    * Start an outbound call (real or simulated)
+   * Supports: Telnyx (recommended, 50% cheaper) or Twilio
    */
   async startCall(to: string, script: string, caseId?: string): Promise<CallResult> {
     // Generate a call ID (real or simulated)
@@ -120,18 +164,43 @@ export class PhoneBotService {
       let finalCallSid = callSid;
 
       if (!this.demoMode) {
-        // Real Twilio call
-        const twilio = this.getTwilioClient();
-        const call = await twilio.calls.create({
-          to,
-          from: TWILIO_NUMBER,
-          url: `${process.env.API_BASE_URL}/api/phone/webhook`,
-          statusCallback: `${process.env.API_BASE_URL}/api/phone/status`,
-          statusCallbackEvent: ['initiated', 'ringing', 'answered', 'completed'],
-          record: true,
-          recordingStatusCallback: `${process.env.API_BASE_URL}/api/phone/recording`,
-        });
-        finalCallSid = call.sid;
+        if (this.phoneProvider === 'telnyx') {
+          // Telnyx call (50% cheaper than Twilio)
+          const response = await fetch('https://api.telnyx.com/v2/calls', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${TELNYX_API_KEY}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              connection_id: process.env.TELNYX_CONNECTION_ID,
+              to,
+              from: TELNYX_NUMBER,
+              webhook_url: `${process.env.API_BASE_URL}/api/phone/webhook`,
+              record: 'record-from-answer',
+            }),
+          });
+
+          if (!response.ok) {
+            throw new Error(`Telnyx API error: ${response.status}`);
+          }
+
+          const data = await response.json();
+          finalCallSid = data.data?.call_control_id || `TELNYX_${Date.now()}`;
+        } else {
+          // Twilio call (legacy)
+          const twilio = this.getTwilioClient();
+          const call = await twilio.calls.create({
+            to,
+            from: TWILIO_NUMBER,
+            url: `${process.env.API_BASE_URL}/api/phone/webhook`,
+            statusCallback: `${process.env.API_BASE_URL}/api/phone/status`,
+            statusCallbackEvent: ['initiated', 'ringing', 'answered', 'completed'],
+            record: true,
+            recordingStatusCallback: `${process.env.API_BASE_URL}/api/phone/recording`,
+          });
+          finalCallSid = call.sid;
+        }
       }
 
       // Log call in database (works for both real and demo)
@@ -187,10 +256,12 @@ export class PhoneBotService {
   /**
    * Get service status
    */
-  getStatus(): { configured: boolean; mode: string } {
+  getStatus(): { configured: boolean; mode: string; phoneProvider: string; llmProvider: string } {
     return {
       configured: this.isConfigured,
-      mode: this.demoMode ? 'demo' : 'live'
+      mode: this.demoMode ? 'demo' : 'live',
+      phoneProvider: this.phoneProvider,
+      llmProvider: this.llmProvider,
     };
   }
 
@@ -257,45 +328,97 @@ export class PhoneBotService {
   }
 
   /**
-   * Generate conversational response using OpenAI
+   * Generate conversational response using AI
+   * Supports: DeepSeek (95% cheaper), Gemini, or OpenAI
    */
   async generateConversationalResponse(userInput: string): Promise<string> {
-    if (!OPENAI_API_KEY) {
-      return 'I understand. Let me connect you with a representative who can better assist you.';
-    }
-
-    try {
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${OPENAI_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'gpt-4o',
-          messages: [
-            {
-              role: 'system',
-              content: `You are a professional representative for MGR Capital, a surplus fund recovery company.
+    const systemPrompt = `You are a professional representative for MGR Capital, a surplus fund recovery company.
 You help property owners recover unclaimed funds from tax sales.
 Be professional, empathetic, and informative.
 Keep responses concise (under 100 words) for phone conversations.
 Never discuss specific amounts over the phone.
-If asked about fees, explain we work on contingency (no upfront costs).`,
-            },
-            { role: 'user', content: userInput },
-          ],
-          max_tokens: 150,
-          temperature: 0.7,
-        }),
-      });
+If asked about fees, explain we work on contingency (no upfront costs).`;
 
-      const data = await response.json();
-      return data.choices?.[0]?.message?.content || 'I understand. How else may I assist you?';
-    } catch (error: any) {
-      logger.error('OpenAI API error', { error: error.message });
-      return 'I understand. Let me make a note of that for our team.';
+    // Try DeepSeek first (95% cheaper than OpenAI)
+    if (DEEPSEEK_API_KEY) {
+      try {
+        const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${DEEPSEEK_API_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: 'deepseek-chat',
+            messages: [
+              { role: 'system', content: systemPrompt },
+              { role: 'user', content: userInput },
+            ],
+            max_tokens: 150,
+            temperature: 0.7,
+          }),
+        });
+
+        const data = await response.json();
+        const content = data.choices?.[0]?.message?.content;
+        if (content) return content;
+      } catch (error: any) {
+        logger.warn('DeepSeek API error, trying fallback', { error: error.message });
+      }
     }
+
+    // Try Gemini (Google AI) as second option
+    if (GOOGLE_AI_KEY) {
+      try {
+        const response = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GOOGLE_AI_KEY}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: `${systemPrompt}\n\nUser: ${userInput}` }] }],
+              generationConfig: { maxOutputTokens: 150, temperature: 0.7 },
+            }),
+          }
+        );
+
+        const data = await response.json();
+        const content = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (content) return content;
+      } catch (error: any) {
+        logger.warn('Gemini API error, trying fallback', { error: error.message });
+      }
+    }
+
+    // Try OpenAI as third option
+    if (OPENAI_API_KEY) {
+      try {
+        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${OPENAI_API_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: 'gpt-4o-mini', // Using mini for cost savings
+            messages: [
+              { role: 'system', content: systemPrompt },
+              { role: 'user', content: userInput },
+            ],
+            max_tokens: 150,
+            temperature: 0.7,
+          }),
+        });
+
+        const data = await response.json();
+        return data.choices?.[0]?.message?.content || 'I understand. How else may I assist you?';
+      } catch (error: any) {
+        logger.error('OpenAI API error', { error: error.message });
+      }
+    }
+
+    // Scripted fallback (no API needed)
+    return 'I understand. Let me connect you with a representative who can better assist you.';
   }
 
   /**

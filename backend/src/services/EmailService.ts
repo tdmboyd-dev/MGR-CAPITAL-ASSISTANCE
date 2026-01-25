@@ -1,6 +1,11 @@
 /**
  * EmailService.ts — MGR CAPITAL ASSISTANCE
  * Custom Email System with nodemailer + MJML templates + drip sequences
+ *
+ * RECOMMENDED PROVIDERS (see BEST_APIS_GUIDE.md):
+ * 1. Brevo (FREE 300 emails/day) - Best free tier
+ * 2. Amazon SES ($0.10/1000 emails) - Cheapest at scale
+ * 3. MailerSend (FREE 500/month) - Good alternative
  */
 
 import nodemailer from 'nodemailer';
@@ -8,15 +13,24 @@ import mjml2html from 'mjml';
 import { config } from '../config/env.js';
 import { logger } from '../utils/logger.js';
 
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST || 'smtp.example.com',
+// Brevo API key (FREE 300 emails/day)
+const BREVO_API_KEY = process.env.BREVO_API_KEY;
+
+// Determine email provider
+const EMAIL_PROVIDER = BREVO_API_KEY ? 'brevo' : (process.env.SMTP_HOST ? 'smtp' : 'demo');
+
+// SMTP transport (for generic SMTP or Amazon SES)
+const transporter = process.env.SMTP_HOST ? nodemailer.createTransport({
+  host: process.env.SMTP_HOST,
   port: parseInt(process.env.SMTP_PORT || '587'),
   secure: process.env.SMTP_SECURE === 'true',
   auth: {
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASS,
   },
-});
+}) : null;
+
+logger.info(`[EmailService] Using ${EMAIL_PROVIDER.toUpperCase()} for email delivery`);
 
 // Email templates stored in memory (can be moved to DB)
 const TEMPLATES: Record<string, (data: any) => string> = {
@@ -122,22 +136,96 @@ const TEMPLATES: Record<string, (data: any) => string> = {
 };
 
 export class EmailService {
-  async send(templateName: string, to: string, data: Record<string, any>): Promise<boolean> {
-    try {
-      const html = this.renderTemplate(templateName, data);
+  private provider: string;
 
-      await transporter.sendMail({
-        from: `"MGR Capital" <${process.env.SMTP_FROM || 'no-reply@mgrcapital.com'}>`,
-        to,
-        subject: data.subject || 'MGR Capital Notification',
-        html,
-        text: data.plainText || this.stripHtml(html),
+  constructor() {
+    this.provider = EMAIL_PROVIDER;
+  }
+
+  /**
+   * Get service status
+   */
+  getStatus(): { provider: string; configured: boolean } {
+    return {
+      provider: this.provider,
+      configured: this.provider !== 'demo',
+    };
+  }
+
+  async send(templateName: string, to: string, data: Record<string, any>): Promise<boolean> {
+    const html = this.renderTemplate(templateName, data);
+    const subject = data.subject || 'MGR Capital Notification';
+    const plainText = data.plainText || this.stripHtml(html);
+
+    // Use Brevo if configured (FREE 300 emails/day)
+    if (BREVO_API_KEY) {
+      return this.sendViaBrevo(to, subject, html, plainText);
+    }
+
+    // Use SMTP if configured
+    if (transporter) {
+      return this.sendViaSMTP(to, subject, html, plainText);
+    }
+
+    // Demo mode - log but don't send
+    logger.info('[DEMO] Email would be sent', { template: templateName, to, subject });
+    return true;
+  }
+
+  /**
+   * Send email via Brevo API (FREE 300/day)
+   */
+  private async sendViaBrevo(to: string, subject: string, html: string, text: string): Promise<boolean> {
+    try {
+      const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+        method: 'POST',
+        headers: {
+          'api-key': BREVO_API_KEY!,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          sender: {
+            name: 'MGR Capital',
+            email: process.env.BREVO_FROM || 'no-reply@mgrcapital.com',
+          },
+          to: [{ email: to }],
+          subject,
+          htmlContent: html,
+          textContent: text,
+        }),
       });
 
-      logger.info('Email sent', { template: templateName, to });
+      if (!response.ok) {
+        const error = await response.text();
+        logger.error('Brevo API error', { error });
+        return false;
+      }
+
+      logger.info('Email sent via Brevo', { to, subject });
       return true;
-    } catch (error) {
-      logger.error('Email send failed', { template: templateName, to, error });
+    } catch (error: any) {
+      logger.error('Brevo send failed', { error: error.message });
+      return false;
+    }
+  }
+
+  /**
+   * Send email via SMTP (Amazon SES, generic SMTP)
+   */
+  private async sendViaSMTP(to: string, subject: string, html: string, text: string): Promise<boolean> {
+    try {
+      await transporter!.sendMail({
+        from: `"MGR Capital" <${process.env.SMTP_FROM || 'no-reply@mgrcapital.com'}>`,
+        to,
+        subject,
+        html,
+        text,
+      });
+
+      logger.info('Email sent via SMTP', { to, subject });
+      return true;
+    } catch (error: any) {
+      logger.error('SMTP send failed', { error: error.message });
       return false;
     }
   }
