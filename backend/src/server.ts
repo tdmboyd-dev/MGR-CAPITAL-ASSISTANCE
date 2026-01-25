@@ -72,6 +72,12 @@ import skipTraceRoutes from "./routes/skipTrace.js";
 // State Deadlines
 import deadlinesRoutes from "./routes/deadlines.js";
 
+// AI Phone Bot (Twilio + ElevenLabs + OpenAI)
+import phoneRoutes from "./routes/phoneRoutes.js";
+
+// NFT Minting (Surplus Claims)
+import nftRoutes from "./routes/nftRoutes.js";
+
 // Rate limiting
 import { loginRateLimit, passwordResetRateLimit } from "./middleware/rateLimit.js";
 
@@ -169,6 +175,12 @@ app.use("/api/skip-trace", skipTraceRoutes);
 
 // State Deadlines & Compliance
 app.use("/api/deadlines", deadlinesRoutes);
+
+// AI Phone Bot (Twilio + ElevenLabs + OpenAI)
+app.use("/api/phone", phoneRoutes);
+
+// NFT Minting (Surplus Claim Tokenization)
+app.use("/api/nft", nftRoutes);
 
 // ============================================
 // HEALTH CHECK

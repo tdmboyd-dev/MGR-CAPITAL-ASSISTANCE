@@ -200,4 +200,40 @@ router.get("/service/status", authenticate, async (_req, res) => {
   res.json(status);
 });
 
+/**
+ * GET /api/payments
+ * List all payments
+ */
+router.get("/", authenticate, async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit as string) || 50;
+    const offset = parseInt(req.query.offset as string) || 0;
+
+    // Import PaymentService for list functionality
+    const { paymentService } = await import("../services/PaymentService.js");
+    const payments = await paymentService.listPayments(limit, offset);
+
+    res.json({ success: true, data: payments });
+  } catch (error: any) {
+    logger.error("Payments list failed", { error: error.message });
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * GET /api/payments/metrics
+ * Get payment metrics for dashboard
+ */
+router.get("/metrics", authenticate, async (_req, res) => {
+  try {
+    const { paymentService } = await import("../services/PaymentService.js");
+    const metrics = await paymentService.getMetrics();
+
+    res.json({ success: true, data: metrics });
+  } catch (error: any) {
+    logger.error("Payment metrics failed", { error: error.message });
+    res.status(500).json({ error: error.message });
+  }
+});
+
 export default router;

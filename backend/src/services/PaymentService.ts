@@ -1,6 +1,7 @@
 /**
  * PaymentService.ts — MGR CAPITAL ASSISTANCE
- * Payment Abstraction Layer (Stripe + PayPal + ACH)
+ * Payment Abstraction Layer (Nickel FREE ACH + Stripe + PayPal)
+ * ADVANCED: Multi-provider with metrics, fraud detection, auto-invoicing
  */
 
 import Stripe from 'stripe';
@@ -11,8 +12,12 @@ const prisma = new PrismaClient();
 
 // Initialize Stripe (if key available)
 const stripe = process.env.STRIPE_SECRET_KEY
-  ? new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: '2023-10-16' })
+  ? new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: '2023-10-16' as any })
   : null;
+
+// Nickel API configuration (FREE unlimited ACH)
+const NICKEL_API_URL = 'https://api.nickelpayments.com/v1';
+const NICKEL_API_KEY = process.env.NICKEL_API_KEY;
 
 export type PaymentMethod = 'stripe' | 'paypal' | 'ach' | 'check';
 export type PaymentStatus = 'pending' | 'processing' | 'succeeded' | 'failed' | 'refunded';
@@ -359,6 +364,188 @@ export class PaymentService {
     });
 
     return session.url;
+  }
+
+  /**
+   * Process Nickel ACH payment (FREE unlimited ACH)
+   */
+  async processNickelACH(
+    paymentId: string,
+    amount: number,
+    data: any
+  ): Promise<PaymentResult> {
+    if (!NICKEL_API_KEY) {
+      logger.warn('Nickel API key not configured, falling back to Stripe');
+      return this.processACH(paymentId, amount, data);
+    }
+
+    try {
+      const response = await fetch(`${NICKEL_API_URL}/payments`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${NICKEL_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          amount: amount,
+          currency: 'USD',
+          type: 'ach_debit',
+          description: data.description || 'MGR Capital Surplus Recovery Fee',
+          customer: {
+            email: data.email,
+            name: data.name,
+          },
+          metadata: {
+            caseId: data.caseId,
+            userId: data.userId,
+            internalPaymentId: paymentId,
+          },
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        logger.error('Nickel API error', { error: errorText });
+        // Fallback to regular ACH
+        return this.processACH(paymentId, amount, data);
+      }
+
+      const result = await response.json();
+
+      await this.recordPayment(paymentId, {
+        method: 'ach',
+        amount,
+        status: 'pending',
+        externalId: result.id,
+        caseId: data.caseId,
+        userId: data.userId,
+      });
+
+      return {
+        success: true,
+        paymentId,
+        status: 'pending',
+        method: 'ach',
+        amount,
+        currency: 'usd',
+        metadata: { nickelPaymentId: result.id, provider: 'nickel' },
+      };
+    } catch (error: any) {
+      logger.error('Nickel payment failed', { error: error.message });
+      return this.processACH(paymentId, amount, data);
+    }
+  }
+
+  /**
+   * Get payment metrics for dashboard
+   */
+  async getMetrics(): Promise<{
+    totalRecovered: number;
+    pending: number;
+    refunded: number;
+    trend: { date: string; amount: number }[];
+    byMethod: { method: string; count: number; total: number }[];
+  }> {
+    try {
+      const payments = await prisma.payment.findMany();
+
+      const totalRecovered = payments
+        .filter(p => p.status === 'succeeded')
+        .reduce((sum, p) => sum + p.amountCents, 0) / 100;
+
+      const pending = payments
+        .filter(p => p.status === 'pending')
+        .reduce((sum, p) => sum + p.amountCents, 0) / 100;
+
+      const refunded = payments
+        .filter(p => p.status === 'refunded')
+        .reduce((sum, p) => sum + p.amountCents, 0) / 100;
+
+      // Trend data (last 30 days)
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+      const recentPayments = payments.filter(
+        p => p.status === 'succeeded' && p.createdAt >= thirtyDaysAgo
+      );
+
+      const trendMap = new Map<string, number>();
+      recentPayments.forEach(p => {
+        const date = p.createdAt.toISOString().split('T')[0];
+        trendMap.set(date, (trendMap.get(date) || 0) + p.amountCents / 100);
+      });
+
+      const trend = Array.from(trendMap.entries())
+        .map(([date, amount]) => ({ date, amount }))
+        .sort((a, b) => a.date.localeCompare(b.date));
+
+      // By method breakdown
+      const methodMap = new Map<string, { count: number; total: number }>();
+      payments.filter(p => p.status === 'succeeded').forEach(p => {
+        const existing = methodMap.get(p.method) || { count: 0, total: 0 };
+        methodMap.set(p.method, {
+          count: existing.count + 1,
+          total: existing.total + p.amountCents / 100,
+        });
+      });
+
+      const byMethod = Array.from(methodMap.entries()).map(([method, data]) => ({
+        method,
+        ...data,
+      }));
+
+      return { totalRecovered, pending, refunded, trend, byMethod };
+    } catch (error: any) {
+      logger.error('Failed to get payment metrics', { error: error.message });
+      return { totalRecovered: 0, pending: 0, refunded: 0, trend: [], byMethod: [] };
+    }
+  }
+
+  /**
+   * List all payments with pagination
+   */
+  async listPayments(limit: number = 50, offset: number = 0): Promise<any[]> {
+    try {
+      const payments = await prisma.payment.findMany({
+        take: limit,
+        skip: offset,
+        orderBy: { createdAt: 'desc' },
+      });
+
+      return payments.map(p => ({
+        id: p.id,
+        amount: p.amountCents / 100,
+        method: p.method,
+        status: p.status,
+        externalId: p.externalId,
+        caseId: p.caseId,
+        userId: p.userId,
+        createdAt: p.createdAt,
+      }));
+    } catch (error: any) {
+      logger.error('Failed to list payments', { error: error.message });
+      return [];
+    }
+  }
+
+  /**
+   * Handle Nickel webhook
+   */
+  async handleNickelWebhook(payload: any, signature: string): Promise<void> {
+    // Verify webhook signature (implement based on Nickel docs)
+    logger.info('Nickel webhook received', { type: payload.type });
+
+    if (payload.type === 'payment.succeeded') {
+      const internalPaymentId = payload.data?.metadata?.internalPaymentId;
+      if (internalPaymentId) {
+        await this.updateStatus(internalPaymentId, 'succeeded');
+      }
+    } else if (payload.type === 'payment.failed') {
+      const internalPaymentId = payload.data?.metadata?.internalPaymentId;
+      if (internalPaymentId) {
+        await this.updateStatus(internalPaymentId, 'failed');
+      }
+    }
   }
 }
 
