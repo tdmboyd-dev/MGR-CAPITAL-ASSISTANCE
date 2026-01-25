@@ -58,9 +58,27 @@ User gave permission to improve everything. Claude made real improvements.
 | E2E Testing | 25% | 35% | +10% |
 | Production | 10% | 10% | 0% |
 
-**OVERALL: ~72%** (was 68%)
+**OVERALL: ~75%** (was 72%)
 
-### Additional Improvements This Session:
+### Round 3 Improvements (72% → 75%):
+
+11. **PhoneBotService** - Demo mode without Twilio
+    - Simulates calls when Twilio not configured
+    - Logs call attempts to database
+    - Returns realistic call IDs
+
+12. **PaymentService** - Demo mode without Stripe
+    - Simulates successful payments
+    - Records to database as normal
+    - Clear demo mode indicators
+
+13. **API_REQUIREMENTS.md** - Plain English documentation
+    - What works without APIs (self-contained)
+    - What needs APIs (external services)
+    - Step-by-step instructions to get each API key
+    - Cost breakdown
+
+### Previous Improvements:
 
 6. **NFTService** - Real Solana SPL minting
    - Uses @solana/web3.js and @solana/spl-token

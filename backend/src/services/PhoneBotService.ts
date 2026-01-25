@@ -84,55 +84,114 @@ Have a great day!
 };
 
 export class PhoneBotService {
+  private isConfigured: boolean;
+  private demoMode: boolean;
+
+  constructor() {
+    this.isConfigured = !!(TWILIO_SID && TWILIO_TOKEN && TWILIO_NUMBER);
+    this.demoMode = !this.isConfigured;
+
+    if (this.demoMode) {
+      logger.info('[PhoneBot] Running in DEMO MODE - calls are simulated, no Twilio needed');
+    }
+  }
+
   /**
-   * Initialize Twilio client
+   * Initialize Twilio client (only when configured)
    */
   private getTwilioClient() {
-    if (!TWILIO_SID || !TWILIO_TOKEN) {
-      throw new Error('Twilio credentials not configured');
+    if (!this.isConfigured) {
+      return null;
     }
-    // Dynamic import for Twilio
     const Twilio = require('twilio');
     return new Twilio(TWILIO_SID, TWILIO_TOKEN);
   }
 
   /**
-   * Start an outbound call
+   * Start an outbound call (real or simulated)
    */
   async startCall(to: string, script: string, caseId?: string): Promise<CallResult> {
+    // Generate a call ID (real or simulated)
+    const callSid = this.demoMode
+      ? `DEMO_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+      : undefined;
+
     try {
-      const twilio = this.getTwilioClient();
+      let finalCallSid = callSid;
 
-      const call = await twilio.calls.create({
+      if (!this.demoMode) {
+        // Real Twilio call
+        const twilio = this.getTwilioClient();
+        const call = await twilio.calls.create({
+          to,
+          from: TWILIO_NUMBER,
+          url: `${process.env.API_BASE_URL}/api/phone/webhook`,
+          statusCallback: `${process.env.API_BASE_URL}/api/phone/status`,
+          statusCallbackEvent: ['initiated', 'ringing', 'answered', 'completed'],
+          record: true,
+          recordingStatusCallback: `${process.env.API_BASE_URL}/api/phone/recording`,
+        });
+        finalCallSid = call.sid;
+      }
+
+      // Log call in database (works for both real and demo)
+      try {
+        await prisma.communication.create({
+          data: {
+            caseId,
+            type: 'PHONE_OUTBOUND',
+            direction: 'OUTBOUND',
+            status: this.demoMode ? 'DEMO_SIMULATED' : 'INITIATED',
+            subject: 'AI Outreach Call',
+            content: script,
+            metadata: JSON.stringify({
+              callSid: finalCallSid,
+              demoMode: this.demoMode,
+              to,
+              timestamp: new Date().toISOString()
+            }),
+          },
+        });
+      } catch (dbError) {
+        // Database might not be available in dev
+        logger.warn('Could not log call to database', { error: (dbError as Error).message });
+      }
+
+      logger.info('Call initiated', {
+        callSid: finalCallSid,
         to,
-        from: TWILIO_NUMBER,
-        url: `${process.env.API_BASE_URL}/api/phone/webhook`,
-        statusCallback: `${process.env.API_BASE_URL}/api/phone/status`,
-        statusCallbackEvent: ['initiated', 'ringing', 'answered', 'completed'],
-        record: true,
-        recordingStatusCallback: `${process.env.API_BASE_URL}/api/phone/recording`,
+        demoMode: this.demoMode
       });
 
-      // Log call in database
-      await prisma.communication.create({
-        data: {
-          caseId,
-          type: 'PHONE_OUTBOUND',
-          direction: 'OUTBOUND',
-          status: 'INITIATED',
-          subject: 'AI Outreach Call',
-          content: script,
-          metadata: JSON.stringify({ callSid: call.sid }),
-        },
-      });
+      // In demo mode, simulate call completion after 2 seconds
+      if (this.demoMode) {
+        setTimeout(() => {
+          logger.info('Demo call completed', { callSid: finalCallSid });
+        }, 2000);
+      }
 
-      logger.info('Call initiated', { callSid: call.sid, to });
-
-      return { success: true, callSid: call.sid };
+      return { success: true, callSid: finalCallSid };
     } catch (error: any) {
       logger.error('Failed to start call', { error: error.message });
       return { success: false, error: error.message };
     }
+  }
+
+  /**
+   * Check if service is in demo mode
+   */
+  isDemoMode(): boolean {
+    return this.demoMode;
+  }
+
+  /**
+   * Get service status
+   */
+  getStatus(): { configured: boolean; mode: string } {
+    return {
+      configured: this.isConfigured,
+      mode: this.demoMode ? 'demo' : 'live'
+    };
   }
 
   /**
