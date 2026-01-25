@@ -1,0 +1,19 @@
+<svg width="240" height="80" viewBox="0 0 240 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <style>
+    @keyframes pulse { 0%, 100% { opacity: 0.8; } 50% { opacity: 1; } }
+    .letter { animation: pulse 3s infinite; }
+  </style>
+  <defs>
+    <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3b82f6"/>
+      <stop offset="100%" stop-color="#8b5cf6"/>
+    </linearGradient>
+  </defs>
+  <text x="10" y="55" font-family="system-ui, sans-serif" font-size="52" font-weight="900" fill="url(#grad1)" class="letter">
+    MGR
+  </text>
+  <text x="120" y="55" font-family="system-ui, sans-serif" font-size="28" fill="#64748b" class="letter" opacity="0.9">
+    CAPITAL
+  </text>
+  <rect x="0" y="70" width="240" height="4" rx="2" fill="url(#grad1)" opacity="0.4"/>
+</svg>

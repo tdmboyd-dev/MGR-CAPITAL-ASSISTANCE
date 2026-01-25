@@ -31,7 +31,10 @@ type DocumentType =
   | "affidavit"
   | "contract"
   | "notice"
-  | "memo";
+  | "memo"
+  | "power-of-attorney"
+  | "subpoena"
+  | "settlement-agreement";
 
 interface DocumentTemplate {
   id: DocumentType;
@@ -69,6 +72,21 @@ const DOCUMENT_TEMPLATES: DocumentTemplate[] = [
     id: "memo",
     name: "Legal Memo",
     description: "Internal legal memorandum",
+  },
+  {
+    id: "power-of-attorney",
+    name: "Power of Attorney",
+    description: "Limited POA for surplus recovery",
+  },
+  {
+    id: "subpoena",
+    name: "Subpoena",
+    description: "Court order to appear or produce documents",
+  },
+  {
+    id: "settlement-agreement",
+    name: "Settlement Agreement",
+    description: "Settlement and release document",
   },
 ];
 
@@ -551,6 +569,81 @@ CONCLUSION:
 
 _________________________
 [Attorney Name]
+    `.trim(),
+
+    "power-of-attorney": `
+LIMITED POWER OF ATTORNEY
+
+Date: ${date}
+
+KNOW ALL PERSONS BY THESE PRESENTS:
+
+I, _________________________ ("Principal"), hereby appoint _________________________ ("Agent") as my attorney-in-fact.
+
+PURPOSE:
+${voiceText}
+
+This Limited Power of Attorney is granted solely for the purpose of recovering surplus funds on my behalf.
+
+POWERS GRANTED:
+1. Execute documents necessary for surplus fund recovery
+2. Communicate with government agencies and courts
+3. Receive and endorse checks payable to the Principal
+
+_________________________
+Principal Signature
+
+STATE OF _____________
+COUNTY OF ____________
+
+Subscribed and sworn before me this _____ day of ____________, 20___.
+
+_________________________
+Notary Public
+    `.trim(),
+
+    subpoena: `
+SUBPOENA
+
+Date: ${date}
+
+TO: _________________________
+
+YOU ARE HEREBY COMMANDED to appear before the Court on ____________ at _____ o'clock.
+
+PURPOSE:
+${voiceText}
+
+DOCUMENTS REQUIRED:
+1. _________________________
+2. _________________________
+
+FAILURE TO COMPLY may result in contempt of court charges.
+
+_________________________
+Clerk of Court / Attorney
+    `.trim(),
+
+    "settlement-agreement": `
+SETTLEMENT AGREEMENT AND RELEASE
+
+Date: ${date}
+
+PARTIES:
+Party A: _________________________
+Party B: _________________________
+
+RECITALS:
+${voiceText}
+
+TERMS:
+1. Settlement Amount: $_____________
+2. Payment Terms: _________________
+3. Release: Upon payment, parties release all claims.
+4. Confidentiality: Terms remain confidential.
+
+_________________________          _________________________
+Party A Signature                   Party B Signature
     `.trim(),
   };
 

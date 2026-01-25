@@ -18,8 +18,9 @@ export const metadata: Metadata = {
     title: "MGR Capital",
   },
   icons: {
-    icon: "/icons/icon-192x192.png",
+    icon: "/favicon.svg",
     apple: "/icons/icon-192x192.png",
+    shortcut: "/favicon.svg",
   },
 };
 
