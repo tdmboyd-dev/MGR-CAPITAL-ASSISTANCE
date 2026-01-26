@@ -1,12 +1,50 @@
 /**
  * Oracle Service - Fetches real-time state law updates
  *
- * NOTE: This is a STUB implementation. Real Chainlink oracle integration requires:
- * 1. Deployed Chainlink node
- * 2. Oracle contract on Solana
- * 3. Data feed subscription
- * 4. LINK tokens for payment
+ * Multi-source data:
+ * 1. Static cache (fast, reliable)
+ * 2. Web scraping fallback (for latest updates)
+ * 3. Future: Chainlink oracle integration
  */
+
+import { logger } from '../utils/logger.js';
+
+// Web fetch for scraping state government sites
+async function fetchWithTimeout(url: string, timeout = 10000): Promise<string | null> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+  try {
+    const response = await fetch(url, {
+      signal: controller.signal,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+      },
+    });
+    clearTimeout(timeoutId);
+    if (response.ok) {
+      return await response.text();
+    }
+    return null;
+  } catch (error) {
+    clearTimeout(timeoutId);
+    return null;
+  }
+}
+
+// State government website URLs for surplus fund deadlines
+const STATE_DEADLINE_URLS: Record<string, string> = {
+  'CA': 'https://www.ftb.ca.gov/forms/Search/Home/Forms', // California FTB
+  'FL': 'https://www.myflorida.com/treasury/', // Florida Treasury
+  'TX': 'https://comptroller.texas.gov/taxes/property-tax/', // Texas Comptroller
+  'NY': 'https://www.tax.ny.gov/', // New York Tax
+  'GA': 'https://dor.georgia.gov/property-tax', // Georgia DOR
+  'NC': 'https://www.ncdor.gov/taxes-forms/property-tax', // NC DOR
+  'OH': 'https://tax.ohio.gov/sales_and_use.aspx', // Ohio Tax
+  'PA': 'https://www.revenue.pa.gov/', // Pennsylvania Revenue
+  'IL': 'https://www2.illinois.gov/rev/', // Illinois Revenue
+  'MI': 'https://www.michigan.gov/treasury/', // Michigan Treasury
+};
 
 export interface StateLawUpdate {
   state: string;
@@ -151,6 +189,98 @@ export class OracleService {
       oracleDeadline,
       difference
     };
+  }
+
+  /**
+   * Scrape state government website for deadline updates
+   * Falls back to static data if scraping fails
+   */
+  async scrapeStateDeadline(state: string): Promise<StateLawUpdate | null> {
+    const stateUpper = state.toUpperCase();
+    const url = STATE_DEADLINE_URLS[stateUpper];
+
+    if (!url) {
+      logger.info(`No scrape URL for state: ${stateUpper}`);
+      return STATE_DEADLINES[stateUpper] || null;
+    }
+
+    try {
+      const html = await fetchWithTimeout(url);
+      if (!html) {
+        logger.warn(`Failed to fetch ${url}`);
+        return STATE_DEADLINES[stateUpper] || null;
+      }
+
+      // Parse for deadline-related keywords
+      const deadlinePatterns = [
+        /(\d+)\s*year[s]?\s*(from|after|following)/i,
+        /redemption\s*period[:\s]*(\d+)\s*year/i,
+        /claim\s*within\s*(\d+)\s*year/i,
+        /(\d+)\s*month[s]?\s*(from|after)/i,
+      ];
+
+      for (const pattern of deadlinePatterns) {
+        const match = html.match(pattern);
+        if (match) {
+          const years = parseInt(match[1], 10);
+          const isMonths = pattern.source.includes('month');
+
+          logger.info(`Scraped deadline for ${stateUpper}: ${years} ${isMonths ? 'months' : 'years'}`);
+
+          return {
+            state: stateUpper,
+            deadlineYears: isMonths ? Math.ceil(years / 12) : years,
+            deadlineDescription: `${years} ${isMonths ? 'months' : 'years'} from date of sale (scraped)`,
+            lastUpdated: new Date(),
+            source: `Scraped from ${url}`,
+            changes: ['Data freshly scraped'],
+          };
+        }
+      }
+
+      // No match found, return static data
+      logger.info(`No deadline pattern found for ${stateUpper}, using static data`);
+      return STATE_DEADLINES[stateUpper] || null;
+    } catch (error) {
+      logger.error(`Scrape error for ${stateUpper}`, { error });
+      return STATE_DEADLINES[stateUpper] || null;
+    }
+  }
+
+  /**
+   * Refresh all state data (run as cron job)
+   */
+  async refreshAllStates(): Promise<{ updated: number; failed: number }> {
+    let updated = 0;
+    let failed = 0;
+
+    for (const state of Object.keys(STATE_DEADLINE_URLS)) {
+      try {
+        const scraped = await this.scrapeStateDeadline(state);
+        if (scraped && scraped.source.includes('Scraped')) {
+          // Update static cache with fresh data
+          STATE_DEADLINES[state] = scraped;
+          updated++;
+        } else {
+          failed++;
+        }
+      } catch (error) {
+        failed++;
+      }
+
+      // Rate limit: 1 request per 2 seconds
+      await new Promise(resolve => setTimeout(resolve, 2000));
+    }
+
+    logger.info(`Oracle refresh complete: ${updated} updated, ${failed} failed`);
+    return { updated, failed };
+  }
+
+  /**
+   * Get data source info
+   */
+  getDataSources(): Record<string, string> {
+    return { ...STATE_DEADLINE_URLS };
   }
 }
 

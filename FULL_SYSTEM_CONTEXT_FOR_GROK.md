@@ -1,35 +1,36 @@
 # FULL_SYSTEM_CONTEXT_FOR_GROK
 
 **Updated:** 2026-01-26
-**Version:** 4.0.0
+**Version:** 4.1.0
 **Author:** Claude Code
 
 ---
 
-## CURRENT STATUS: ~83% COMPLETE
+## CURRENT STATUS: ~84% COMPLETE
 
 Major improvements this session:
-- Nickel Payouts page with 3-way ACH split (Client/Employee/Founder)
-- Fee changed from 30% to 33%
-- Password reset emails now working (Amazon SES configured)
-- Phone call logs fixed (was returning empty array)
-- SMTP initialization on server startup
+- SMSService with Plivo premium integration
+- OracleService with web scraping capability
+- Push notifications wired to real PushService
+- Reviewed and integrated Grok's suggestions
 
 ---
 
 ## Progress to Completion
 
 ```
-Core Platform:           █████████░  88%
+Core Platform:           █████████░  89%
 AI/ML Features:          ████████░░  80%
 Blockchain Features:     ████░░░░░░  45%
-External Integrations:   ████████░░  75%
+External Integrations:   ████████░░  78%
+Push Notifications:      ████████░░  80%
+SMS Service:             █████████░  85%
 Mobile App:              █████░░░░░  50%
 Testing Coverage:        ███░░░░░░░  35%
-Production Ready:        ████░░░░░░  45%
+Production Ready:        ████░░░░░░  42%
 ```
 
-**OVERALL: ~83%**
+**OVERALL: ~84%**
 
 ---
 
@@ -43,14 +44,15 @@ Production Ready:        ████░░░░░░  45%
 | Email (Backup) | Brevo | LIVE |
 | Payments | Stripe | LIVE KEY |
 | E-Signatures | OpenSign | LIVE |
-| Phone/SMS | Telnyx/Plivo | NEEDS COMPANY EMAIL |
+| SMS | Plivo | CODE READY (needs keys) |
+| Phone/SMS | Telnyx | NEEDS COMPANY EMAIL |
 | Skip Trace | Tracerfy | NEEDS BUSINESS VERIFICATION |
 
 ---
 
 ## What's WORKING
 
-### Core Platform (88%)
+### Core Platform (89%)
 - [x] Authentication (JWT + cookies + rate limiting)
 - [x] Password reset with email (Amazon SES)
 - [x] Role-based access (FOUNDER/ADMIN/EMPLOYEE/CLIENT)
@@ -69,14 +71,15 @@ Production Ready:        ████░░░░░░  45%
 - [x] Copy to clipboard + open Nickel
 - [x] Visual distribution diagram
 
-### Communication (80%)
+### Communication (85%)
 - [x] Email sending (Amazon SES + Brevo backup)
 - [x] Password reset emails (HTML templates)
 - [x] WebSocket real-time updates
 - [x] Comms Chamber (internal chat)
 - [x] Phone call logs (fixed)
-- [ ] SMS sending (needs Plivo API key)
-- [ ] Push notifications (stub)
+- [x] Push notifications (VAPID web-push)
+- [x] SMS via email gateways
+- [x] Plivo SMS integration (code ready)
 
 ### AI Features (80%)
 - [x] DeepSeek AI integration
@@ -88,29 +91,29 @@ Production Ready:        ████░░░░░░  45%
 - [ ] Voice biometrics (needs real model)
 - [ ] Litigation simulator (needs case data)
 
+### Oracle Service (75%)
+- [x] Static state deadline data (all 50 states)
+- [x] Web scraping for 10 major states
+- [x] Deadline pattern matching
+- [x] Refresh all states function
+- [ ] Real-time subscription updates
+
 ---
 
 ## What Needs Work
 
-### Phone/SMS (Needs Company Email)
-- Telnyx for calls
-- Plivo for SMS
-- Sign up with admin@capitalmgr.com
+### High Priority (Affects Revenue):
+1. **PaymentService** - PayPal & ACH stubs need real integration
+2. **DocumentSigningService** - DocuSign integration stubbed
 
-### Blockchain (45%)
-- NFT minting (simulated without Solana key)
-- Auctions (in-memory)
-- Oracle (static data)
+### Medium Priority:
+3. **SkipTraceService** - In mock mode without Tracerfy API key
+4. **NFTService** - Blockchain operations are simulated
 
-### Mobile App (50%)
-- Basic screens exist
-- Needs more screens completed
-- Push notifications stub
-
-### Testing (35%)
-- E2E tests exist
-- Need more coverage
-- Integration tests needed
+### Low Priority:
+5. **BlockchainService** - ETH conversion hardcoded
+6. More mobile screens needed
+7. Production deployment
 
 ---
 
@@ -143,27 +146,28 @@ SURPLUS ($100,000)
 
 ---
 
-## Recent Fixes This Session
+## Services Enhanced This Session
 
-1. **Password Reset Emails** - Now sends real emails via Amazon SES
-   - File: `backend/src/routes/auth.ts`
-   - Added: `notificationService.sendPasswordResetEmail()`
+### SMSService - Plivo Premium
+New methods:
+- `sendViaPilvo(to, message)` - Premium SMS delivery
+- `sendBulkViaPilvo(numbers, message)` - Bulk SMS
+- `getPlivoStatus(uuid)` - Delivery status check
+- `smartSend(to, message, preferPremium)` - Auto-select provider
+- `isPlivoEnabled()` - Check configuration
 
-2. **Phone Call Logs** - No longer returns empty array
-   - File: `backend/src/routes/phoneRoutes.ts`
-   - Added: `phoneBotService.getAllRecentCalls()`
+### OracleService - Web Scraping
+New features:
+- `scrapeStateDeadline(state)` - Scrape state government sites
+- `refreshAllStates()` - Cron job to refresh all data
+- `getDataSources()` - List configured scrape URLs
+- Automatic fallback to static data on failure
 
-3. **SMTP Initialization** - Email service starts with server
-   - File: `backend/src/server.ts`
-   - Added: `notificationService.initialize()` on startup
-
-4. **Nickel Payouts** - 3-way split with tabs
-   - File: `frontend/app/founder/payouts/page.tsx`
-   - Shows Client, Employee, Founder payouts separately
-
-5. **Fee Changed** - 30% → 33%
-   - Multiple files updated
-   - Client gets 67%, company gets 33%
+### NotificationCenterService - Push Wired
+- `sendPushNotification()` now uses real PushService
+- VAPID web-push (platform-agnostic)
+- Automatic subscription lookup
+- Success/failure logging
 
 ---
 
@@ -207,9 +211,17 @@ STRIPE_SECRET_KEY=sk_live_...
 OPENSIGN_API_KEY=...
 OPENSIGN_JWT=...
 
-# Phone/SMS (NEED COMPANY EMAIL SIGNUP)
-# TELNYX_API_KEY=
+# Push Notifications (VAPID)
+VAPID_PUBLIC_KEY=...
+VAPID_PRIVATE_KEY=...
+
+# SMS - Plivo (CODE READY, NEEDS KEYS)
 # PLIVO_AUTH_ID=
+# PLIVO_AUTH_TOKEN=
+# PLIVO_NUMBER=
+
+# Phone (NEED COMPANY EMAIL SIGNUP)
+# TELNYX_API_KEY=
 
 # Skip Trace (NEEDS BUSINESS VERIFICATION)
 # TRACERFY_API_KEY=
@@ -237,16 +249,16 @@ Founder: time@mgrcapital.com / Dorothy1956!
 
 ### UI/UX Polish Needed:
 1. **Nickel Payouts Page** - Animations, better bot cards
-2. **Table Designs** - Better hover effects, row actions
-3. **Tab Transitions** - Smoother animations
+2. **Dashboard Cards** - Loading skeletons, hover states
+3. **Tables** - tanstack/react-table for large datasets
+4. **Mobile** - Test and fix responsive issues
 
 ### Backend Work Needed:
-1. **Push Notifications** - Replace stub with FCM/APNs
-2. **SMS Integration** - Add Plivo/Telnyx when keys available
-3. **Oracle Service** - Replace static data with real scraping
+1. **PaymentService** - Real PayPal SDK integration
+2. **DocumentSigningService** - Real DocuSign API calls
 
 ---
 
-**Progress Bar:** ████████░░ (83%)
+**Progress Bar:** ████████░░ (84%)
 
 — Claude Code

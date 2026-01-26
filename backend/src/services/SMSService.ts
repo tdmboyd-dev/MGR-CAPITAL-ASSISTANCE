@@ -1,10 +1,40 @@
 /**
  * SMSService.ts — MGR CAPITAL ASSISTANCE
- * Custom SMS Gateway via carrier email-to-SMS gateways (NO Twilio)
+ * Multi-provider SMS: Plivo (premium) + carrier email gateways (fallback)
  */
 
 import { emailService } from './EmailService.js';
 import { logger } from '../utils/logger.js';
+
+// ============================================
+// PLIVO INTEGRATION (Premium - requires API keys)
+// ============================================
+
+interface PlivoConfig {
+  authId: string;
+  authToken: string;
+  fromNumber: string;
+}
+
+let plivoClient: any = null;
+let plivoConfig: PlivoConfig | null = null;
+
+// Initialize Plivo if keys are configured
+if (process.env.PLIVO_AUTH_ID && process.env.PLIVO_AUTH_TOKEN) {
+  plivoConfig = {
+    authId: process.env.PLIVO_AUTH_ID,
+    authToken: process.env.PLIVO_AUTH_TOKEN,
+    fromNumber: process.env.PLIVO_NUMBER || '',
+  };
+
+  // Dynamic import to avoid errors if plivo not installed
+  import('plivo').then(plivo => {
+    plivoClient = new plivo.Client(plivoConfig!.authId, plivoConfig!.authToken);
+    logger.info('Plivo SMS client initialized');
+  }).catch(() => {
+    logger.warn('Plivo SDK not installed - using email gateway fallback');
+  });
+}
 
 // US carrier email-to-SMS gateways
 const CARRIER_GATEWAYS: Record<string, string> = {
@@ -192,6 +222,112 @@ export class SMSService {
    */
   getSupportedCarriers(): string[] {
     return Object.keys(CARRIER_GATEWAYS).filter(c => !c.includes('_mms'));
+  }
+
+  // ============================================
+  // PLIVO PREMIUM METHODS
+  // ============================================
+
+  /**
+   * Send SMS via Plivo API (premium, reliable delivery)
+   * @param to Phone number with country code (+1 for US)
+   * @param message Text message
+   */
+  async sendViaPilvo(
+    to: string,
+    message: string
+  ): Promise<SMSResult> {
+    if (!plivoClient || !plivoConfig?.fromNumber) {
+      logger.warn('Plivo not configured - falling back to email gateway');
+      return this.sendBroadcast(to, message);
+    }
+
+    try {
+      // Format phone number
+      let formattedTo = to.replace(/\D/g, '');
+      if (formattedTo.length === 10) {
+        formattedTo = `1${formattedTo}`; // Add US country code
+      }
+
+      const response = await plivoClient.messages.create({
+        src: plivoConfig.fromNumber,
+        dst: formattedTo,
+        text: message,
+      });
+
+      const messageUuid = response.messageUuid?.[0] || response.message_uuid?.[0];
+      logger.info('Plivo SMS sent', { to: formattedTo, uuid: messageUuid });
+
+      return {
+        success: true,
+        messageId: messageUuid,
+      };
+    } catch (error: any) {
+      logger.error('Plivo SMS error', { to, error: error.message });
+      return { success: false, error: error.message || 'Plivo send failed' };
+    }
+  }
+
+  /**
+   * Send SMS via Plivo to multiple recipients
+   */
+  async sendBulkViaPilvo(
+    numbers: string[],
+    message: string
+  ): Promise<{ sent: number; failed: number; messageIds: string[] }> {
+    let sent = 0;
+    let failed = 0;
+    const messageIds: string[] = [];
+
+    for (const phone of numbers) {
+      const result = await this.sendViaPilvo(phone, message);
+      if (result.success) {
+        sent++;
+        if (result.messageId) messageIds.push(result.messageId);
+      } else {
+        failed++;
+      }
+    }
+
+    return { sent, failed, messageIds };
+  }
+
+  /**
+   * Get Plivo message status
+   */
+  async getPlivoStatus(messageUuid: string): Promise<string | null> {
+    if (!plivoClient) return null;
+
+    try {
+      const message = await plivoClient.messages.get(messageUuid);
+      return message.messageState || message.message_state;
+    } catch (error) {
+      logger.error('Plivo status check failed', { messageUuid, error });
+      return null;
+    }
+  }
+
+  /**
+   * Smart send - uses Plivo if configured, otherwise email gateway
+   */
+  async smartSend(
+    to: string,
+    message: string,
+    preferPremium: boolean = true
+  ): Promise<SMSResult> {
+    if (preferPremium && plivoClient) {
+      return this.sendViaPilvo(to, message);
+    }
+
+    const carrier = this.detectCarrier(to);
+    return this.send(to, message, carrier);
+  }
+
+  /**
+   * Check if Plivo is configured
+   */
+  isPlivoEnabled(): boolean {
+    return plivoClient !== null && plivoConfig?.fromNumber !== '';
   }
 }
 

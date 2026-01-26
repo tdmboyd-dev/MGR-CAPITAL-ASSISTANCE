@@ -14,6 +14,7 @@
 
 import { PrismaClient } from "@prisma/client";
 import { logger } from "../utils/logger.js";
+import { pushService } from "./PushService.js";
 
 const prisma = new PrismaClient();
 
@@ -429,7 +430,8 @@ class NotificationCenterService {
   }
 
   /**
-   * Push notification stub (for future integration)
+   * Send push notification via VAPID web-push
+   * Uses PushService for actual delivery
    */
   async sendPushNotification(
     userId: string,
@@ -437,16 +439,28 @@ class NotificationCenterService {
     body: string,
     data?: Record<string, any>
   ): Promise<boolean> {
-    // Stub for push notification integration
-    // Would integrate with Firebase Cloud Messaging, Apple Push, etc.
-    logger.info("Push notification stub", { userId, title, body, data });
+    try {
+      // Check if VAPID keys are configured
+      const publicKey = pushService.getPublicKey();
+      if (!publicKey) {
+        logger.warn("Push notifications disabled - VAPID keys not configured");
+        return false;
+      }
 
-    // In production:
-    // 1. Get user's push tokens from database
-    // 2. Send to FCM/APNs
-    // 3. Log result
+      // Send via PushService (handles subscription lookup internally)
+      const success = await pushService.sendToUser(userId, title, body, data);
 
-    return true;
+      if (success) {
+        logger.info("Push notification sent", { userId, title });
+      } else {
+        logger.warn("Push notification failed - no subscriptions", { userId });
+      }
+
+      return success;
+    } catch (error) {
+      logger.error("Push notification error", { userId, title, error });
+      return false;
+    }
   }
 
   /**
