@@ -1,11 +1,10 @@
 'use client'
 
-import { useQuery, useMutation } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Input } from '@/components/ui/input'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
   Select,
@@ -31,36 +30,66 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from '@/components/ui/tabs'
+import {
   DollarSign, ExternalLink, Copy, CheckCircle, Clock,
   Users, Building2, RefreshCw, Loader2, ArrowRight,
   Clipboard, ClipboardCheck, Send, AlertCircle, Bot,
-  UserPlus, Sparkles, Zap, Play, Pause, Settings2
+  UserPlus, Sparkles, Zap, Play, Pause, User, Briefcase, Crown
 } from 'lucide-react'
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { toast } from 'sonner'
 
 // Nickel URL
 const NICKEL_URL = 'https://app.nickelpayments.com'
 
-interface PendingPayout {
-  id: string
-  caseCode: string
-  clientName: string
-  clientEmail: string
-  clientPhone: string
+// Types for the new payout structure
+interface PayoutRecipient {
+  name: string
+  email: string
+  phone?: string
   bankName?: string
   routingNumber?: string
   accountNumber?: string
-  surplusAmount: number
-  feePercent: number
-  feeAmount: number
-  payoutAmount: number
-  status: 'READY' | 'PENDING_INFO' | 'PROCESSING' | 'COMPLETED'
+}
+
+interface ClientPayout extends PayoutRecipient {
+  payoutCents: number
+}
+
+interface EmployeePayout extends PayoutRecipient {
+  id: string
+  tier: string
+  commissionCents: number
+  commissionRate: number
+}
+
+interface FounderPayout extends PayoutRecipient {
+  shareCents: number
+}
+
+interface CasePayout {
+  id: string
+  caseCode: string
   caseStatus: string
   county: string
   state: string
   createdAt: string
-  assignedAgent?: string
+  status: 'READY' | 'PENDING_INFO' | 'PROCESSING' | 'COMPLETED'
+  surplusAmountCents: number
+  feePercent: number
+  companyFeeCents: number
+  client: ClientPayout
+  employee: EmployeePayout | null
+  founder: FounderPayout
+  override: {
+    recipientId: string
+    commissionCents: number
+  } | null
 }
 
 interface PayrollBot {
@@ -82,7 +111,8 @@ const formatCurrency = (cents: number) => {
 }
 
 // Format phone
-const formatPhone = (phone: string) => {
+const formatPhone = (phone?: string) => {
+  if (!phone) return 'N/A'
   const cleaned = phone.replace(/\D/g, '')
   if (cleaned.length === 10) {
     return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3, 6)}-${cleaned.slice(6)}`
@@ -121,7 +151,123 @@ const PAYROLL_BOTS: PayrollBot[] = [
   },
 ]
 
+// Demo data for when API isn't available
+const getDemoPayouts = (): CasePayout[] => [
+  {
+    id: '1',
+    caseCode: 'MGR-2026-001',
+    caseStatus: 'AWAITING_FUNDS',
+    county: 'Davidson',
+    state: 'TN',
+    createdAt: '2026-01-20',
+    status: 'READY',
+    surplusAmountCents: 4500000,
+    feePercent: 33,
+    companyFeeCents: 1350000,
+    client: {
+      name: 'John Smith',
+      email: 'john.smith@email.com',
+      phone: '5551234567',
+      bankName: 'Chase Bank',
+      routingNumber: '021000021',
+      accountNumber: '****4567',
+      payoutCents: 3150000,
+    },
+    employee: {
+      id: 'emp-1',
+      name: 'Sarah Wilson',
+      email: 'sarah.w@mgrcapital.com',
+      phone: '5559998888',
+      tier: 'TIER_2_SPECIALIST',
+      bankName: 'Wells Fargo',
+      routingNumber: '121000248',
+      accountNumber: '****7890',
+      commissionCents: 270000, // 20% actual of $13,500 fee
+      commissionRate: 20,
+    },
+    founder: {
+      name: 'MGR Capital',
+      email: 'admin@capitalmgr.com',
+      bankName: 'Bank of America',
+      routingNumber: '026009593',
+      accountNumber: '****1234',
+      shareCents: 1080000, // $10,800 founder share
+    },
+    override: null,
+  },
+  {
+    id: '2',
+    caseCode: 'MGR-2026-002',
+    caseStatus: 'AWAITING_FUNDS',
+    county: 'Shelby',
+    state: 'TN',
+    createdAt: '2026-01-22',
+    status: 'READY',
+    surplusAmountCents: 2800000,
+    feePercent: 33,
+    companyFeeCents: 840000,
+    client: {
+      name: 'Maria Garcia',
+      email: 'maria.g@email.com',
+      phone: '5559876543',
+      bankName: 'Bank of America',
+      routingNumber: '026009593',
+      accountNumber: '****8901',
+      payoutCents: 1960000,
+    },
+    employee: {
+      id: 'emp-2',
+      name: 'James Brown',
+      email: 'james.b@mgrcapital.com',
+      phone: '5557776666',
+      tier: 'TIER_1_ASSOCIATE',
+      bankName: 'Chase Bank',
+      routingNumber: '021000021',
+      accountNumber: '****3456',
+      commissionCents: 84000, // 10% actual of $8,400 fee
+      commissionRate: 10,
+    },
+    founder: {
+      name: 'MGR Capital',
+      email: 'admin@capitalmgr.com',
+      bankName: 'Bank of America',
+      routingNumber: '026009593',
+      accountNumber: '****1234',
+      shareCents: 756000, // $7,560 founder share
+    },
+    override: null,
+  },
+  {
+    id: '3',
+    caseCode: 'MGR-2026-003',
+    caseStatus: 'SIGNED',
+    county: 'Knox',
+    state: 'TN',
+    createdAt: '2026-01-24',
+    status: 'PENDING_INFO',
+    surplusAmountCents: 1200000,
+    feePercent: 33,
+    companyFeeCents: 360000,
+    client: {
+      name: 'Michael Brown',
+      email: 'mbrown@email.com',
+      phone: '5555551212',
+      payoutCents: 840000,
+    },
+    employee: null, // Not yet assigned
+    founder: {
+      name: 'MGR Capital',
+      email: 'admin@capitalmgr.com',
+      shareCents: 360000, // Full fee since no employee
+    },
+    override: null,
+  },
+]
+
+type PayoutType = 'client' | 'employee' | 'founder'
+
 export default function NickelPayoutsPage() {
+  const [activeTab, setActiveTab] = useState<PayoutType>('client')
   const [selectedPayouts, setSelectedPayouts] = useState<Set<string>>(new Set())
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [nickelWindowOpen, setNickelWindowOpen] = useState(false)
@@ -141,121 +287,115 @@ export default function NickelPayoutsPage() {
         if (!response.ok) throw new Error('Failed to fetch')
         return response.json()
       } catch (error) {
-        // Return demo data if API fails
         return getDemoPayouts()
       }
     },
   })
 
-  // Demo payouts for when API isn't available
-  const getDemoPayouts = (): PendingPayout[] => [
-    {
-      id: '1',
-      caseCode: 'MGR-2026-001',
-      clientName: 'John Smith',
-      clientEmail: 'john.smith@email.com',
-      clientPhone: '5551234567',
-      bankName: 'Chase Bank',
-      routingNumber: '021000021',
-      accountNumber: '****4567',
-      surplusAmount: 4500000,
-      feePercent: 30,
-      feeAmount: 1350000,
-      payoutAmount: 3150000,
-      status: 'READY',
-      caseStatus: 'PAID_OUT',
-      county: 'Davidson',
-      state: 'TN',
-      createdAt: '2026-01-20',
-      assignedAgent: 'bot-1',
-    },
-    {
-      id: '2',
-      caseCode: 'MGR-2026-002',
-      clientName: 'Sarah Johnson',
-      clientEmail: 'sarah.j@email.com',
-      clientPhone: '5559876543',
-      bankName: 'Bank of America',
-      routingNumber: '026009593',
-      accountNumber: '****8901',
-      surplusAmount: 2800000,
-      feePercent: 30,
-      feeAmount: 840000,
-      payoutAmount: 1960000,
-      status: 'READY',
-      caseStatus: 'PAID_OUT',
-      county: 'Shelby',
-      state: 'TN',
-      createdAt: '2026-01-22',
-    },
-    {
-      id: '3',
-      caseCode: 'MGR-2026-003',
-      clientName: 'Michael Brown',
-      clientEmail: 'mbrown@email.com',
-      clientPhone: '5555551212',
-      surplusAmount: 1200000,
-      feePercent: 30,
-      feeAmount: 360000,
-      payoutAmount: 840000,
-      status: 'PENDING_INFO',
-      caseStatus: 'SIGNED',
-      county: 'Knox',
-      state: 'TN',
-      createdAt: '2026-01-24',
-    },
-  ]
+  const allPayouts: CasePayout[] = payouts || getDemoPayouts()
+  const readyPayouts = allPayouts.filter(p => p.status === 'READY')
 
-  const pendingPayouts = payouts || getDemoPayouts()
-  const readyPayouts = pendingPayouts.filter((p: PendingPayout) => p.status === 'READY')
-  const totalPayout = readyPayouts.reduce((sum: number, p: PendingPayout) => sum + p.payoutAmount, 0)
+  // Calculate totals for each type
+  const totals = {
+    client: readyPayouts.reduce((sum, p) => sum + p.client.payoutCents, 0),
+    employee: readyPayouts.reduce((sum, p) => sum + (p.employee?.commissionCents || 0), 0),
+    founder: readyPayouts.reduce((sum, p) => sum + p.founder.shareCents, 0),
+  }
 
-  // Copy payout data to clipboard in Nickel-friendly format
-  const copyPayoutData = (payout: PendingPayout) => {
-    const data = `CLIENT PAYOUT - ${payout.caseCode}
+  // Copy single payout data based on type
+  const copyPayoutData = (payout: CasePayout, type: PayoutType) => {
+    let data = ''
+    let recipient = ''
+
+    if (type === 'client') {
+      recipient = payout.client.name
+      data = `CLIENT ACH PAYOUT - ${payout.caseCode}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Recipient: ${payout.clientName}
-Email: ${payout.clientEmail}
-Phone: ${formatPhone(payout.clientPhone)}
-${payout.bankName ? `Bank: ${payout.bankName}` : ''}
-${payout.routingNumber ? `Routing: ${payout.routingNumber}` : ''}
-${payout.accountNumber ? `Account: ${payout.accountNumber}` : ''}
+Recipient: ${payout.client.name}
+Email: ${payout.client.email}
+Phone: ${formatPhone(payout.client.phone)}
+${payout.client.bankName ? `Bank: ${payout.client.bankName}` : ''}
+${payout.client.routingNumber ? `Routing: ${payout.client.routingNumber}` : ''}
+${payout.client.accountNumber ? `Account: ${payout.client.accountNumber}` : ''}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Amount: ${formatCurrency(payout.payoutAmount)}
-(Surplus: ${formatCurrency(payout.surplusAmount)} - Fee: ${formatCurrency(payout.feeAmount)})
+Amount: ${formatCurrency(payout.client.payoutCents)}
+Type: Client Payout (${100 - payout.feePercent}% of surplus)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Case: ${payout.caseCode} | ${payout.county}, ${payout.state}`
+Case: ${payout.caseCode} | ${payout.county}, ${payout.state}
+Surplus: ${formatCurrency(payout.surplusAmountCents)}`
+    } else if (type === 'employee' && payout.employee) {
+      recipient = payout.employee.name
+      data = `EMPLOYEE COMMISSION ACH - ${payout.caseCode}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Recipient: ${payout.employee.name}
+Email: ${payout.employee.email}
+Phone: ${formatPhone(payout.employee.phone)}
+Tier: ${payout.employee.tier.replace('_', ' ')}
+${payout.employee.bankName ? `Bank: ${payout.employee.bankName}` : ''}
+${payout.employee.routingNumber ? `Routing: ${payout.employee.routingNumber}` : ''}
+${payout.employee.accountNumber ? `Account: ${payout.employee.accountNumber}` : ''}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Amount: ${formatCurrency(payout.employee.commissionCents)}
+Type: Employee Commission (${payout.employee.commissionRate}% of company fee)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Case: ${payout.caseCode} | ${payout.county}, ${payout.state}
+Company Fee: ${formatCurrency(payout.companyFeeCents)}`
+    } else if (type === 'founder') {
+      recipient = payout.founder.name
+      data = `FOUNDER SHARE ACH - ${payout.caseCode}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Recipient: ${payout.founder.name}
+Email: ${payout.founder.email}
+Phone: ${formatPhone(payout.founder.phone)}
+${payout.founder.bankName ? `Bank: ${payout.founder.bankName}` : ''}
+${payout.founder.routingNumber ? `Routing: ${payout.founder.routingNumber}` : ''}
+${payout.founder.accountNumber ? `Account: ${payout.founder.accountNumber}` : ''}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Amount: ${formatCurrency(payout.founder.shareCents)}
+Type: Founder Share (Company Fee - Employee Commission)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Case: ${payout.caseCode} | ${payout.county}, ${payout.state}
+Company Fee: ${formatCurrency(payout.companyFeeCents)}
+Employee Commission: ${formatCurrency(payout.employee?.commissionCents || 0)}`
+    }
 
     navigator.clipboard.writeText(data)
-    setCopiedId(payout.id)
-    toast.success(`Copied ${payout.clientName}'s payout data`)
+    setCopiedId(`${payout.id}-${type}`)
+    toast.success(`Copied ${recipient}'s ${type} payout data`)
     setTimeout(() => setCopiedId(null), 2000)
   }
 
-  // Copy all selected payouts
+  // Copy all selected payouts for current tab
   const copyAllSelected = () => {
-    const selected = pendingPayouts.filter((p: PendingPayout) => selectedPayouts.has(p.id))
+    const selected = allPayouts.filter(p => selectedPayouts.has(p.id))
     if (selected.length === 0) {
       toast.error('Select at least one payout to copy')
       return
     }
 
-    const allData = selected.map((p: PendingPayout) => `
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-PAYOUT: ${p.clientName} - ${formatCurrency(p.payoutAmount)}
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Name: ${p.clientName}
-Email: ${p.clientEmail}
-Phone: ${formatPhone(p.clientPhone)}
-${p.bankName ? `Bank: ${p.bankName}` : ''}
-${p.routingNumber ? `Routing: ${p.routingNumber}` : ''}
-${p.accountNumber ? `Account: ${p.accountNumber}` : ''}
-Amount: ${formatCurrency(p.payoutAmount)}
+    let allData = ''
+    if (activeTab === 'client') {
+      allData = selected.map(p => `
+${p.client.name} | ${formatCurrency(p.client.payoutCents)} | ${p.client.email}
+Bank: ${p.client.bankName || 'N/A'} | Routing: ${p.client.routingNumber || 'N/A'} | Account: ${p.client.accountNumber || 'N/A'}
 Case: ${p.caseCode}
-`).join('\n')
+`).join('\n---\n')
+    } else if (activeTab === 'employee') {
+      allData = selected.filter(p => p.employee).map(p => `
+${p.employee!.name} | ${formatCurrency(p.employee!.commissionCents)} | ${p.employee!.email}
+Bank: ${p.employee!.bankName || 'N/A'} | Routing: ${p.employee!.routingNumber || 'N/A'} | Account: ${p.employee!.accountNumber || 'N/A'}
+Case: ${p.caseCode} | Commission Rate: ${p.employee!.commissionRate}%
+`).join('\n---\n')
+    } else {
+      allData = selected.map(p => `
+${p.founder.name} | ${formatCurrency(p.founder.shareCents)} | ${p.founder.email}
+Bank: ${p.founder.bankName || 'N/A'} | Routing: ${p.founder.routingNumber || 'N/A'} | Account: ${p.founder.accountNumber || 'N/A'}
+Case: ${p.caseCode}
+`).join('\n---\n')
+    }
 
     navigator.clipboard.writeText(allData)
-    toast.success(`Copied ${selected.length} payout(s) to clipboard`)
+    toast.success(`Copied ${selected.length} ${activeTab} payout(s) to clipboard`)
   }
 
   // Open Nickel in new tab
@@ -278,7 +418,7 @@ Case: ${p.caseCode}
 
   // Select all ready payouts
   const selectAllReady = () => {
-    const readyIds = readyPayouts.map((p: PendingPayout) => p.id)
+    const readyIds = readyPayouts.map(p => p.id)
     setSelectedPayouts(new Set(readyIds))
   }
 
@@ -295,7 +435,6 @@ Case: ${p.caseCode}
     setSelectedBot('')
     setSelectedPayouts(new Set())
 
-    // Update bot stats (demo)
     setBots(prev => prev.map(b =>
       b.id === selectedBot
         ? { ...b, assignedPayouts: b.assignedPayouts + selectedPayouts.size, status: 'active' as const }
@@ -303,29 +442,43 @@ Case: ${p.caseCode}
     ))
   }
 
-  // Run bot automation
+  // Run bot automation for current tab
   const runBot = async (botId: string) => {
     const bot = bots.find(b => b.id === botId)
     if (!bot) return
 
     setBotRunning(botId)
-    toast.info(`${bot.name} is preparing payouts...`)
+    toast.info(`${bot.name} is preparing ${activeTab} payouts...`)
 
-    // Simulate bot processing
     await new Promise(resolve => setTimeout(resolve, 2000))
 
-    // Copy all ready payouts to clipboard
-    const allReady = pendingPayouts.filter((p: PendingPayout) => p.status === 'READY')
-    if (allReady.length > 0) {
-      const allData = allReady.map((p: PendingPayout) => `
-${p.clientName} | ${formatCurrency(p.payoutAmount)} | ${p.clientEmail}
-Bank: ${p.bankName || 'N/A'} | Routing: ${p.routingNumber || 'N/A'} | Account: ${p.accountNumber || 'N/A'}
+    // Copy based on active tab
+    let allData = ''
+    const ready = readyPayouts
+
+    if (activeTab === 'client') {
+      allData = ready.map(p => `
+CLIENT: ${p.client.name} | ${formatCurrency(p.client.payoutCents)}
+Email: ${p.client.email} | Phone: ${formatPhone(p.client.phone)}
+Bank: ${p.client.bankName || 'N/A'} | Routing: ${p.client.routingNumber || 'N/A'} | Account: ${p.client.accountNumber || 'N/A'}
 `).join('\n---\n')
+    } else if (activeTab === 'employee') {
+      allData = ready.filter(p => p.employee).map(p => `
+EMPLOYEE: ${p.employee!.name} | ${formatCurrency(p.employee!.commissionCents)}
+Email: ${p.employee!.email} | Tier: ${p.employee!.tier}
+Bank: ${p.employee!.bankName || 'N/A'} | Routing: ${p.employee!.routingNumber || 'N/A'} | Account: ${p.employee!.accountNumber || 'N/A'}
+`).join('\n---\n')
+    } else {
+      allData = ready.map(p => `
+FOUNDER: ${p.founder.name} | ${formatCurrency(p.founder.shareCents)}
+Email: ${p.founder.email}
+Bank: ${p.founder.bankName || 'N/A'} | Routing: ${p.founder.routingNumber || 'N/A'} | Account: ${p.founder.accountNumber || 'N/A'}
+`).join('\n---\n')
+    }
 
+    if (allData) {
       navigator.clipboard.writeText(allData)
-      toast.success(`${bot.name} prepared ${allReady.length} payouts - data copied!`)
-
-      // Open Nickel
+      toast.success(`${bot.name} prepared ${ready.length} ${activeTab} payouts - data copied!`)
       window.open(NICKEL_URL, '_blank', 'noopener,noreferrer')
       setNickelWindowOpen(true)
     }
@@ -345,6 +498,24 @@ Bank: ${p.bankName || 'N/A'} | Routing: ${p.routingNumber || 'N/A'} | Account: $
     }))
   }
 
+  // Get icon for tab
+  const getTabIcon = (type: PayoutType) => {
+    switch (type) {
+      case 'client': return <User className="w-4 h-4" />
+      case 'employee': return <Briefcase className="w-4 h-4" />
+      case 'founder': return <Crown className="w-4 h-4" />
+    }
+  }
+
+  // Get color for tab
+  const getTabColor = (type: PayoutType) => {
+    switch (type) {
+      case 'client': return 'text-blue-600 bg-blue-100'
+      case 'employee': return 'text-green-600 bg-green-100'
+      case 'founder': return 'text-purple-600 bg-purple-100'
+    }
+  }
+
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
@@ -355,7 +526,7 @@ Bank: ${p.bankName || 'N/A'} | Routing: ${p.routingNumber || 'N/A'} | Account: $
             Nickel Payouts
           </h1>
           <p className="text-muted-foreground">
-            Manage client payouts with AI-powered payroll bots
+            Manage ACH transfers for Clients, Employees, and Founder
           </p>
         </div>
         <div className="flex gap-3">
@@ -375,64 +546,114 @@ Bank: ${p.bankName || 'N/A'} | Routing: ${p.routingNumber || 'N/A'} | Account: $
         </div>
       </div>
 
-      {/* Stats Cards */}
+      {/* Summary Cards - All Three Payout Types */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-4">
-              <div className="p-3 bg-green-100 rounded-full">
-                <DollarSign className="w-6 h-6 text-green-600" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Ready to Pay</p>
-                <p className="text-2xl font-bold">{formatCurrency(totalPayout)}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
+        <Card className="border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-white">
           <CardContent className="pt-6">
             <div className="flex items-center gap-4">
               <div className="p-3 bg-blue-100 rounded-full">
-                <Users className="w-6 h-6 text-blue-600" />
+                <User className="w-6 h-6 text-blue-600" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Clients Ready</p>
-                <p className="text-2xl font-bold">{readyPayouts.length}</p>
+                <p className="text-sm text-muted-foreground">Client Payouts</p>
+                <p className="text-2xl font-bold text-blue-700">{formatCurrency(totals.client)}</p>
+                <p className="text-xs text-muted-foreground">{readyPayouts.length} clients ready</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border-2 border-green-200 bg-gradient-to-br from-green-50 to-white">
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-green-100 rounded-full">
+                <Briefcase className="w-6 h-6 text-green-600" />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Employee Commissions</p>
+                <p className="text-2xl font-bold text-green-700">{formatCurrency(totals.employee)}</p>
+                <p className="text-xs text-muted-foreground">{readyPayouts.filter(p => p.employee).length} employees</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-2 border-purple-200 bg-gradient-to-br from-purple-50 to-white">
           <CardContent className="pt-6">
             <div className="flex items-center gap-4">
               <div className="p-3 bg-purple-100 rounded-full">
-                <Bot className="w-6 h-6 text-purple-600" />
+                <Crown className="w-6 h-6 text-purple-600" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Active Bots</p>
-                <p className="text-2xl font-bold">{bots.filter(b => b.status === 'active').length}</p>
+                <p className="text-sm text-muted-foreground">Founder Share</p>
+                <p className="text-2xl font-bold text-purple-700">{formatCurrency(totals.founder)}</p>
+                <p className="text-xs text-muted-foreground">From {readyPayouts.length} cases</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border-2 border-yellow-200 bg-gradient-to-br from-yellow-50 to-white">
           <CardContent className="pt-6">
             <div className="flex items-center gap-4">
               <div className="p-3 bg-yellow-100 rounded-full">
-                <Zap className="w-6 h-6 text-yellow-600" />
+                <DollarSign className="w-6 h-6 text-yellow-600" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Processed Today</p>
-                <p className="text-2xl font-bold">{bots.reduce((sum, b) => sum + b.processedToday, 0)}</p>
+                <p className="text-sm text-muted-foreground">Total Surplus</p>
+                <p className="text-2xl font-bold text-yellow-700">
+                  {formatCurrency(readyPayouts.reduce((sum, p) => sum + p.surplusAmountCents, 0))}
+                </p>
+                <p className="text-xs text-muted-foreground">Ready to distribute</p>
               </div>
             </div>
           </CardContent>
         </Card>
       </div>
+
+      {/* Payout Distribution Visual */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <DollarSign className="w-5 h-5" />
+            Payout Distribution Structure
+          </CardTitle>
+          <CardDescription>
+            How surplus funds are split: Client (67%) + Company Fee (33%) = Employee Commission + Founder Share
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg">
+            <div className="flex-1 text-center p-4 bg-yellow-100 rounded-lg">
+              <p className="text-sm text-yellow-700 font-medium">Total Surplus</p>
+              <p className="text-xl font-bold text-yellow-800">100%</p>
+            </div>
+            <ArrowRight className="w-6 h-6 text-gray-400" />
+            <div className="flex-1 space-y-2">
+              <div className="p-3 bg-blue-100 rounded-lg text-center">
+                <p className="text-sm text-blue-700 font-medium">Client Payout</p>
+                <p className="text-lg font-bold text-blue-800">67%</p>
+              </div>
+              <div className="p-3 bg-gray-200 rounded-lg text-center">
+                <p className="text-sm text-gray-700 font-medium">Company Fee</p>
+                <p className="text-lg font-bold text-gray-800">33%</p>
+              </div>
+            </div>
+            <ArrowRight className="w-6 h-6 text-gray-400" />
+            <div className="flex-1 space-y-2">
+              <div className="p-3 bg-green-100 rounded-lg text-center">
+                <p className="text-sm text-green-700 font-medium">Employee</p>
+                <p className="text-lg font-bold text-green-800">10-50%*</p>
+              </div>
+              <div className="p-3 bg-purple-100 rounded-lg text-center">
+                <p className="text-sm text-purple-700 font-medium">Founder</p>
+                <p className="text-lg font-bold text-purple-800">Remainder</p>
+              </div>
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground mt-2">*Employee commission % varies by tier (10% Tier 1 to 50% Tier 5)</p>
+        </CardContent>
+      </Card>
 
       {/* Payroll Bots Section */}
       <Card className="border-2 border-purple-200 bg-gradient-to-r from-purple-50 to-blue-50">
@@ -443,7 +664,7 @@ Bank: ${p.bankName || 'N/A'} | Routing: ${p.routingNumber || 'N/A'} | Account: $
             <Badge variant="secondary" className="ml-2">AI-Powered</Badge>
           </CardTitle>
           <CardDescription>
-            Assign AI agents to automate payout preparation and data entry
+            Assign AI agents to automate ACH data preparation for {activeTab} payouts
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -495,12 +716,12 @@ Bank: ${p.bankName || 'N/A'} | Routing: ${p.routingNumber || 'N/A'} | Account: $
                     {botRunning === bot.id ? (
                       <>
                         <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Processing...
+                        Processing {activeTab}...
                       </>
                     ) : (
                       <>
                         <Sparkles className="w-4 h-4 mr-2" />
-                        Run Bot
+                        Run for {activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}s
                       </>
                     )}
                   </Button>
@@ -511,242 +732,462 @@ Bank: ${p.bankName || 'N/A'} | Routing: ${p.routingNumber || 'N/A'} | Account: $
         </CardContent>
       </Card>
 
-      {/* Action Bar */}
-      <Card className="border-2 border-dashed border-green-300 bg-green-50">
-        <CardContent className="pt-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Clipboard className="w-8 h-8 text-green-600" />
-              <div>
-                <h3 className="font-semibold text-lg">Quick Payout Workflow</h3>
-                <p className="text-sm text-muted-foreground">
-                  1. Select payouts → 2. Assign bot or copy data → 3. Open Nickel → 4. Submit
-                </p>
-              </div>
-            </div>
-            <div className="flex gap-3">
-              <Button variant="outline" onClick={selectAllReady}>
-                Select All ({readyPayouts.length})
-              </Button>
-              <Dialog open={assignDialogOpen} onOpenChange={setAssignDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button variant="outline" disabled={selectedPayouts.size === 0}>
-                    <UserPlus className="w-4 h-4 mr-2" />
-                    Assign Bot ({selectedPayouts.size})
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Assign Payroll Bot</DialogTitle>
-                    <DialogDescription>
-                      Select a bot to handle {selectedPayouts.size} payout(s)
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="space-y-4 py-4">
-                    <Select value={selectedBot} onValueChange={setSelectedBot}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a bot..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {bots.map((bot) => (
-                          <SelectItem key={bot.id} value={bot.id}>
-                            {bot.avatar} {bot.name} ({bot.status})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <Button className="w-full" onClick={assignBotToPayouts}>
-                      <Bot className="w-4 h-4 mr-2" />
-                      Assign to Bot
-                    </Button>
-                  </div>
-                </DialogContent>
-              </Dialog>
-              <Button
-                variant="outline"
-                onClick={copyAllSelected}
-                disabled={selectedPayouts.size === 0}
-              >
-                <Copy className="w-4 h-4 mr-2" />
-                Copy ({selectedPayouts.size})
-              </Button>
-              <Button
-                className="bg-green-600 hover:bg-green-700"
-                onClick={openNickel}
-              >
-                <Send className="w-4 h-4 mr-2" />
-                Go to Nickel
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Main Payout Tabs */}
+      <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v as PayoutType); setSelectedPayouts(new Set()) }}>
+        <div className="flex items-center justify-between mb-4">
+          <TabsList className="grid w-fit grid-cols-3">
+            <TabsTrigger value="client" className="flex items-center gap-2">
+              <User className="w-4 h-4" />
+              Clients ({readyPayouts.length})
+            </TabsTrigger>
+            <TabsTrigger value="employee" className="flex items-center gap-2">
+              <Briefcase className="w-4 h-4" />
+              Employees ({readyPayouts.filter(p => p.employee).length})
+            </TabsTrigger>
+            <TabsTrigger value="founder" className="flex items-center gap-2">
+              <Crown className="w-4 h-4" />
+              Founder ({readyPayouts.length})
+            </TabsTrigger>
+          </TabsList>
 
-      {/* Payouts Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Pending Payouts</CardTitle>
-          <CardDescription>
-            Clients awaiting their surplus fund payout
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-12">
-                    <Checkbox
-                      checked={selectedPayouts.size === readyPayouts.length && readyPayouts.length > 0}
-                      onCheckedChange={() => {
-                        if (selectedPayouts.size === readyPayouts.length) {
-                          setSelectedPayouts(new Set())
-                        } else {
-                          selectAllReady()
-                        }
-                      }}
-                    />
-                  </TableHead>
-                  <TableHead>Client</TableHead>
-                  <TableHead>Case</TableHead>
-                  <TableHead>Location</TableHead>
-                  <TableHead className="text-right">Surplus</TableHead>
-                  <TableHead className="text-right">Fee</TableHead>
-                  <TableHead className="text-right">Payout</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Bot</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {pendingPayouts.map((payout: PendingPayout) => (
-                  <TableRow
-                    key={payout.id}
-                    className={selectedPayouts.has(payout.id) ? 'bg-green-50' : ''}
-                  >
-                    <TableCell>
-                      <Checkbox
-                        checked={selectedPayouts.has(payout.id)}
-                        onCheckedChange={() => toggleSelection(payout.id)}
-                        disabled={payout.status !== 'READY'}
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <div>
-                        <p className="font-medium">{payout.clientName}</p>
-                        <p className="text-sm text-muted-foreground">{payout.clientEmail}</p>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{payout.caseCode}</Badge>
-                    </TableCell>
-                    <TableCell>
-                      {payout.county}, {payout.state}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {formatCurrency(payout.surplusAmount)}
-                    </TableCell>
-                    <TableCell className="text-right text-muted-foreground">
-                      {formatCurrency(payout.feeAmount)}
-                    </TableCell>
-                    <TableCell className="text-right font-bold text-green-600">
-                      {formatCurrency(payout.payoutAmount)}
-                    </TableCell>
-                    <TableCell>
-                      {payout.status === 'READY' ? (
-                        <Badge className="bg-green-100 text-green-700">
-                          <CheckCircle className="w-3 h-3 mr-1" />
-                          Ready
-                        </Badge>
-                      ) : payout.status === 'PENDING_INFO' ? (
-                        <Badge className="bg-yellow-100 text-yellow-700">
-                          <AlertCircle className="w-3 h-3 mr-1" />
-                          Need Info
-                        </Badge>
-                      ) : (
-                        <Badge variant="secondary">
-                          <Clock className="w-3 h-3 mr-1" />
-                          {payout.status}
-                        </Badge>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {payout.assignedAgent ? (
-                        <Badge variant="outline" className="bg-purple-50">
-                          <Bot className="w-3 h-3 mr-1" />
-                          {bots.find(b => b.id === payout.assignedAgent)?.name || 'Bot'}
-                        </Badge>
-                      ) : (
-                        <span className="text-muted-foreground text-sm">-</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button
-                        size="sm"
-                        variant={copiedId === payout.id ? 'default' : 'outline'}
-                        onClick={() => copyPayoutData(payout)}
-                        disabled={payout.status !== 'READY'}
-                      >
-                        {copiedId === payout.id ? (
-                          <>
-                            <ClipboardCheck className="w-4 h-4 mr-1" />
-                            Copied!
-                          </>
-                        ) : (
-                          <>
-                            <Copy className="w-4 h-4 mr-1" />
-                            Copy
-                          </>
-                        )}
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={selectAllReady}>
+              Select All
+            </Button>
+            <Dialog open={assignDialogOpen} onOpenChange={setAssignDialogOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline" disabled={selectedPayouts.size === 0}>
+                  <UserPlus className="w-4 h-4 mr-2" />
+                  Assign Bot ({selectedPayouts.size})
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Assign Payroll Bot</DialogTitle>
+                  <DialogDescription>
+                    Select a bot to handle {selectedPayouts.size} {activeTab} payout(s)
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                  <Select value={selectedBot} onValueChange={setSelectedBot}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a bot..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {bots.map((bot) => (
+                        <SelectItem key={bot.id} value={bot.id}>
+                          {bot.avatar} {bot.name} ({bot.status})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button className="w-full" onClick={assignBotToPayouts}>
+                    <Bot className="w-4 h-4 mr-2" />
+                    Assign to Bot
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+            <Button
+              variant="outline"
+              onClick={copyAllSelected}
+              disabled={selectedPayouts.size === 0}
+            >
+              <Copy className="w-4 h-4 mr-2" />
+              Copy ({selectedPayouts.size})
+            </Button>
+            <Button className="bg-green-600 hover:bg-green-700" onClick={openNickel}>
+              <Send className="w-4 h-4 mr-2" />
+              Go to Nickel
+            </Button>
+          </div>
+        </div>
+
+        {/* Client Payouts Tab */}
+        <TabsContent value="client">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <User className="w-5 h-5 text-blue-600" />
+                Client ACH Payouts
+              </CardTitle>
+              <CardDescription>
+                67% of surplus goes to clients after successful recovery
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {isLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-12">
+                        <Checkbox
+                          checked={selectedPayouts.size === readyPayouts.length && readyPayouts.length > 0}
+                          onCheckedChange={() => {
+                            if (selectedPayouts.size === readyPayouts.length) {
+                              setSelectedPayouts(new Set())
+                            } else {
+                              selectAllReady()
+                            }
+                          }}
+                        />
+                      </TableHead>
+                      <TableHead>Client</TableHead>
+                      <TableHead>Case</TableHead>
+                      <TableHead>Banking</TableHead>
+                      <TableHead className="text-right">Surplus</TableHead>
+                      <TableHead className="text-right">Payout (67%)</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {allPayouts.map((payout) => (
+                      <TableRow key={payout.id} className={selectedPayouts.has(payout.id) ? 'bg-blue-50' : ''}>
+                        <TableCell>
+                          <Checkbox
+                            checked={selectedPayouts.has(payout.id)}
+                            onCheckedChange={() => toggleSelection(payout.id)}
+                            disabled={payout.status !== 'READY'}
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <div>
+                            <p className="font-medium">{payout.client.name}</p>
+                            <p className="text-sm text-muted-foreground">{payout.client.email}</p>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline">{payout.caseCode}</Badge>
+                          <p className="text-xs text-muted-foreground">{payout.county}, {payout.state}</p>
+                        </TableCell>
+                        <TableCell>
+                          <p className="text-sm">{payout.client.bankName || 'Not provided'}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {payout.client.routingNumber ? `Routing: ${payout.client.routingNumber}` : 'No routing'}
+                          </p>
+                        </TableCell>
+                        <TableCell className="text-right">{formatCurrency(payout.surplusAmountCents)}</TableCell>
+                        <TableCell className="text-right font-bold text-blue-600">
+                          {formatCurrency(payout.client.payoutCents)}
+                        </TableCell>
+                        <TableCell>
+                          {payout.status === 'READY' ? (
+                            <Badge className="bg-green-100 text-green-700">
+                              <CheckCircle className="w-3 h-3 mr-1" />
+                              Ready
+                            </Badge>
+                          ) : (
+                            <Badge className="bg-yellow-100 text-yellow-700">
+                              <AlertCircle className="w-3 h-3 mr-1" />
+                              {payout.status}
+                            </Badge>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            size="sm"
+                            variant={copiedId === `${payout.id}-client` ? 'default' : 'outline'}
+                            onClick={() => copyPayoutData(payout, 'client')}
+                            disabled={payout.status !== 'READY'}
+                          >
+                            {copiedId === `${payout.id}-client` ? (
+                              <><ClipboardCheck className="w-4 h-4 mr-1" /> Copied!</>
+                            ) : (
+                              <><Copy className="w-4 h-4 mr-1" /> Copy</>
+                            )}
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Employee Commissions Tab */}
+        <TabsContent value="employee">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Briefcase className="w-5 h-5 text-green-600" />
+                Employee Commission ACH
+              </CardTitle>
+              <CardDescription>
+                Commission based on tier (10-50% of company fee) paid to assigned employees
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {isLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-12">
+                        <Checkbox
+                          checked={selectedPayouts.size === readyPayouts.filter(p => p.employee).length && readyPayouts.filter(p => p.employee).length > 0}
+                          onCheckedChange={() => {
+                            if (selectedPayouts.size === readyPayouts.filter(p => p.employee).length) {
+                              setSelectedPayouts(new Set())
+                            } else {
+                              setSelectedPayouts(new Set(readyPayouts.filter(p => p.employee).map(p => p.id)))
+                            }
+                          }}
+                        />
+                      </TableHead>
+                      <TableHead>Employee</TableHead>
+                      <TableHead>Tier</TableHead>
+                      <TableHead>Case</TableHead>
+                      <TableHead>Banking</TableHead>
+                      <TableHead className="text-right">Company Fee</TableHead>
+                      <TableHead className="text-right">Commission</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {allPayouts.filter(p => p.employee).map((payout) => (
+                      <TableRow key={payout.id} className={selectedPayouts.has(payout.id) ? 'bg-green-50' : ''}>
+                        <TableCell>
+                          <Checkbox
+                            checked={selectedPayouts.has(payout.id)}
+                            onCheckedChange={() => toggleSelection(payout.id)}
+                            disabled={payout.status !== 'READY'}
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <div>
+                            <p className="font-medium">{payout.employee!.name}</p>
+                            <p className="text-sm text-muted-foreground">{payout.employee!.email}</p>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className="bg-green-50">
+                            {payout.employee!.tier.replace(/_/g, ' ')}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline">{payout.caseCode}</Badge>
+                        </TableCell>
+                        <TableCell>
+                          <p className="text-sm">{payout.employee!.bankName || 'Not provided'}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {payout.employee!.routingNumber ? `Routing: ${payout.employee!.routingNumber}` : 'No routing'}
+                          </p>
+                        </TableCell>
+                        <TableCell className="text-right">{formatCurrency(payout.companyFeeCents)}</TableCell>
+                        <TableCell className="text-right">
+                          <span className="font-bold text-green-600">{formatCurrency(payout.employee!.commissionCents)}</span>
+                          <p className="text-xs text-muted-foreground">{payout.employee!.commissionRate}%</p>
+                        </TableCell>
+                        <TableCell>
+                          {payout.status === 'READY' ? (
+                            <Badge className="bg-green-100 text-green-700">
+                              <CheckCircle className="w-3 h-3 mr-1" />
+                              Ready
+                            </Badge>
+                          ) : (
+                            <Badge className="bg-yellow-100 text-yellow-700">
+                              <AlertCircle className="w-3 h-3 mr-1" />
+                              {payout.status}
+                            </Badge>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            size="sm"
+                            variant={copiedId === `${payout.id}-employee` ? 'default' : 'outline'}
+                            onClick={() => copyPayoutData(payout, 'employee')}
+                            disabled={payout.status !== 'READY'}
+                          >
+                            {copiedId === `${payout.id}-employee` ? (
+                              <><ClipboardCheck className="w-4 h-4 mr-1" /> Copied!</>
+                            ) : (
+                              <><Copy className="w-4 h-4 mr-1" /> Copy</>
+                            )}
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                    {allPayouts.filter(p => !p.employee && p.status === 'READY').length > 0 && (
+                      <TableRow>
+                        <TableCell colSpan={9} className="text-center py-4 bg-yellow-50">
+                          <AlertCircle className="w-4 h-4 inline mr-2 text-yellow-600" />
+                          {allPayouts.filter(p => !p.employee && p.status === 'READY').length} case(s) have no employee assigned - full fee goes to founder
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Founder Share Tab */}
+        <TabsContent value="founder">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Crown className="w-5 h-5 text-purple-600" />
+                Founder Share ACH
+              </CardTitle>
+              <CardDescription>
+                Company fee minus employee commission = Founder profit
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {isLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-12">
+                        <Checkbox
+                          checked={selectedPayouts.size === readyPayouts.length && readyPayouts.length > 0}
+                          onCheckedChange={() => {
+                            if (selectedPayouts.size === readyPayouts.length) {
+                              setSelectedPayouts(new Set())
+                            } else {
+                              selectAllReady()
+                            }
+                          }}
+                        />
+                      </TableHead>
+                      <TableHead>Case</TableHead>
+                      <TableHead>Recipient</TableHead>
+                      <TableHead>Banking</TableHead>
+                      <TableHead className="text-right">Company Fee</TableHead>
+                      <TableHead className="text-right">Employee Cut</TableHead>
+                      <TableHead className="text-right">Founder Share</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {allPayouts.map((payout) => (
+                      <TableRow key={payout.id} className={selectedPayouts.has(payout.id) ? 'bg-purple-50' : ''}>
+                        <TableCell>
+                          <Checkbox
+                            checked={selectedPayouts.has(payout.id)}
+                            onCheckedChange={() => toggleSelection(payout.id)}
+                            disabled={payout.status !== 'READY'}
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline">{payout.caseCode}</Badge>
+                          <p className="text-xs text-muted-foreground">{payout.county}, {payout.state}</p>
+                        </TableCell>
+                        <TableCell>
+                          <div>
+                            <p className="font-medium">{payout.founder.name}</p>
+                            <p className="text-sm text-muted-foreground">{payout.founder.email}</p>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <p className="text-sm">{payout.founder.bankName || 'Not provided'}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {payout.founder.routingNumber ? `Routing: ${payout.founder.routingNumber}` : 'No routing'}
+                          </p>
+                        </TableCell>
+                        <TableCell className="text-right">{formatCurrency(payout.companyFeeCents)}</TableCell>
+                        <TableCell className="text-right text-muted-foreground">
+                          -{formatCurrency(payout.employee?.commissionCents || 0)}
+                        </TableCell>
+                        <TableCell className="text-right font-bold text-purple-600">
+                          {formatCurrency(payout.founder.shareCents)}
+                        </TableCell>
+                        <TableCell>
+                          {payout.status === 'READY' ? (
+                            <Badge className="bg-green-100 text-green-700">
+                              <CheckCircle className="w-3 h-3 mr-1" />
+                              Ready
+                            </Badge>
+                          ) : (
+                            <Badge className="bg-yellow-100 text-yellow-700">
+                              <AlertCircle className="w-3 h-3 mr-1" />
+                              {payout.status}
+                            </Badge>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            size="sm"
+                            variant={copiedId === `${payout.id}-founder` ? 'default' : 'outline'}
+                            onClick={() => copyPayoutData(payout, 'founder')}
+                            disabled={payout.status !== 'READY'}
+                          >
+                            {copiedId === `${payout.id}-founder` ? (
+                              <><ClipboardCheck className="w-4 h-4 mr-1" /> Copied!</>
+                            ) : (
+                              <><Copy className="w-4 h-4 mr-1" /> Copy</>
+                            )}
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
 
       {/* Instructions */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Building2 className="w-5 h-5" />
-            How to Use Nickel + Payroll Bots
+            How ACH Payouts Work
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid md:grid-cols-4 gap-4">
-            <div className="p-4 bg-gray-50 rounded-lg">
-              <div className="w-8 h-8 bg-purple-600 text-white rounded-full flex items-center justify-center mb-2 font-bold">1</div>
-              <h4 className="font-semibold">Assign Bot</h4>
-              <p className="text-sm text-muted-foreground">Select payouts and assign to a payroll bot for automatic preparation</p>
+          <div className="grid md:grid-cols-3 gap-4">
+            <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+              <div className="flex items-center gap-2 mb-2">
+                <User className="w-5 h-5 text-blue-600" />
+                <h4 className="font-semibold text-blue-800">1. Client Payouts</h4>
+              </div>
+              <p className="text-sm text-blue-700">
+                Clients receive 67% of surplus. Copy their ACH info, paste in Nickel, and send their share first.
+              </p>
             </div>
-            <div className="p-4 bg-gray-50 rounded-lg">
-              <div className="w-8 h-8 bg-purple-600 text-white rounded-full flex items-center justify-center mb-2 font-bold">2</div>
-              <h4 className="font-semibold">Run Bot</h4>
-              <p className="text-sm text-muted-foreground">Click "Run Bot" to auto-copy all payout data to clipboard</p>
+            <div className="p-4 bg-green-50 rounded-lg border border-green-200">
+              <div className="flex items-center gap-2 mb-2">
+                <Briefcase className="w-5 h-5 text-green-600" />
+                <h4 className="font-semibold text-green-800">2. Employee Commissions</h4>
+              </div>
+              <p className="text-sm text-green-700">
+                Employees earn 10-50% of company fee based on tier. Copy their ACH info and pay their commission.
+              </p>
             </div>
-            <div className="p-4 bg-gray-50 rounded-lg">
-              <div className="w-8 h-8 bg-green-600 text-white rounded-full flex items-center justify-center mb-2 font-bold">3</div>
-              <h4 className="font-semibold">Open Nickel</h4>
-              <p className="text-sm text-muted-foreground">Bot opens Nickel automatically - paste the prepared data</p>
-            </div>
-            <div className="p-4 bg-gray-50 rounded-lg">
-              <div className="w-8 h-8 bg-green-600 text-white rounded-full flex items-center justify-center mb-2 font-bold">4</div>
-              <h4 className="font-semibold">Review & Submit</h4>
-              <p className="text-sm text-muted-foreground">Review the data in Nickel and submit the transfers</p>
+            <div className="p-4 bg-purple-50 rounded-lg border border-purple-200">
+              <div className="flex items-center gap-2 mb-2">
+                <Crown className="w-5 h-5 text-purple-600" />
+                <h4 className="font-semibold text-purple-800">3. Founder Share</h4>
+              </div>
+              <p className="text-sm text-purple-700">
+                Founder keeps the remainder (company fee minus employee commission). Transfer to founder account.
+              </p>
             </div>
           </div>
-          <div className="mt-4 p-4 bg-green-50 rounded-lg">
-            <p className="text-sm">
-              <strong>Why Nickel + Bots?</strong> Nickel offers FREE unlimited ACH transfers. Payroll bots automate
-              data preparation so you just review and click submit - saving hours of manual data entry.
+          <div className="mt-4 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+            <p className="text-sm text-yellow-800">
+              <strong>Tip:</strong> Use the payroll bots to automatically copy all payouts of a type to your clipboard,
+              then paste directly into Nickel. The bots prepare formatted data for quick entry.
             </p>
           </div>
         </CardContent>
@@ -766,7 +1207,7 @@ Bank: ${p.bankName || 'N/A'} | Routing: ${p.routingNumber || 'N/A'} | Account: $
               <div>
                 <h4 className="font-semibold">Nickel Tab Open</h4>
                 <p className="text-sm text-muted-foreground">
-                  Paste the copied data in Nickel, review the details, and submit.
+                  Paste the copied {activeTab} payout data in Nickel, review, and submit.
                 </p>
                 <Button
                   size="sm"

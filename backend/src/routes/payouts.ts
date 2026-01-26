@@ -98,11 +98,12 @@ router.get("/", authMiddleware, roleGuard(["ADMIN"]), async (req: Request, res: 
 
 /**
  * GET /api/payouts/nickel - Get payouts formatted for Nickel (FOUNDER ONLY)
- * Returns data in a format ready to copy/paste into Nickel dashboard
+ * Returns FULL payout breakdown: Client, Employee, and Founder shares
+ * Ready to copy/paste into Nickel dashboard for ACH transfers
  */
 router.get("/nickel", authMiddleware, roleGuard(["ADMIN", "FOUNDER"]), async (_req: Request, res: Response) => {
   try {
-    // Get cases ready for client payout
+    // Get cases ready for payout with employee info
     const cases = await prisma.case.findMany({
       where: {
         status: {
@@ -110,16 +111,27 @@ router.get("/nickel", authMiddleware, roleGuard(["ADMIN", "FOUNDER"]), async (_r
         }
       },
       include: {
-        client: true
+        client: true,
+        assignedEmployee: true
       },
       orderBy: { updatedAt: "desc" }
     });
 
+    // Get founder info for founder payouts
+    const founder = await prisma.user.findFirst({
+      where: { email: process.env.FOUNDER_EMAIL || "admin@capitalmgr.com" }
+    });
+
     const nickelPayouts = cases.map(c => {
       const surplusAmount = c.surplusAmountCents || 0;
-      const feePercent = c.feePercent || 30;
-      const feeAmount = Math.round(surplusAmount * (feePercent / 100));
-      const payoutAmount = surplusAmount - feeAmount;
+      const feePercent = c.feePercent || 33;
+
+      // Use bankingService for accurate calculation
+      const calculation = bankingService.calculatePayout({
+        surplusAmountCents: surplusAmount,
+        feePercent: feePercent,
+        employeeTier: c.assignedEmployee?.employeeTier || "TIER_1_ASSOCIATE"
+      });
 
       // Determine status
       let status: 'READY' | 'PENDING_INFO' | 'PROCESSING' | 'COMPLETED' = 'PENDING_INFO';
@@ -129,24 +141,64 @@ router.get("/nickel", authMiddleware, roleGuard(["ADMIN", "FOUNDER"]), async (_r
         status = 'READY';
       }
 
+      // Get banking info from metadata
+      const metadata = c.metadata as any || {};
+
       return {
         id: c.id,
         caseCode: c.internalCode || c.id.substring(0, 8).toUpperCase(),
-        clientName: c.client?.name || c.ownerName || 'Unknown',
-        clientEmail: c.client?.email || '',
-        clientPhone: c.client?.phone || '',
-        bankName: (c.metadata as any)?.bankName,
-        routingNumber: (c.metadata as any)?.routingNumber,
-        accountNumber: (c.metadata as any)?.accountNumber,
-        surplusAmount,
-        feePercent,
-        feeAmount,
-        payoutAmount,
-        status,
         caseStatus: c.status,
         county: c.county || '',
         state: c.state || '',
         createdAt: c.createdAt.toISOString(),
+        status,
+
+        // Financial summary
+        surplusAmountCents: surplusAmount,
+        feePercent,
+        companyFeeCents: calculation.companyFeeCents,
+
+        // CLIENT PAYOUT (70% of surplus to client)
+        client: {
+          name: c.client?.name || c.ownerName || 'Unknown',
+          email: c.client?.email || '',
+          phone: c.client?.phone || '',
+          bankName: metadata.clientBankName || metadata.bankName,
+          routingNumber: metadata.clientRoutingNumber || metadata.routingNumber,
+          accountNumber: metadata.clientAccountNumber || metadata.accountNumber,
+          payoutCents: calculation.clientPayoutCents,
+        },
+
+        // EMPLOYEE COMMISSION (actual %, not displayed)
+        employee: c.assignedEmployee ? {
+          id: c.assignedEmployee.id,
+          name: c.assignedEmployee.name || 'Employee',
+          email: c.assignedEmployee.email || '',
+          phone: c.assignedEmployee.phone || '',
+          tier: c.assignedEmployee.employeeTier,
+          bankName: metadata.employeeBankName,
+          routingNumber: metadata.employeeRoutingNumber,
+          accountNumber: metadata.employeeAccountNumber,
+          commissionCents: calculation.employeeCommissionCents,
+          commissionRate: calculation.employeeActualRate,
+        } : null,
+
+        // FOUNDER SHARE (remainder after employee commission)
+        founder: {
+          name: founder?.name || 'Founder',
+          email: founder?.email || process.env.FOUNDER_EMAIL || 'admin@capitalmgr.com',
+          phone: founder?.phone || '',
+          bankName: metadata.founderBankName,
+          routingNumber: metadata.founderRoutingNumber,
+          accountNumber: metadata.founderAccountNumber,
+          shareCents: calculation.founderShareCents,
+        },
+
+        // Team leader override (if applicable)
+        override: calculation.overrideCommissionCents > 0 ? {
+          recipientId: calculation.overrideRecipientId,
+          commissionCents: calculation.overrideCommissionCents,
+        } : null,
       };
     });
 
@@ -215,7 +267,7 @@ router.post("/calculate", authMiddleware, roleGuard(["ADMIN"]), async (req: Requ
 
     const calculation = bankingService.calculatePayout({
       surplusAmountCents,
-      feePercent: feePercent || 30,
+      feePercent: feePercent || 33,
       employeeTier: employeeTier || "TIER_1_ASSOCIATE"
     });
 

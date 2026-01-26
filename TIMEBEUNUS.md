@@ -8,32 +8,51 @@ Created full Nickel Payouts page with AI-powered payroll bots for payout automat
 
 ---
 
-## Session 25 — Nickel Payouts Page
+## Session 25 — Nickel Payouts Page (3-Way ACH Split)
 
-### NEW PAGE CREATED: `/founder/payouts`
+### FULL PAYOUT STRUCTURE IMPLEMENTED
 
-Full Nickel Payouts page with AI-powered payroll bots:
+The Nickel Payouts page now handles the complete 3-way split:
 
-1. **Stats Cards** - Ready to pay, clients ready, active bots, processed today
-2. **Payroll Bots Section** - 3 demo bots with play/pause/run functionality
-3. **Quick Workflow Bar** - Select all, assign bot, copy data, go to Nickel
-4. **Payouts Table** - Full payout management with status, bot assignment
-5. **Instructions Card** - 4-step workflow guide
+1. **Client ACH** (67% of surplus)
+2. **Employee Commission ACH** (10-50% of company fee by tier)
+3. **Founder Share ACH** (company fee - employee commission)
 
-### FILES CHANGED THIS SESSION
+### FEE CORRECTED: 33% (not 30%)
 
-1. `frontend/app/founder/payouts/page.tsx` - NEW (787 lines)
-2. `frontend/components/Sidebar.tsx` - Added Nickel Payouts link
-3. `backend/src/routes/payouts.ts` - Added `/api/payouts/nickel` endpoint
-4. `backend/.env` - Added FOUNDER_EMAIL, Amazon SES credentials
+Default fee updated from 30% to **33%** across all files:
+- `backend/src/routes/payouts.ts`
+- `backend/src/routes/cases.ts`
+- `backend/src/services/ingestionService.ts`
+- `frontend/app/founder/payouts/page.tsx`
 
-### FOUNDER EMAIL NOW REAL
+### PAGE FEATURES
 
-`FOUNDER_EMAIL=admin@capitalmgr.com` - Configured for all system emails.
+1. **3 Tabs** - Clients (blue), Employees (green), Founder (purple)
+2. **Summary Cards** - Totals for each payout type
+3. **Distribution Visual** - Shows 67/33 split flow
+4. **Payroll Bots** - 3 AI bots for automated data prep
+5. **Copy Functions** - Individual and bulk ACH data copy
+6. **Nickel Integration** - Opens dashboard with data ready to paste
 
-### SENT TO GROK FOR UI POLISH
+### BACKEND API UPDATED
 
-User said "grok has better ui/ux for pages" - Nickel Payouts page sent to Grok for UI improvements.
+`GET /api/payouts/nickel` now returns full breakdown:
+- `client.payoutCents` - 67% to client
+- `employee.commissionCents` - actual commission (not displayed amount)
+- `founder.shareCents` - company profit
+
+### FILES CHANGED
+
+1. `frontend/app/founder/payouts/page.tsx` - Full rewrite (1228 lines)
+2. `backend/src/routes/payouts.ts` - Enhanced nickel endpoint
+3. `backend/src/routes/cases.ts` - 33% default fee
+4. `backend/src/services/ingestionService.ts` - 33% default fee
+5. `frontend/components/Sidebar.tsx` - Nickel link
+
+### FOUNDER EMAIL
+
+`FOUNDER_EMAIL=admin@capitalmgr.com` - Used for founder payout info
 
 ---
 

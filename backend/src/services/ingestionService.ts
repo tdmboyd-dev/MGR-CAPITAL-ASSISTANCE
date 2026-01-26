@@ -528,7 +528,7 @@ export class IngestionService {
             parcelNumber: parsed.parcelNumber,
             saleDate: parsed.saleDate,
             surplusAmountCents: parsed.surplusAmount || 0,
-            feePercent: 30, // Default fee
+            feePercent: 33, // Default fee (33%)
             source: "ingestion",
             priority: this.calculatePriority(parsed)
           }
