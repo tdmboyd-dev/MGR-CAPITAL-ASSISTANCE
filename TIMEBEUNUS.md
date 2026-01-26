@@ -54,6 +54,28 @@ Default fee updated from 30% to **33%** across all files:
 
 `FOUNDER_EMAIL=admin@capitalmgr.com` - Used for founder payout info
 
+### ADDITIONAL FIXES THIS SESSION
+
+1. **Password Reset Emails NOW WORKING**
+   - Added `sendPasswordResetEmail()` to notificationService
+   - HTML email template with reset link
+   - Wired up in auth.ts (was just a TODO before)
+
+2. **Phone Call Logs FIXED**
+   - Was returning empty array `[]`
+   - Added `getAllRecentCalls()` method
+   - Now returns actual call history
+
+3. **SMTP Initialization on Startup**
+   - Email service now initializes when server starts
+   - Shows ENABLED/DISABLED status in console
+
+4. **Welcome Email Added**
+   - `sendWelcomeEmail()` for new user registration
+
+5. **Updated full_system_context_for_grok.md**
+   - Version 4.0.0 with current 83% status
+
 ---
 
 ## Session 24 — API Keys + Service Fixes
