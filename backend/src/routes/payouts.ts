@@ -97,9 +97,70 @@ router.get("/", authMiddleware, roleGuard(["ADMIN"]), async (req: Request, res: 
 });
 
 /**
+ * GET /api/payouts/nickel - Get payouts formatted for Nickel (FOUNDER ONLY)
+ * Returns data in a format ready to copy/paste into Nickel dashboard
+ */
+router.get("/nickel", authMiddleware, roleGuard(["ADMIN", "FOUNDER"]), async (_req: Request, res: Response) => {
+  try {
+    // Get cases ready for client payout
+    const cases = await prisma.case.findMany({
+      where: {
+        status: {
+          in: ["PAID", "AWAITING_FUNDS", "SIGNED"]
+        }
+      },
+      include: {
+        client: true
+      },
+      orderBy: { updatedAt: "desc" }
+    });
+
+    const nickelPayouts = cases.map(c => {
+      const surplusAmount = c.surplusAmountCents || 0;
+      const feePercent = c.feePercent || 30;
+      const feeAmount = Math.round(surplusAmount * (feePercent / 100));
+      const payoutAmount = surplusAmount - feeAmount;
+
+      // Determine status
+      let status: 'READY' | 'PENDING_INFO' | 'PROCESSING' | 'COMPLETED' = 'PENDING_INFO';
+      if (c.status === 'PAID' && c.client?.email) {
+        status = 'COMPLETED';
+      } else if (c.status === 'AWAITING_FUNDS' && c.client?.email) {
+        status = 'READY';
+      }
+
+      return {
+        id: c.id,
+        caseCode: c.internalCode || c.id.substring(0, 8).toUpperCase(),
+        clientName: c.client?.name || c.ownerName || 'Unknown',
+        clientEmail: c.client?.email || '',
+        clientPhone: c.client?.phone || '',
+        bankName: (c.metadata as any)?.bankName,
+        routingNumber: (c.metadata as any)?.routingNumber,
+        accountNumber: (c.metadata as any)?.accountNumber,
+        surplusAmount,
+        feePercent,
+        feeAmount,
+        payoutAmount,
+        status,
+        caseStatus: c.status,
+        county: c.county || '',
+        state: c.state || '',
+        createdAt: c.createdAt.toISOString(),
+      };
+    });
+
+    res.json(nickelPayouts);
+  } catch (error: any) {
+    console.error("Nickel payouts error:", error);
+    res.status(500).json({ error: "Failed to get payouts" });
+  }
+});
+
+/**
  * GET /api/payouts/pending - Get pending payouts (FOUNDER ONLY)
  */
-router.get("/pending", authMiddleware, roleGuard(["ADMIN"]), async (_req: Request, res: Response) => {
+router.get("/pending", authMiddleware, roleGuard(["ADMIN", "FOUNDER"]), async (_req: Request, res: Response) => {
   try {
     // Get cases ready for payout
     const casesReadyForPayout = await prisma.case.findMany({

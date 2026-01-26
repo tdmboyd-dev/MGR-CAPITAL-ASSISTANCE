@@ -15,6 +15,8 @@ import {
   Upload,
   Shield,
   X,
+  Building2,
+  Send,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -37,6 +39,7 @@ const linksByRole: Record<string, NavLink[]> = {
     { href: "/founder/cases", label: "All Cases", icon: FileText },
     { href: "/founder/users", label: "User Management", icon: Users },
     { href: "/founder/ledger", label: "Ledger", icon: DollarSign },
+    { href: "/founder/payouts", label: "Nickel Payouts", icon: Send },
     { href: "/founder/ingestion", label: "Data Ingestion", icon: Upload },
     { href: "/founder/insights", label: "Ops Insights", icon: BarChart3 },
     { href: "/founder/training", label: "Training", icon: BookOpen },
