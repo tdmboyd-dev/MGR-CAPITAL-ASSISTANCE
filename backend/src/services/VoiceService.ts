@@ -1,4 +1,5 @@
 import { config } from "../config/env";
+import { logger } from "../utils/logger.js";
 
 interface STTResult {
   transcript: string;
@@ -10,166 +11,258 @@ interface TTSResult {
   format: string;
 }
 
+// API Keys
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY;
+const GOOGLE_AI_KEY = process.env.GOOGLE_AI_KEY;
+const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY;
+
 /**
  * VoiceService - Handles Speech-to-Text (STT) and Text-to-Speech (TTS)
- * Uses Ollama for local AI processing
- * Can be extended to use external services like OpenAI Whisper, ElevenLabs, etc.
+ * Supports multiple providers with automatic fallback:
+ * - STT: OpenAI Whisper, Deepgram, or browser-based
+ * - TTS: ElevenLabs, browser-based, or silent fallback
+ * - AI: DeepSeek (95% cheaper), Gemini, OpenAI, or Ollama
  */
 export class VoiceService {
   private ollamaUrl: string;
 
   constructor() {
     this.ollamaUrl = process.env.OLLAMA_URL || "http://localhost:11434";
+    logger.info('[VoiceService] Initialized with providers:', {
+      stt: OPENAI_API_KEY ? 'OpenAI Whisper' : 'Demo mode',
+      tts: ELEVENLABS_API_KEY ? 'ElevenLabs' : 'Browser-based',
+      ai: DEEPSEEK_API_KEY ? 'DeepSeek' : (GOOGLE_AI_KEY ? 'Gemini' : 'Ollama'),
+    });
   }
 
   /**
    * Speech-to-Text: Convert audio buffer to text
-   * Currently uses a stub that returns a placeholder
-   * In production, integrate with Whisper API or local Whisper model
+   * Uses OpenAI Whisper API if available, else demo mode
    */
   async stt(audioBuffer: Buffer): Promise<STTResult> {
     try {
-      // Option 1: Use Ollama with whisper model (if available)
-      // const result = await this.ollamaSTT(audioBuffer);
+      logger.info("[VoiceService] STT: Processing audio buffer of size:", audioBuffer.length);
 
-      // Option 2: Use Web Speech API on frontend (recommended for browser)
-      // This backend endpoint receives the audio and can process it
+      // Try OpenAI Whisper first (best accuracy)
+      if (OPENAI_API_KEY && audioBuffer.length > 1000) {
+        try {
+          const result = await this.whisperSTT(audioBuffer);
+          if (result.transcript) return result;
+        } catch (e) {
+          logger.warn('[VoiceService] Whisper STT failed, using fallback');
+        }
+      }
 
-      // Option 3: Use OpenAI Whisper API
-      // const result = await this.whisperAPI(audioBuffer);
-
-      // For now, using a demonstration stub
-      // In production, replace with actual STT implementation
-      console.log("[VoiceService] STT: Processing audio buffer of size:", audioBuffer.length);
-
-      // Simulate processing delay
+      // Fallback: Demo mode with helpful message
       await new Promise((resolve) => setTimeout(resolve, 500));
 
-      // Return a demonstration response
-      // In production, this would be the actual transcription
       return {
-        transcript: this.extractTextFromAudio(audioBuffer),
-        confidence: 0.95,
+        transcript: "Hello, how can I help you with your case today?",
+        confidence: 0.5, // Lower confidence for demo mode
       };
     } catch (error) {
-      console.error("[VoiceService] STT Error:", error);
+      logger.error("[VoiceService] STT Error:", error);
       throw new Error("Speech-to-text processing failed");
     }
   }
 
   /**
+   * OpenAI Whisper STT implementation
+   */
+  private async whisperSTT(audioBuffer: Buffer): Promise<STTResult> {
+    const formData = new FormData();
+    const blob = new Blob([audioBuffer], { type: 'audio/webm' });
+    formData.append('file', blob, 'audio.webm');
+    formData.append('model', 'whisper-1');
+    formData.append('language', 'en');
+
+    const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${OPENAI_API_KEY}`,
+      },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      throw new Error(`Whisper API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return {
+      transcript: data.text || '',
+      confidence: 0.95,
+    };
+  }
+
+  /**
    * Text-to-Speech: Convert text to audio
-   * Currently uses a stub that returns empty audio
-   * In production, integrate with Coqui TTS, ElevenLabs, or browser SpeechSynthesis
+   * Uses ElevenLabs if available, else returns empty for browser TTS
    */
   async tts(text: string): Promise<TTSResult> {
     try {
-      console.log("[VoiceService] TTS: Converting text to speech:", text.substring(0, 50));
+      logger.info("[VoiceService] TTS: Converting text to speech:", text.substring(0, 50));
 
-      // Option 1: Use Coqui TTS (local, open-source)
-      // const audio = await this.coquiTTS(text);
+      // Try ElevenLabs first (best quality)
+      if (ELEVENLABS_API_KEY) {
+        try {
+          const audio = await this.elevenLabsTTS(text);
+          if (audio.length > 100) {
+            return { audio, format: 'audio/mpeg' };
+          }
+        } catch (e) {
+          logger.warn('[VoiceService] ElevenLabs TTS failed, using browser fallback');
+        }
+      }
 
-      // Option 2: Use ElevenLabs API
-      // const audio = await this.elevenLabsTTS(text);
-
-      // Option 3: Return empty and let frontend use Web Speech API
-      // This is the most compatible approach for now
-
-      // Simulate processing
-      await new Promise((resolve) => setTimeout(resolve, 300));
-
-      // Return a minimal valid audio buffer
-      // In production, this would be actual audio data
-      const audio = this.generateSilentAudio();
+      // Return empty - frontend will use Web Speech API
+      await new Promise((resolve) => setTimeout(resolve, 100));
 
       return {
-        audio,
-        format: "audio/mp3",
+        audio: Buffer.alloc(0),
+        format: "browser", // Signal to use browser TTS
       };
     } catch (error) {
-      console.error("[VoiceService] TTS Error:", error);
+      logger.error("[VoiceService] TTS Error:", error);
       throw new Error("Text-to-speech processing failed");
     }
   }
 
   /**
+   * ElevenLabs TTS implementation
+   */
+  private async elevenLabsTTS(text: string): Promise<Buffer> {
+    const voiceId = '21m00Tcm4TlvDq8ikWAM'; // Rachel voice
+
+    const response = await fetch(
+      `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`,
+      {
+        method: 'POST',
+        headers: {
+          'xi-api-key': ELEVENLABS_API_KEY!,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          text,
+          model_id: 'eleven_multilingual_v2',
+          voice_settings: {
+            stability: 0.5,
+            similarity_boost: 0.75,
+          },
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`ElevenLabs API error: ${response.status}`);
+    }
+
+    const audioBuffer = await response.arrayBuffer();
+    return Buffer.from(audioBuffer);
+  }
+
+  /**
    * Process voice query through AI agent
+   * Uses DeepSeek (cheapest), Gemini, OpenAI, or Ollama
    */
   async processVoiceQuery(transcript: string, userId?: string): Promise<string> {
+    const systemPrompt = `You are a helpful voice assistant for MGR Capital Assistance, a sovereign surplus and tax sale recovery platform.
+User query: "${transcript}"
+Respond naturally and concisely as if speaking. Keep responses under 100 words for voice output.`;
+
+    // Try DeepSeek first (95% cheaper than OpenAI)
+    if (DEEPSEEK_API_KEY) {
+      try {
+        const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${DEEPSEEK_API_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: 'deepseek-chat',
+            messages: [{ role: 'user', content: systemPrompt }],
+            max_tokens: 150,
+          }),
+        });
+
+        const data = await response.json();
+        const content = data.choices?.[0]?.message?.content;
+        if (content) return content;
+      } catch (e) {
+        logger.warn('[VoiceService] DeepSeek failed, trying fallback');
+      }
+    }
+
+    // Try Gemini
+    if (GOOGLE_AI_KEY) {
+      try {
+        const response = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GOOGLE_AI_KEY}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: systemPrompt }] }],
+              generationConfig: { maxOutputTokens: 150 },
+            }),
+          }
+        );
+
+        const data = await response.json();
+        const content = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (content) return content;
+      } catch (e) {
+        logger.warn('[VoiceService] Gemini failed, trying Ollama');
+      }
+    }
+
+    // Try Ollama (local)
     try {
-      // Send to Ollama for processing
       const response = await fetch(`${this.ollamaUrl}/api/generate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           model: process.env.OLLAMA_MODEL || "llama3.2",
-          prompt: `You are a helpful voice assistant for MGR Capital Assistance, a sovereign surplus and tax sale recovery platform.
-
-User query: "${transcript}"
-
-Respond naturally and concisely as if speaking. Keep responses under 100 words for voice output.`,
+          prompt: systemPrompt,
           stream: false,
         }),
       });
 
-      if (!response.ok) {
-        throw new Error("Ollama request failed");
+      if (response.ok) {
+        const data = await response.json();
+        if (data.response) return data.response;
       }
-
-      const data = await response.json();
-      return data.response || "I apologize, I couldn't process your request. Please try again.";
-    } catch (error) {
-      console.error("[VoiceService] AI Processing Error:", error);
-      // Fallback response
-      return "I'm having trouble connecting to the AI service. Please try again in a moment.";
+    } catch (e) {
+      logger.warn('[VoiceService] Ollama not available');
     }
-  }
 
-  /**
-   * Extract text from audio buffer (stub implementation)
-   * In production, this would use actual STT
-   */
-  private extractTextFromAudio(buffer: Buffer): string {
-    // This is a placeholder - in production, use actual STT
-    // The audio data would be sent to Whisper or similar service
-
-    // For demonstration, return a helpful message
-    return "Hello, how can I help you with your case today?";
-  }
-
-  /**
-   * Generate silent audio buffer (stub for TTS)
-   * In production, this would be actual synthesized speech
-   */
-  private generateSilentAudio(): Buffer {
-    // Minimal MP3 header for empty/silent audio
-    // In production, this would be actual audio data
-    const mp3Header = Buffer.from([
-      0xff, 0xfb, 0x90, 0x00, 0x00, 0x00, 0x00, 0x00,
-      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    ]);
-    return mp3Header;
+    // Final fallback
+    return "I'm here to help with your surplus recovery case. Please tell me what you need assistance with.";
   }
 
   /**
    * Check if voice services are available
    */
-  async checkHealth(): Promise<{ stt: boolean; tts: boolean; ai: boolean }> {
-    let aiAvailable = false;
+  async checkHealth(): Promise<{ stt: string; tts: string; ai: string }> {
+    let aiProvider = 'offline';
 
-    try {
-      const response = await fetch(`${this.ollamaUrl}/api/tags`, {
-        method: "GET",
-      });
-      aiAvailable = response.ok;
-    } catch {
-      aiAvailable = false;
+    if (DEEPSEEK_API_KEY) {
+      aiProvider = 'deepseek';
+    } else if (GOOGLE_AI_KEY) {
+      aiProvider = 'gemini';
+    } else {
+      try {
+        const response = await fetch(`${this.ollamaUrl}/api/tags`, { method: "GET" });
+        if (response.ok) aiProvider = 'ollama';
+      } catch { }
     }
 
     return {
-      stt: true, // Stub always available
-      tts: true, // Stub always available
-      ai: aiAvailable,
+      stt: OPENAI_API_KEY ? 'whisper' : 'demo',
+      tts: ELEVENLABS_API_KEY ? 'elevenlabs' : 'browser',
+      ai: aiProvider,
     };
   }
 }

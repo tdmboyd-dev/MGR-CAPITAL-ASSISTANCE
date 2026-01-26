@@ -127,13 +127,64 @@ export class SMSService {
   }
 
   /**
-   * Detect carrier from phone number (basic implementation)
-   * In production, use a number lookup API
+   * Detect carrier from phone number using area code heuristics
+   * Note: This is a best-guess based on market share. For 100% accuracy,
+   * use a number lookup API like NumVerify or Twilio Lookup.
    */
   detectCarrier(phoneNumber: string): CarrierType {
-    // This is a placeholder - real implementation would use a lookup API
-    // For now, default to Verizon
+    const cleanNumber = phoneNumber.replace(/\D/g, '');
+    const areaCode = cleanNumber.substring(0, 3);
+
+    // Major carrier area code tendencies (based on market presence)
+    // This is heuristic-based - carriers own numbers across all area codes
+    const carrierAreaCodeHints: Record<string, CarrierType[]> = {
+      // Northeast heavy AT&T
+      '212': ['att', 'verizon'], '718': ['att', 'verizon'], '917': ['att', 'tmobile'],
+      // California heavy T-Mobile/AT&T
+      '213': ['tmobile', 'att'], '310': ['att', 'tmobile'], '415': ['att', 'tmobile'],
+      '408': ['att', 'tmobile'], '650': ['att', 'verizon'],
+      // Texas mixed
+      '214': ['att', 'verizon'], '713': ['att', 'verizon'], '512': ['att', 'tmobile'],
+      // Florida Verizon strong
+      '305': ['verizon', 'att'], '786': ['att', 'tmobile'], '954': ['verizon', 'att'],
+      // Midwest Verizon/US Cellular
+      '312': ['verizon', 'att'], '773': ['tmobile', 'att'], '414': ['uscellular', 'verizon'],
+      // Rural areas often US Cellular
+      '605': ['uscellular', 'verizon'], '701': ['uscellular', 'verizon'],
+    };
+
+    // Check if we have hints for this area code
+    const hints = carrierAreaCodeHints[areaCode];
+    if (hints && hints.length > 0) {
+      return hints[0]; // Return most likely carrier
+    }
+
+    // Default based on US market share (2024):
+    // Verizon ~30%, AT&T ~28%, T-Mobile ~27%, others ~15%
+    // Use Verizon as default (largest market share)
     return 'verizon';
+  }
+
+  /**
+   * Try sending to multiple carriers (broadcast mode)
+   * Useful when carrier is unknown - sends to top 3 carriers
+   */
+  async sendBroadcast(
+    to: string,
+    message: string
+  ): Promise<SMSResult> {
+    const topCarriers: CarrierType[] = ['verizon', 'att', 'tmobile'];
+    let lastError = '';
+
+    for (const carrier of topCarriers) {
+      const result = await this.send(to, message, carrier);
+      if (result.success) {
+        return result;
+      }
+      lastError = result.error || 'Unknown error';
+    }
+
+    return { success: false, error: `Broadcast failed: ${lastError}` };
   }
 
   /**

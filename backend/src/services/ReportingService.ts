@@ -586,6 +586,27 @@ class ReportingService {
       sourceMap[c.source || "UNKNOWN"] = c._count;
     });
 
+    // Calculate average case cycle time (days from creation to closure)
+    const closedCases = await prisma.case.findMany({
+      where: {
+        status: { in: ['PAID_OUT', 'CLOSED', 'SETTLED'] },
+        updatedAt: { gte: firstOfMonth },
+      },
+      select: {
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+
+    let avgCycleTimeDays = 0;
+    if (closedCases.length > 0) {
+      const totalDays = closedCases.reduce((sum, c) => {
+        const days = Math.ceil((c.updatedAt.getTime() - c.createdAt.getTime()) / (1000 * 60 * 60 * 24));
+        return sum + days;
+      }, 0);
+      avgCycleTimeDays = Math.round(totalDays / closedCases.length);
+    }
+
     const metrics: MonthlyMetrics = {
       month: today.toLocaleString("en-US", { month: "long" }),
       year: today.getFullYear(),
@@ -598,7 +619,7 @@ class ReportingService {
       operations: {
         casesOpened,
         casesClosed,
-        avgCycleTimeDays: 0, // TODO: Calculate from case lifecycle
+        avgCycleTimeDays,
         successRate: casesOpened > 0 ? Math.round((casesClosed / casesOpened) * 100) : 0,
       },
       growth: {

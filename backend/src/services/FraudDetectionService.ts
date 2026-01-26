@@ -35,10 +35,20 @@ interface VelocityData {
   lastTransaction: Date;
 }
 
+// IP geolocation cache
+interface GeoLocation {
+  lat: number;
+  lon: number;
+  city: string;
+  country: string;
+}
+
 export class FraudDetectionService {
   private model: tf.LayersModel | null = null;
   private isModelReady: boolean = false;
   private velocityCache: Map<string, VelocityData> = new Map();
+  private geoCache: Map<string, GeoLocation> = new Map();
+  private userLocationCache: Map<string, GeoLocation> = new Map();
 
   constructor() {
     this.initializeModel();
@@ -297,11 +307,14 @@ export class FraudDetectionService {
       const hour = new Date().getHours();
       const day = new Date().getDay();
 
+      // Get IP geo distance (real calculation)
+      const ipGeoDistance = data.ip ? await this.getIpGeoDistance(data.ip, data.userId) : 0;
+
       // Prepare features
       const features = [
         data.amount,
         velocity.count,
-        0, // IP geo distance (placeholder)
+        ipGeoDistance,
         hour,
         day,
         data.deviceId ? 0.9 : 0.5, // Device trust score
@@ -334,6 +347,104 @@ export class FraudDetectionService {
   private normalizeFeatures(features: number[]): number[] {
     const maxValues = [100000, 20, 5000, 24, 7, 1, 36, 1];
     return features.map((f, i) => Math.min(f / maxValues[i], 1));
+  }
+
+  /**
+   * Get IP geolocation using free ip-api.com service
+   */
+  private async getIpGeolocation(ip: string): Promise<GeoLocation | null> {
+    // Check cache first
+    const cached = this.geoCache.get(ip);
+    if (cached) return cached;
+
+    // Skip private/localhost IPs
+    if (ip.startsWith('192.168.') || ip.startsWith('10.') || ip === '127.0.0.1' || ip === '::1') {
+      return null;
+    }
+
+    try {
+      // Using free ip-api.com (45 requests/minute, no key needed)
+      const response = await fetch(`http://ip-api.com/json/${ip}?fields=status,lat,lon,city,country`);
+      const data = await response.json();
+
+      if (data.status === 'success') {
+        const location: GeoLocation = {
+          lat: data.lat,
+          lon: data.lon,
+          city: data.city || 'Unknown',
+          country: data.country || 'Unknown',
+        };
+        this.geoCache.set(ip, location);
+        return location;
+      }
+    } catch (error) {
+      logger.warn('IP geolocation failed', { ip, error });
+    }
+
+    return null;
+  }
+
+  /**
+   * Calculate distance between two coordinates (Haversine formula)
+   */
+  private calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+    const R = 6371; // Earth's radius in km
+    const dLat = this.toRad(lat2 - lat1);
+    const dLon = this.toRad(lon2 - lon1);
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(this.toRad(lat1)) * Math.cos(this.toRad(lat2)) *
+      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  }
+
+  private toRad(deg: number): number {
+    return deg * (Math.PI / 180);
+  }
+
+  /**
+   * Get IP geo distance from user's typical location
+   */
+  private async getIpGeoDistance(ip: string, userId: string): Promise<number> {
+    const currentLocation = await this.getIpGeolocation(ip);
+    if (!currentLocation) return 0;
+
+    // Get user's typical location
+    let userLocation = this.userLocationCache.get(userId);
+
+    if (!userLocation) {
+      // Try to get from recent successful transactions
+      try {
+        const user = await prisma.user.findUnique({
+          where: { id: userId },
+          select: { lastLoginIp: true },
+        });
+
+        if (user?.lastLoginIp) {
+          userLocation = await this.getIpGeolocation(user.lastLoginIp) || undefined;
+          if (userLocation) {
+            this.userLocationCache.set(userId, userLocation);
+          }
+        }
+      } catch {
+        // User model might not have lastLoginIp
+      }
+    }
+
+    if (!userLocation) {
+      // First time, record this as their location
+      this.userLocationCache.set(userId, currentLocation);
+      return 0;
+    }
+
+    // Calculate distance in km
+    const distance = this.calculateDistance(
+      userLocation.lat, userLocation.lon,
+      currentLocation.lat, currentLocation.lon
+    );
+
+    return distance;
   }
 
   /**

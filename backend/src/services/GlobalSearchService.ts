@@ -90,6 +90,28 @@ export interface GlobalSearchResponse {
 }
 
 class GlobalSearchService {
+  // In-memory cache for recent searches per user
+  private recentSearchesCache: Map<string, { searches: string[]; lastUpdated: Date }> = new Map();
+  private popularSearchesCache: Map<string, number> = new Map();
+
+  /**
+   * Record a search for tracking recent/popular searches
+   */
+  private recordSearch(userId: string, query: string): void {
+    const normalizedQuery = query.trim().toLowerCase();
+    if (normalizedQuery.length < 2) return;
+
+    // Update user's recent searches
+    const userCache = this.recentSearchesCache.get(userId) || { searches: [], lastUpdated: new Date() };
+    userCache.searches = [normalizedQuery, ...userCache.searches.filter(s => s !== normalizedQuery)].slice(0, 20);
+    userCache.lastUpdated = new Date();
+    this.recentSearchesCache.set(userId, userCache);
+
+    // Update popular searches count
+    const count = this.popularSearchesCache.get(normalizedQuery) || 0;
+    this.popularSearchesCache.set(normalizedQuery, count + 1);
+  }
+
   /**
    * Perform global search across all entities
    */
@@ -112,6 +134,9 @@ class GlobalSearchService {
         searchTime: 0,
       };
     }
+
+    // Record search for recent/popular tracking
+    this.recordSearch(userId, query);
 
     const searchTerm = query.trim().toLowerCase();
     const results: SearchResult[] = [];
@@ -473,27 +498,52 @@ class GlobalSearchService {
   }
 
   /**
-   * Get recent searches for user (from cache/db)
+   * Get recent searches for user (from cache)
    */
   async getRecentSearches(userId: string, limit: number = 10): Promise<string[]> {
-    // Could be stored in Redis or a RecentSearch model
-    // For now, return empty (placeholder for future enhancement)
-    return [];
+    const userCache = this.recentSearchesCache.get(userId);
+    if (!userCache) return [];
+
+    // Clear old cache (older than 7 days)
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    if (userCache.lastUpdated < sevenDaysAgo) {
+      this.recentSearchesCache.delete(userId);
+      return [];
+    }
+
+    return userCache.searches.slice(0, limit);
   }
 
   /**
-   * Get popular searches (anonymized)
+   * Get popular searches (from aggregated cache)
    */
   async getPopularSearches(limit: number = 10): Promise<string[]> {
-    // Could aggregate from search logs
-    // For now, return common terms
-    return [
-      "Davidson County",
-      "pending documents",
-      "high value",
-      "Tennessee surplus",
-      "deadline",
-    ];
+    // Get searches sorted by count
+    const sorted = Array.from(this.popularSearchesCache.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, limit)
+      .map(([query]) => query);
+
+    // If no searches tracked yet, return defaults
+    if (sorted.length < 5) {
+      return [
+        "Davidson County",
+        "pending documents",
+        "high value",
+        "Tennessee surplus",
+        "deadline",
+        ...sorted,
+      ].slice(0, limit);
+    }
+
+    return sorted;
+  }
+
+  /**
+   * Clear user's search history
+   */
+  async clearRecentSearches(userId: string): Promise<void> {
+    this.recentSearchesCache.delete(userId);
   }
 }
 

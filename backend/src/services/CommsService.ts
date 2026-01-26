@@ -303,12 +303,61 @@ export class CommsService {
   }
 
   /**
-   * Get unread message count for a user (placeholder for future notification system)
+   * Get unread message count for a user
+   * Tracks last-read timestamps per user per room using in-memory cache
    */
-  async getUnreadCount(userId: string, roomId?: string) {
-    // This is a placeholder - in a full implementation you'd track
-    // last-read timestamps per user per room
-    return 0;
+  private lastReadCache: Map<string, Date> = new Map();
+
+  async getUnreadCount(userId: string, roomId?: string): Promise<number> {
+    try {
+      const cacheKey = `${userId}:${roomId || 'all'}`;
+      const lastRead = this.lastReadCache.get(cacheKey) || new Date(0);
+
+      if (roomId) {
+        // Count unread in specific room
+        const count = await prisma.chatMessage.count({
+          where: {
+            roomId,
+            userId: { not: userId }, // Don't count own messages
+            createdAt: { gt: lastRead },
+            deletedAt: null,
+          },
+        });
+        return count;
+      }
+
+      // Count unread across all accessible rooms
+      const rooms = await this.getRooms(userId, 'EMPLOYEE');
+      let total = 0;
+
+      for (const room of rooms) {
+        const roomKey = `${userId}:${room.id}`;
+        const roomLastRead = this.lastReadCache.get(roomKey) || new Date(0);
+
+        const count = await prisma.chatMessage.count({
+          where: {
+            roomId: room.id,
+            userId: { not: userId },
+            createdAt: { gt: roomLastRead },
+            deletedAt: null,
+          },
+        });
+        total += count;
+      }
+
+      return total;
+    } catch (error) {
+      console.error('Error getting unread count:', error);
+      return 0;
+    }
+  }
+
+  /**
+   * Mark messages as read for a user in a room
+   */
+  async markAsRead(userId: string, roomId: string): Promise<void> {
+    const cacheKey = `${userId}:${roomId}`;
+    this.lastReadCache.set(cacheKey, new Date());
   }
 
   /**
