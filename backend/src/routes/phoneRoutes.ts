@@ -151,8 +151,10 @@ router.get('/logs', authenticate, async (req, res) => {
       return res.json({ success: true, data: logs });
     }
 
-    // Return all recent calls (stub)
-    res.json({ success: true, data: [] });
+    // Return all recent calls
+    const limit = parseInt(req.query.limit as string) || 50;
+    const logs = await phoneBotService.getAllRecentCalls(limit);
+    res.json({ success: true, data: logs });
   } catch (error: any) {
     logger.error('Call logs fetch failed', { error: error.message });
     res.status(500).json({ error: error.message });

@@ -458,6 +458,127 @@ MGR Capital Training Team
   }
 
   // ============================================
+  // AUTHENTICATION EMAILS
+  // ============================================
+
+  /**
+   * Send password reset email
+   */
+  async sendPasswordResetEmail(params: {
+    to: string;
+    toName?: string;
+    userId: string;
+    resetToken: string;
+    expiresAt: Date;
+  }): Promise<NotificationResult> {
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3011';
+    const resetLink = `${frontendUrl}/auth/reset-password?userId=${params.userId}&token=${params.resetToken}`;
+    const expiresIn = Math.round((params.expiresAt.getTime() - Date.now()) / (1000 * 60)); // minutes
+
+    const body = `
+Hello${params.toName ? ` ${params.toName}` : ''},
+
+You requested a password reset for your MGR Capital Assistance account.
+
+Click the link below to reset your password:
+${resetLink}
+
+This link will expire in ${expiresIn} minutes.
+
+If you did not request this password reset, please ignore this email. Your password will remain unchanged.
+
+For security reasons, do not share this link with anyone.
+
+Best regards,
+MGR Capital Assistance Team
+    `.trim();
+
+    const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+    .header { background: #1a1a2e; color: white; padding: 20px; text-align: center; }
+    .content { padding: 20px; background: #f9f9f9; }
+    .button { display: inline-block; background: #4f46e5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 20px 0; }
+    .warning { color: #d97706; font-size: 14px; margin-top: 20px; }
+    .footer { font-size: 12px; color: #666; margin-top: 20px; padding-top: 20px; border-top: 1px solid #ddd; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>MGR Capital Assistance</h1>
+    </div>
+    <div class="content">
+      <h2>Password Reset Request</h2>
+      <p>Hello${params.toName ? ` ${params.toName}` : ''},</p>
+      <p>You requested a password reset for your MGR Capital Assistance account.</p>
+      <p>Click the button below to reset your password:</p>
+      <a href="${resetLink}" class="button">Reset Password</a>
+      <p>Or copy and paste this link into your browser:</p>
+      <p style="word-break: break-all; font-size: 12px; color: #666;">${resetLink}</p>
+      <p class="warning">This link will expire in ${expiresIn} minutes.</p>
+      <p>If you did not request this password reset, please ignore this email. Your password will remain unchanged.</p>
+    </div>
+    <div class="footer">
+      <p>For security reasons, do not share this link with anyone.</p>
+      <p>MGR Capital Assistance Team</p>
+    </div>
+  </div>
+</body>
+</html>
+    `.trim();
+
+    return this.sendEmail({
+      to: params.to,
+      toName: params.toName,
+      subject: '[MGR Capital] Password Reset Request',
+      body,
+      html,
+      userId: params.userId,
+    });
+  }
+
+  /**
+   * Send welcome email after registration
+   */
+  async sendWelcomeEmail(params: {
+    to: string;
+    toName: string;
+    userId: string;
+    role: string;
+  }): Promise<NotificationResult> {
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3011';
+    const loginLink = `${frontendUrl}/auth/login`;
+
+    const body = `
+Welcome to MGR Capital Assistance, ${params.toName}!
+
+Your account has been created successfully.
+
+Role: ${params.role}
+Login: ${loginLink}
+
+If you have any questions, please don't hesitate to contact our support team.
+
+Best regards,
+MGR Capital Assistance Team
+    `.trim();
+
+    return this.sendEmail({
+      to: params.to,
+      toName: params.toName,
+      subject: '[MGR Capital] Welcome to MGR Capital Assistance',
+      body,
+      userId: params.userId,
+    });
+  }
+
+  // ============================================
   // NOTIFICATION LOG QUERIES
   // ============================================
 

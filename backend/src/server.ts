@@ -99,6 +99,9 @@ import oracleRoutes from "./routes/oracleRoutes.js";
 // Rate limiting
 import { loginRateLimit, passwordResetRateLimit } from "./middleware/rateLimit.js";
 
+// Services that need initialization
+import { notificationService } from "./services/notificationService.js";
+
 const app = express();
 
 // ============================================
@@ -315,7 +318,11 @@ console.log(`[WS] WebSocket server running on port ${WS_PORT}`);
 // HTTP SERVER START
 // ============================================
 
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
+  // Initialize services
+  const smtpReady = await notificationService.initialize();
+  console.log(`[Email] SMTP ${smtpReady ? 'initialized' : 'not configured (emails will be logged)'}`);
+
   console.log(`
 ╔════════════════════════════════════════════════╗
 ║     MGR CAPITAL ASSISTANCE — API SERVER        ║
@@ -323,6 +330,7 @@ app.listen(PORT, () => {
 ║  Status:      RUNNING                          ║
 ║  Port:        ${PORT}                              ║
 ║  Environment: ${config.nodeEnv?.padEnd(32)}║
+║  Email:       ${smtpReady ? 'ENABLED' : 'DISABLED'}                          ║
 ║  Time:        ${new Date().toISOString()}   ║
 ╚════════════════════════════════════════════════╝
 

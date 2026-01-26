@@ -603,6 +603,46 @@ If asked about fees, explain we work on contingency (no upfront costs).`;
   }
 
   /**
+   * Get all recent call logs (across all cases)
+   */
+  async getAllRecentCalls(limit: number = 50): Promise<any[]> {
+    try {
+      const logs = await prisma.communication.findMany({
+        where: {
+          type: { in: ['PHONE_INBOUND', 'PHONE_OUTBOUND'] },
+        },
+        include: {
+          case: {
+            select: {
+              internalCode: true,
+              propertyAddress: true,
+              client: { select: { name: true } },
+            },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+        take: limit,
+      });
+
+      return logs.map(log => ({
+        id: log.id,
+        type: log.type,
+        direction: log.direction,
+        status: log.status,
+        caseId: log.caseId,
+        caseCode: log.case?.internalCode,
+        clientName: log.case?.client?.name,
+        property: log.case?.propertyAddress,
+        createdAt: log.createdAt,
+        metadata: log.metadata ? JSON.parse(log.metadata as string) : {},
+      }));
+    } catch (error: any) {
+      logger.error('Failed to get all call logs', { error: error.message });
+      return [];
+    }
+  }
+
+  /**
    * Get available scripts
    */
   getScripts(): Record<string, string> {

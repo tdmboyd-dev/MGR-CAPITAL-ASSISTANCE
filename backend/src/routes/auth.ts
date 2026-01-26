@@ -31,6 +31,7 @@ import {
   sanitizeEmail,
   invalidateAllSessions,
 } from "../utils/security.js";
+import { notificationService } from "../services/notificationService.js";
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -414,10 +415,20 @@ router.post(
         },
       });
 
-      // TODO: Send email with reset link
-      logger.info("Password reset requested", {
+      // Send password reset email
+      const emailResult = await notificationService.sendPasswordResetEmail({
+        to: user.email,
+        toName: user.name || undefined,
+        userId: user.id,
+        resetToken: token,
+        expiresAt,
+      });
+
+      logger.info("Password reset email sent", {
         userId: user.id,
         email: user.email,
+        emailSent: emailResult.success,
+        notificationId: emailResult.notificationId,
       });
     }
 
