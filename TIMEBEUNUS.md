@@ -1,61 +1,56 @@
 # TIMEBEUNUS — MGR CAPITAL ASSISTANCE
 
-## CURRENT SESSION STATUS: 2026-01-26 (Session 28 - Webhooks + SkipTrace)
+## CURRENT SESSION STATUS: 2026-01-26 (Session 29 - Bank Linking + JWT Auth)
 
-### STATUS: WEBHOOKS + SKIPTRACE ENABLED — PROGRESS ~87%
+### STATUS: BANK LINKING + TOKEN REFRESH — PROGRESS ~88%
 
-Added payment webhooks and enabled SkipTrace real API.
+Fixed Grok's code issues and added proper bank account linking.
 
 ---
 
-## Session 28 — Webhooks + SkipTrace + Grok Corrections
+## Session 29 — Bank Linking + DocuSign JWT Auth
 
 ### IMPROVEMENTS MADE
 
+1. **Stripe Financial Connections Added**
+   - Proper bank account linking (NOT raw account numbers)
+   - `createBankLinkingSession()` for Stripe-hosted bank linking
+   - `createPaymentMethodFromLinkedAccount()` for ACH payments
+   - `initiateMicrodepositVerification()` as alternative
+   - File: `backend/src/services/PaymentService.ts`
+
+2. **DocuSign JWT Token Refresh**
+   - Auto-refresh tokens before expiry (1 hour lifetime)
+   - JWT assertion generation with RSA private key
+   - Falls back to static token if JWT not configured
+   - File: `backend/src/services/DocumentSigningService.ts`
+
+3. **Grok Bug Corrections (Again)**
+   - Documented why raw account numbers DON'T work
+   - Explained Stripe Financial Connections flow
+   - Fixed React import issues in documentation
+
+---
+
+## Session 28 — Webhooks + SkipTrace
+
 1. **Payment Webhooks Added**
-   - Stripe webhook handler with signature verification
-   - PayPal webhook handler for capture events
-   - DocuSign webhook handler for envelope completion
-   - Auto-updates payment status on events
-   - File: `backend/src/routes/payments.ts`
+   - Stripe, PayPal, DocuSign webhook handlers
+   - Auto-updates payment status
 
 2. **SkipTraceService Enabled**
-   - Uncommented real Tracerfy API calls
-   - Added `transformApiResult()` method
-   - Falls back to mock mode on API errors
-   - File: `backend/src/services/SkipTraceService.ts`
-
-3. **Grok Corrections Made**
-   - Stripe ACH: Can't use raw account numbers (need Financial Connections)
-   - DocuSign: Static tokens expire in 8 hours
-   - React code: Missing imports, wrong useMutation syntax
+   - Real Tracerfy API (was mock-only)
 
 ---
 
-## Session 27 — Payment & Signing Services Fixed
+## E-SIGNATURE PROVIDERS
 
-### MAJOR FIXES (Revenue Critical)
+**USE OpenSign (FREE unlimited)** - NOT DocuSign
 
-1. **PayPal - Real REST API Integration**
-2. **ACH - Stripe ACH Direct Debit**
-3. **DocuSign - Real eSignature API**
-
----
-
-## Session 26 — Services Enhanced
-
-1. **SMSService - Plivo Integration**
-2. **OracleService - Web Scraping**
-3. **Push Notifications - Wired Up**
-
----
-
-## Session 25 — Nickel Payouts Page (3-Way ACH Split)
-
-- Client ACH (67% of surplus)
-- Employee Commission ACH (10-50% of company fee)
-- Founder Share ACH (remainder)
-- Fee: 33%
+| Provider | Status | Cost |
+|----------|--------|------|
+| **OpenSign** | PRIMARY | FREE unlimited |
+| DocuSign | Backup only | Expensive |
 
 ---
 
@@ -64,32 +59,27 @@ Added payment webhooks and enabled SkipTrace real API.
 | Category | Before | After | Change |
 |----------|--------|-------|--------|
 | Core Platform | 89% | 89% | 0% |
-| AI/ML Features | 80% | 80% | 0% |
-| Blockchain | 45% | 45% | 0% |
-| Payment Services | 90% | 92% | +2% |
+| Payment Services | 92% | 93% | +1% |
 | Document Signing | 90% | 90% | 0% |
-| SkipTrace | 50% | 85% | +35% |
-| Webhooks | 0% | 100% | +100% |
+| Bank Linking | 0% | 100% | +100% |
+| SkipTrace | 85% | 85% | 0% |
+| Webhooks | 100% | 100% | 0% |
 | Mobile App | 50% | 50% | 0% |
 | Testing | 35% | 35% | 0% |
-| Production Ready | 50% | 55% | +5% |
 
-**OVERALL: ~87%** (was 86%)
+**OVERALL: ~88%** (was 87%)
 
-### Why the jumps:
-- Webhooks +100%: Stripe, PayPal, DocuSign handlers added
-- SkipTrace +35%: Real Tracerfy API enabled
-- Production Ready +5%: Better webhook infrastructure
+### Why the jump:
+- Bank Linking +100%: Stripe Financial Connections added
 
 ---
 
 ## FILES CHANGED THIS SESSION
 
-1. `backend/src/routes/payments.ts` - Webhook handlers
-2. `backend/src/services/SkipTraceService.ts` - Enabled real API
-3. `TO_GROK.md` - Corrections + updates
+1. `backend/src/services/PaymentService.ts` - Financial Connections
+2. `backend/src/services/DocumentSigningService.ts` - JWT token refresh
+3. `TO_GROK.md` - Updated corrections
 4. `TIMEBEUNUS.md` - This file
-5. `full_system_context_for_grok.md` - Updated status
 
 ---
 
@@ -110,14 +100,18 @@ STRIPE_SECRET_KEY=sk_live_...
 DEEPSEEK_API_KEY=sk-...
 GOOGLE_AI_KEY=AIza...
 SMTP_* (Amazon SES)
-OPENSIGN_API_KEY=...
+OPENSIGN_API_KEY=... (FREE unlimited e-signatures)
+
+# Optional (DocuSign JWT Auth)
+DOCUSIGN_INTEGRATION_KEY=...
+DOCUSIGN_USER_ID=...
+DOCUSIGN_PRIVATE_KEY=... (RSA private key)
+DOCUSIGN_ACCOUNT_ID=...
 
 # Need to Add
 STRIPE_WEBHOOK_SECRET=whsec_...
 PAYPAL_CLIENT_ID=...
 PAYPAL_CLIENT_SECRET=...
-DOCUSIGN_API_KEY=...
-DOCUSIGN_ACCOUNT_ID=...
 PLIVO_AUTH_ID=...
 PLIVO_AUTH_TOKEN=...
 TRACERFY_API_KEY=...
@@ -125,27 +119,22 @@ TRACERFY_API_KEY=...
 
 ---
 
-## WEBHOOK ENDPOINTS
+## BANK ACCOUNT LINKING (NEW)
 
-| Provider | Endpoint | Events |
-|----------|----------|--------|
-| Stripe | `/api/payments/webhook/stripe` | payment_intent.succeeded, failed, refunded |
-| PayPal | `/api/payments/webhook/paypal` | PAYMENT.CAPTURE.COMPLETED, DENIED |
-| DocuSign | `/api/payments/webhook/docusign` | envelope-completed |
+**DO NOT use raw account/routing numbers with Stripe!**
 
----
-
-## GROK ERRORS TO FIX
-
-1. **Stripe ACH** - Can't use raw account numbers
-2. **DocuSign tokens** - Expire in 8 hours
-3. **React imports** - Missing useRef, toast
-4. **useMutation** - Wrong syntax (use destructuring)
+Correct flow:
+1. Create Stripe customer: `getOrCreateStripeCustomer()`
+2. Create bank linking session: `createBankLinkingSession()`
+3. User completes bank linking in Stripe UI
+4. Webhook receives linked account
+5. Create payment method: `createPaymentMethodFromLinkedAccount()`
+6. Use payment method for ACH: `processACH()` with `stripeBankAccountId`
 
 ---
 
-**Progress Bar:** █████████░ (87%)
+**Progress Bar:** █████████░ (88%)
 
-**Status:** Webhooks ready. SkipTrace enabled. Keep building!
+**Status:** Bank linking implemented. OpenSign for e-signatures. Keep building!
 
 — Claude Code

@@ -624,6 +624,180 @@ export class PaymentService {
   }
 
   /**
+   * Create Stripe Financial Connections session for bank account linking
+   * This is the CORRECT way to link bank accounts - NOT raw account numbers
+   *
+   * Flow:
+   * 1. Create Financial Connections session
+   * 2. Client completes bank linking in Stripe-hosted UI
+   * 3. Webhook receives linked account details
+   * 4. Use returned payment method for ACH payments
+   */
+  async createBankLinkingSession(
+    customerId: string,
+    returnUrl: string
+  ): Promise<{ clientSecret: string; url: string } | null> {
+    if (!stripe) {
+      logger.warn('Stripe not configured, cannot create bank linking session');
+      return null;
+    }
+
+    try {
+      // Create Financial Connections session
+      const session = await stripe.financialConnections.sessions.create({
+        account_holder: {
+          type: 'customer',
+          customer: customerId,
+        },
+        permissions: ['payment_method', 'balances'],
+        filters: {
+          countries: ['US'],
+        },
+        return_url: returnUrl,
+      });
+
+      logger.info('Financial Connections session created', {
+        sessionId: session.id,
+        customerId,
+      });
+
+      return {
+        clientSecret: session.client_secret!,
+        url: session.url || returnUrl,
+      };
+    } catch (error: any) {
+      logger.error('Failed to create Financial Connections session', {
+        error: error.message,
+      });
+      return null;
+    }
+  }
+
+  /**
+   * Get or create Stripe customer for a user
+   */
+  async getOrCreateStripeCustomer(
+    userId: string,
+    email: string,
+    name: string
+  ): Promise<string | null> {
+    if (!stripe) return null;
+
+    try {
+      // Check if customer already exists
+      const existingCustomers = await stripe.customers.list({
+        email,
+        limit: 1,
+      });
+
+      if (existingCustomers.data.length > 0) {
+        return existingCustomers.data[0].id;
+      }
+
+      // Create new customer
+      const customer = await stripe.customers.create({
+        email,
+        name,
+        metadata: {
+          userId,
+          platform: 'mgr-capital',
+        },
+      });
+
+      logger.info('Stripe customer created', { customerId: customer.id, userId });
+      return customer.id;
+    } catch (error: any) {
+      logger.error('Failed to get/create Stripe customer', { error: error.message });
+      return null;
+    }
+  }
+
+  /**
+   * Create payment method from Financial Connections account
+   * Call this after the user completes bank linking
+   */
+  async createPaymentMethodFromLinkedAccount(
+    linkedAccountId: string,
+    customerId: string
+  ): Promise<string | null> {
+    if (!stripe) return null;
+
+    try {
+      const paymentMethod = await stripe.paymentMethods.create({
+        type: 'us_bank_account',
+        us_bank_account: {
+          financial_connections_account: linkedAccountId,
+        },
+      });
+
+      // Attach to customer
+      await stripe.paymentMethods.attach(paymentMethod.id, {
+        customer: customerId,
+      });
+
+      logger.info('Payment method created from linked account', {
+        paymentMethodId: paymentMethod.id,
+        linkedAccountId,
+        customerId,
+      });
+
+      return paymentMethod.id;
+    } catch (error: any) {
+      logger.error('Failed to create payment method from linked account', {
+        error: error.message,
+      });
+      return null;
+    }
+  }
+
+  /**
+   * Initiate microdeposit verification for bank account
+   * Alternative to Financial Connections for manual bank entry
+   */
+  async initiateMicrodepositVerification(
+    customerId: string,
+    accountHolderName: string,
+    accountHolderType: 'individual' | 'company' = 'individual'
+  ): Promise<{ clientSecret: string; setupIntentId: string } | null> {
+    if (!stripe) return null;
+
+    try {
+      // Create SetupIntent for microdeposit verification
+      const setupIntent = await stripe.setupIntents.create({
+        customer: customerId,
+        payment_method_types: ['us_bank_account'],
+        payment_method_options: {
+          us_bank_account: {
+            verification_method: 'microdeposits',
+            financial_connections: {
+              permissions: ['payment_method'],
+            },
+          },
+        },
+        metadata: {
+          accountHolderName,
+          accountHolderType,
+        },
+      });
+
+      logger.info('Microdeposit verification initiated', {
+        setupIntentId: setupIntent.id,
+        customerId,
+      });
+
+      return {
+        clientSecret: setupIntent.client_secret!,
+        setupIntentId: setupIntent.id,
+      };
+    } catch (error: any) {
+      logger.error('Failed to initiate microdeposit verification', {
+        error: error.message,
+      });
+      return null;
+    }
+  }
+
+  /**
    * Process Nickel ACH payment (FREE unlimited ACH)
    */
   async processNickelACH(

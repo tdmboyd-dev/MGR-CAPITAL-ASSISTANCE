@@ -4,19 +4,32 @@
  *
  * RECOMMENDED: OpenSign (FREE unlimited signatures)
  * See BEST_APIS_GUIDE.md for alternatives
+ *
+ * DocuSign JWT Auth: Tokens expire in 1 hour, auto-refresh implemented
  */
 
 import { PrismaClient } from '@prisma/client';
 import { logger } from '../utils/logger.js';
+import * as crypto from 'crypto';
 
 const prisma = new PrismaClient();
 
 // API configurations
 const OPENSIGN_API_KEY = process.env.OPENSIGN_API_KEY;
-const DOCUSIGN_API_KEY = process.env.DOCUSIGN_API_KEY;
+const DOCUSIGN_INTEGRATION_KEY = process.env.DOCUSIGN_INTEGRATION_KEY;
+const DOCUSIGN_USER_ID = process.env.DOCUSIGN_USER_ID;
+const DOCUSIGN_PRIVATE_KEY = process.env.DOCUSIGN_PRIVATE_KEY; // RSA private key for JWT
+const DOCUSIGN_API_KEY = process.env.DOCUSIGN_API_KEY; // Legacy static token fallback
 
 // Determine provider
-const PROVIDER = OPENSIGN_API_KEY ? 'opensign' : (DOCUSIGN_API_KEY ? 'docusign' : 'demo');
+const PROVIDER = OPENSIGN_API_KEY ? 'opensign' :
+  (DOCUSIGN_INTEGRATION_KEY || DOCUSIGN_API_KEY ? 'docusign' : 'demo');
+
+// DocuSign token cache
+let docusignTokenCache: {
+  accessToken: string;
+  expiresAt: number;
+} | null = null;
 
 interface SignatureRequest {
   documentId: string;
@@ -54,7 +67,116 @@ export class DocumentSigningService {
       logger.info('[DocumentSigning] To enable real signatures, add OPENSIGN_API_KEY (FREE unlimited)');
     } else {
       logger.info(`[DocumentSigning] Using ${this.provider.toUpperCase()} for e-signatures`);
+      if (this.provider === 'docusign' && DOCUSIGN_INTEGRATION_KEY && DOCUSIGN_PRIVATE_KEY) {
+        logger.info('[DocumentSigning] DocuSign JWT auth configured - tokens will auto-refresh');
+      }
     }
+  }
+
+  /**
+   * Get DocuSign access token (with auto-refresh via JWT)
+   * Tokens expire in 1 hour, we refresh 5 minutes early
+   */
+  private async getDocuSignToken(): Promise<string | null> {
+    // If JWT auth is configured, use it
+    if (DOCUSIGN_INTEGRATION_KEY && DOCUSIGN_USER_ID && DOCUSIGN_PRIVATE_KEY) {
+      // Check if cached token is still valid (with 5 minute buffer)
+      if (docusignTokenCache && docusignTokenCache.expiresAt > Date.now() + 300000) {
+        return docusignTokenCache.accessToken;
+      }
+
+      try {
+        // Generate JWT assertion
+        const now = Math.floor(Date.now() / 1000);
+        const header = {
+          typ: 'JWT',
+          alg: 'RS256',
+        };
+        const payload = {
+          iss: DOCUSIGN_INTEGRATION_KEY,
+          sub: DOCUSIGN_USER_ID,
+          aud: process.env.NODE_ENV === 'production'
+            ? 'account.docusign.com'
+            : 'account-d.docusign.com',
+          iat: now,
+          exp: now + 3600, // 1 hour
+          scope: 'signature impersonation',
+        };
+
+        // Base64url encode
+        const base64url = (data: object) =>
+          Buffer.from(JSON.stringify(data))
+            .toString('base64')
+            .replace(/=/g, '')
+            .replace(/\+/g, '-')
+            .replace(/\//g, '_');
+
+        const jwtHeader = base64url(header);
+        const jwtPayload = base64url(payload);
+        const signInput = `${jwtHeader}.${jwtPayload}`;
+
+        // Sign with RSA private key
+        const privateKey = DOCUSIGN_PRIVATE_KEY.replace(/\\n/g, '\n');
+        const sign = crypto.createSign('RSA-SHA256');
+        sign.update(signInput);
+        const signature = sign
+          .sign(privateKey, 'base64')
+          .replace(/=/g, '')
+          .replace(/\+/g, '-')
+          .replace(/\//g, '_');
+
+        const jwt = `${signInput}.${signature}`;
+
+        // Exchange JWT for access token
+        const authUrl = process.env.NODE_ENV === 'production'
+          ? 'https://account.docusign.com/oauth/token'
+          : 'https://account-d.docusign.com/oauth/token';
+
+        const response = await fetch(authUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: new URLSearchParams({
+            grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+            assertion: jwt,
+          }),
+        });
+
+        if (!response.ok) {
+          const error = await response.text();
+          logger.error('DocuSign JWT token exchange failed', { error });
+          // Fall back to static token if available
+          return DOCUSIGN_API_KEY || null;
+        }
+
+        const data = await response.json();
+
+        // Cache the token
+        docusignTokenCache = {
+          accessToken: data.access_token,
+          expiresAt: Date.now() + (data.expires_in * 1000),
+        };
+
+        logger.info('DocuSign JWT token refreshed', {
+          expiresIn: data.expires_in,
+        });
+
+        return data.access_token;
+      } catch (error: any) {
+        logger.error('DocuSign JWT auth failed', { error: error.message });
+        // Fall back to static token if available
+        return DOCUSIGN_API_KEY || null;
+      }
+    }
+
+    // Fall back to static token (expires in 8 hours)
+    if (DOCUSIGN_API_KEY) {
+      logger.warn('Using static DocuSign token - will expire in 8 hours');
+      return DOCUSIGN_API_KEY;
+    }
+
+    return null;
   }
 
   /**
@@ -202,11 +324,18 @@ export class DocumentSigningService {
         },
       };
 
+      // Get fresh DocuSign token (auto-refreshes via JWT if configured)
+      const token = await this.getDocuSignToken();
+      if (!token) {
+        logger.warn('No DocuSign token available, falling back to demo');
+        return this.createDemoRequest(requestId, request);
+      }
+
       // Create envelope via DocuSign API
       const response = await fetch(`${baseUrl}/v2.1/accounts/${accountId}/envelopes`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${DOCUSIGN_API_KEY}`,
+          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(envelopeDefinition),
@@ -235,7 +364,7 @@ export class DocumentSigningService {
           {
             method: 'POST',
             headers: {
-              'Authorization': `Bearer ${DOCUSIGN_API_KEY}`,
+              'Authorization': `Bearer ${token}`,
               'Content-Type': 'application/json',
             },
             body: JSON.stringify(viewRequest),
