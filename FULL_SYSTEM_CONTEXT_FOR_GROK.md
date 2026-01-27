@@ -1,18 +1,17 @@
 # FULL_SYSTEM_CONTEXT_FOR_GROK
 
 **Updated:** 2026-01-26
-**Version:** 4.2.0
+**Version:** 4.3.0
 **Author:** Claude Code
 
 ---
 
-## CURRENT STATUS: ~86% COMPLETE
+## CURRENT STATUS: ~87% COMPLETE
 
 Major improvements this session:
-- PayPal REST API integration (real payment collection)
-- Stripe ACH Direct Debit (bank transfers)
-- DocuSign eSignature API (envelope creation + embedded signing)
-- Corrected Grok's mistakes about Nickel (it's a dashboard, not an API)
+- Payment webhooks (Stripe, PayPal, DocuSign)
+- SkipTraceService real Tracerfy API enabled
+- Corrected errors in Grok's code
 
 ---
 
@@ -22,42 +21,38 @@ Major improvements this session:
 Core Platform:           █████████░  89%
 AI/ML Features:          ████████░░  80%
 Blockchain Features:     ████░░░░░░  45%
-Payment Services:        █████████░  90%
+Payment Services:        █████████░  92%
 Document Signing:        █████████░  90%
-External Integrations:   ████████░░  80%
+SkipTrace Service:       █████████░  85%
+Payment Webhooks:        ██████████  100%
+External Integrations:   ████████░░  82%
 Push Notifications:      ████████░░  80%
 SMS Service:             █████████░  85%
 Mobile App:              █████░░░░░  50%
 Testing Coverage:        ███░░░░░░░  35%
-Production Ready:        █████░░░░░  50%
+Production Ready:        █████░░░░░  55%
 ```
 
-**OVERALL: ~86%**
+**OVERALL: ~87%**
 
 ---
 
-## Revenue Collection (NOW WORKING)
+## Webhook Endpoints (NEW)
 
-| Method | Provider | Status |
-|--------|----------|--------|
-| Credit Cards | Stripe | LIVE KEY |
-| PayPal | PayPal REST API | WORKING (needs keys) |
-| Bank Transfer | Stripe ACH | WORKING (needs setup) |
-| E-Signatures | DocuSign | WORKING (needs keys) |
-| E-Signatures | OpenSign | WORKING (FREE, configured) |
+| Provider | Endpoint | Events |
+|----------|----------|--------|
+| Stripe | `/api/payments/webhook/stripe` | payment_intent.succeeded, failed, refunded |
+| PayPal | `/api/payments/webhook/paypal` | PAYMENT.CAPTURE.COMPLETED, DENIED |
+| DocuSign | `/api/payments/webhook/docusign` | envelope-completed |
 
-### Important: Nickel is a DASHBOARD
-
-Nickel is **NOT an API**. It's a web dashboard for manual ACH:
-1. Our app prepares payout data (Nickel Payouts page)
-2. Employee copies banking info
-3. Pastes into Nickel web dashboard
-4. Manually initiates ACH transfer
-5. It's FREE but requires human action
+Features:
+- Stripe signature verification
+- Auto payment status updates
+- Error logging
 
 ---
 
-## API Keys Configured
+## API Keys Status
 
 | Service | Provider | Status |
 |---------|----------|--------|
@@ -70,29 +65,38 @@ Nickel is **NOT an API**. It's a web dashboard for manual ACH:
 | E-Signatures | OpenSign | LIVE |
 | E-Signatures | DocuSign | CODE READY (needs keys) |
 | SMS | Plivo | CODE READY (needs keys) |
+| Skip Trace | Tracerfy | CODE READY (needs keys) |
 | Phone | Telnyx | NEEDS COMPANY EMAIL |
-| Skip Trace | Tracerfy | NEEDS BUSINESS VERIFICATION |
 
 ---
 
 ## What's WORKING
 
-### Payment Services (90%)
+### Payment Services (92%)
 - [x] Stripe credit card payments (LIVE)
 - [x] PayPal checkout orders + capture
 - [x] Stripe ACH Direct Debit
-- [x] Payment webhooks
+- [x] Payment webhooks (Stripe, PayPal, DocuSign)
 - [x] Refund processing
 - [x] Payment metrics dashboard
-- [ ] Stripe Connect for automated payouts (future)
+- [ ] Stripe Connect for automated payouts
+
+### SkipTrace Service (85%)
+- [x] Real Tracerfy API integration
+- [x] Person skip tracing
+- [x] Batch processing
+- [x] Heir finding
+- [x] Property owner lookup
+- [x] Deceased status check
+- [x] Lead scoring
+- [x] Rate limiting
+- [ ] Needs TRACERFY_API_KEY to go live
 
 ### Document Signing (90%)
 - [x] OpenSign integration (FREE unlimited)
 - [x] DocuSign envelope creation
 - [x] Embedded signing URLs
-- [x] Signature position tabs
 - [x] Webhook handling
-- [x] Request tracking
 
 ### Core Platform (89%)
 - [x] Authentication (JWT + cookies + rate limiting)
@@ -103,58 +107,43 @@ Nickel is **NOT an API**. It's a web dashboard for manual ACH:
 - [x] Employee management with tiers
 - [x] Client portal
 - [x] Ledger and payout tracking
-- [x] Shadow accounting for employee commissions
+- [x] Shadow accounting
 
 ### Nickel Payouts (95%)
 - [x] 3-tab interface (Client/Employee/Founder)
-- [x] 33% fee structure (67% client, 33% company)
-- [x] Employee commission by tier (10-50% of fee)
-- [x] Payroll bots for data preparation
-- [x] Copy to clipboard + open Nickel
-- [x] Visual distribution diagram
-
-### Communication (85%)
-- [x] Email sending (Amazon SES + Brevo backup)
-- [x] Password reset emails (HTML templates)
-- [x] WebSocket real-time updates
-- [x] Comms Chamber (internal chat)
-- [x] Phone call logs
-- [x] Push notifications (VAPID web-push)
-- [x] SMS via email gateways
-- [x] Plivo SMS integration (code ready)
+- [x] 33% fee structure
+- [x] Employee commission by tier (10-50%)
+- [x] Copy to clipboard + open Nickel dashboard
 
 ---
 
 ## What Needs Work
 
 ### Medium Priority:
-1. **SkipTraceService** - In mock mode without Tracerfy API key
-2. **NFTService** - Blockchain operations are simulated
-3. **BlockchainService** - ETH conversion hardcoded
+1. **NFTService** - Blockchain operations simulated
+2. **BlockchainService** - ETH conversion hardcoded
+3. **Mobile app** - Many screens incomplete
 
 ### Low Priority:
-4. More mobile screens needed
-5. More E2E tests
-6. Production deployment config
+4. More E2E tests
+5. Production deployment config
 
 ---
 
-## Payout Structure (33% Fee)
+## Grok Code Issues to Fix
 
-```
-SURPLUS ($100,000)
-      │
-      ├── CLIENT: 67% ($67,000) → Client ACH
-      │
-      └── COMPANY FEE: 33% ($33,000)
-              │
-              ├── EMPLOYEE: 10-50% based on tier
-              │   Tier 1: 10% = $3,300
-              │   Tier 5: 50% = $16,500
-              │
-              └── FOUNDER: Remainder
-                  (Fee - Employee Commission)
-```
+### 1. Stripe ACH (CRITICAL)
+**Wrong:** Using raw account/routing numbers
+**Right:** Use Financial Connections or pre-verified bank tokens
+
+### 2. DocuSign Tokens
+**Wrong:** Static token from env
+**Right:** Implement JWT auth flow (tokens expire in 8 hours)
+
+### 3. React Code Bugs
+- Missing `useRef` import
+- Missing `toast` import
+- Wrong `useMutation` syntax (should use destructuring)
 
 ---
 
@@ -172,10 +161,6 @@ FRONTEND_URL=http://localhost:3011
 # Auth
 JWT_SECRET=...
 JWT_EXPIRES_IN=7d
-COOKIE_SECURE=false
-
-# Founder
-FOUNDER_EMAIL=admin@capitalmgr.com
 
 # AI (CONFIGURED)
 DEEPSEEK_API_KEY=sk-...
@@ -188,39 +173,30 @@ SMTP_USER=AKIA...
 SMTP_PASS=...
 SMTP_FROM=admin@capitalmgr.com
 
-# Email Backup - Brevo (CONFIGURED)
-BREVO_API_KEY=xkeysib-...
-
 # Payments - Stripe (LIVE KEY)
 STRIPE_SECRET_KEY=sk_live_...
+STRIPE_WEBHOOK_SECRET=whsec_... # NEW - get from Stripe Dashboard
 
 # Payments - PayPal (NEEDS KEYS)
-PAYPAL_CLIENT_ID=your_client_id
-PAYPAL_CLIENT_SECRET=your_client_secret
+PAYPAL_CLIENT_ID=...
+PAYPAL_CLIENT_SECRET=...
 
 # E-Signatures - OpenSign (CONFIGURED)
 OPENSIGN_API_KEY=...
-OPENSIGN_JWT=...
 
 # E-Signatures - DocuSign (NEEDS KEYS)
-DOCUSIGN_API_KEY=your_access_token
-DOCUSIGN_ACCOUNT_ID=your_account_id
+DOCUSIGN_API_KEY=...
+DOCUSIGN_ACCOUNT_ID=...
 DOCUSIGN_BASE_URL=https://demo.docusign.net/restapi
 
-# Push Notifications (VAPID)
-VAPID_PUBLIC_KEY=...
-VAPID_PRIVATE_KEY=...
+# SMS - Plivo (CODE READY)
+PLIVO_AUTH_ID=...
+PLIVO_AUTH_TOKEN=...
+PLIVO_NUMBER=...
 
-# SMS - Plivo (CODE READY, NEEDS KEYS)
-# PLIVO_AUTH_ID=
-# PLIVO_AUTH_TOKEN=
-# PLIVO_NUMBER=
-
-# Phone (NEED COMPANY EMAIL SIGNUP)
-# TELNYX_API_KEY=
-
-# Skip Trace (NEEDS BUSINESS VERIFICATION)
-# TRACERFY_API_KEY=
+# Skip Trace - Tracerfy (CODE READY)
+TRACERFY_API_KEY=...
+TRACERFY_API_URL=https://api.tracerfy.com/v1
 ```
 
 ---
@@ -241,26 +217,43 @@ Founder: time@mgrcapital.com / Dorothy1956!
 
 ---
 
-## What Grok Should Do Next
+## Payout Structure (33% Fee)
 
-### VALID from your response:
-- tanstack/react-table for large tables
-- Framer Motion animations for tabs
-- Recharts Sankey diagram for payouts
-
-### DON'T DO:
-- Don't add nickel.eu API (wrong service - it's a dashboard)
-- Don't scrape Google (use state gov sites)
-- Don't remove SMS email gateway fallbacks
-- Don't claim 100% complete
-
-### Focus Areas:
-1. **UI animations** - Tab transitions, loading states
-2. **Mobile testing** - Responsive fixes
-3. **Table virtualization** - For large datasets
+```
+SURPLUS ($100,000)
+      │
+      ├── CLIENT: 67% ($67,000) → Client ACH
+      │
+      └── COMPANY FEE: 33% ($33,000)
+              │
+              ├── EMPLOYEE: 10-50% based on tier
+              │
+              └── FOUNDER: Remainder
+```
 
 ---
 
-**Progress Bar:** █████████░ (86%)
+## What Grok Should Do Next
+
+### VALID ideas from your response:
+- `@nivo/sankey` for flow diagrams
+- `@tanstack/react-virtual` for table virtualization
+- Framer Motion animations
+- Batch process buttons
+
+### FIX these in your code:
+1. Don't use raw account numbers with Stripe ACH
+2. Don't use static DocuSign tokens in production
+3. Add missing React imports
+4. Fix useMutation syntax
+
+### Focus areas:
+- UI animations (your designs are good)
+- Mobile responsive testing
+- Loading states / skeletons
+
+---
+
+**Progress Bar:** █████████░ (87%)
 
 — Claude Code

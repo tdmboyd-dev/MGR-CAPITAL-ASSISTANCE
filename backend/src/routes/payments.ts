@@ -236,4 +236,132 @@ router.get("/metrics", authenticate, async (_req, res) => {
   }
 });
 
+// ============================================
+// WEBHOOKS (No auth - verified by signatures)
+// ============================================
+
+/**
+ * POST /api/payments/webhook/stripe
+ * Handle Stripe webhook events
+ */
+router.post("/webhook/stripe", async (req, res) => {
+  try {
+    const { paymentService } = await import("../services/PaymentService.js");
+    const sig = req.headers["stripe-signature"] as string;
+    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+
+    // If webhook secret configured, verify signature
+    if (webhookSecret && sig) {
+      const stripe = (await import("stripe")).default;
+      const stripeClient = new stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: "2023-10-16" as any });
+
+      try {
+        const event = stripeClient.webhooks.constructEvent(
+          req.body,
+          sig,
+          webhookSecret
+        );
+
+        logger.info("Stripe webhook received", { type: event.type });
+
+        // Handle different event types
+        switch (event.type) {
+          case "payment_intent.succeeded":
+            const paymentIntent = event.data.object as any;
+            const internalId = paymentIntent.metadata?.internalPaymentId;
+            if (internalId) {
+              await paymentService.updateStatus(internalId, "succeeded");
+            }
+            break;
+
+          case "payment_intent.payment_failed":
+            const failedIntent = event.data.object as any;
+            const failedInternalId = failedIntent.metadata?.internalPaymentId;
+            if (failedInternalId) {
+              await paymentService.updateStatus(failedInternalId, "failed");
+            }
+            break;
+
+          case "charge.refunded":
+            const refund = event.data.object as any;
+            logger.info("Charge refunded", { chargeId: refund.id });
+            break;
+        }
+
+        res.json({ received: true });
+      } catch (err: any) {
+        logger.error("Stripe webhook signature verification failed", { error: err.message });
+        return res.status(400).json({ error: "Webhook signature verification failed" });
+      }
+    } else {
+      // No signature verification (dev mode)
+      logger.warn("Stripe webhook received without signature verification");
+      res.json({ received: true, warning: "No signature verification" });
+    }
+  } catch (error: any) {
+    logger.error("Stripe webhook error", { error: error.message });
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * POST /api/payments/webhook/paypal
+ * Handle PayPal webhook events
+ */
+router.post("/webhook/paypal", async (req, res) => {
+  try {
+    const { paymentService } = await import("../services/PaymentService.js");
+    const event = req.body;
+
+    logger.info("PayPal webhook received", { type: event.event_type });
+
+    // PayPal webhook verification would go here in production
+    // Using PayPal's verify-webhook-signature API
+
+    switch (event.event_type) {
+      case "PAYMENT.CAPTURE.COMPLETED":
+        const captureId = event.resource?.id;
+        const orderId = event.resource?.supplementary_data?.related_ids?.order_id;
+        if (orderId) {
+          // Find payment by external ID and update status
+          logger.info("PayPal payment completed", { orderId, captureId });
+        }
+        break;
+
+      case "PAYMENT.CAPTURE.DENIED":
+        logger.warn("PayPal payment denied", { resource: event.resource?.id });
+        break;
+
+      case "PAYMENT.CAPTURE.REFUNDED":
+        logger.info("PayPal payment refunded", { resource: event.resource?.id });
+        break;
+    }
+
+    res.json({ received: true });
+  } catch (error: any) {
+    logger.error("PayPal webhook error", { error: error.message });
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * POST /api/payments/webhook/docusign
+ * Handle DocuSign webhook events
+ */
+router.post("/webhook/docusign", async (req, res) => {
+  try {
+    const { documentSigningService } = await import("../services/DocumentSigningService.js");
+    const event = req.body;
+
+    logger.info("DocuSign webhook received", { event: event.event });
+
+    await documentSigningService.handleWebhook(event);
+
+    res.json({ received: true });
+  } catch (error: any) {
+    logger.error("DocuSign webhook error", { error: error.message });
+    res.status(500).json({ error: error.message });
+  }
+});
+
 export default router;

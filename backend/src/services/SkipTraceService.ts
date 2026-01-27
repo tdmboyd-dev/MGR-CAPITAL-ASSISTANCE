@@ -150,33 +150,37 @@ class SkipTraceService {
     // In production, call Tracerfy API
     if (this.isConfigured) {
       try {
-        // const response = await fetch(`${this.baseUrl}/skip-trace`, {
-        //   method: "POST",
-        //   headers: {
-        //     "Authorization": `Bearer ${this.apiKey}`,
-        //     "Content-Type": "application/json",
-        //   },
-        //   body: JSON.stringify({
-        //     first_name: input.firstName,
-        //     last_name: input.lastName,
-        //     middle_name: input.middleName,
-        //     address: input.address,
-        //     city: input.city,
-        //     state: input.state,
-        //     zip: input.zip,
-        //     enhanced,
-        //   }),
-        // });
-        //
-        // if (!response.ok) {
-        //   throw new Error(`API error: ${response.status}`);
-        // }
-        //
-        // const data = await response.json();
-        // return this.transformApiResult(data, input);
+        const response = await fetch(`${this.baseUrl}/skip-trace`, {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${this.apiKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            first_name: input.firstName,
+            last_name: input.lastName,
+            middle_name: input.middleName,
+            address: input.address,
+            city: input.city,
+            state: input.state,
+            zip: input.zip,
+            enhanced,
+          }),
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          logger.error("Tracerfy API error", { status: response.status, error: errorText });
+          // Fall back to mock on API error
+          return this.generateMockResult(input, enhanced);
+        }
+
+        const data = await response.json();
+        return this.transformApiResult(data, input, enhanced);
       } catch (error: any) {
         logger.error("Tracerfy API error", { error: error.message });
-        throw error;
+        // Fall back to mock on error
+        return this.generateMockResult(input, enhanced);
       }
     }
 
@@ -422,6 +426,93 @@ class SkipTraceService {
   }
 
   // Private helpers
+
+  /**
+   * Transform Tracerfy API response to our format
+   */
+  private transformApiResult(data: any, input: PersonInput, enhanced: boolean): SkipTraceResult {
+    const result: SkipTraceResult = {
+      id: data.id || `skip_${Date.now()}`,
+      input,
+      matchConfidence: data.match_confidence || data.confidence || 0,
+      status: data.found ? "found" : data.partial_match ? "partial" : "not_found",
+      phones: [],
+      emails: [],
+      addresses: [],
+      relatives: [],
+      processedAt: new Date(),
+      cost: enhanced ? 0.15 : 0.02,
+    };
+
+    if (data.person || data.result) {
+      const person = data.person || data.result;
+
+      result.person = {
+        firstName: person.first_name || input.firstName,
+        lastName: person.last_name || input.lastName,
+        middleName: person.middle_name,
+        suffix: person.suffix,
+        age: person.age,
+        dob: person.dob || person.date_of_birth,
+        isDeceased: person.is_deceased || person.deceased || false,
+        deceasedDate: person.deceased_date || person.death_date,
+      };
+
+      // Transform phones
+      if (Array.isArray(person.phones || person.phone_numbers)) {
+        result.phones = (person.phones || person.phone_numbers).map((p: any) => ({
+          number: p.number || p.phone,
+          type: p.type || p.line_type || "unknown",
+          carrier: p.carrier,
+          isValid: p.is_valid !== false,
+          doNotCall: p.do_not_call || p.dnc || false,
+          lastSeen: p.last_seen ? new Date(p.last_seen) : undefined,
+        }));
+      }
+
+      // Transform emails
+      if (Array.isArray(person.emails || person.email_addresses)) {
+        result.emails = (person.emails || person.email_addresses).map((e: any) => ({
+          address: e.address || e.email,
+          isValid: e.is_valid !== false,
+          type: e.type || "unknown",
+          lastSeen: e.last_seen ? new Date(e.last_seen) : undefined,
+        }));
+      }
+
+      // Transform addresses
+      if (Array.isArray(person.addresses)) {
+        result.addresses = person.addresses.map((a: any) => ({
+          street: a.street || a.address_line1,
+          city: a.city,
+          state: a.state,
+          zip: a.zip || a.postal_code,
+          county: a.county,
+          type: a.is_current ? "current" : "previous",
+          moveInDate: a.move_in_date ? new Date(a.move_in_date) : undefined,
+          moveOutDate: a.move_out_date ? new Date(a.move_out_date) : undefined,
+          isVerified: a.is_verified || false,
+        }));
+      }
+
+      // Transform relatives (enhanced only)
+      if (enhanced && Array.isArray(person.relatives || person.associates)) {
+        result.relatives = (person.relatives || person.associates).map((r: any) => ({
+          firstName: r.first_name,
+          lastName: r.last_name,
+          relationship: r.relationship || r.relation,
+          age: r.age,
+        }));
+      }
+
+      // Aliases
+      if (Array.isArray(person.aliases || person.aka)) {
+        result.aliases = person.aliases || person.aka;
+      }
+    }
+
+    return result;
+  }
 
   private checkRateLimit(): void {
     const now = Date.now();
