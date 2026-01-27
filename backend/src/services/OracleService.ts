@@ -159,7 +159,7 @@ export class OracleService {
    */
   async subscribeToChanges(states: string[], callback: (update: StateLawUpdate) => void): Promise<string> {
     const subscriptionId = `sub_${Date.now()}`;
-    console.log(`[Oracle] Created subscription ${subscriptionId} for states: ${states.join(', ')}`);
+    logger.info(`Created oracle subscription ${subscriptionId} for states: ${states.join(', ')}`);
 
     // Simulated periodic updates
     // In production, this would be Chainlink event listener
