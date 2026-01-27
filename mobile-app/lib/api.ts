@@ -9,7 +9,7 @@ const BASE_URL = __DEV__
   ? 'http://localhost:4000/api'
   : 'https://mgr-backend.onrender.com/api';
 
-export const api = axios.create({
+const api = axios.create({
   baseURL: BASE_URL,
   timeout: 10000,
   headers: {
@@ -39,3 +39,5 @@ api.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
+export default api;
