@@ -255,6 +255,12 @@ model User {
   ssn4                String?      // Last 4 digits only, encrypted
   dateOfBirth         DateTime?
 
+  // AI Usage Billing
+  aiCreditBalanceCents    Int       @default(0)
+  aiAutoRecharge          Boolean   @default(false)
+  aiAutoRechargeThreshold Int       @default(500)    // Recharge when below this (cents)
+  aiAutoRechargeAmount    Int       @default(2000)   // Amount to recharge (cents)
+
   // Relations
   assignedCases       Case[]       @relation("AssignedEmployee")
   clientCases         Case[]       @relation("ClientCases")
@@ -1832,4 +1838,91 @@ model Feedback {
   @@index([isProcessed])
   @@index([createdAt])
   @@index([feature])
+}
+
+// ============================================
+// AI USAGE TRACKING & BILLING
+// Session 31: Pass-through AI billing
+// ============================================
+
+model AiUsageRecord {
+  id              String    @id @default(cuid())
+  userId          String
+  caseId          String?
+  type            String    // llm, stt, tts, document, skip_trace, notary, email
+  provider        String    // deepseek, gemini, openai, etc.
+  quantity        Float     // tokens, minutes, characters, etc.
+  unit            String    // tokens, minutes, chars, requests
+  baseCostCents   Int       // Actual provider cost
+  markupCents     Int       // Platform markup
+  totalCostCents  Int       // Total charged to user
+  metadata        Json?
+  createdAt       DateTime  @default(now())
+
+  @@index([userId])
+  @@index([caseId])
+  @@index([type])
+  @@index([provider])
+  @@index([createdAt])
+}
+
+// ============================================
+// PROFESSIONAL EMAIL ACCOUNTS
+// Session 31: Custom domain email service
+// ============================================
+
+model ProfessionalEmail {
+  id                String    @id @default(cuid())
+  userId            String
+  emailAddress      String    @unique
+  displayName       String
+  plan              String    // basic, professional, premium
+  status            String    @default("active") // pending, active, suspended, cancelled
+  provider          String    // zoho, improvmx, google, microsoft, demo
+  forwardTo         String?   // Forward email address
+  monthlyPriceCents Int
+  expiresAt         DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@index([userId])
+  @@index([emailAddress])
+  @@index([status])
+  @@index([expiresAt])
+}
+
+// ============================================
+// NOTARY SESSIONS
+// Session 31: Remote Online Notarization
+// ============================================
+
+model NotarySession {
+  id                    String    @id @default(cuid())
+  caseId                String
+  documentId            String
+  provider              String    // notarize, notarycam, demo
+  externalId            String    @unique
+  status                String    @default("pending") // pending, scheduled, in_progress, completed, failed, expired
+  signerName            String
+  signerEmail           String
+  signerPhone           String?
+  scheduledTime         DateTime?
+  completedAt           DateTime?
+  notarizedDocumentUrl  String?
+  auditTrailUrl         String?
+  videoRecordingUrl     String?
+  notaryName            String?
+  notaryCommission      String?
+  notaryState           String?
+  costCents             Int
+  error                 String?
+  metadata              Json?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@index([caseId])
+  @@index([documentId])
+  @@index([externalId])
+  @@index([status])
+  @@index([scheduledTime])
 }

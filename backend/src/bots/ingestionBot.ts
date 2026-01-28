@@ -817,7 +817,6 @@ class IngestionBot {
       })),
     };
   }
-}
 
   // ============================================
   // AI AGENT INTEGRATION (Phase 15)
@@ -843,11 +842,11 @@ class IngestionBot {
       // Fallback to basic info
       const doc = await prisma.document.findUnique({
         where: { id: documentId },
-        select: { filename: true, type: true, status: true },
+        select: { fileName: true, type: true, status: true },
       });
 
       return {
-        summary: doc ? `Document: ${doc.filename} (${doc.type})` : "Document not found",
+        summary: doc ? `Document: ${doc.fileName} (${doc.type})` : "Document not found",
         keyPoints: [],
         missingInfo: ["AI analysis unavailable"],
         recommendations: ["Manual review required"],
