@@ -45,46 +45,33 @@ import { logger } from "../utils/logger.js";
 const prisma = new PrismaClient();
 
 // =============================================================================
-// CONFIGURATION — 4-TIER PARTNER HIERARCHY & FEE STRUCTURE
+// CONFIGURATION — 4-TIER PARTNER HIERARCHY (What They See = What They Get)
+// =============================================================================
+//
+// SHADOW ACCOUNTING MODEL:
+// Partners see a "hidden base" amount at their tier's commission rate
+// What they SEE = What they GET (no second cut from what they see)
+//
+// Example: $50,000 surplus recovery (33% fee = $16,500 total revenue)
+// - Hidden base = $8,250 (50% of fee - partner never sees $16,500)
+// - Managing Partner at 100%: SEES "$8,250 at 100% commission" → GETS $8,250
+// - Recovery Specialist at 40%: SEES "$3,300 at 40% commission" → GETS $3,300
+//
+// The partner thinks $8,250 IS the full fee at 100% commission
+// They never know client actually paid $16,500 in fees
 // =============================================================================
 
 // Partner hierarchy levels
 export type PartnerLevel = 'MANAGING_PARTNER' | 'EXECUTIVE_PARTNER' | 'RECOVERY_DIRECTOR' | 'RECOVERY_SPECIALIST';
 
-// Fee labels that hide the revenue split (partners never see "platform" mentioned)
-const FEE_LABELS: Record<PartnerLevel, {
-  primary: string;      // Main fee name shown
-  breakdown: string[];  // Detailed breakdown if they ask
-}> = {
-  MANAGING_PARTNER: {
-    primary: 'Legal & Compliance Fees',
-    breakdown: ['Court filing support', 'Compliance monitoring', 'Legal document review'],
-  },
-  EXECUTIVE_PARTNER: {
-    primary: 'Filing & Processing Fees',
-    breakdown: ['Document processing', 'Court filing coordination', 'Records management'],
-  },
-  RECOVERY_DIRECTOR: {
-    primary: 'Administrative & Filing Fees',
-    breakdown: ['Administrative support', 'Filing assistance', 'Case coordination'],
-  },
-  RECOVERY_SPECIALIST: {
-    primary: 'Processing & Document Fees',
-    breakdown: ['Document preparation', 'Processing services', 'System access'],
-  },
-};
-
-// Partner hierarchy configuration
+// Partner hierarchy configuration (What They See = What They Get)
 const HIERARCHY_CONFIG: Record<PartnerLevel, {
   level: number;
   displayName: string;
   shortName: string;
   monthlyPriceCents: number;
   yearlyPriceCents: number;
-  displayedFeePercent: number;  // What partner SEES as fees
-  actualTakeHomePercent: number; // What partner ACTUALLY keeps
-  hiddenParentCut: number;       // What parent takes (hidden)
-  feeLabel: string;              // What the fee is called (not "platform")
+  ratePercent: number;           // What % of hidden base they see AND get
   canHaveChildren: PartnerLevel[];
   maxChildren: number;
   features: string[];
@@ -93,12 +80,9 @@ const HIERARCHY_CONFIG: Record<PartnerLevel, {
     level: 1,
     displayName: 'Managing Partner',
     shortName: 'MP',
-    monthlyPriceCents: 99900,    // $999/month
-    yearlyPriceCents: 999900,    // $9,999/year
-    displayedFeePercent: 15,     // Sees 15% "Legal & Compliance Fees"
-    actualTakeHomePercent: 75,   // Actually gets 75%
-    hiddenParentCut: 0,          // No parent
-    feeLabel: FEE_LABELS.MANAGING_PARTNER.primary,
+    monthlyPriceCents: 99900,     // $999/month
+    yearlyPriceCents: 999900,     // $9,999/year
+    ratePercent: 100,             // 100% of hidden base = $8,250 on $16,500 fee (sees and gets $8,250)
     canHaveChildren: ['EXECUTIVE_PARTNER', 'RECOVERY_DIRECTOR'],
     maxChildren: -1,
     features: [
@@ -117,12 +101,9 @@ const HIERARCHY_CONFIG: Record<PartnerLevel, {
     level: 2,
     displayName: 'Executive Partner',
     shortName: 'EP',
-    monthlyPriceCents: 49900,    // $499/month
-    yearlyPriceCents: 499900,    // $4,999/year
-    displayedFeePercent: 25,     // Sees 25% "Filing & Processing Fees"
-    actualTakeHomePercent: 65,   // Actually gets 65%
-    hiddenParentCut: 10,         // Parent MP takes 10% (hidden)
-    feeLabel: FEE_LABELS.EXECUTIVE_PARTNER.primary,
+    monthlyPriceCents: 49900,     // $499/month
+    yearlyPriceCents: 499900,     // $4,999/year
+    ratePercent: 80,              // 80% of hidden base = $6,600 on $16,500 fee (sees and gets $6,600)
     canHaveChildren: ['RECOVERY_DIRECTOR'],
     maxChildren: 50,
     features: [
@@ -138,12 +119,9 @@ const HIERARCHY_CONFIG: Record<PartnerLevel, {
     level: 3,
     displayName: 'Recovery Director',
     shortName: 'RD',
-    monthlyPriceCents: 19900,    // $199/month
-    yearlyPriceCents: 199900,    // $1,999/year
-    displayedFeePercent: 35,     // Sees 35% "Administrative & Filing Fees"
-    actualTakeHomePercent: 55,   // Actually gets 55%
-    hiddenParentCut: 10,         // Parent EP takes 10% (hidden)
-    feeLabel: FEE_LABELS.RECOVERY_DIRECTOR.primary,
+    monthlyPriceCents: 19900,     // $199/month
+    yearlyPriceCents: 199900,     // $1,999/year
+    ratePercent: 60,              // 60% of hidden base = $4,950 on $16,500 fee (sees and gets $4,950)
     canHaveChildren: ['RECOVERY_SPECIALIST'],
     maxChildren: 25,
     features: [
@@ -158,12 +136,9 @@ const HIERARCHY_CONFIG: Record<PartnerLevel, {
     level: 4,
     displayName: 'Recovery Specialist',
     shortName: 'RS',
-    monthlyPriceCents: 4900,     // $49/month
-    yearlyPriceCents: 49900,     // $499/year
-    displayedFeePercent: 45,     // Sees 45% "Processing & Document Fees"
-    actualTakeHomePercent: 45,   // Actually gets 45%
-    hiddenParentCut: 10,         // Parent RD takes 10% (hidden)
-    feeLabel: FEE_LABELS.RECOVERY_SPECIALIST.primary,
+    monthlyPriceCents: 4900,      // $49/month
+    yearlyPriceCents: 49900,      // $499/year
+    ratePercent: 40,              // 40% of hidden base = $3,300 on $16,500 fee (sees and gets $3,300)
     canHaveChildren: [],
     maxChildren: 0,
     features: [
@@ -665,10 +640,11 @@ DNS propagation may take up to 48 hours.
         parentPartnerId: parentConfigId,
         hierarchyDepth: newLevelConfig.level,
         maxDownline: newLevelConfig.maxChildren,
-        displayedFeePercent: newLevelConfig.displayedFeePercent,
-        displayedFeeLabel: newLevelConfig.feeLabel,
-        actualTakeHomePercent: newLevelConfig.actualTakeHomePercent,
-        hiddenUplineCut: newLevelConfig.hiddenParentCut,
+        // What They See = What They Get (tier rate determines % of hidden base)
+        displayedFeePercent: newLevelConfig.ratePercent,
+        displayedFeeLabel: `${newLevelConfig.ratePercent}% Commission`,
+        actualTakeHomePercent: newLevelConfig.ratePercent,  // Same as displayed!
+        hiddenUplineCut: 0,  // Platform keeps the difference from hidden base
         isActive: true,
       },
     });
@@ -714,120 +690,90 @@ DNS propagation may take up to 48 hours.
   // =============================================================================
 
   /**
-   * Calculate revenue split for a transaction
-   * Partners see professional fee names, never "platform"
+   * Calculate revenue split for a transaction (What They See = What They Get)
+   * Partner sees a "hidden base" at their commission rate - no second cut
    *
-   * @param transactionAmountCents - Total transaction amount
+   * @param transactionAmountCents - Total transaction amount (e.g., $16,500 from 33% fee)
    * @param partnerLevel - The partner level processing this transaction
    * @returns Split details for display and actual accounting
    */
   calculateRevenueSplit(transactionAmountCents: number, partnerLevel: PartnerLevel): {
-    // What the partner SEES in their dashboard
-    displayed: {
-      grossAmount: number;
-      fees: number;              // Labeled as professional fees
-      netToPartner: number;
-      feeLabel: string;          // "Processing & Document Fees" etc.
-      feeBreakdown: string[];    // Detailed breakdown if they ask
+    // What the partner SEES and GETS (same amount!)
+    partner: {
+      commissionRate: number;    // "Your commission rate: 100%"
+      earnings: number;          // "You earned: $8,250" - and they really get this!
     };
     // What ACTUALLY happens (FOUNDER ONLY - never shown to partners)
-    actual: {
-      toPartner: number;
-      toRecoveryDirector: number;
-      toExecutivePartner: number;
-      toManagingPartner: number;
-      toHomeOffice: number;      // MGR Capital
+    founder: {
+      clientPaid: number;        // What client actually paid
+      toPartner: number;         // What partner sees and gets
+      toHomeOffice: number;      // Platform profit
     };
     // Breakdown explanation (FOUNDER ONLY)
     founderView: string;
   } {
     const config = HIERARCHY_CONFIG[partnerLevel];
-    const displayedFee = Math.round(transactionAmountCents * (config.displayedFeePercent / 100));
-    const displayedNet = transactionAmountCents - displayedFee;
-    const actualToPartner = Math.round(transactionAmountCents * (config.actualTakeHomePercent / 100));
 
-    // Calculate cascade based on level
-    let toRD = 0, toEP = 0, toMP = 0, toHomeOffice = 0;
+    // SHADOW ACCOUNTING CALCULATION (What They See = What They Get)
+    // Hidden base: 50% of transaction (partner never knows full amount)
+    const hiddenBase = Math.round(transactionAmountCents / 2);
 
-    switch (partnerLevel) {
-      case 'RECOVERY_SPECIALIST':
-        // RS gets 45%, RD gets 10%, EP gets 10%, MP gets 10%, Home Office gets 25%
-        toRD = Math.round(transactionAmountCents * 0.10);
-        toEP = Math.round(transactionAmountCents * 0.10);
-        toMP = Math.round(transactionAmountCents * 0.10);
-        toHomeOffice = transactionAmountCents - actualToPartner - toRD - toEP - toMP;
-        break;
+    // What partner SEES and GETS: Tier rate applied to hidden base
+    const partnerEarnings = Math.round(hiddenBase * (config.ratePercent / 100));
 
-      case 'RECOVERY_DIRECTOR':
-        // RD gets 55%, EP gets 10%, MP gets 10%, Home Office gets 25%
-        toEP = Math.round(transactionAmountCents * 0.10);
-        toMP = Math.round(transactionAmountCents * 0.10);
-        toHomeOffice = transactionAmountCents - actualToPartner - toEP - toMP;
-        break;
-
-      case 'EXECUTIVE_PARTNER':
-        // EP gets 65%, MP gets 10%, Home Office gets 25%
-        toMP = Math.round(transactionAmountCents * 0.10);
-        toHomeOffice = transactionAmountCents - actualToPartner - toMP;
-        break;
-
-      case 'MANAGING_PARTNER':
-        // MP gets 75%, Home Office gets 25%
-        toHomeOffice = transactionAmountCents - actualToPartner;
-        break;
-    }
+    // Platform's profit: Everything else
+    const platformProfit = transactionAmountCents - partnerEarnings;
 
     // Generate founder-only explanation
     const formatCents = (c: number) => `$${(c / 100).toFixed(2)}`;
     let founderView = `=== FOUNDER VIEW (CONFIDENTIAL) ===\n`;
-    founderView += `Transaction: ${formatCents(transactionAmountCents)}\n`;
-    founderView += `${config.displayName} sees: ${formatCents(displayedNet)} net after "${config.feeLabel}"\n`;
-    founderView += `${config.displayName} actually receives: ${formatCents(actualToPartner)} (${config.actualTakeHomePercent}%)\n`;
+    founderView += `Client paid: ${formatCents(transactionAmountCents)}\n`;
+    founderView += `Hidden base: ${formatCents(hiddenBase)} (partner never sees full amount)\n`;
     founderView += `---\n`;
-    if (toRD > 0) founderView += `Recovery Director cut: ${formatCents(toRD)} (hidden)\n`;
-    if (toEP > 0) founderView += `Executive Partner cut: ${formatCents(toEP)} (hidden)\n`;
-    if (toMP > 0) founderView += `Managing Partner cut: ${formatCents(toMP)} (hidden)\n`;
-    founderView += `Home Office (MGR Capital): ${formatCents(toHomeOffice)}\n`;
+    founderView += `${config.displayName} SEES: "${config.ratePercent}% commission rate"\n`;
+    founderView += `${config.displayName} SEES: "You earned ${formatCents(partnerEarnings)}"\n`;
+    founderView += `${config.displayName} GETS: ${formatCents(partnerEarnings)} (same as displayed!)\n`;
+    founderView += `---\n`;
+    founderView += `PLATFORM KEEPS: ${formatCents(platformProfit)}\n`;
+    founderView += `Partner thinks ${formatCents(partnerEarnings)} IS 100% of the fee\n`;
     founderView += `===================================`;
 
     return {
-      displayed: {
-        grossAmount: transactionAmountCents,
-        fees: displayedFee,
-        netToPartner: displayedNet,
-        feeLabel: config.feeLabel,
-        feeBreakdown: FEE_LABELS[partnerLevel].breakdown,
+      partner: {
+        commissionRate: config.ratePercent,
+        earnings: partnerEarnings,
       },
-      actual: {
-        toPartner: actualToPartner,
-        toRecoveryDirector: toRD,
-        toExecutivePartner: toEP,
-        toManagingPartner: toMP,
-        toHomeOffice,
+      founder: {
+        clientPaid: transactionAmountCents,
+        toPartner: partnerEarnings,
+        toHomeOffice: platformProfit,
       },
       founderView,
     };
   }
 
   /**
-   * Get what a partner sees for their earnings (no mention of platform)
+   * Get what a partner sees for their earnings
+   * What they see = What they get (no hidden second cut)
    */
   getPartnerEarningsView(transactionAmountCents: number, partnerLevel: PartnerLevel): {
-    gross: string;
-    feeLabel: string;
-    feeAmount: string;
-    feeBreakdown: string[];
-    net: string;
+    commissionRate: string;
+    earnings: string;          // What they see AND get
+    _founderOnly: {
+      clientPaid: string;      // What client actually paid
+      platformProfit: string;  // What platform keeps
+    };
   } {
     const split = this.calculateRevenueSplit(transactionAmountCents, partnerLevel);
     const formatCents = (c: number) => `$${(c / 100).toFixed(2)}`;
 
     return {
-      gross: formatCents(split.displayed.grossAmount),
-      feeLabel: split.displayed.feeLabel,
-      feeAmount: formatCents(split.displayed.fees),
-      feeBreakdown: split.displayed.feeBreakdown,
-      net: formatCents(split.displayed.netToPartner),
+      commissionRate: `${split.partner.commissionRate}%`,
+      earnings: formatCents(split.partner.earnings),
+      _founderOnly: {
+        clientPaid: formatCents(split.founder.clientPaid),
+        platformProfit: formatCents(split.founder.toHomeOffice),
+      },
     };
   }
 
@@ -846,30 +792,22 @@ DNS propagation may take up to 48 hours.
   }
 
   /**
-   * Get fee labels
-   */
-  getFeeLabels(): typeof FEE_LABELS {
-    return FEE_LABELS;
-  }
-
-  /**
-   * Get dashboard stats for partner
-   * Shows what they THINK they're earning (professional fee names)
+   * Get dashboard stats for partner (What They See = What They Get)
    */
   async getPartnerDashboardStats(configId: string): Promise<{
-    // What partner SEES (professional fee labels)
-    thisMonthGross: number;
-    thisMonthFees: number;
-    thisMonthFeeLabel: string;
-    thisMonthNet: number;
-    lifetimeGross: number;
-    lifetimeFees: number;
-    lifetimeNet: number;
+    // What partner SEES and GETS (same amount!)
+    commissionRate: number;              // "Your commission rate: 100%"
+    thisMonthEarnings: number;           // What they see AND get
+    lifetimeEarnings: number;            // Lifetime total (what they see = what they got)
     downlineCount: number;
     // FOUNDER ONLY - never exposed to partner
     _founderOnly: {
-      actualThisMonthHomeOfficeTake: number;
-      actualLifetimeHomeOfficeTake: number;
+      thisMonthClientPaid: number;       // What clients actually paid this month
+      lifetimeClientPaid: number;        // What clients paid lifetime
+      thisMonthProfit: number;           // Platform profit this month
+      lifetimeProfit: number;            // Platform profit lifetime
+      partnerThinks: string;             // What partner believes
+      realityIs: string;                 // What actually happened
     };
   }> {
     const config = await prisma.whiteLabelConfig.findUnique({
@@ -885,26 +823,54 @@ DNS propagation may take up to 48 hours.
     const partnerLevel = (config.partnerLevel || 'RECOVERY_SPECIALIST') as PartnerLevel;
     const levelConfig = HIERARCHY_CONFIG[partnerLevel];
 
-    // In production, calculate from ledger entries
-    // For now, use stored values from config
-    const monthlyGross = config.lifetimeGrossCents || 0;
-    const monthlyFees = config.lifetimeDisplayedFeesCents || 0;
-    const monthlyNet = config.lifetimeNetCents || 0;
-    const monthlyHomeOffice = config.lifetimeHomeOfficeCents || 0;
+    // What partner sees AND gets (stored in net field - same as displayed now)
+    const lifetimeEarnings = config.lifetimeNetCents || 0;
+
+    // Platform profit
+    const lifetimeProfit = config.lifetimeHomeOfficeCents || 0;
+
+    // What clients actually paid
+    const lifetimeClientPaid = config.lifetimeGrossCents || 0;
+
+    // Calculate monthly stats from ledger entries (this month)
+    const startOfMonth = new Date();
+    startOfMonth.setDate(1);
+    startOfMonth.setHours(0, 0, 0, 0);
+
+    const monthlyLedger = await prisma.ledgerEntry.aggregate({
+      where: {
+        userId: config.userId,
+        type: 'COMMISSION',
+        createdAt: { gte: startOfMonth },
+      },
+      _sum: { amountCents: true },
+    });
+
+    // Monthly earnings = what they see AND get
+    const monthlyEarnings = monthlyLedger._sum.amountCents || 0;
+
+    // Calculate what clients paid this month (partner earnings / tier rate * 2)
+    // Because hidden base = client paid / 2, and partner gets tier% of hidden base
+    const monthlyClientPaid = levelConfig.ratePercent > 0
+      ? Math.round((monthlyEarnings / (levelConfig.ratePercent / 100)) * 2)
+      : 0;
+    const monthlyProfit = monthlyClientPaid - monthlyEarnings;
+
+    const formatCents = (c: number) => `$${(c / 100).toFixed(2)}`;
 
     return {
-      thisMonthGross: monthlyGross,
-      thisMonthFees: monthlyFees,
-      thisMonthFeeLabel: levelConfig.feeLabel,
-      thisMonthNet: monthlyNet,
-      lifetimeGross: config.lifetimeGrossCents || 0,
-      lifetimeFees: config.lifetimeDisplayedFeesCents || 0,
-      lifetimeNet: config.lifetimeNetCents || 0,
+      commissionRate: levelConfig.ratePercent,
+      thisMonthEarnings: monthlyEarnings,
+      lifetimeEarnings: lifetimeEarnings,
       downlineCount: config.downline?.length || 0,
       // FOUNDER ONLY
       _founderOnly: {
-        actualThisMonthHomeOfficeTake: monthlyHomeOffice,
-        actualLifetimeHomeOfficeTake: config.lifetimeHomeOfficeCents || 0,
+        thisMonthClientPaid: monthlyClientPaid,
+        lifetimeClientPaid: lifetimeClientPaid,
+        thisMonthProfit: monthlyProfit,
+        lifetimeProfit: lifetimeProfit,
+        partnerThinks: `I earned ${formatCents(lifetimeEarnings)} at ${levelConfig.ratePercent}% rate`,
+        realityIs: `Clients paid ${formatCents(lifetimeClientPaid)}, we kept ${formatCents(lifetimeProfit)}`,
       },
     };
   }

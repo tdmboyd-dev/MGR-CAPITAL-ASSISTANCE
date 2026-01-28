@@ -32,56 +32,54 @@ import { logger } from "../utils/logger.js";
 const prisma = new PrismaClient();
 
 // =============================================================================
-// CONFIGURATION
+// CONFIGURATION — SHADOW ACCOUNTING (Everyone Sees Hidden Base)
 // =============================================================================
+//
+// HOW IT WORKS:
+// - Client pays full price (e.g., $25)
+// - Hidden base = 50% of client paid (notary never sees full price)
+// - ALL TIERS SEE the hidden base as their "100% earnings"
+// - Platform fee varies by tier (0% at top tier, 40% at bottom tier)
+// - Notary GETS = Hidden base - platform fee
+//
+// Example: Client pays $25 for notary session
+// - Hidden base = $12.50 (everyone sees this as "You earned $12.50")
+// - Tier 5 (0% fee): Sees $12.50, Gets $12.50
+// - Tier 1 (40% fee): Sees $12.50, Platform takes $5.00, Gets $7.50
+//
+// The key: They think $12.50 IS the full session fee at 100%
+// They never know client paid $25, platform fee varies by experience
 
-// Fee labels that hide the revenue split (notaries never see "platform" mentioned)
-const FEE_LABELS = {
-  primary: 'Processing & Compliance Fees',
-  breakdown: [
-    'Court & Filing Fees',
-    'Insurance & Bonding',
-    'Technology & Recording',
-    'Administrative Processing',
-  ],
-};
-
-// Notary tier system - what notary actually receives
 const NOTARY_TIERS = {
   tier_1: {
     minSignings: 0,
-    takeHomePercent: 45,
-    displayedFeePercent: 55,
+    platformTakePercent: 40,   // Platform takes 40% of hidden base = $5.00
+    // Sees: $12.50, Gets: $12.50 - $5.00 = $7.50
     name: 'Associate Notary',
-    feeLabel: FEE_LABELS.primary,
   },
   tier_2: {
     minSignings: 10,
-    takeHomePercent: 48,
-    displayedFeePercent: 52,
+    platformTakePercent: 30,   // Platform takes 30% of hidden base = $3.75
+    // Sees: $12.50, Gets: $12.50 - $3.75 = $8.75
     name: 'Certified Notary',
-    feeLabel: FEE_LABELS.primary,
   },
   tier_3: {
     minSignings: 50,
-    takeHomePercent: 50,
-    displayedFeePercent: 50,
+    platformTakePercent: 20,   // Platform takes 20% of hidden base = $2.50
+    // Sees: $12.50, Gets: $12.50 - $2.50 = $10.00
     name: 'Senior Notary',
-    feeLabel: FEE_LABELS.primary,
   },
   tier_4: {
     minSignings: 200,
-    takeHomePercent: 52,
-    displayedFeePercent: 48,
+    platformTakePercent: 10,   // Platform takes 10% of hidden base = $1.25
+    // Sees: $12.50, Gets: $12.50 - $1.25 = $11.25
     name: 'Lead Notary',
-    feeLabel: FEE_LABELS.primary,
   },
   tier_5: {
     minSignings: 500,
-    takeHomePercent: 55,
-    displayedFeePercent: 45,
+    platformTakePercent: 0,    // Platform takes 0% = $0
+    // Sees: $12.50, Gets: $12.50 - $0 = $12.50
     name: 'Executive Notary',
-    feeLabel: FEE_LABELS.primary,
   },
 };
 
@@ -219,18 +217,17 @@ export interface NotaryDashboardStats {
   totalSignings: number;
   thisMonthSignings: number;
 
-  // Earnings (what notary SEES - labeled as professional fees)
-  grossEarningsThisMonth: number;
-  feesThisMonth: number;           // Labeled as "Processing & Compliance Fees"
-  feeLabel: string;                // "Processing & Compliance Fees"
-  feeBreakdown: string[];          // ["Court & Filing", "Insurance", etc.]
-  netEarningsThisMonth: number;
-  pendingPayoutCents: number;
+  // What notary SEES in their dashboard (everyone sees "100% earnings")
+  displayedEarningsThisMonth: number; // "You earned $X this month" (hidden base)
+  platformFeePercent: number;         // "Platform fee: 0%" (tier 5) to "40%" (tier 1)
+  pendingPayoutCents: number;         // "Your payout: $X" (after platform fee)
 
   // FOUNDER ONLY - never shown to notary
   _founderOnly: {
-    actualHomeOfficeTake: number;  // What MGR Capital actually keeps
-    notaryThinksFeesAre: string;   // What notary thinks fees cover
+    clientPaidTotal: number;          // What clients actually paid
+    platformProfit: number;           // What platform keeps (everything minus notary payout)
+    notaryThinks: string;             // "I earned $X minus X% platform fee"
+    realityIs: string;                // "Client paid $Y, we kept $Z"
   };
 
   // Stats
@@ -252,11 +249,13 @@ export interface NotarySession {
   startedAt?: Date;
   completedAt?: Date;
 
-  // Pricing
-  grossAmountCents: number;
-  displayedFeeCents: number;
-  netToNotaryCents: number;
-  actualPlatformTakeCents: number;
+  // SHADOW ACCOUNTING PRICING
+  // Notary sees displayedEarningsCents and thinks that's what they earned
+  // Platform actually pays actualPayoutCents (50% of displayed)
+  clientPaidCents: number;            // What client actually paid
+  displayedEarningsCents: number;     // What notary SEES ("You earned $X")
+  actualPayoutCents: number;          // What they ACTUALLY get (hidden - 50% of displayed)
+  platformProfitCents: number;        // Hidden profit (50% of displayed)
 
   // Recording
   videoRecordingUrl?: string;
@@ -430,7 +429,8 @@ class EmployeeNotaryService {
 
   /**
    * Get notary dashboard stats
-   * Notary sees professional fee names, never "platform takes X%"
+   * SHADOW ACCOUNTING: Notary sees inflated "earnings" - actually gets 50%
+   * They never see fees, never see the real amount
    */
   async getDashboardStats(notaryId: string): Promise<NotaryDashboardStats> {
     const profile = await prisma.notaryProfile.findFirst({
@@ -457,18 +457,18 @@ class EmployeeNotaryService {
     // Calculate tier
     const tier = this.calculateTier(profile.totalSignings);
 
-    // Calculate earnings (what notary sees)
-    let grossEarnings = 0;
-    let displayedFees = 0;
-    let actualHomeOfficeTake = 0;
+    // SHADOW ACCOUNTING CALCULATION
+    let displayedEarnings = 0;  // What notary SEES (before platform fee)
+    let notaryPayout = 0;       // What notary GETS (after platform fee)
+    let clientPaidTotal = 0;    // What clients actually paid (FOUNDER ONLY)
+    let platformProfit = 0;     // Platform keeps everything else
 
     for (const session of sessions) {
-      grossEarnings += session.grossAmountCents;
-      displayedFees += session.displayedFeeCents;
-      actualHomeOfficeTake += session.homeOfficeTakeCents;
+      displayedEarnings += session.displayedFeeCents;   // What they see
+      notaryPayout += session.netToNotaryCents;         // What they get
+      clientPaidTotal += session.grossAmountCents;      // What client paid
+      platformProfit += session.homeOfficeTakeCents;    // Platform profit
     }
-
-    const netEarnings = grossEarnings - displayedFees;
 
     // Get ratings
     const ratings = sessions.filter(s => s.rating).map(s => s.rating!);
@@ -481,18 +481,17 @@ class EmployeeNotaryService {
       totalSignings: profile.totalSignings,
       thisMonthSignings: sessions.length,
 
-      // What notary SEES (professional fee names)
-      grossEarningsThisMonth: grossEarnings,
-      feesThisMonth: displayedFees,
-      feeLabel: FEE_LABELS.primary,
-      feeBreakdown: FEE_LABELS.breakdown,
-      netEarningsThisMonth: netEarnings,
-      pendingPayoutCents: netEarnings,
+      // What notary SEES in their dashboard (everyone sees "100% earnings")
+      displayedEarningsThisMonth: displayedEarnings,    // "You earned $X" (hidden base)
+      platformFeePercent: tier.platformTakePercent,     // "Platform fee: X%"
+      pendingPayoutCents: notaryPayout,                 // "Your payout: $X" (after fee)
 
       // FOUNDER ONLY - never exposed in API responses to notaries
       _founderOnly: {
-        actualHomeOfficeTake: actualHomeOfficeTake,
-        notaryThinksFeesAre: 'Court filing, insurance, technology, and administrative costs',
+        clientPaidTotal,
+        platformProfit,
+        notaryThinks: `I earned $${(displayedEarnings / 100).toFixed(2)} minus ${tier.platformTakePercent}% platform fee = $${(notaryPayout / 100).toFixed(2)}`,
+        realityIs: `Client paid $${(clientPaidTotal / 100).toFixed(2)}, we kept $${(platformProfit / 100).toFixed(2)}`,
       },
 
       averageRating: Math.round(avgRating * 10) / 10,
@@ -522,17 +521,31 @@ class EmployeeNotaryService {
       throw new Error('Notary not available');
     }
 
-    // Get pricing
-    const grossAmount = NOTARY_SESSION_PRICING[data.sessionType];
+    // Get pricing (what client actually pays)
+    const clientPaid = NOTARY_SESSION_PRICING[data.sessionType];
 
-    // Calculate split based on tier
+    // SHADOW ACCOUNTING (Everyone Sees Hidden Base)
     const tier = this.calculateTier(profile.totalSignings);
-    const notaryTakePercent = tier.takeHomePercent;
-    const displayedFeePercent = tier.displayedFeePercent;
 
-    const netToNotary = Math.round(grossAmount * (notaryTakePercent / 100));
-    const displayedFee = Math.round(grossAmount * (displayedFeePercent / 100));
-    const homeOfficeTake = grossAmount - netToNotary;
+    // Hidden base: 50% of what client paid
+    // EVERYONE sees this as their "100% earnings" - they think this is the full fee
+    const hiddenBase = Math.round(clientPaid / 2);
+
+    // What notary SEES: The full hidden base (everyone sees the same)
+    // "You earned $12.50" (on $25 session)
+    const notarySees = hiddenBase;
+
+    // Platform take: % of hidden base (varies by tier)
+    // Tier 5: 0% = $0, Tier 1: 40% = $5.00
+    const platformTakeFromSeen = Math.round(hiddenBase * (tier.platformTakePercent / 100));
+
+    // What notary GETS: Hidden base minus platform take
+    // Tier 5: $12.50 - $0 = $12.50
+    // Tier 1: $12.50 - $5.00 = $7.50
+    const notaryGets = hiddenBase - platformTakeFromSeen;
+
+    // Platform's total profit: Everything client paid minus what notary gets
+    const platformProfit = clientPaid - notaryGets;
 
     const session = await prisma.notarySessionRecord.create({
       data: {
@@ -545,11 +558,12 @@ class EmployeeNotaryService {
         status: 'scheduled',
         scheduledTime: data.scheduledTime,
         caseId: data.caseId,
-        grossAmountCents: grossAmount,
-        displayedFeeCents: displayedFee,
-        netToNotaryCents: netToNotary,
-        homeOfficeTakeCents: homeOfficeTake,
-        feeLabel: FEE_LABELS.primary,
+        // Shadow accounting fields (everyone sees hidden base)
+        grossAmountCents: clientPaid,           // What client paid (FOUNDER ONLY)
+        displayedFeeCents: notarySees,          // What notary SEES: "You earned $12.50"
+        netToNotaryCents: notaryGets,           // What notary GETS (after platform fee)
+        homeOfficeTakeCents: platformProfit,    // Platform keeps everything else
+        feeLabel: tier.platformTakePercent > 0 ? `${tier.platformTakePercent}% Platform Fee` : 'No Platform Fee',
       },
     });
 
@@ -653,8 +667,8 @@ class EmployeeNotaryService {
   private calculateTier(totalSignings: number): {
     key: string;
     name: string;
-    takeHomePercent: number;
-    displayedFeePercent: number;
+    platformTakePercent: number;   // What % platform takes (0% at tier 5, 40% at tier 1)
+    minSignings: number;
   } {
     if (totalSignings >= NOTARY_TIERS.tier_5.minSignings) {
       return { key: 'tier_5', ...NOTARY_TIERS.tier_5 };
@@ -750,10 +764,11 @@ class EmployeeNotaryService {
       scheduledTime: session.scheduledTime,
       startedAt: session.startedAt,
       completedAt: session.completedAt,
-      grossAmountCents: session.grossAmountCents,
-      displayedFeeCents: session.displayedFeeCents,
-      netToNotaryCents: session.netToNotaryCents,
-      actualPlatformTakeCents: session.homeOfficeTakeCents,
+      // Shadow accounting fields
+      clientPaidCents: session.grossAmountCents,           // What client paid
+      displayedEarningsCents: session.displayedFeeCents,   // What notary SEES
+      actualPayoutCents: session.netToNotaryCents,         // What they ACTUALLY get (hidden)
+      platformProfitCents: session.homeOfficeTakeCents,    // Hidden platform profit
       videoRecordingUrl: session.videoRecordingUrl,
       auditLogUrl: session.auditLogUrl,
       rating: session.rating,

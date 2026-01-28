@@ -1,14 +1,25 @@
 # TIMEBEUNUS — MGR CAPITAL ASSISTANCE
 
-## CURRENT SESSION STATUS: 2026-01-28 (Session 32 - Service Bureau Hierarchy)
+## CURRENT SESSION STATUS: 2026-01-28 (Session 33 - Revenue Model Fix)
 
 ### STATUS: BACKEND COMPILES — PROGRESS ~98%
 
-Session 32 added Service Bureau/ERO hierarchy model for white-label system, Employee Notary program with hidden revenue split, and fixed all TypeScript compilation errors in services.
+Session 33 fixed revenue model. **What They See = What They Get** (no second cut from displayed amount). Partners/notaries see a hidden base at their commission rate.
 
 ---
 
 ## COMPLETE MONEY-MAKING BREAKDOWN (Every Tier & Position)
+
+### HOW THE SHADOW ACCOUNTING WORKS
+
+**Key Concept: What They See = What They Get**
+- Client pays full price
+- Partner/Notary NEVER sees what client paid
+- They see a "hidden base" (50% of client paid) at their tier's commission rate
+- Their tier determines what % of hidden base they see AND get
+- **No second cut** - what they see is exactly what they receive
+
+---
 
 ### PROBATE SURPLUS RECOVERY — Main Business
 
@@ -16,136 +27,123 @@ Session 32 added Service Bureau/ERO hierarchy model for white-label system, Empl
 
 Client owes $50,000 in probate surplus funds. MGR Capital charges 33% contingency fee = **$16,500 total revenue**.
 
+**Hidden Base = $8,250** (50% of $16,500 - partners never see the full fee)
+
 #### How Everyone Makes Money:
 
-**SCENARIO 1: Recovery Specialist (Bottom Tier) Closes the Deal**
+**SCENARIO 1: Recovery Specialist (Bottom Tier, 40% Rate)**
 
 ```
 Client Surplus:              $50,000
-Contingency Fee (33%):       $16,500 ← Total Revenue
+Contingency Fee (33%):       $16,500 ← Total Revenue (FOUNDER ONLY)
+Hidden Base:                 $8,250  ← What RS bases earnings on
 
 Recovery Specialist Dashboard Shows:
-├── Gross Revenue:           $16,500
-├── "Processing & Document Fees": -$7,425 (45%)
-├── Net Earnings:            $9,075 (55% displayed)
-└── What RS ACTUALLY gets:   $7,425 (45% actual)
+├── "You earned: $3,300"     (40% of hidden base)
+├── "Commission Rate: 40%"
+└── What RS GETS:            $3,300  (same as displayed!)
 
-WHERE THE MONEY GOES (Hidden from RS):
-├── Recovery Specialist:     $7,425  (45%)
-├── Recovery Director:       $1,650  (10% cut hidden as "Processing Fees")
-├── Executive Partner:       $1,650  (10% cut hidden as "Filing Fees")
-├── Managing Partner:        $1,650  (10% cut hidden as "Compliance Fees")
-└── Home Office (MGR):       $4,125  (25%)
+WHERE THE MONEY ACTUALLY GOES:
+├── Recovery Specialist:     $3,300   (what they see = what they get)
+└── Home Office (MGR):       $13,200  (everything else)
                              ────────
                              $16,500  (100%)
 ```
 
-**SCENARIO 2: Recovery Director (Mid Tier) Closes the Deal**
+**SCENARIO 2: Recovery Director (Mid Tier, 60% Rate)**
 
 ```
 Client Surplus:              $50,000
-Contingency Fee (33%):       $16,500 ← Total Revenue
+Contingency Fee (33%):       $16,500 ← Total Revenue (FOUNDER ONLY)
+Hidden Base:                 $8,250  ← What RD bases earnings on
 
 Recovery Director Dashboard Shows:
-├── Gross Revenue:           $16,500
-├── "Administrative & Filing Fees": -$5,775 (35%)
-├── Net Earnings:            $10,725 (65% displayed)
-└── What RD ACTUALLY gets:   $9,075 (55% actual)
+├── "You earned: $4,950"     (60% of hidden base)
+├── "Commission Rate: 60%"
+└── What RD GETS:            $4,950  (same as displayed!)
 
-WHERE THE MONEY GOES (Hidden from RD):
-├── Recovery Director:       $9,075  (55%)
-├── Executive Partner:       $1,650  (10% cut hidden as "Filing Fees")
-├── Managing Partner:        $1,650  (10% cut hidden as "Compliance Fees")
-└── Home Office (MGR):       $4,125  (25%)
+WHERE THE MONEY ACTUALLY GOES:
+├── Recovery Director:       $4,950   (what they see = what they get)
+└── Home Office (MGR):       $11,550  (everything else)
                              ────────
                              $16,500  (100%)
 ```
 
-**SCENARIO 3: Executive Partner (Upper Tier) Closes the Deal**
+**SCENARIO 3: Executive Partner (Upper Tier, 80% Rate)**
 
 ```
 Client Surplus:              $50,000
-Contingency Fee (33%):       $16,500 ← Total Revenue
+Contingency Fee (33%):       $16,500 ← Total Revenue (FOUNDER ONLY)
+Hidden Base:                 $8,250  ← What EP bases earnings on
 
 Executive Partner Dashboard Shows:
-├── Gross Revenue:           $16,500
-├── "Filing & Processing Fees": -$4,125 (25%)
-├── Net Earnings:            $12,375 (75% displayed)
-└── What EP ACTUALLY gets:   $10,725 (65% actual)
+├── "You earned: $6,600"     (80% of hidden base)
+├── "Commission Rate: 80%"
+└── What EP GETS:            $6,600  (same as displayed!)
 
-WHERE THE MONEY GOES (Hidden from EP):
-├── Executive Partner:       $10,725 (65%)
-├── Managing Partner:        $1,650  (10% cut hidden as "Compliance Fees")
-└── Home Office (MGR):       $4,125  (25%)
+WHERE THE MONEY ACTUALLY GOES:
+├── Executive Partner:       $6,600   (what they see = what they get)
+└── Home Office (MGR):       $9,900   (everything else)
                              ────────
                              $16,500  (100%)
 ```
 
-**SCENARIO 4: Managing Partner (Top Tier) Closes the Deal**
+**SCENARIO 4: Managing Partner (Top Tier, 100% Rate)**
 
 ```
 Client Surplus:              $50,000
-Contingency Fee (33%):       $16,500 ← Total Revenue
+Contingency Fee (33%):       $16,500 ← Total Revenue (FOUNDER ONLY)
+Hidden Base:                 $8,250  ← What MP bases earnings on
 
 Managing Partner Dashboard Shows:
-├── Gross Revenue:           $16,500
-├── "Legal & Compliance Fees": -$2,475 (15%)
-├── Net Earnings:            $14,025 (85% displayed)
-└── What MP ACTUALLY gets:   $12,375 (75% actual)
+├── "You earned: $8,250"     (100% of hidden base)
+├── "Commission Rate: 100%"
+└── What MP GETS:            $8,250  (same as displayed!)
 
-WHERE THE MONEY GOES:
-├── Managing Partner:        $12,375 (75%)
-└── Home Office (MGR):       $4,125  (25%)
+WHERE THE MONEY ACTUALLY GOES:
+├── Managing Partner:        $8,250   (what they see = what they get)
+└── Home Office (MGR):       $8,250   (everything else)
                              ────────
                              $16,500  (100%)
-```
-
----
-
-### DOWNLINE OVERRIDE INCOME (Passive)
-
-Partners earn hidden cuts from everyone in their downline:
-
-**Managing Partner with Full Downline:**
-```
-Downline Structure:
-├── 3 Executive Partners (each has 5 RDs)
-│   ├── 15 Recovery Directors (each has 10 RSs)
-│   │   └── 150 Recovery Specialists
-│   │
-│   └── Total Cases/Month: 300 cases @ $5,000 avg fee
-
-Monthly Override Income:
-├── 10% of each RS deal (150 people):     $75,000
-├── 10% of each RD deal (15 people):       $7,500
-├── 10% of each EP deal (3 people):          $750
-└── TOTAL PASSIVE INCOME:                 $83,250/month
 ```
 
 ---
 
 ### NOTARY EARNINGS (Employee Program)
 
-**Standard RON Session: $25 Client Pays**
+**Standard RON Session: Client Pays $25**
+
+**Hidden Base = $12.50** (50% of $25 - notary never sees full client price)
 
 ```
-Notary Level         | Displayed Fee      | Net Shown | Actual Take
----------------------|--------------------|-----------|-----------
-Associate Notary     | $13.75 (55%)       | $11.25    | $11.25 (45%)
-Certified Notary     | $13.00 (52%)       | $12.00    | $12.00 (48%)
-Senior Notary        | $12.50 (50%)       | $12.50    | $12.50 (50%)
-Lead Notary          | $12.00 (48%)       | $13.00    | $13.00 (52%)
-Executive Notary     | $11.25 (45%)       | $13.75    | $13.75 (55%)
+Notary Level         | Signings | They SEE  | Platform Fee | They GET  | Platform Keeps
+---------------------|----------|-----------|--------------|-----------|---------------
+Associate Notary     | 0+       | $12.50    | 40% ($5.00)  | $7.50     | $17.50
+Certified Notary     | 10+      | $12.50    | 30% ($3.75)  | $8.75     | $16.25
+Senior Notary        | 50+      | $12.50    | 20% ($2.50)  | $10.00    | $15.00
+Lead Notary          | 200+     | $12.50    | 10% ($1.25)  | $11.25    | $13.75
+Executive Notary     | 500+     | $12.50    | 0% ($0.00)   | $12.50    | $12.50
 ```
 
-**Notary Monthly Income Example (40 sessions/week):**
-```
-Associate Notary:    40 × 4 × $11.25 = $1,800/month
-Executive Notary:    40 × 4 × $13.75 = $2,200/month
+**How it works:**
+1. Client pays $25 (notary NEVER sees this)
+2. Hidden base = $12.50 (EVERYONE sees this as "You earned $12.50")
+3. Platform fee varies by tier (0% at top, 40% at bottom)
+4. They GET = Hidden base - platform fee
 
-Loan Signings ($150 each):
-Associate: 10/month × $67.50 = $675
-Executive: 10/month × $82.50 = $825
+**Key:** Everyone sees $12.50. Executive pays 0% fee and gets $12.50. Associate pays 40% fee and gets $7.50.
+
+**Notary Monthly Income Example (40 sessions/week, 160/month):**
+```
+Associate Notary:    160 × $7.50  = $1,200/month  (sees $2,000, pays 40% fee)
+Certified Notary:    160 × $8.75  = $1,400/month  (sees $2,000, pays 30% fee)
+Senior Notary:       160 × $10.00 = $1,600/month  (sees $2,000, pays 20% fee)
+Lead Notary:         160 × $11.25 = $1,800/month  (sees $2,000, pays 10% fee)
+Executive Notary:    160 × $12.50 = $2,000/month  (sees $2,000, pays 0% fee)
+
+Loan Signings ($150 client pays, $75 hidden base):
+Associate (40% fee):  10/month × $45.00 = $450  (sees $750, pays 40%)
+Executive (0% fee):   10/month × $75.00 = $750  (sees $750, pays 0%)
 ```
 
 ---
