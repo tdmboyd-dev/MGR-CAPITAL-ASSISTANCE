@@ -78,8 +78,21 @@ export interface DocumentReviewResult {
 // OLLAMA CLIENT
 // =============================================================================
 
+// =============================================================================
+// LLM PROVIDER CONFIGURATION (Multi-provider fallback)
+// Priority: DeepSeek → Gemini → OpenAI → Ollama
+// =============================================================================
+
 const OLLAMA_BASE_URL = process.env.OLLAMA_URL || "http://localhost:11434";
 const OLLAMA_MODEL = process.env.OLLAMA_MODEL || "llama3.2";
+const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY;
+const GOOGLE_AI_KEY = process.env.GOOGLE_AI_KEY;
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+
+// Determine best available LLM provider
+const LLM_PROVIDER = DEEPSEEK_API_KEY ? 'deepseek' :
+  (GOOGLE_AI_KEY ? 'gemini' :
+  (OPENAI_API_KEY ? 'openai' : 'ollama'));
 
 interface OllamaMessage {
   role: "system" | "user" | "assistant";
@@ -92,33 +105,150 @@ interface OllamaChatResponse {
   done: boolean;
 }
 
-async function ollamaChat(messages: OllamaMessage[]): Promise<string> {
-  try {
-    const response = await fetch(`${OLLAMA_BASE_URL}/api/chat`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+/**
+ * DeepSeek API chat (95% cheaper than OpenAI, excellent quality)
+ */
+async function deepseekChat(messages: OllamaMessage[]): Promise<string> {
+  const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${DEEPSEEK_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'deepseek-chat',
+      messages: messages.map(m => ({ role: m.role, content: m.content })),
+      temperature: 0.4,
+      max_tokens: 1000,
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`DeepSeek API error: ${response.status}`);
+  }
+
+  const data = await response.json();
+  return data.choices[0]?.message?.content || '';
+}
+
+/**
+ * Google Gemini API chat
+ */
+async function geminiChat(messages: OllamaMessage[]): Promise<string> {
+  // Convert messages to Gemini format
+  const systemMessage = messages.find(m => m.role === 'system')?.content || '';
+  const userMessages = messages.filter(m => m.role !== 'system');
+
+  const contents = userMessages.map(m => ({
+    role: m.role === 'assistant' ? 'model' : 'user',
+    parts: [{ text: m.content }],
+  }));
+
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GOOGLE_AI_KEY}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: OLLAMA_MODEL,
-        messages,
-        stream: false,
-        options: {
+        contents,
+        systemInstruction: systemMessage ? { parts: [{ text: systemMessage }] } : undefined,
+        generationConfig: {
           temperature: 0.4,
-          top_p: 0.9,
-          num_predict: 1000,
+          maxOutputTokens: 1000,
         },
       }),
-    });
-
-    if (!response.ok) {
-      throw new Error(`Ollama chat error: ${response.status}`);
     }
+  );
 
-    const data = (await response.json()) as OllamaChatResponse;
-    return data.message.content;
-  } catch (error) {
-    logger.error("Ollama chat error", { error });
-    throw error;
+  if (!response.ok) {
+    throw new Error(`Gemini API error: ${response.status}`);
   }
+
+  const data = await response.json();
+  return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+}
+
+/**
+ * OpenAI API chat
+ */
+async function openaiChat(messages: OllamaMessage[]): Promise<string> {
+  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${OPENAI_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'gpt-4o-mini',
+      messages: messages.map(m => ({ role: m.role, content: m.content })),
+      temperature: 0.4,
+      max_tokens: 1000,
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`OpenAI API error: ${response.status}`);
+  }
+
+  const data = await response.json();
+  return data.choices[0]?.message?.content || '';
+}
+
+/**
+ * Ollama local LLM chat
+ */
+async function ollamaLocalChat(messages: OllamaMessage[]): Promise<string> {
+  const response = await fetch(`${OLLAMA_BASE_URL}/api/chat`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: OLLAMA_MODEL,
+      messages,
+      stream: false,
+      options: {
+        temperature: 0.4,
+        top_p: 0.9,
+        num_predict: 1000,
+      },
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Ollama chat error: ${response.status}`);
+  }
+
+  const data = (await response.json()) as OllamaChatResponse;
+  return data.message.content;
+}
+
+/**
+ * Multi-provider LLM chat with automatic fallback
+ * Priority: DeepSeek → Gemini → OpenAI → Ollama
+ */
+async function ollamaChat(messages: OllamaMessage[]): Promise<string> {
+  const providers = [
+    { name: 'deepseek', fn: deepseekChat, available: !!DEEPSEEK_API_KEY },
+    { name: 'gemini', fn: geminiChat, available: !!GOOGLE_AI_KEY },
+    { name: 'openai', fn: openaiChat, available: !!OPENAI_API_KEY },
+    { name: 'ollama', fn: ollamaLocalChat, available: true },
+  ];
+
+  for (const provider of providers) {
+    if (!provider.available) continue;
+
+    try {
+      const result = await provider.fn(messages);
+      if (result) {
+        logger.debug(`LLM response from ${provider.name}`, { provider: provider.name });
+        return result;
+      }
+    } catch (error: any) {
+      logger.warn(`${provider.name} failed, trying next provider`, { error: error.message });
+    }
+  }
+
+  logger.error("All LLM providers failed");
+  throw new Error("All LLM providers unavailable");
 }
 
 // =============================================================================
@@ -529,21 +659,41 @@ ${JSON.stringify(context.customData, null, 2)}`);
   }
 
   /**
-   * Check if Ollama is available
+   * Check LLM provider status
    */
-  async checkStatus(): Promise<{ available: boolean; model: string }> {
+  async checkStatus(): Promise<{
+    available: boolean;
+    model: string;
+    provider: string;
+    fallbacks: string[];
+  }> {
+    const availableProviders: string[] = [];
+
+    // Check DeepSeek
+    if (DEEPSEEK_API_KEY) availableProviders.push('deepseek');
+
+    // Check Gemini
+    if (GOOGLE_AI_KEY) availableProviders.push('gemini');
+
+    // Check OpenAI
+    if (OPENAI_API_KEY) availableProviders.push('openai');
+
+    // Check Ollama
     try {
       const response = await fetch(`${OLLAMA_BASE_URL}/api/tags`);
-      return {
-        available: response.ok,
-        model: OLLAMA_MODEL,
-      };
+      if (response.ok) availableProviders.push('ollama');
     } catch {
-      return {
-        available: false,
-        model: OLLAMA_MODEL,
-      };
+      // Ollama not available
     }
+
+    return {
+      available: availableProviders.length > 0,
+      model: LLM_PROVIDER === 'deepseek' ? 'deepseek-chat' :
+             LLM_PROVIDER === 'gemini' ? 'gemini-1.5-flash' :
+             LLM_PROVIDER === 'openai' ? 'gpt-4o-mini' : OLLAMA_MODEL,
+      provider: LLM_PROVIDER,
+      fallbacks: availableProviders,
+    };
   }
 }
 

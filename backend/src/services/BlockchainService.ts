@@ -2,8 +2,12 @@
  * Blockchain Service — MGR CAPITAL ASSISTANCE
  * Phase 21: ETH Payout Integration
  *
- * Handles cryptocurrency payouts via Ethereum (Sepolia testnet).
- * Production: Switch to mainnet and secure key management.
+ * Handles cryptocurrency payouts via Ethereum.
+ * Supports both mainnet and testnet based on environment configuration.
+ *
+ * Network Selection:
+ * - Set ETHEREUM_NETWORK=mainnet for production
+ * - Set ETHEREUM_NETWORK=sepolia for testing (default)
  *
  * REAL PRICE FEED: Uses CoinGecko API for live ETH/USD conversion
  */
@@ -14,6 +18,24 @@ import { config } from "../config/env.js";
 import { logger } from "../utils/logger.js";
 
 const prisma = new PrismaClient();
+
+// Network configuration
+const NETWORK = process.env.ETHEREUM_NETWORK || 'sepolia';
+const IS_MAINNET = NETWORK === 'mainnet';
+
+// RPC endpoints by network
+const RPC_URLS: Record<string, string> = {
+  mainnet: process.env.ETHEREUM_RPC_URL || 'https://eth.llamarpc.com', // Free public RPC
+  sepolia: process.env.ETHEREUM_RPC_URL || 'https://sepolia.infura.io/v3/YOUR_INFURA_KEY',
+  goerli: 'https://goerli.infura.io/v3/YOUR_INFURA_KEY',
+};
+
+// Block explorers by network
+const EXPLORERS: Record<string, string> = {
+  mainnet: 'https://etherscan.io',
+  sepolia: 'https://sepolia.etherscan.io',
+  goerli: 'https://goerli.etherscan.io',
+};
 
 // Price cache to avoid excessive API calls
 let priceCache: {
@@ -26,8 +48,10 @@ const PRICE_CACHE_TTL = 60000; // 1 minute cache
 interface PayoutResult {
   success: boolean;
   txHash?: string;
+  explorerUrl?: string;
   error?: string;
   ledgerEntryId?: string;
+  network?: string;
 }
 
 interface PayoutOptions {
@@ -41,16 +65,37 @@ interface PayoutOptions {
 class BlockchainService {
   private web3: Web3;
   private isEnabled: boolean;
+  private network: string;
+  private isMainnet: boolean;
 
   constructor() {
-    // Use Sepolia testnet for development, mainnet for production
-    const rpcUrl = config.ethereumRpcUrl || "https://sepolia.infura.io/v3/YOUR_INFURA_KEY";
+    this.network = NETWORK;
+    this.isMainnet = IS_MAINNET;
+
+    // Select RPC URL based on network
+    const rpcUrl = config.ethereumRpcUrl || RPC_URLS[this.network] || RPC_URLS.sepolia;
     this.web3 = new Web3(rpcUrl);
     this.isEnabled = !!config.ethereumPrivateKey && !!config.ethereumWalletAddress;
 
     if (!this.isEnabled) {
       logger.warn("BlockchainService: Missing wallet configuration. Blockchain payouts disabled.");
+    } else {
+      logger.info(`BlockchainService: Initialized on ${this.network.toUpperCase()}${this.isMainnet ? ' (PRODUCTION)' : ' (testnet)'}`);
+      if (this.isMainnet) {
+        logger.warn("⚠️ BlockchainService: MAINNET MODE - Real funds will be transferred!");
+      }
     }
+  }
+
+  /**
+   * Get current network info
+   */
+  getNetworkInfo(): { network: string; isMainnet: boolean; explorerUrl: string } {
+    return {
+      network: this.network,
+      isMainnet: this.isMainnet,
+      explorerUrl: EXPLORERS[this.network] || EXPLORERS.sepolia,
+    };
   }
 
   /**
@@ -237,7 +282,9 @@ class BlockchainService {
       return {
         success: true,
         txHash,
+        explorerUrl: `${EXPLORERS[this.network]}/tx/${txHash}`,
         ledgerEntryId: ledgerEntry.id,
+        network: this.network,
       };
     } catch (error: any) {
       logger.error("BlockchainService payout error:", error);
@@ -323,6 +370,25 @@ class BlockchainService {
    */
   isServiceEnabled(): boolean {
     return this.isEnabled;
+  }
+
+  /**
+   * Get full service status
+   */
+  getServiceStatus(): {
+    enabled: boolean;
+    network: string;
+    isMainnet: boolean;
+    walletConfigured: boolean;
+    explorerUrl: string;
+  } {
+    return {
+      enabled: this.isEnabled,
+      network: this.network,
+      isMainnet: this.isMainnet,
+      walletConfigured: !!config.ethereumPrivateKey && !!config.ethereumWalletAddress,
+      explorerUrl: EXPLORERS[this.network] || EXPLORERS.sepolia,
+    };
   }
 }
 

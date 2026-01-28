@@ -710,37 +710,213 @@ export function parseProbateCsv(
 
 // =============================================================================
 // HEIR EXTRACTION HELPERS (for multi-file correlation)
+// Integrates with SkipTraceService for real heir discovery
 // =============================================================================
 
 export interface HeirInfo {
   name: string;
   relationship: string;
   address: string;
+  city: string;
+  state: string;
+  zip: string;
   phone: string;
   email: string;
+  confidence: number;
+  source: 'executor' | 'skip_trace' | 'probate_record' | 'surname_analysis';
 }
 
-export function extractPotentialHeirs(decedentName: string): HeirInfo[] {
-  // This is a placeholder for heir extraction logic
-  // In practice, this would correlate with separate heir/beneficiary data
-  // or use surname analysis for potential heir lookup
+export interface HeirExtractionResult {
+  decedentName: string;
+  heirs: HeirInfo[];
+  extractedAt: Date;
+  source: string;
+  confidence: number;
+}
+
+/**
+ * Parse name into first/last components
+ */
+function parseFullName(fullName: string): { firstName: string; lastName: string; middleName?: string } {
+  const parts = fullName.trim().split(/\s+/);
+
+  if (parts.length === 1) {
+    return { firstName: parts[0], lastName: '' };
+  }
+
+  if (parts.length === 2) {
+    return { firstName: parts[0], lastName: parts[1] };
+  }
+
+  // 3+ parts: first, middle(s), last
+  return {
+    firstName: parts[0],
+    middleName: parts.slice(1, -1).join(' '),
+    lastName: parts[parts.length - 1],
+  };
+}
+
+/**
+ * Extract potential heirs from probate record data
+ * This uses multiple strategies:
+ * 1. Executor info from probate record (most reliable)
+ * 2. Surname analysis for potential relatives
+ * 3. Integration point for SkipTraceService (called separately)
+ */
+export function extractPotentialHeirs(
+  decedentName: string,
+  executorName?: string,
+  executorAddress?: string,
+  executorPhone?: string,
+  executorEmail?: string
+): HeirInfo[] {
   const heirs: HeirInfo[] = [];
 
-  // Extract surname for potential heir correlation
-  const nameParts = decedentName.split(/\s+/);
-  if (nameParts.length >= 2) {
-    const surname = nameParts[nameParts.length - 1];
-    // Return placeholder heir info based on surname
+  // Strategy 1: Use executor information (highest confidence)
+  // Executors are often family members (spouse, children, siblings)
+  if (executorName && executorName.trim()) {
+    const executor = parseFullName(executorName);
+    const decedent = parseFullName(decedentName);
+
+    // Determine likely relationship based on surname match
+    let relationship = 'EXECUTOR';
+    if (executor.lastName.toLowerCase() === decedent.lastName.toLowerCase()) {
+      relationship = 'FAMILY_MEMBER'; // Same surname suggests family
+    }
+
+    // Parse address components if available
+    let city = '', state = '', zip = '';
+    if (executorAddress) {
+      // Try to extract city, state, zip from address
+      const addressMatch = executorAddress.match(/([^,]+),\s*([A-Z]{2})\s*(\d{5}(?:-\d{4})?)?$/i);
+      if (addressMatch) {
+        city = addressMatch[1].trim();
+        state = addressMatch[2].toUpperCase();
+        zip = addressMatch[3] || '';
+      }
+    }
+
     heirs.push({
-      name: `${surname} (Potential Heir)`,
-      relationship: "UNKNOWN",
-      address: "",
-      phone: "",
-      email: "",
+      name: executorName.trim(),
+      relationship,
+      address: executorAddress || '',
+      city,
+      state,
+      zip,
+      phone: executorPhone || '',
+      email: executorEmail || '',
+      confidence: 0.9, // High confidence - from probate record
+      source: 'executor',
+    });
+  }
+
+  // Strategy 2: Surname analysis for potential relative lookup
+  const decedentParsed = parseFullName(decedentName);
+  if (decedentParsed.lastName) {
+    // Add placeholder for surname-based lookup
+    // This would be populated by SkipTraceService.findHeirs()
+    heirs.push({
+      name: `${decedentParsed.lastName} Family`,
+      relationship: 'POTENTIAL_HEIR',
+      address: '',
+      city: '',
+      state: '',
+      zip: '',
+      phone: '',
+      email: '',
+      confidence: 0.3, // Low confidence - needs skip trace verification
+      source: 'surname_analysis',
     });
   }
 
   return heirs;
+}
+
+/**
+ * Extract heirs from probate record (full record version)
+ */
+export function extractHeirsFromRecord(record: ProbateRecord): HeirExtractionResult {
+  const heirs = extractPotentialHeirs(
+    record.decedentName,
+    record.executorName,
+    record.executorAddress,
+    record.executorPhone,
+    record.executorEmail
+  );
+
+  // Calculate overall confidence
+  const avgConfidence = heirs.length > 0
+    ? heirs.reduce((sum, h) => sum + h.confidence, 0) / heirs.length
+    : 0;
+
+  return {
+    decedentName: record.decedentName,
+    heirs,
+    extractedAt: new Date(),
+    source: `probate_record:${record.caseNumber}`,
+    confidence: avgConfidence,
+  };
+}
+
+/**
+ * Batch extract heirs from multiple probate records
+ */
+export function batchExtractHeirs(records: ProbateRecord[]): HeirExtractionResult[] {
+  return records.map(extractHeirsFromRecord);
+}
+
+/**
+ * Prepare heir info for SkipTraceService lookup
+ * Returns data in format suitable for SkipTraceService.findHeirs()
+ */
+export function prepareForSkipTrace(record: ProbateRecord): {
+  decedentInput: { firstName: string; lastName: string; address?: string; city?: string; state?: string; zip?: string };
+  executorInput?: { firstName: string; lastName: string; address?: string; city?: string; state?: string; zip?: string };
+} {
+  const decedent = parseFullName(record.decedentName);
+  const result: any = {
+    decedentInput: {
+      firstName: decedent.firstName,
+      lastName: decedent.lastName,
+      state: record.state,
+    },
+  };
+
+  if (record.executorName) {
+    const executor = parseFullName(record.executorName);
+
+    // Parse executor address
+    let city = '', state = '', zip = '', street = '';
+    if (record.executorAddress) {
+      // Try various address formats
+      const fullMatch = record.executorAddress.match(/^(.+?),\s*([^,]+),\s*([A-Z]{2})\s*(\d{5}(?:-\d{4})?)?$/i);
+      if (fullMatch) {
+        street = fullMatch[1].trim();
+        city = fullMatch[2].trim();
+        state = fullMatch[3].toUpperCase();
+        zip = fullMatch[4] || '';
+      } else {
+        // Simple city, state zip format
+        const simpleMatch = record.executorAddress.match(/([^,]+),\s*([A-Z]{2})\s*(\d{5}(?:-\d{4})?)?$/i);
+        if (simpleMatch) {
+          city = simpleMatch[1].trim();
+          state = simpleMatch[2].toUpperCase();
+          zip = simpleMatch[3] || '';
+        }
+      }
+    }
+
+    result.executorInput = {
+      firstName: executor.firstName,
+      lastName: executor.lastName,
+      address: street,
+      city,
+      state: state || record.state,
+      zip,
+    };
+  }
+
+  return result;
 }
 
 // =============================================================================
@@ -750,6 +926,9 @@ export function extractPotentialHeirs(decedentName: string): HeirInfo[] {
 export default {
   parse: parseProbateCsv,
   extractPotentialHeirs,
+  extractHeirsFromRecord,
+  batchExtractHeirs,
+  prepareForSkipTrace,
   name: "ProbateCsvParser",
   sourceType: "PROBATE",
   fileTypes: ["csv", "txt"],

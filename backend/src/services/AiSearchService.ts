@@ -57,12 +57,21 @@ export interface CaseRecommendations {
 }
 
 // =============================================================================
-// OLLAMA CLIENT
+// LLM PROVIDER CONFIGURATION (Multi-provider fallback)
+// Priority: DeepSeek → Gemini → OpenAI → Ollama
 // =============================================================================
 
 const OLLAMA_BASE_URL = process.env.OLLAMA_URL || "http://localhost:11434";
 const OLLAMA_MODEL = process.env.OLLAMA_MODEL || "llama3.2";
 const EMBED_MODEL = process.env.OLLAMA_EMBED_MODEL || "nomic-embed-text";
+const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY;
+const GOOGLE_AI_KEY = process.env.GOOGLE_AI_KEY;
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+
+// Determine best available LLM provider
+const LLM_PROVIDER = DEEPSEEK_API_KEY ? 'deepseek' :
+  (GOOGLE_AI_KEY ? 'gemini' :
+  (OPENAI_API_KEY ? 'openai' : 'ollama'));
 
 interface OllamaResponse {
   model: string;
@@ -74,34 +83,120 @@ interface OllamaEmbedResponse {
   embedding: number[];
 }
 
-async function ollamaGenerate(prompt: string): Promise<string> {
-  try {
-    const response = await fetch(`${OLLAMA_BASE_URL}/api/generate`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+/**
+ * DeepSeek API generate (95% cheaper than OpenAI)
+ */
+async function deepseekGenerate(prompt: string): Promise<string> {
+  const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${DEEPSEEK_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'deepseek-chat',
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.3,
+      max_tokens: 500,
+    }),
+  });
+
+  if (!response.ok) throw new Error(`DeepSeek error: ${response.status}`);
+  const data = await response.json();
+  return data.choices[0]?.message?.content || '';
+}
+
+/**
+ * Gemini API generate
+ */
+async function geminiGenerate(prompt: string): Promise<string> {
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GOOGLE_AI_KEY}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: OLLAMA_MODEL,
-        prompt,
-        stream: false,
-        options: {
-          temperature: 0.3,
-          top_p: 0.9,
-          num_predict: 500,
-        },
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { temperature: 0.3, maxOutputTokens: 500 },
       }),
-    });
-
-    if (!response.ok) {
-      throw new Error(`Ollama error: ${response.status}`);
     }
+  );
 
-    const data = (await response.json()) as OllamaResponse;
-    return data.response;
-  } catch (error) {
-    logger.error("Ollama generate error", { error });
-    // Fallback to rule-based if Ollama unavailable
-    return "";
+  if (!response.ok) throw new Error(`Gemini error: ${response.status}`);
+  const data = await response.json();
+  return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+}
+
+/**
+ * OpenAI API generate
+ */
+async function openaiGenerate(prompt: string): Promise<string> {
+  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${OPENAI_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'gpt-4o-mini',
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.3,
+      max_tokens: 500,
+    }),
+  });
+
+  if (!response.ok) throw new Error(`OpenAI error: ${response.status}`);
+  const data = await response.json();
+  return data.choices[0]?.message?.content || '';
+}
+
+/**
+ * Ollama local generate
+ */
+async function ollamaLocalGenerate(prompt: string): Promise<string> {
+  const response = await fetch(`${OLLAMA_BASE_URL}/api/generate`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: OLLAMA_MODEL,
+      prompt,
+      stream: false,
+      options: { temperature: 0.3, top_p: 0.9, num_predict: 500 },
+    }),
+  });
+
+  if (!response.ok) throw new Error(`Ollama error: ${response.status}`);
+  const data = (await response.json()) as OllamaResponse;
+  return data.response;
+}
+
+/**
+ * Multi-provider LLM generate with automatic fallback
+ */
+async function ollamaGenerate(prompt: string): Promise<string> {
+  const providers = [
+    { name: 'deepseek', fn: deepseekGenerate, available: !!DEEPSEEK_API_KEY },
+    { name: 'gemini', fn: geminiGenerate, available: !!GOOGLE_AI_KEY },
+    { name: 'openai', fn: openaiGenerate, available: !!OPENAI_API_KEY },
+    { name: 'ollama', fn: ollamaLocalGenerate, available: true },
+  ];
+
+  for (const provider of providers) {
+    if (!provider.available) continue;
+
+    try {
+      const result = await provider.fn(prompt);
+      if (result) {
+        logger.debug(`LLM response from ${provider.name}`);
+        return result;
+      }
+    } catch (error: any) {
+      logger.warn(`${provider.name} failed, trying next`, { error: error.message });
+    }
   }
+
+  logger.error("All LLM providers failed");
+  return ""; // Fallback to rule-based
 }
 
 async function ollamaEmbed(text: string): Promise<number[]> {
@@ -594,24 +689,43 @@ REASON: [why this matters]`;
   }
 
   /**
-   * Check if Ollama is available
+   * Check LLM provider status
    */
-  async checkOllamaStatus(): Promise<{ available: boolean; model: string; embedModel: string }> {
+  async checkOllamaStatus(): Promise<{
+    available: boolean;
+    model: string;
+    embedModel: string;
+    provider: string;
+    fallbacks: string[];
+  }> {
+    const availableProviders: string[] = [];
+
+    // Check DeepSeek
+    if (DEEPSEEK_API_KEY) availableProviders.push('deepseek');
+
+    // Check Gemini
+    if (GOOGLE_AI_KEY) availableProviders.push('gemini');
+
+    // Check OpenAI
+    if (OPENAI_API_KEY) availableProviders.push('openai');
+
+    // Check Ollama
     try {
       const response = await fetch(`${OLLAMA_BASE_URL}/api/tags`);
-      const available = response.ok;
-      return {
-        available,
-        model: OLLAMA_MODEL,
-        embedModel: EMBED_MODEL,
-      };
+      if (response.ok) availableProviders.push('ollama');
     } catch {
-      return {
-        available: false,
-        model: OLLAMA_MODEL,
-        embedModel: EMBED_MODEL,
-      };
+      // Ollama not available
     }
+
+    return {
+      available: availableProviders.length > 0,
+      model: LLM_PROVIDER === 'deepseek' ? 'deepseek-chat' :
+             LLM_PROVIDER === 'gemini' ? 'gemini-1.5-flash' :
+             LLM_PROVIDER === 'openai' ? 'gpt-4o-mini' : OLLAMA_MODEL,
+      embedModel: EMBED_MODEL,
+      provider: LLM_PROVIDER,
+      fallbacks: availableProviders,
+    };
   }
 
   /**

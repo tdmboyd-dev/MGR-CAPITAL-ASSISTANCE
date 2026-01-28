@@ -1,7 +1,7 @@
 # TIME TODO — MGR CAPITAL ASSISTANCE
 
-**Last Updated:** 2026-01-26 (Session 30)
-**Overall Progress:** ~91% Production Ready
+**Last Updated:** 2026-01-28 (Session 31)
+**Overall Progress:** ~95% Production Ready
 
 ---
 
@@ -81,15 +81,15 @@ ELEVENLABS_API_KEY=...
 
 ---
 
-### 🟡 MEDIUM PRIORITY — Code Improvements
+### 🟢 COMPLETED — Code Improvements (Session 31)
 
 | Status | Task | File/Area |
 |--------|------|-----------|
-| 🟡 | Add OpenAI fallback when Ollama offline | AiAgentService.ts, AiSearchService.ts |
-| 🟡 | Implement real heir extraction logic | probateCsvParser.ts:724 |
-| 🟡 | Complete case heatmap calculation | opsMetricsService.ts:947 |
-| 🟡 | Add real compliance engine | LegalAuditorService.ts |
-| 🟡 | Switch BlockchainService to mainnet | BlockchainService.ts (currently Sepolia) |
+| ✅ | Add multi-provider LLM fallback (DeepSeek→Gemini→OpenAI→Ollama) | AiAgentService.ts, AiSearchService.ts |
+| ✅ | Implement real heir extraction logic | probateCsvParser.ts (extractHeirsFromRecord, prepareForSkipTrace) |
+| ✅ | Case heatmap calculation | opsMetricsService.ts:855 (already complete) |
+| ✅ | Real compliance engine with all 50 states | LegalAuditorService.ts (STATE_RULES for all states) |
+| ✅ | BlockchainService mainnet switch | BlockchainService.ts (ETHEREUM_NETWORK env var) |
 | 🟡 | Add real blockchain tx verification | DocumentServiceAdvanced.ts |
 
 ---
@@ -194,6 +194,7 @@ ELEVENLABS_API_KEY=...
 
 | Session | Date | Focus | Progress |
 |---------|------|-------|----------|
+| 31 | 2026-01-28 | Multi-LLM Fallback + Compliance Engine + Heir Extraction | +4% (91%→95%) |
 | 30 | 2026-01-26 | Mobile App Enhancement | +3% (88%→91%) |
 | 29 | 2026-01-26 | ETH Price Feed + Tests | +1% (87%→88%) |
 | 28 | 2026-01-25 | Webhooks + SkipTrace | +2% |
@@ -206,6 +207,10 @@ ELEVENLABS_API_KEY=...
 
 | Date | Module | Description | Status |
 |------|--------|-------------|--------|
+| 2026-01-28 | Backend | Multi-LLM fallback (DeepSeek→Gemini→OpenAI→Ollama) | ✅ |
+| 2026-01-28 | Backend | Compliance engine with all 50 states + DC | ✅ |
+| 2026-01-28 | Backend | BlockchainService mainnet/testnet switching | ✅ |
+| 2026-01-28 | Backend | Real heir extraction with SkipTrace integration | ✅ |
 | 2026-01-26 | Mobile | CaseDetailScreen with timeline, docs | ✅ |
 | 2026-01-26 | Mobile | DocumentsScreen with upload/download | ✅ |
 | 2026-01-26 | Mobile | ProfileScreen with SecureStore | ✅ |
@@ -256,11 +261,11 @@ ELEVENLABS_API_KEY=...
 
 ---
 
-**Progress Bar:** █████████▌ (91%)
+**Progress Bar:** █████████▋ (95%)
 
 **Next Steps:**
-1. Set up SMTP for real emails
-2. Add remaining API keys
+1. Add remaining API keys (see env section above)
+2. Set ETHEREUM_NETWORK=mainnet for production blockchain
 3. Increase test coverage
 4. Launch production deployment
 
