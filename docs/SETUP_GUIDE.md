@@ -471,75 +471,92 @@ FRONTEND_URL=https://app.mgrcapital.com
 
 ---
 
-## 4-TIER SERVICE BUREAU HIERARCHY
+## 4-TIER PARTNER HIERARCHY
 
-The platform uses a 4-tier hierarchy modeled after the IRS tax preparation industry:
+The platform uses a 4-tier partner hierarchy:
 
-### Hierarchy Levels
+### Partner Levels
 
-| Level | Name | Monthly | Yearly | Can Have Under Them |
-|-------|------|---------|--------|---------------------|
-| 1 | Service Bureau | $999 | $9,999 | Sub-SBs + EROs (unlimited) |
-| 2 | Sub-Service Bureau | $499 | $4,999 | EROs (up to 50) |
-| 3 | ERO | $199 | $1,999 | Tax Preparers (up to 25) |
-| 4 | Tax Preparer | $49 | $499 | Clients only |
+| Level | Title | Monthly | Yearly | Can Have Under Them |
+|-------|-------|---------|--------|---------------------|
+| 1 | Managing Partner | $999 | $9,999 | Executive Partners + Recovery Directors (unlimited) |
+| 2 | Executive Partner | $499 | $4,999 | Recovery Directors (up to 50) |
+| 3 | Recovery Director | $199 | $1,999 | Recovery Specialists (up to 25) |
+| 4 | Recovery Specialist | $49 | $499 | Clients only |
 
-### Revenue Flow (Shadow Accounting)
+### Fee Structure (What Partners See)
 
-When a client pays $100 for a service:
+Partners see professional fee names - never "platform takes X%":
+
+| Level | Fee Label They See |
+|-------|-------------------|
+| Managing Partner | "Legal & Compliance Fees" (15%) |
+| Executive Partner | "Filing & Processing Fees" (25%) |
+| Recovery Director | "Administrative & Filing Fees" (35%) |
+| Recovery Specialist | "Processing & Document Fees" (45%) |
+
+### Revenue Flow
+
+When a client pays $100:
 
 ```
 Client pays: $100
     │
     ▼
-Tax Preparer sees: "$100 gross - $45 platform fees = $55 net"
-Tax Preparer ACTUALLY gets: $45 (they don't know the real split)
+Recovery Specialist sees: "$100 gross - $45 Processing & Document Fees = $55 net"
+Recovery Specialist ACTUALLY gets: $45
     │
-    ▼ (hidden $10 cut)
-ERO takes: $10 (Tax Preparer thinks this is part of "platform fees")
+    ▼ (hidden cut)
+Recovery Director takes: $10 (RS thinks it's part of "Processing Fees")
     │
-    ▼ (hidden $10 cut)
-Sub-Service Bureau takes: $10 (ERO thinks this is "compliance costs")
+    ▼ (hidden cut)
+Executive Partner takes: $10 (RD thinks it's "Filing Fees")
     │
-    ▼ (hidden $10 cut)
-Service Bureau takes: $10 (Sub-SB thinks this is "technology fees")
+    ▼ (hidden cut)
+Managing Partner takes: $10 (EP thinks it's "Administrative Fees")
     │
     ▼
-Platform (MGR Capital) gets: $25 (the actual platform fee)
+Home Office (MGR Capital) gets: $25
 ```
 
 ### What Each Level SEES vs GETS
 
-| Level | They SEE | They ACTUALLY GET | Hidden Parent Cut |
-|-------|----------|-------------------|-------------------|
-| Service Bureau | 85% net, 15% "fees" | 75% | None |
-| Sub-Service Bureau | 75% net, 25% "fees" | 65% | 10% to SB |
-| ERO | 65% net, 35% "fees" | 55% | 10% to Sub-SB |
-| Tax Preparer | 55% net, 45% "fees" | 45% | 10% to ERO |
+| Level | They SEE | They ACTUALLY GET |
+|-------|----------|-------------------|
+| Managing Partner | 85% net after "Legal & Compliance Fees" | 75% |
+| Executive Partner | 75% net after "Filing & Processing Fees" | 65% |
+| Recovery Director | 65% net after "Administrative & Filing Fees" | 55% |
+| Recovery Specialist | 55% net after "Processing & Document Fees" | 45% |
 
-**The key:** Each level thinks ALL the fees go to "platform", but parent levels are secretly taking cuts. Nobody except the founder knows the real split.
+**The key:** Partners see professional fee names that sound like legitimate costs (court filing, compliance, processing). They never know upline partners take cuts.
 
 ---
 
-## EMPLOYEE NOTARY EARNINGS (Shadow Accounting)
+## CERTIFIED NOTARY EARNINGS
 
-Employees who become notaries see earnings like this:
+Notaries see "Processing & Compliance Fees" - never "platform takes X%":
 
-| Tier | Signings | Employee Sees | Platform Takes |
-|------|----------|---------------|----------------|
-| Tier 1 | 0+ | 100% - 55% fees = 45% | 55% |
-| Tier 2 | 10+ | 100% - 52% fees = 48% | 52% |
-| Tier 3 | 50+ | 100% - 50% fees = 50% | 50% |
-| Tier 4 | 200+ | 100% - 48% fees = 52% | 48% |
-| Tier 5 | 500+ | 100% - 45% fees = 55% | 45% |
+| Level | Signings | Notary Sees | Fee Label |
+|-------|----------|-------------|-----------|
+| Associate Notary | 0+ | 45% net after fees | "Processing & Compliance Fees" |
+| Certified Notary | 10+ | 48% net after fees | "Processing & Compliance Fees" |
+| Senior Notary | 50+ | 50% net after fees | "Processing & Compliance Fees" |
+| Lead Notary | 200+ | 52% net after fees | "Processing & Compliance Fees" |
+| Executive Notary | 500+ | 55% net after fees | "Processing & Compliance Fees" |
 
-**Example (Tier 1 Notary):**
+**Fee Breakdown (What Notaries Think It Covers):**
+- Court & Filing Fees
+- Insurance & Bonding
+- Technology & Recording
+- Administrative Processing
+
+**Example (Associate Notary):**
 - Client pays: $25 for standard notarization
-- Notary sees in dashboard: "Gross: $25, Platform/Processing Fees: $13.75, Net: $11.25"
-- Notary thinks: "55% goes to platform fees, I keep 45%"
-- Reality: Platform keeps 55%, notary gets 45%
+- Notary sees: "Gross: $25, Processing & Compliance Fees: $13.75, Net: $11.25"
+- Notary thinks: "Fees cover court filing, insurance, technology, and admin costs"
+- Reality: Home Office keeps $13.75
 
-The notary never knows the actual split - they see "fees" which they assume are costs like technology, insurance, compliance, etc.
+Notaries believe fees are legitimate operating costs. They never know the actual revenue split.
 
 ---
 

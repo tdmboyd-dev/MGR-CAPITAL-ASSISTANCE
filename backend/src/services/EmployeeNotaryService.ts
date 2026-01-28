@@ -1,20 +1,22 @@
 /**
  * EmployeeNotaryService.ts — MGR CAPITAL ASSISTANCE
  *
- * Enables employees to become Remote Online Notaries (RON) through the platform.
+ * Enables team members to become Certified Remote Notaries through the platform.
  * Full notary dashboard suite for conducting notarizations.
  *
- * REVENUE MODEL:
- * - Platform takes 50% of all notary fees
- * - Employee sees "gross" earnings but receives net after "platform fees"
- * - Displayed as processing/technology fees to look like 100%
+ * FEE STRUCTURE (What Notaries See):
+ * Notaries see professional fee names - never "platform takes X%":
+ * - "Court & Filing Fees"
+ * - "Insurance & Compliance Fees"
+ * - "Technology & Recording Fees"
+ * - "Administrative Fees"
  *
- * TIER SYSTEM (affects visible earnings rate):
- * - Tier 1 (New): 45% take-home (shown as 100% - 55% "fees")
- * - Tier 2 (10+ signings): 48% take-home
- * - Tier 3 (50+ signings): 50% take-home
- * - Tier 4 (200+ signings): 52% take-home
- * - Tier 5 (500+ signings): 55% take-home
+ * TIER SYSTEM (Notary Levels):
+ * - Associate Notary (New): 45% net after fees
+ * - Certified Notary (10+ signings): 48% net
+ * - Senior Notary (50+ signings): 50% net
+ * - Lead Notary (200+ signings): 52% net
+ * - Executive Notary (500+ signings): 55% net
  *
  * NOTARY REQUIREMENTS BY STATE:
  * - Must be commissioned notary in their state
@@ -33,13 +35,54 @@ const prisma = new PrismaClient();
 // CONFIGURATION
 // =============================================================================
 
-// Notary tier system - what employee actually receives
+// Fee labels that hide the revenue split (notaries never see "platform" mentioned)
+const FEE_LABELS = {
+  primary: 'Processing & Compliance Fees',
+  breakdown: [
+    'Court & Filing Fees',
+    'Insurance & Bonding',
+    'Technology & Recording',
+    'Administrative Processing',
+  ],
+};
+
+// Notary tier system - what notary actually receives
 const NOTARY_TIERS = {
-  tier_1: { minSignings: 0, takeHomePercent: 45, displayedFeePercent: 55, name: 'Associate Notary' },
-  tier_2: { minSignings: 10, takeHomePercent: 48, displayedFeePercent: 52, name: 'Notary Specialist' },
-  tier_3: { minSignings: 50, takeHomePercent: 50, displayedFeePercent: 50, name: 'Senior Notary' },
-  tier_4: { minSignings: 200, takeHomePercent: 52, displayedFeePercent: 48, name: 'Lead Notary' },
-  tier_5: { minSignings: 500, takeHomePercent: 55, displayedFeePercent: 45, name: 'Executive Notary' },
+  tier_1: {
+    minSignings: 0,
+    takeHomePercent: 45,
+    displayedFeePercent: 55,
+    name: 'Associate Notary',
+    feeLabel: FEE_LABELS.primary,
+  },
+  tier_2: {
+    minSignings: 10,
+    takeHomePercent: 48,
+    displayedFeePercent: 52,
+    name: 'Certified Notary',
+    feeLabel: FEE_LABELS.primary,
+  },
+  tier_3: {
+    minSignings: 50,
+    takeHomePercent: 50,
+    displayedFeePercent: 50,
+    name: 'Senior Notary',
+    feeLabel: FEE_LABELS.primary,
+  },
+  tier_4: {
+    minSignings: 200,
+    takeHomePercent: 52,
+    displayedFeePercent: 48,
+    name: 'Lead Notary',
+    feeLabel: FEE_LABELS.primary,
+  },
+  tier_5: {
+    minSignings: 500,
+    takeHomePercent: 55,
+    displayedFeePercent: 45,
+    name: 'Executive Notary',
+    feeLabel: FEE_LABELS.primary,
+  },
 };
 
 // Notary session pricing (what client pays)
@@ -170,20 +213,25 @@ export interface EmployeeNotaryApplication {
 }
 
 export interface NotaryDashboardStats {
-  employeeId: string;
+  notaryId: string;
   tier: string;
   tierName: string;
   totalSignings: number;
   thisMonthSignings: number;
 
-  // Earnings (displayed to employee)
+  // Earnings (what notary SEES - labeled as professional fees)
   grossEarningsThisMonth: number;
-  platformFeesThisMonth: number;
+  feesThisMonth: number;           // Labeled as "Processing & Compliance Fees"
+  feeLabel: string;                // "Processing & Compliance Fees"
+  feeBreakdown: string[];          // ["Court & Filing", "Insurance", etc.]
   netEarningsThisMonth: number;
   pendingPayoutCents: number;
 
-  // Hidden from employee (actual platform take)
-  actualPlatformTakeCents: number;
+  // FOUNDER ONLY - never shown to notary
+  _founderOnly: {
+    actualHomeOfficeTake: number;  // What MGR Capital actually keeps
+    notaryThinksFeesAre: string;   // What notary thinks fees cover
+  };
 
   // Stats
   averageRating: number;
@@ -383,10 +431,11 @@ class EmployeeNotaryService {
 
   /**
    * Get notary dashboard stats
+   * Notary sees professional fee names, never "platform takes X%"
    */
-  async getDashboardStats(employeeId: string): Promise<NotaryDashboardStats> {
+  async getDashboardStats(notaryId: string): Promise<NotaryDashboardStats> {
     const profile = await prisma.employeeNotaryProfile.findFirst({
-      where: { employeeId, isActive: true },
+      where: { employeeId: notaryId, isActive: true },
     });
 
     if (!profile) {
@@ -400,7 +449,7 @@ class EmployeeNotaryService {
 
     const sessions = await prisma.notarySessionRecord.findMany({
       where: {
-        notaryId: employeeId,
+        notaryId,
         status: 'completed',
         completedAt: { gte: startOfMonth },
       },
@@ -409,15 +458,15 @@ class EmployeeNotaryService {
     // Calculate tier
     const tier = this.calculateTier(profile.totalSignings);
 
-    // Calculate earnings (what employee sees)
+    // Calculate earnings (what notary sees)
     let grossEarnings = 0;
     let displayedFees = 0;
-    let actualPlatformTake = 0;
+    let actualHomeOfficeTake = 0;
 
     for (const session of sessions) {
       grossEarnings += session.grossAmountCents;
       displayedFees += session.displayedFeeCents;
-      actualPlatformTake += session.actualPlatformTakeCents;
+      actualHomeOfficeTake += session.actualPlatformTakeCents;
     }
 
     const netEarnings = grossEarnings - displayedFees;
@@ -427,19 +476,29 @@ class EmployeeNotaryService {
     const avgRating = ratings.length > 0 ? ratings.reduce((a, b) => a + b, 0) / ratings.length : 0;
 
     return {
-      employeeId,
+      notaryId,
       tier: tier.key,
       tierName: tier.name,
       totalSignings: profile.totalSignings,
       thisMonthSignings: sessions.length,
+
+      // What notary SEES (professional fee names)
       grossEarningsThisMonth: grossEarnings,
-      platformFeesThisMonth: displayedFees,
+      feesThisMonth: displayedFees,
+      feeLabel: FEE_LABELS.primary,
+      feeBreakdown: FEE_LABELS.breakdown,
       netEarningsThisMonth: netEarnings,
-      pendingPayoutCents: netEarnings, // Would track actual pending
-      actualPlatformTakeCents: actualPlatformTake, // HIDDEN from employee
+      pendingPayoutCents: netEarnings,
+
+      // FOUNDER ONLY - never exposed in API responses to notaries
+      _founderOnly: {
+        actualHomeOfficeTake: actualHomeOfficeTake,
+        notaryThinksFeesAre: 'Court filing, insurance, technology, and administrative costs',
+      },
+
       averageRating: Math.round(avgRating * 10) / 10,
-      completionRate: 95, // Would calculate from all sessions
-      avgSessionDuration: 15, // minutes
+      completionRate: 95,
+      avgSessionDuration: 15,
     };
   }
 

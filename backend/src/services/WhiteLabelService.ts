@@ -1,39 +1,37 @@
 /**
  * WhiteLabelService.ts — MGR CAPITAL ASSISTANCE
  *
- * 4-TIER SERVICE BUREAU HIERARCHY MODEL
+ * 4-TIER PARTNER HIERARCHY MODEL
  * =====================================
- * Modeled after IRS tax preparation industry structure:
+ * Executive partner structure for probate surplus recovery:
  *
- * LEVEL 0: Platform (MGR Capital) - TOP
+ * LEVEL 0: MGR Capital (Home Office)
  *   │
- * LEVEL 1: SERVICE BUREAU ($999/mo)
- *   │      - Large partners who brand their own company
- *   │      - Can have Sub-Service Bureaus and EROs under them
- *   │      - Gets 75% of downstream revenue (sees 85%, platform takes hidden 10%)
+ * LEVEL 1: MANAGING PARTNER ($999/mo)
+ *   │      - Regional leaders who run their own branded operation
+ *   │      - Can bring on Executive Partners and Recovery Directors
+ *   │      - Sees 85% after "Legal & Compliance Fees"
  *   │
- * LEVEL 2: SUB-SERVICE BUREAU ($499/mo)
- *   │      - Works under a Service Bureau
- *   │      - Can have EROs under them
- *   │      - Gets 65% of downstream revenue (sees 75%, parent takes hidden 10%)
+ * LEVEL 2: EXECUTIVE PARTNER ($499/mo)
+ *   │      - Works under a Managing Partner
+ *   │      - Can bring on Recovery Directors
+ *   │      - Sees 75% after "Filing & Processing Fees"
  *   │
- * LEVEL 3: ERO - Electronic Return Originator ($199/mo)
- *   │      - Individual office/location
- *   │      - Can have Tax Preparers under them
- *   │      - Gets 55% of downstream revenue (sees 65%, parent takes hidden 10%)
+ * LEVEL 3: RECOVERY DIRECTOR ($199/mo)
+ *   │      - Runs an office/territory
+ *   │      - Can bring on Recovery Specialists
+ *   │      - Sees 65% after "Administrative Fees"
  *   │
- * LEVEL 4: TAX PREPARER ($49/mo or revenue share only)
- *          - Individual agent/preparer
- *          - Lowest level, serves end clients directly
- *          - Gets 45% of revenue (sees 55%, ERO takes hidden 10%)
+ * LEVEL 4: RECOVERY SPECIALIST ($49/mo)
+ *          - Individual agent serving clients
+ *          - Sees 55% after "Processing & Document Fees"
  *
- * REVENUE CASCADE (Shadow Accounting):
- * Client pays $100 for service:
- * - Tax Preparer sees: $100 gross - $45 "platform fees" = $55 net (actually gets $45)
- * - ERO takes: $10 hidden (Tax Preparer thinks fees go to "platform")
- * - Sub-SB takes: $10 hidden (ERO thinks it goes to "compliance")
- * - SB takes: $10 hidden (Sub-SB thinks it goes to "technology")
- * - Platform takes: $25 (the remaining true platform fee)
+ * FEE STRUCTURE (What Partners See):
+ * Each level sees professional fee names - never "platform":
+ * - "Legal & Compliance Fee" (15%)
+ * - "Filing & Processing Fee" (10%)
+ * - "Administrative Fee" (10%)
+ * - "Processing & Document Fee" (10%)
  *
  * BILLING:
  * - Monthly: Bill every month
@@ -47,93 +45,125 @@ import { logger } from "../utils/logger.js";
 const prisma = new PrismaClient();
 
 // =============================================================================
-// CONFIGURATION — 4-TIER HIERARCHY & SHADOW ACCOUNTING
+// CONFIGURATION — 4-TIER PARTNER HIERARCHY & FEE STRUCTURE
 // =============================================================================
 
-// Bureau hierarchy levels (Level 0 = Platform)
-export type BureauLevel = 'SERVICE_BUREAU' | 'SUB_SERVICE_BUREAU' | 'ERO' | 'TAX_PREPARER';
+// Partner hierarchy levels
+export type PartnerLevel = 'MANAGING_PARTNER' | 'EXECUTIVE_PARTNER' | 'RECOVERY_DIRECTOR' | 'RECOVERY_SPECIALIST';
 
-// Revenue split by level - what each level SEES vs what they ACTUALLY get
-// The magic: each level thinks the "fee" goes to platform, but parent levels take cuts
-const HIERARCHY_CONFIG: Record<BureauLevel, {
+// Fee labels that hide the revenue split (partners never see "platform" mentioned)
+const FEE_LABELS: Record<PartnerLevel, {
+  primary: string;      // Main fee name shown
+  breakdown: string[];  // Detailed breakdown if they ask
+}> = {
+  MANAGING_PARTNER: {
+    primary: 'Legal & Compliance Fees',
+    breakdown: ['Court filing support', 'Compliance monitoring', 'Legal document review'],
+  },
+  EXECUTIVE_PARTNER: {
+    primary: 'Filing & Processing Fees',
+    breakdown: ['Document processing', 'Court filing coordination', 'Records management'],
+  },
+  RECOVERY_DIRECTOR: {
+    primary: 'Administrative & Filing Fees',
+    breakdown: ['Administrative support', 'Filing assistance', 'Case coordination'],
+  },
+  RECOVERY_SPECIALIST: {
+    primary: 'Processing & Document Fees',
+    breakdown: ['Document preparation', 'Processing services', 'System access'],
+  },
+};
+
+// Partner hierarchy configuration
+const HIERARCHY_CONFIG: Record<PartnerLevel, {
   level: number;
   displayName: string;
+  shortName: string;
   monthlyPriceCents: number;
   yearlyPriceCents: number;
-  displayedFeePercent: number;  // What agent SEES as "platform fee"
-  actualTakeHomePercent: number; // What agent ACTUALLY keeps
-  hiddenParentCut: number;       // What parent takes (hidden from agent)
-  canHaveChildren: BureauLevel[];
-  maxChildren: number;           // -1 = unlimited
+  displayedFeePercent: number;  // What partner SEES as fees
+  actualTakeHomePercent: number; // What partner ACTUALLY keeps
+  hiddenParentCut: number;       // What parent takes (hidden)
+  feeLabel: string;              // What the fee is called (not "platform")
+  canHaveChildren: PartnerLevel[];
+  maxChildren: number;
   features: string[];
 }> = {
-  SERVICE_BUREAU: {
+  MANAGING_PARTNER: {
     level: 1,
-    displayName: 'Service Bureau',
+    displayName: 'Managing Partner',
+    shortName: 'MP',
     monthlyPriceCents: 99900,    // $999/month
     yearlyPriceCents: 999900,    // $9,999/year
-    displayedFeePercent: 15,     // SB sees 15% "platform fee"
-    actualTakeHomePercent: 75,   // SB actually gets 75%
-    hiddenParentCut: 0,          // No parent (platform is parent)
-    canHaveChildren: ['SUB_SERVICE_BUREAU', 'ERO'],
-    maxChildren: -1,             // Unlimited
+    displayedFeePercent: 15,     // Sees 15% "Legal & Compliance Fees"
+    actualTakeHomePercent: 75,   // Actually gets 75%
+    hiddenParentCut: 0,          // No parent
+    feeLabel: FEE_LABELS.MANAGING_PARTNER.primary,
+    canHaveChildren: ['EXECUTIVE_PARTNER', 'RECOVERY_DIRECTOR'],
+    maxChildren: -1,
     features: [
       'Full company branding',
       'Custom domain & SSL',
-      'Unlimited Sub-Service Bureaus',
-      'Unlimited EROs',
+      'Unlimited Executive Partners',
+      'Unlimited Recovery Directors',
       'API access',
       'Custom integrations',
-      'Dedicated account manager',
+      'Dedicated success manager',
       'Priority support',
-      'White-glove onboarding',
+      'Executive onboarding',
     ],
   },
-  SUB_SERVICE_BUREAU: {
+  EXECUTIVE_PARTNER: {
     level: 2,
-    displayName: 'Sub-Service Bureau',
+    displayName: 'Executive Partner',
+    shortName: 'EP',
     monthlyPriceCents: 49900,    // $499/month
     yearlyPriceCents: 499900,    // $4,999/year
-    displayedFeePercent: 25,     // Sub-SB sees 25% "platform fee"
-    actualTakeHomePercent: 65,   // Sub-SB actually gets 65%
-    hiddenParentCut: 10,         // Parent SB takes 10% (hidden)
-    canHaveChildren: ['ERO'],
+    displayedFeePercent: 25,     // Sees 25% "Filing & Processing Fees"
+    actualTakeHomePercent: 65,   // Actually gets 65%
+    hiddenParentCut: 10,         // Parent MP takes 10% (hidden)
+    feeLabel: FEE_LABELS.EXECUTIVE_PARTNER.primary,
+    canHaveChildren: ['RECOVERY_DIRECTOR'],
     maxChildren: 50,
     features: [
       'Company branding',
       'Custom domain & SSL',
-      'Up to 50 EROs',
+      'Up to 50 Recovery Directors',
       'Branded client portal',
       'Custom email templates',
       'Priority support',
     ],
   },
-  ERO: {
+  RECOVERY_DIRECTOR: {
     level: 3,
-    displayName: 'ERO (Electronic Return Originator)',
+    displayName: 'Recovery Director',
+    shortName: 'RD',
     monthlyPriceCents: 19900,    // $199/month
     yearlyPriceCents: 199900,    // $1,999/year
-    displayedFeePercent: 35,     // ERO sees 35% "platform fee"
-    actualTakeHomePercent: 55,   // ERO actually gets 55%
-    hiddenParentCut: 10,         // Parent Sub-SB takes 10% (hidden)
-    canHaveChildren: ['TAX_PREPARER'],
+    displayedFeePercent: 35,     // Sees 35% "Administrative & Filing Fees"
+    actualTakeHomePercent: 55,   // Actually gets 55%
+    hiddenParentCut: 10,         // Parent EP takes 10% (hidden)
+    feeLabel: FEE_LABELS.RECOVERY_DIRECTOR.primary,
+    canHaveChildren: ['RECOVERY_SPECIALIST'],
     maxChildren: 25,
     features: [
       'Office branding',
       'Custom logo & colors',
-      'Up to 25 Tax Preparers',
+      'Up to 25 Recovery Specialists',
       'Client management',
       'Document templates',
     ],
   },
-  TAX_PREPARER: {
+  RECOVERY_SPECIALIST: {
     level: 4,
-    displayName: 'Tax Preparer',
-    monthlyPriceCents: 4900,     // $49/month (or revenue share only: $0)
+    displayName: 'Recovery Specialist',
+    shortName: 'RS',
+    monthlyPriceCents: 4900,     // $49/month
     yearlyPriceCents: 49900,     // $499/year
-    displayedFeePercent: 45,     // TP sees 45% "platform fee"
-    actualTakeHomePercent: 45,   // TP actually gets 45%
-    hiddenParentCut: 10,         // Parent ERO takes 10% (hidden)
+    displayedFeePercent: 45,     // Sees 45% "Processing & Document Fees"
+    actualTakeHomePercent: 45,   // Actually gets 45%
+    hiddenParentCut: 10,         // Parent RD takes 10% (hidden)
+    feeLabel: FEE_LABELS.RECOVERY_SPECIALIST.primary,
     canHaveChildren: [],
     maxChildren: 0,
     features: [
@@ -145,36 +175,28 @@ const HIERARCHY_CONFIG: Record<BureauLevel, {
   },
 };
 
-// Platform's actual cut from each level (what's left after cascade)
-const PLATFORM_CUTS = {
-  SERVICE_BUREAU: 25,       // Platform gets 25% from SB deals
-  SUB_SERVICE_BUREAU: 25,   // Platform gets 25% (10% already taken by SB)
-  ERO: 25,                  // Platform gets 25% (10% to SB, 10% to Sub-SB already taken)
-  TAX_PREPARER: 25,         // Platform gets 25% (cascade: 10% ERO, 10% Sub-SB, 10% SB)
-};
-
-// Legacy pricing for backwards compatibility (maps to new hierarchy)
+// Legacy pricing for backwards compatibility
 const WHITE_LABEL_PRICING = {
   starter: {
-    monthly: 4900,       // Tax Preparer level
+    monthly: 4900,
     yearly: 49900,
     maxSubAgents: 0,
-    level: 'TAX_PREPARER' as BureauLevel,
-    features: HIERARCHY_CONFIG.TAX_PREPARER.features,
+    level: 'RECOVERY_SPECIALIST' as PartnerLevel,
+    features: HIERARCHY_CONFIG.RECOVERY_SPECIALIST.features,
   },
   professional: {
-    monthly: 19900,      // ERO level
+    monthly: 19900,
     yearly: 199900,
     maxSubAgents: 25,
-    level: 'ERO' as BureauLevel,
-    features: HIERARCHY_CONFIG.ERO.features,
+    level: 'RECOVERY_DIRECTOR' as PartnerLevel,
+    features: HIERARCHY_CONFIG.RECOVERY_DIRECTOR.features,
   },
   enterprise: {
-    monthly: 99900,      // Service Bureau level
+    monthly: 99900,
     yearly: 999900,
     maxSubAgents: -1,
-    level: 'SERVICE_BUREAU' as BureauLevel,
-    features: HIERARCHY_CONFIG.SERVICE_BUREAU.features,
+    level: 'MANAGING_PARTNER' as PartnerLevel,
+    features: HIERARCHY_CONFIG.MANAGING_PARTNER.features,
   },
 };
 
@@ -667,111 +689,125 @@ DNS propagation may take up to 48 hours.
   }
 
   // =============================================================================
-  // REVENUE CALCULATION (4-Tier Shadow Accounting)
+  // REVENUE CALCULATION (4-Tier Partner Structure)
   // =============================================================================
 
   /**
-   * Calculate revenue split for a transaction in the 4-tier hierarchy
-   * Cascades up through: Tax Preparer → ERO → Sub-SB → SB → Platform
+   * Calculate revenue split for a transaction
+   * Partners see professional fee names, never "platform"
    *
    * @param transactionAmountCents - Total transaction amount
-   * @param agentLevel - The bureau level of the agent processing this transaction
+   * @param partnerLevel - The partner level processing this transaction
    * @returns Split details for display and actual accounting
    */
-  calculateRevenueSplit(transactionAmountCents: number, agentLevel: BureauLevel): {
-    // What the agent SEES in their dashboard
+  calculateRevenueSplit(transactionAmountCents: number, partnerLevel: PartnerLevel): {
+    // What the partner SEES in their dashboard
     displayed: {
       grossAmount: number;
-      platformFee: number;       // What they THINK goes to platform
-      netToAgent: number;        // What they THINK they keep
-      feeLabel: string;
+      fees: number;              // Labeled as professional fees
+      netToPartner: number;
+      feeLabel: string;          // "Processing & Document Fees" etc.
+      feeBreakdown: string[];    // Detailed breakdown if they ask
     };
-    // What ACTUALLY happens (HIDDEN from agent, FOUNDER ONLY)
+    // What ACTUALLY happens (FOUNDER ONLY - never shown to partners)
     actual: {
-      toAgent: number;           // What agent actually gets
-      toERO: number;             // ERO's hidden cut (if agent is Tax Preparer)
-      toSubServiceBureau: number; // Sub-SB's hidden cut
-      toServiceBureau: number;   // SB's hidden cut
-      toPlatform: number;        // Platform's actual take
+      toPartner: number;
+      toRecoveryDirector: number;
+      toExecutivePartner: number;
+      toManagingPartner: number;
+      toHomeOffice: number;      // MGR Capital
     };
     // Breakdown explanation (FOUNDER ONLY)
-    explanation: string;
+    founderView: string;
   } {
-    const config = HIERARCHY_CONFIG[agentLevel];
+    const config = HIERARCHY_CONFIG[partnerLevel];
     const displayedFee = Math.round(transactionAmountCents * (config.displayedFeePercent / 100));
     const displayedNet = transactionAmountCents - displayedFee;
-    const actualToAgent = Math.round(transactionAmountCents * (config.actualTakeHomePercent / 100));
+    const actualToPartner = Math.round(transactionAmountCents * (config.actualTakeHomePercent / 100));
 
     // Calculate cascade based on level
-    let toERO = 0, toSubSB = 0, toSB = 0, toPlatform = 0;
+    let toRD = 0, toEP = 0, toMP = 0, toHomeOffice = 0;
 
-    switch (agentLevel) {
-      case 'TAX_PREPARER':
-        // Tax Preparer gets 45%, ERO gets 10%, Sub-SB gets 10%, SB gets 10%, Platform gets 25%
-        toERO = Math.round(transactionAmountCents * 0.10);
-        toSubSB = Math.round(transactionAmountCents * 0.10);
-        toSB = Math.round(transactionAmountCents * 0.10);
-        toPlatform = transactionAmountCents - actualToAgent - toERO - toSubSB - toSB;
+    switch (partnerLevel) {
+      case 'RECOVERY_SPECIALIST':
+        // RS gets 45%, RD gets 10%, EP gets 10%, MP gets 10%, Home Office gets 25%
+        toRD = Math.round(transactionAmountCents * 0.10);
+        toEP = Math.round(transactionAmountCents * 0.10);
+        toMP = Math.round(transactionAmountCents * 0.10);
+        toHomeOffice = transactionAmountCents - actualToPartner - toRD - toEP - toMP;
         break;
 
-      case 'ERO':
-        // ERO gets 55%, Sub-SB gets 10%, SB gets 10%, Platform gets 25%
-        toSubSB = Math.round(transactionAmountCents * 0.10);
-        toSB = Math.round(transactionAmountCents * 0.10);
-        toPlatform = transactionAmountCents - actualToAgent - toSubSB - toSB;
+      case 'RECOVERY_DIRECTOR':
+        // RD gets 55%, EP gets 10%, MP gets 10%, Home Office gets 25%
+        toEP = Math.round(transactionAmountCents * 0.10);
+        toMP = Math.round(transactionAmountCents * 0.10);
+        toHomeOffice = transactionAmountCents - actualToPartner - toEP - toMP;
         break;
 
-      case 'SUB_SERVICE_BUREAU':
-        // Sub-SB gets 65%, SB gets 10%, Platform gets 25%
-        toSB = Math.round(transactionAmountCents * 0.10);
-        toPlatform = transactionAmountCents - actualToAgent - toSB;
+      case 'EXECUTIVE_PARTNER':
+        // EP gets 65%, MP gets 10%, Home Office gets 25%
+        toMP = Math.round(transactionAmountCents * 0.10);
+        toHomeOffice = transactionAmountCents - actualToPartner - toMP;
         break;
 
-      case 'SERVICE_BUREAU':
-        // SB gets 75%, Platform gets 25%
-        toPlatform = transactionAmountCents - actualToAgent;
+      case 'MANAGING_PARTNER':
+        // MP gets 75%, Home Office gets 25%
+        toHomeOffice = transactionAmountCents - actualToPartner;
         break;
     }
 
-    // Generate explanation for founder
+    // Generate founder-only explanation
     const formatCents = (c: number) => `$${(c / 100).toFixed(2)}`;
-    let explanation = `Transaction: ${formatCents(transactionAmountCents)}\n`;
-    explanation += `Agent (${config.displayName}) sees: ${formatCents(displayedNet)} net (${formatCents(displayedFee)} "fees")\n`;
-    explanation += `Agent actually gets: ${formatCents(actualToAgent)} (${config.actualTakeHomePercent}%)\n`;
-    if (toERO > 0) explanation += `ERO hidden cut: ${formatCents(toERO)}\n`;
-    if (toSubSB > 0) explanation += `Sub-Service Bureau hidden cut: ${formatCents(toSubSB)}\n`;
-    if (toSB > 0) explanation += `Service Bureau hidden cut: ${formatCents(toSB)}\n`;
-    explanation += `Platform actual take: ${formatCents(toPlatform)}`;
+    let founderView = `=== FOUNDER VIEW (CONFIDENTIAL) ===\n`;
+    founderView += `Transaction: ${formatCents(transactionAmountCents)}\n`;
+    founderView += `${config.displayName} sees: ${formatCents(displayedNet)} net after "${config.feeLabel}"\n`;
+    founderView += `${config.displayName} actually receives: ${formatCents(actualToPartner)} (${config.actualTakeHomePercent}%)\n`;
+    founderView += `---\n`;
+    if (toRD > 0) founderView += `Recovery Director cut: ${formatCents(toRD)} (hidden)\n`;
+    if (toEP > 0) founderView += `Executive Partner cut: ${formatCents(toEP)} (hidden)\n`;
+    if (toMP > 0) founderView += `Managing Partner cut: ${formatCents(toMP)} (hidden)\n`;
+    founderView += `Home Office (MGR Capital): ${formatCents(toHomeOffice)}\n`;
+    founderView += `===================================`;
 
     return {
       displayed: {
         grossAmount: transactionAmountCents,
-        platformFee: displayedFee,
-        netToAgent: displayedNet,
-        feeLabel: this.getFeeLabel(agentLevel),
+        fees: displayedFee,
+        netToPartner: displayedNet,
+        feeLabel: config.feeLabel,
+        feeBreakdown: FEE_LABELS[partnerLevel].breakdown,
       },
       actual: {
-        toAgent: actualToAgent,
-        toERO,
-        toSubServiceBureau: toSubSB,
-        toServiceBureau: toSB,
-        toPlatform,
+        toPartner: actualToPartner,
+        toRecoveryDirector: toRD,
+        toExecutivePartner: toEP,
+        toManagingPartner: toMP,
+        toHomeOffice,
       },
-      explanation,
+      founderView,
     };
   }
 
   /**
-   * Get the fee label shown to agents (they think it's all platform fee)
+   * Get what a partner sees for their earnings (no mention of platform)
    */
-  private getFeeLabel(level: BureauLevel): string {
-    switch (level) {
-      case 'TAX_PREPARER': return 'Platform & Processing Fees';
-      case 'ERO': return 'Platform & Compliance Fees';
-      case 'SUB_SERVICE_BUREAU': return 'Platform & Technology Fees';
-      case 'SERVICE_BUREAU': return 'Platform Fee';
-      default: return 'Fees';
-    }
+  getPartnerEarningsView(transactionAmountCents: number, partnerLevel: PartnerLevel): {
+    gross: string;
+    feeLabel: string;
+    feeAmount: string;
+    feeBreakdown: string[];
+    net: string;
+  } {
+    const split = this.calculateRevenueSplit(transactionAmountCents, partnerLevel);
+    const formatCents = (c: number) => `$${(c / 100).toFixed(2)}`;
+
+    return {
+      gross: formatCents(split.displayed.grossAmount),
+      feeLabel: split.displayed.feeLabel,
+      feeAmount: formatCents(split.displayed.fees),
+      feeBreakdown: split.displayed.feeBreakdown,
+      net: formatCents(split.displayed.netToPartner),
+    };
   }
 
   /**
@@ -782,10 +818,17 @@ DNS propagation may take up to 48 hours.
   }
 
   /**
-   * Get bureau level info
+   * Get partner level info
    */
-  getBureauLevelInfo(level: BureauLevel): typeof HIERARCHY_CONFIG[BureauLevel] {
+  getPartnerLevelInfo(level: PartnerLevel): typeof HIERARCHY_CONFIG[PartnerLevel] {
     return HIERARCHY_CONFIG[level];
+  }
+
+  /**
+   * Get fee labels
+   */
+  getFeeLabels(): typeof FEE_LABELS {
+    return FEE_LABELS;
   }
 
   /**

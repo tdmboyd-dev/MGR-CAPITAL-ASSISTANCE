@@ -273,7 +273,7 @@ model User {
   refreshTokens       RefreshToken[]
   auditLogs           AuditLog[]
   chatMessages        ChatMessage[]
-  notaryProfile       EmployeeNotaryProfile?
+  notaryProfile       NotaryProfile?
 
   @@index([email])
   @@index([role])
@@ -1929,24 +1929,24 @@ model NotarySession {
 }
 
 // ============================================
-// WHITE-LABEL BRANDING SYSTEM
-// Session 32: 4-Tier Service Bureau Hierarchy
-// Platform → Service Bureau → Sub-Service Bureau → ERO → Tax Preparer → Client
+// WHITE-LABEL PARTNER SYSTEM
+// Session 32: 4-Tier Partner Hierarchy
+// MGR Capital → Managing Partner → Executive Partner → Recovery Director → Recovery Specialist
 // ============================================
 
-// 4-Tier Bureau Hierarchy (like IRS tax prep industry)
-enum BureauLevel {
-  SERVICE_BUREAU        // Level 1: $999/mo - Can have Sub-SBs and EROs
-  SUB_SERVICE_BUREAU    // Level 2: $499/mo - Can have EROs
-  ERO                   // Level 3: $199/mo - Can have Tax Preparers
-  TAX_PREPARER          // Level 4: $49/mo  - Serves clients directly
+// 4-Tier Partner Hierarchy
+enum PartnerLevel {
+  MANAGING_PARTNER      // Level 1: $999/mo - Regional leaders, unlimited downline
+  EXECUTIVE_PARTNER     // Level 2: $499/mo - Can have Recovery Directors
+  RECOVERY_DIRECTOR     // Level 3: $199/mo - Can have Recovery Specialists
+  RECOVERY_SPECIALIST   // Level 4: $49/mo  - Serves clients directly
 }
 
 // Legacy tier for backwards compatibility
 enum WhiteLabelTier {
-  STARTER       // Maps to TAX_PREPARER
-  PROFESSIONAL  // Maps to ERO
-  ENTERPRISE    // Maps to SERVICE_BUREAU
+  STARTER       // Maps to RECOVERY_SPECIALIST
+  PROFESSIONAL  // Maps to RECOVERY_DIRECTOR
+  ENTERPRISE    // Maps to MANAGING_PARTNER
 }
 
 enum WhiteLabelApplicationStatus {
@@ -1990,7 +1990,7 @@ model WhiteLabelConfig {
   userId              String          @unique
   companyName         String
   tier                WhiteLabelTier  // Legacy tier
-  bureauLevel         BureauLevel?    // New 4-tier level
+  partnerLevel        PartnerLevel?   // 4-tier partner level
 
   // Branding
   logoUrl             String?
@@ -1999,12 +1999,12 @@ model WhiteLabelConfig {
   secondaryColor      String          @default("#2d3748")
   accentColor         String          @default("#3182ce")
 
-  // Custom Domain (ERO+ levels)
+  // Custom Domain (Recovery Director+ levels)
   customDomain        String?         @unique
   domainVerified      Boolean         @default(false)
   sslCertificateId    String?
 
-  // Custom Email (ERO+ levels)
+  // Custom Email (Recovery Director+ levels)
   emailDomain         String?
   supportEmail        String?
 
@@ -2013,27 +2013,28 @@ model WhiteLabelConfig {
   nextBillingDate     DateTime
   priceCents          Int
 
-  // 4-Tier Hierarchy (Platform → SB → Sub-SB → ERO → Tax Preparer)
-  parentWhiteLabelId  String?         // Direct parent in hierarchy
-  parentWhiteLabel    WhiteLabelConfig? @relation("HierarchyTree", fields: [parentWhiteLabelId], references: [id])
-  children            WhiteLabelConfig[] @relation("HierarchyTree")
-  hierarchyDepth      Int             @default(1)  // 1=SB, 2=Sub-SB, 3=ERO, 4=TP
-  maxChildren         Int             @default(0)  // Max direct children allowed
+  // 4-Tier Hierarchy
+  parentPartnerId     String?         // Direct parent in hierarchy
+  parentPartner       WhiteLabelConfig? @relation("PartnerTree", fields: [parentPartnerId], references: [id])
+  downline            WhiteLabelConfig[] @relation("PartnerTree")
+  hierarchyDepth      Int             @default(4)  // 1=MP, 2=EP, 3=RD, 4=RS
+  maxDownline         Int             @default(0)  // Max direct reports allowed
 
-  // Revenue sharing (Shadow Accounting)
-  // What agent SEES (thinks all "fees" go to platform)
-  displayedFeePercent Int             @default(45)  // Tax Preparer default
-  // What agent ACTUALLY gets
-  actualTakeHomePercent Int           @default(45)  // Tax Preparer default
-  // Hidden parent cut (agent never sees this)
-  hiddenParentCut     Int             @default(10)
+  // Revenue sharing - Fee labels hide the real split
+  // What partner SEES - labeled as "Processing Fees", "Filing Fees", etc.
+  displayedFeePercent Int             @default(45)  // Recovery Specialist default
+  displayedFeeLabel   String          @default("Processing & Document Fees")
+  // What partner ACTUALLY gets
+  actualTakeHomePercent Int           @default(45)
+  // Hidden upline cut (partner never sees this)
+  hiddenUplineCut     Int             @default(10)
 
-  // Earnings tracking (Shadow Accounting)
-  lifetimeGrossEarningsCents    Int   @default(0)  // Total before "fees"
-  lifetimeDisplayedFeesCents    Int   @default(0)  // What agent THINKS went to platform
-  lifetimeNetToAgentCents       Int   @default(0)  // What agent received
-  lifetimeHiddenParentCutCents  Int   @default(0)  // HIDDEN: What parent took
-  lifetimePlatformTakeCents     Int   @default(0)  // HIDDEN: What platform actually took
+  // Earnings tracking
+  lifetimeGrossCents            Int   @default(0)  // Total before "fees"
+  lifetimeDisplayedFeesCents    Int   @default(0)  // What partner sees as fees
+  lifetimeNetCents              Int   @default(0)  // What partner received
+  lifetimeHiddenUplineCents     Int   @default(0)  // FOUNDER ONLY: Upline cuts
+  lifetimeHomeOfficeCents       Int   @default(0)  // FOUNDER ONLY: MGR Capital take
 
   isActive            Boolean         @default(true)
   createdAt           DateTime        @default(now())
@@ -2041,20 +2042,20 @@ model WhiteLabelConfig {
 
   @@index([userId])
   @@index([tier])
-  @@index([bureauLevel])
+  @@index([partnerLevel])
   @@index([isActive])
   @@index([customDomain])
-  @@index([parentWhiteLabelId])
+  @@index([parentPartnerId])
   @@index([hierarchyDepth])
 }
 
 // ============================================
-// EMPLOYEE NOTARY SYSTEM
-// Session 31: Internal notary workforce
-// Platform takes 50% but shows as "fees"
+// CERTIFIED NOTARY SYSTEM
+// Session 32: Internal notary workforce
+// Notaries see "Processing & Compliance Fees"
 // ============================================
 
-enum EmployeeNotaryStatus {
+enum NotaryApplicationStatus {
   PENDING
   DOCUMENTS_REQUIRED
   TRAINING_REQUIRED
@@ -2065,19 +2066,19 @@ enum EmployeeNotaryStatus {
   REJECTED
 }
 
-enum NotaryTier {
-  TIER_1  // 0+ signings: 45% take-home (shows 55% "fees")
-  TIER_2  // 10+ signings: 48% take-home (shows 52% "fees")
-  TIER_3  // 50+ signings: 50% take-home (shows 50% "fees")
-  TIER_4  // 200+ signings: 52% take-home (shows 48% "fees")
-  TIER_5  // 500+ signings: 55% take-home (shows 45% "fees")
+enum NotaryLevel {
+  ASSOCIATE_NOTARY      // 0+ signings: 45% net after "fees"
+  CERTIFIED_NOTARY      // 10+ signings: 48% net
+  SENIOR_NOTARY         // 50+ signings: 50% net
+  LEAD_NOTARY           // 200+ signings: 52% net
+  EXECUTIVE_NOTARY      // 500+ signings: 55% net
 }
 
-model EmployeeNotaryApplication {
-  id                      String                @id @default(cuid())
-  employeeId              String
+model NotaryApplication {
+  id                      String                    @id @default(cuid())
+  userId                  String
   state                   String
-  status                  EmployeeNotaryStatus  @default(PENDING)
+  status                  NotaryApplicationStatus   @default(PENDING)
 
   // Notary commission info
   commissionNumber        String?
@@ -2086,53 +2087,54 @@ model EmployeeNotaryApplication {
   eoInsurancePolicyNumber String?
 
   // Training completion
-  trainingCompleted       Boolean               @default(false)
+  trainingCompleted       Boolean                   @default(false)
   trainingCompletedAt     DateTime?
   examPassed              Boolean?
   examScore               Int?
 
   // Background check
-  backgroundCheckCompleted Boolean              @default(false)
-  backgroundCheckResult   String?               // pass, fail, pending
+  backgroundCheckCompleted Boolean                  @default(false)
+  backgroundCheckResult   String?                   // pass, fail, pending
 
-  // Platform certification
-  platformCertified       Boolean               @default(false)
+  // Certification
+  certified               Boolean                   @default(false)
   certificationDate       DateTime?
 
-  submittedAt             DateTime              @default(now())
+  submittedAt             DateTime                  @default(now())
   approvedAt              DateTime?
   rejectedReason          String?
-  createdAt               DateTime              @default(now())
-  updatedAt               DateTime              @updatedAt
+  createdAt               DateTime                  @default(now())
+  updatedAt               DateTime                  @updatedAt
 
-  @@index([employeeId])
+  @@index([userId])
   @@index([state])
   @@index([status])
 }
 
-model EmployeeNotaryProfile {
-  id                    String      @id @default(cuid())
-  employeeId            String      @unique
-  employee              User        @relation(fields: [employeeId], references: [id])
+model NotaryProfile {
+  id                    String        @id @default(cuid())
+  userId                String        @unique
+  user                  User          @relation(fields: [userId], references: [id])
   state                 String
   commissionNumber      String
   commissionExpiration  DateTime
-  tier                  String      @default("tier_1")
-  totalSignings         Int         @default(0)
+  level                 NotaryLevel   @default(ASSOCIATE_NOTARY)
+  totalSignings         Int           @default(0)
 
-  // Earnings tracking (what employee sees vs what platform keeps)
-  // Employee sees: grossEarnings - displayedFees = netEarnings
-  // Reality: platform keeps (grossEarnings - actualNotaryPay)
-  lifetimeGrossEarningsCents    Int   @default(0)  // Total before any "fees"
-  lifetimeDisplayedFeesCents    Int   @default(0)  // What employee THINKS platform took
-  lifetimeNetToNotaryCents      Int   @default(0)  // What employee actually received
-  lifetimeActualPlatformCents   Int   @default(0)  // HIDDEN: What platform actually kept
+  // Earnings tracking - notary sees "Processing & Compliance Fees"
+  // They never see the word "platform" or know where fees go
+  lifetimeGrossCents            Int   @default(0)   // Total before fees
+  lifetimeDisplayedFeesCents    Int   @default(0)   // "Processing & Compliance Fees"
+  lifetimeNetCents              Int   @default(0)   // What notary received
+  // FOUNDER ONLY - never exposed to notary
+  lifetimeHomeOfficeCents       Int   @default(0)   // What MGR Capital kept
+  displayedFeeLabel             String @default("Processing & Compliance Fees")
 
   // This month
   monthlyGrossCents             Int   @default(0)
-  monthlyDisplayedFeesCents     Int   @default(0)
+  monthlyFeesCents              Int   @default(0)   // Labeled as professional fees
   monthlyNetCents               Int   @default(0)
-  monthlyActualPlatformCents    Int   @default(0)  // HIDDEN
+  monthlyHomeOfficeCents        Int   @default(0)   // FOUNDER ONLY
 
   // Performance
   averageRating         Float       @default(0)
@@ -2142,9 +2144,9 @@ model EmployeeNotaryProfile {
   createdAt             DateTime    @default(now())
   updatedAt             DateTime    @updatedAt
 
-  @@index([employeeId])
+  @@index([userId])
   @@index([state])
-  @@index([tier])
+  @@index([level])
   @@index([isActive])
 }
 
@@ -2156,31 +2158,27 @@ model NotarySessionRecord {
   clientPhone           String?
   documentType          String
   sessionType           String    // standard, expedited, priority, loan_signing, complex
-  status                String    @default("scheduled") // scheduled, waiting, in_progress, completed, cancelled, no_show
+  status                String    @default("scheduled")
   caseId                String?
 
   scheduledTime         DateTime
   startedAt             DateTime?
   completedAt           DateTime?
 
-  // Pricing breakdown (CRITICAL for shadow accounting)
-  grossAmountCents      Int       // Total client pays (e.g., $25 = 2500)
-  displayedFeeCents     Int       // What notary THINKS platform takes
-  netToNotaryCents      Int       // What notary actually receives
-  actualPlatformTakeCents Int     // HIDDEN: Real platform revenue
-  // Example at Tier 1 (45% take-home):
-  // - Client pays $25 (grossAmountCents = 2500)
-  // - Notary sees: $25 gross - $13.75 fees = $11.25 net
-  // - displayedFeeCents = 1375 (55% shown as "fees")
-  // - netToNotaryCents = 1125 (45% to notary)
-  // - actualPlatformTakeCents = 1375 (platform keeps 55%)
+  // Pricing - notary sees "Processing & Compliance Fees"
+  grossAmountCents      Int       // Total client pays
+  displayedFeeCents     Int       // Labeled as "Processing & Compliance Fees"
+  netToNotaryCents      Int       // What notary receives
+  // FOUNDER ONLY
+  homeOfficeTakeCents   Int       // MGR Capital's actual take (hidden)
+  feeLabel              String    @default("Processing & Compliance Fees")
 
   // Recording (required for RON compliance)
   videoRecordingUrl     String?
   auditLogUrl           String?
 
   // Feedback
-  rating                Int?      // 1-5
+  rating                Int?
   feedback              String?
 
   createdAt             DateTime  @default(now())
