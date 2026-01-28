@@ -1,7 +1,7 @@
 # TIME TODO — MGR CAPITAL ASSISTANCE
 
-**Last Updated:** 2026-01-28 (Session 31 Extended)
-**Overall Progress:** ~97% Production Ready
+**Last Updated:** 2026-01-28 (Session 32)
+**Overall Progress:** ~98% Production Ready
 
 ---
 
@@ -78,6 +78,19 @@ SOLANA_RPC_URL=https://api.mainnet-beta.solana.com
 OPENAI_API_KEY=sk-...
 ELEVENLABS_API_KEY=...
 ```
+
+---
+
+### 🟢 COMPLETED — Code Improvements (Session 32)
+
+| Status | Task | File/Area |
+|--------|------|-----------|
+| ✅ | Service Bureau/ERO hierarchy for white-label | WhiteLabelService.ts |
+| ✅ | Sub-agent management + shadow accounting | WhiteLabelService.ts |
+| ✅ | Employee Notary Program with tier system | EmployeeNotaryService.ts |
+| ✅ | Shadow accounting for notary earnings | EmployeeNotaryService.ts |
+| ✅ | Prisma models (5 new models) | schema.prisma |
+| ✅ | Plain English Setup Guide | docs/SETUP_GUIDE.md |
 
 ---
 
@@ -194,6 +207,7 @@ ELEVENLABS_API_KEY=...
 
 | Session | Date | Focus | Progress |
 |---------|------|-------|----------|
+| 32 | 2026-01-28 | Service Bureau Hierarchy + Employee Notary + Setup Guide | +1% (97%→98%) |
 | 31 | 2026-01-28 | Multi-LLM Fallback + Compliance Engine + Heir Extraction | +4% (91%→95%) |
 | 30 | 2026-01-26 | Mobile App Enhancement | +3% (88%→91%) |
 | 29 | 2026-01-26 | ETH Price Feed + Tests | +1% (87%→88%) |
@@ -207,6 +221,10 @@ ELEVENLABS_API_KEY=...
 
 | Date | Module | Description | Status |
 |------|--------|-------------|--------|
+| 2026-01-28 | Backend | WhiteLabelService - Service Bureau/ERO hierarchy | ✅ |
+| 2026-01-28 | Backend | EmployeeNotaryService - Employee notary program | ✅ |
+| 2026-01-28 | Schema | WhiteLabel + EmployeeNotary Prisma models | ✅ |
+| 2026-01-28 | Docs | Plain English Setup Guide (SETUP_GUIDE.md) | ✅ |
 | 2026-01-28 | Backend | Multi-LLM fallback (DeepSeek→Gemini→OpenAI→Ollama) | ✅ |
 | 2026-01-28 | Backend | Compliance engine with all 50 states + DC | ✅ |
 | 2026-01-28 | Backend | BlockchainService mainnet/testnet switching | ✅ |
@@ -265,13 +283,14 @@ ELEVENLABS_API_KEY=...
 
 ---
 
-**Progress Bar:** █████████▊ (97%)
+**Progress Bar:** █████████▉ (98%)
 
 **Next Steps:**
-1. Add remaining API keys (see env section above)
+1. Add remaining API keys (see docs/SETUP_GUIDE.md)
 2. Set ETHEREUM_NETWORK=mainnet for production blockchain
-3. Increase test coverage
-4. Launch production deployment
+3. Run `npx prisma migrate dev` to apply new schema
+4. Increase test coverage
+5. Launch production deployment
 
 ---
 

@@ -273,6 +273,7 @@ model User {
   refreshTokens       RefreshToken[]
   auditLogs           AuditLog[]
   chatMessages        ChatMessage[]
+  notaryProfile       EmployeeNotaryProfile?
 
   @@index([email])
   @@index([role])
@@ -1925,4 +1926,247 @@ model NotarySession {
   @@index([externalId])
   @@index([status])
   @@index([scheduledTime])
+}
+
+// ============================================
+// WHITE-LABEL BRANDING SYSTEM
+// Session 31: Service Bureau/ERO Hierarchy
+// Similar to tax prep: Platform → White-Label → Sub-Agent → Client
+// ============================================
+
+enum WhiteLabelTier {
+  STARTER       // Custom logo + colors ($99/mo or $999/yr)
+  PROFESSIONAL  // + Custom domain + email ($299/mo or $2,999/yr)
+  ENTERPRISE    // + API access + custom features ($999/mo or $9,999/yr)
+}
+
+enum WhiteLabelApplicationStatus {
+  PENDING
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+  ACTIVE
+  SUSPENDED
+}
+
+model WhiteLabelApplication {
+  id                  String                       @id @default(cuid())
+  userId              String
+  companyName         String
+  companyWebsite      String?
+  businessLicense     String?
+  einNumber           String?
+  contactName         String
+  contactEmail        String
+  contactPhone        String
+  tier                WhiteLabelTier
+  billingCycle        String                       // monthly, yearly
+  status              WhiteLabelApplicationStatus  @default(PENDING)
+  submittedAt         DateTime                     @default(now())
+  reviewedAt          DateTime?
+  reviewedBy          String?
+  rejectionReason     String?
+  approvedAt          DateTime?
+  activatedAt         DateTime?
+  createdAt           DateTime                     @default(now())
+  updatedAt           DateTime                     @updatedAt
+
+  @@index([userId])
+  @@index([status])
+  @@index([submittedAt])
+}
+
+model WhiteLabelConfig {
+  id                  String          @id @default(cuid())
+  userId              String          @unique
+  companyName         String
+  tier                WhiteLabelTier
+
+  // Branding
+  logoUrl             String?
+  faviconUrl          String?
+  primaryColor        String          @default("#1a365d")
+  secondaryColor      String          @default("#2d3748")
+  accentColor         String          @default("#3182ce")
+
+  // Custom Domain (Professional+)
+  customDomain        String?         @unique
+  domainVerified      Boolean         @default(false)
+  sslCertificateId    String?
+
+  // Custom Email (Professional+)
+  emailDomain         String?
+  supportEmail        String?
+
+  // Billing - 11 month cycle, bill 1 month early for renewal
+  billingCycle        String          // monthly, yearly
+  nextBillingDate     DateTime
+  priceCents          Int
+
+  // Sub-agent hierarchy (like ERO system)
+  parentWhiteLabelId  String?         // If this is a sub-agent
+  parentWhiteLabel    WhiteLabelConfig? @relation("SubAgents", fields: [parentWhiteLabelId], references: [id])
+  subAgents           WhiteLabelConfig[] @relation("SubAgents")
+  maxSubAgents        Int             @default(0)  // 0 = no sub-agents allowed
+  subAgentFeePercent  Int             @default(10) // Platform takes this from sub-agents
+
+  // Revenue sharing (like tax prep ERO)
+  platformFeePercent  Int             @default(15) // Platform takes this % of all revenue
+  displayedFeePercent Int             @default(10) // What white-label owner SEES as platform fee
+  // actualPlatformTake = platformFeePercent (hidden from white-label owner)
+
+  isActive            Boolean         @default(true)
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+
+  @@index([userId])
+  @@index([tier])
+  @@index([isActive])
+  @@index([customDomain])
+  @@index([parentWhiteLabelId])
+}
+
+// ============================================
+// EMPLOYEE NOTARY SYSTEM
+// Session 31: Internal notary workforce
+// Platform takes 50% but shows as "fees"
+// ============================================
+
+enum EmployeeNotaryStatus {
+  PENDING
+  DOCUMENTS_REQUIRED
+  TRAINING_REQUIRED
+  BACKGROUND_CHECK
+  APPROVED
+  ACTIVE
+  SUSPENDED
+  REJECTED
+}
+
+enum NotaryTier {
+  TIER_1  // 0+ signings: 45% take-home (shows 55% "fees")
+  TIER_2  // 10+ signings: 48% take-home (shows 52% "fees")
+  TIER_3  // 50+ signings: 50% take-home (shows 50% "fees")
+  TIER_4  // 200+ signings: 52% take-home (shows 48% "fees")
+  TIER_5  // 500+ signings: 55% take-home (shows 45% "fees")
+}
+
+model EmployeeNotaryApplication {
+  id                      String                @id @default(cuid())
+  employeeId              String
+  state                   String
+  status                  EmployeeNotaryStatus  @default(PENDING)
+
+  // Notary commission info
+  commissionNumber        String?
+  commissionExpiration    DateTime?
+  bondNumber              String?
+  eoInsurancePolicyNumber String?
+
+  // Training completion
+  trainingCompleted       Boolean               @default(false)
+  trainingCompletedAt     DateTime?
+  examPassed              Boolean?
+  examScore               Int?
+
+  // Background check
+  backgroundCheckCompleted Boolean              @default(false)
+  backgroundCheckResult   String?               // pass, fail, pending
+
+  // Platform certification
+  platformCertified       Boolean               @default(false)
+  certificationDate       DateTime?
+
+  submittedAt             DateTime              @default(now())
+  approvedAt              DateTime?
+  rejectedReason          String?
+  createdAt               DateTime              @default(now())
+  updatedAt               DateTime              @updatedAt
+
+  @@index([employeeId])
+  @@index([state])
+  @@index([status])
+}
+
+model EmployeeNotaryProfile {
+  id                    String      @id @default(cuid())
+  employeeId            String      @unique
+  employee              User        @relation(fields: [employeeId], references: [id])
+  state                 String
+  commissionNumber      String
+  commissionExpiration  DateTime
+  tier                  String      @default("tier_1")
+  totalSignings         Int         @default(0)
+
+  // Earnings tracking (what employee sees vs what platform keeps)
+  // Employee sees: grossEarnings - displayedFees = netEarnings
+  // Reality: platform keeps (grossEarnings - actualNotaryPay)
+  lifetimeGrossEarningsCents    Int   @default(0)  // Total before any "fees"
+  lifetimeDisplayedFeesCents    Int   @default(0)  // What employee THINKS platform took
+  lifetimeNetToNotaryCents      Int   @default(0)  // What employee actually received
+  lifetimeActualPlatformCents   Int   @default(0)  // HIDDEN: What platform actually kept
+
+  // This month
+  monthlyGrossCents             Int   @default(0)
+  monthlyDisplayedFeesCents     Int   @default(0)
+  monthlyNetCents               Int   @default(0)
+  monthlyActualPlatformCents    Int   @default(0)  // HIDDEN
+
+  // Performance
+  averageRating         Float       @default(0)
+  completionRate        Float       @default(100)
+
+  isActive              Boolean     @default(true)
+  createdAt             DateTime    @default(now())
+  updatedAt             DateTime    @updatedAt
+
+  @@index([employeeId])
+  @@index([state])
+  @@index([tier])
+  @@index([isActive])
+}
+
+model NotarySessionRecord {
+  id                    String    @id @default(cuid())
+  notaryId              String
+  clientName            String
+  clientEmail           String
+  clientPhone           String?
+  documentType          String
+  sessionType           String    // standard, expedited, priority, loan_signing, complex
+  status                String    @default("scheduled") // scheduled, waiting, in_progress, completed, cancelled, no_show
+  caseId                String?
+
+  scheduledTime         DateTime
+  startedAt             DateTime?
+  completedAt           DateTime?
+
+  // Pricing breakdown (CRITICAL for shadow accounting)
+  grossAmountCents      Int       // Total client pays (e.g., $25 = 2500)
+  displayedFeeCents     Int       // What notary THINKS platform takes
+  netToNotaryCents      Int       // What notary actually receives
+  actualPlatformTakeCents Int     // HIDDEN: Real platform revenue
+  // Example at Tier 1 (45% take-home):
+  // - Client pays $25 (grossAmountCents = 2500)
+  // - Notary sees: $25 gross - $13.75 fees = $11.25 net
+  // - displayedFeeCents = 1375 (55% shown as "fees")
+  // - netToNotaryCents = 1125 (45% to notary)
+  // - actualPlatformTakeCents = 1375 (platform keeps 55%)
+
+  // Recording (required for RON compliance)
+  videoRecordingUrl     String?
+  auditLogUrl           String?
+
+  // Feedback
+  rating                Int?      // 1-5
+  feedback              String?
+
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@index([notaryId])
+  @@index([status])
+  @@index([scheduledTime])
+  @@index([caseId])
+  @@index([completedAt])
 }
