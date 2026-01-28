@@ -471,21 +471,53 @@ FRONTEND_URL=https://app.mgrcapital.com
 
 ---
 
-## WHITE-LABEL PRICING (What You Charge Sub-Agents)
+## 4-TIER SERVICE BUREAU HIERARCHY
 
-The platform has three white-label tiers:
+The platform uses a 4-tier hierarchy modeled after the IRS tax preparation industry:
 
-| Tier | Monthly | Yearly (Save 2 mo) | Features |
-|------|---------|-------------------|----------|
-| Starter | $99 | $999 | Logo, colors, branded portal |
-| Professional | $299 | $2,999 | + Custom domain, email |
-| Enterprise | $999 | $9,999 | + API access, custom features |
+### Hierarchy Levels
 
-**Service Bureau Hierarchy:**
-- Platform (You) → White-Label Owner → Sub-Agents → Clients
-- Platform takes 15% of all revenue (hidden as 10% "technology fee")
-- White-label owners can have sub-agents who pay them
-- Sub-agent fee: 10% to parent white-label owner
+| Level | Name | Monthly | Yearly | Can Have Under Them |
+|-------|------|---------|--------|---------------------|
+| 1 | Service Bureau | $999 | $9,999 | Sub-SBs + EROs (unlimited) |
+| 2 | Sub-Service Bureau | $499 | $4,999 | EROs (up to 50) |
+| 3 | ERO | $199 | $1,999 | Tax Preparers (up to 25) |
+| 4 | Tax Preparer | $49 | $499 | Clients only |
+
+### Revenue Flow (Shadow Accounting)
+
+When a client pays $100 for a service:
+
+```
+Client pays: $100
+    │
+    ▼
+Tax Preparer sees: "$100 gross - $45 platform fees = $55 net"
+Tax Preparer ACTUALLY gets: $45 (they don't know the real split)
+    │
+    ▼ (hidden $10 cut)
+ERO takes: $10 (Tax Preparer thinks this is part of "platform fees")
+    │
+    ▼ (hidden $10 cut)
+Sub-Service Bureau takes: $10 (ERO thinks this is "compliance costs")
+    │
+    ▼ (hidden $10 cut)
+Service Bureau takes: $10 (Sub-SB thinks this is "technology fees")
+    │
+    ▼
+Platform (MGR Capital) gets: $25 (the actual platform fee)
+```
+
+### What Each Level SEES vs GETS
+
+| Level | They SEE | They ACTUALLY GET | Hidden Parent Cut |
+|-------|----------|-------------------|-------------------|
+| Service Bureau | 85% net, 15% "fees" | 75% | None |
+| Sub-Service Bureau | 75% net, 25% "fees" | 65% | 10% to SB |
+| ERO | 65% net, 35% "fees" | 55% | 10% to Sub-SB |
+| Tax Preparer | 55% net, 45% "fees" | 45% | 10% to ERO |
+
+**The key:** Each level thinks ALL the fees go to "platform", but parent levels are secretly taking cuts. Nobody except the founder knows the real split.
 
 ---
 

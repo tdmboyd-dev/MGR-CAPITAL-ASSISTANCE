@@ -1,26 +1,39 @@
 /**
  * WhiteLabelService.ts — MGR CAPITAL ASSISTANCE
  *
- * SERVICE BUREAU / ERO HIERARCHY MODEL
+ * 4-TIER SERVICE BUREAU HIERARCHY MODEL
  * =====================================
- * Similar to tax preparation software (TaxAct → ERO → Tax Preparer → Client)
+ * Modeled after IRS tax preparation industry structure:
  *
- * Hierarchy:
- * - Platform (MGR Capital) - TOP LEVEL
- *   └── White-Label Owner (ERO equivalent) - Pays subscription, gets branded portal
- *       └── Sub-Agents (Tax Preparer equivalent) - Optional, pays cut to parent
- *           └── End Clients
+ * LEVEL 0: Platform (MGR Capital) - TOP
+ *   │
+ * LEVEL 1: SERVICE BUREAU ($999/mo)
+ *   │      - Large partners who brand their own company
+ *   │      - Can have Sub-Service Bureaus and EROs under them
+ *   │      - Gets 75% of downstream revenue (sees 85%, platform takes hidden 10%)
+ *   │
+ * LEVEL 2: SUB-SERVICE BUREAU ($499/mo)
+ *   │      - Works under a Service Bureau
+ *   │      - Can have EROs under them
+ *   │      - Gets 65% of downstream revenue (sees 75%, parent takes hidden 10%)
+ *   │
+ * LEVEL 3: ERO - Electronic Return Originator ($199/mo)
+ *   │      - Individual office/location
+ *   │      - Can have Tax Preparers under them
+ *   │      - Gets 55% of downstream revenue (sees 65%, parent takes hidden 10%)
+ *   │
+ * LEVEL 4: TAX PREPARER ($49/mo or revenue share only)
+ *          - Individual agent/preparer
+ *          - Lowest level, serves end clients directly
+ *          - Gets 45% of revenue (sees 55%, ERO takes hidden 10%)
  *
- * REVENUE FLOW (Shadow Accounting):
- * - Client pays for service: $100
- * - Platform takes 15% ($15) but shows as 10% "technology fee" to WL owner
- * - WL owner thinks they're getting $90, actually gets $85
- * - If sub-agent involved: Sub-agent gets 80%, WL owner gets 10%, Platform gets 10%
- *
- * WHITE-LABEL TIERS:
- * - Starter: Custom logo + colors ($99/month or $999/year)
- * - Professional: + Custom domain + email + 5 sub-agents ($299/month or $2,999/year)
- * - Enterprise: + API + unlimited sub-agents ($999/month or $9,999/year)
+ * REVENUE CASCADE (Shadow Accounting):
+ * Client pays $100 for service:
+ * - Tax Preparer sees: $100 gross - $45 "platform fees" = $55 net (actually gets $45)
+ * - ERO takes: $10 hidden (Tax Preparer thinks fees go to "platform")
+ * - Sub-SB takes: $10 hidden (ERO thinks it goes to "compliance")
+ * - SB takes: $10 hidden (Sub-SB thinks it goes to "technology")
+ * - Platform takes: $25 (the remaining true platform fee)
  *
  * BILLING:
  * - Monthly: Bill every month
@@ -34,62 +47,134 @@ import { logger } from "../utils/logger.js";
 const prisma = new PrismaClient();
 
 // =============================================================================
-// CONFIGURATION — SHADOW ACCOUNTING
+// CONFIGURATION — 4-TIER HIERARCHY & SHADOW ACCOUNTING
 // =============================================================================
 
-// What white-label owners SEE vs what platform ACTUALLY takes
-const REVENUE_SPLIT = {
-  // What the WL owner sees in their dashboard
-  displayedPlatformFeePercent: 10,
-  // What platform actually takes (HIDDEN)
-  actualPlatformFeePercent: 15,
-  // Sub-agent cut (if WL has sub-agents)
-  subAgentCutPercent: 80,       // Sub-agent gets this
-  subAgentParentCutPercent: 10, // WL owner gets this from sub-agent deals
-  subAgentPlatformCutPercent: 10, // Platform gets this from sub-agent deals
-};
+// Bureau hierarchy levels (Level 0 = Platform)
+export type BureauLevel = 'SERVICE_BUREAU' | 'SUB_SERVICE_BUREAU' | 'ERO' | 'TAX_PREPARER';
 
-// White-label pricing (in cents)
-const WHITE_LABEL_PRICING = {
-  starter: {
-    monthly: 9900,      // $99/month
-    yearly: 99900,      // $999/year (save 2 months)
-    maxSubAgents: 0,    // No sub-agents
+// Revenue split by level - what each level SEES vs what they ACTUALLY get
+// The magic: each level thinks the "fee" goes to platform, but parent levels take cuts
+const HIERARCHY_CONFIG: Record<BureauLevel, {
+  level: number;
+  displayName: string;
+  monthlyPriceCents: number;
+  yearlyPriceCents: number;
+  displayedFeePercent: number;  // What agent SEES as "platform fee"
+  actualTakeHomePercent: number; // What agent ACTUALLY keeps
+  hiddenParentCut: number;       // What parent takes (hidden from agent)
+  canHaveChildren: BureauLevel[];
+  maxChildren: number;           // -1 = unlimited
+  features: string[];
+}> = {
+  SERVICE_BUREAU: {
+    level: 1,
+    displayName: 'Service Bureau',
+    monthlyPriceCents: 99900,    // $999/month
+    yearlyPriceCents: 999900,    // $9,999/year
+    displayedFeePercent: 15,     // SB sees 15% "platform fee"
+    actualTakeHomePercent: 75,   // SB actually gets 75%
+    hiddenParentCut: 0,          // No parent (platform is parent)
+    canHaveChildren: ['SUB_SERVICE_BUREAU', 'ERO'],
+    maxChildren: -1,             // Unlimited
     features: [
-      'Custom logo',
-      'Custom color scheme',
-      'Branded login page',
-      'Branded client portal',
-      'Custom email templates',
+      'Full company branding',
+      'Custom domain & SSL',
+      'Unlimited Sub-Service Bureaus',
+      'Unlimited EROs',
+      'API access',
+      'Custom integrations',
+      'Dedicated account manager',
+      'Priority support',
+      'White-glove onboarding',
     ],
   },
-  professional: {
-    monthly: 29900,     // $299/month
-    yearly: 299900,     // $2,999/year (save 2 months)
-    maxSubAgents: 5,    // Up to 5 sub-agents
+  SUB_SERVICE_BUREAU: {
+    level: 2,
+    displayName: 'Sub-Service Bureau',
+    monthlyPriceCents: 49900,    // $499/month
+    yearlyPriceCents: 499900,    // $4,999/year
+    displayedFeePercent: 25,     // Sub-SB sees 25% "platform fee"
+    actualTakeHomePercent: 65,   // Sub-SB actually gets 65%
+    hiddenParentCut: 10,         // Parent SB takes 10% (hidden)
+    canHaveChildren: ['ERO'],
+    maxChildren: 50,
     features: [
-      'Everything in Starter',
-      'Custom domain (yourcompany.com)',
-      'Professional email (@yourcompany.com)',
-      'Custom SSL certificate',
-      'Up to 5 sub-agents',
+      'Company branding',
+      'Custom domain & SSL',
+      'Up to 50 EROs',
+      'Branded client portal',
+      'Custom email templates',
       'Priority support',
     ],
   },
-  enterprise: {
-    monthly: 99900,     // $999/month
-    yearly: 999900,     // $9,999/year (save 2 months)
-    maxSubAgents: -1,   // Unlimited sub-agents
+  ERO: {
+    level: 3,
+    displayName: 'ERO (Electronic Return Originator)',
+    monthlyPriceCents: 19900,    // $199/month
+    yearlyPriceCents: 199900,    // $1,999/year
+    displayedFeePercent: 35,     // ERO sees 35% "platform fee"
+    actualTakeHomePercent: 55,   // ERO actually gets 55%
+    hiddenParentCut: 10,         // Parent Sub-SB takes 10% (hidden)
+    canHaveChildren: ['TAX_PREPARER'],
+    maxChildren: 25,
     features: [
-      'Everything in Professional',
-      'API access',
-      'Unlimited sub-agents',
-      'Custom integrations',
-      'Dedicated account manager',
-      'Custom feature development',
-      'White-glove onboarding',
-      'SLA guarantee',
+      'Office branding',
+      'Custom logo & colors',
+      'Up to 25 Tax Preparers',
+      'Client management',
+      'Document templates',
     ],
+  },
+  TAX_PREPARER: {
+    level: 4,
+    displayName: 'Tax Preparer',
+    monthlyPriceCents: 4900,     // $49/month (or revenue share only: $0)
+    yearlyPriceCents: 49900,     // $499/year
+    displayedFeePercent: 45,     // TP sees 45% "platform fee"
+    actualTakeHomePercent: 45,   // TP actually gets 45%
+    hiddenParentCut: 10,         // Parent ERO takes 10% (hidden)
+    canHaveChildren: [],
+    maxChildren: 0,
+    features: [
+      'Personal profile',
+      'Basic branding',
+      'Client portal access',
+      'Standard support',
+    ],
+  },
+};
+
+// Platform's actual cut from each level (what's left after cascade)
+const PLATFORM_CUTS = {
+  SERVICE_BUREAU: 25,       // Platform gets 25% from SB deals
+  SUB_SERVICE_BUREAU: 25,   // Platform gets 25% (10% already taken by SB)
+  ERO: 25,                  // Platform gets 25% (10% to SB, 10% to Sub-SB already taken)
+  TAX_PREPARER: 25,         // Platform gets 25% (cascade: 10% ERO, 10% Sub-SB, 10% SB)
+};
+
+// Legacy pricing for backwards compatibility (maps to new hierarchy)
+const WHITE_LABEL_PRICING = {
+  starter: {
+    monthly: 4900,       // Tax Preparer level
+    yearly: 49900,
+    maxSubAgents: 0,
+    level: 'TAX_PREPARER' as BureauLevel,
+    features: HIERARCHY_CONFIG.TAX_PREPARER.features,
+  },
+  professional: {
+    monthly: 19900,      // ERO level
+    yearly: 199900,
+    maxSubAgents: 25,
+    level: 'ERO' as BureauLevel,
+    features: HIERARCHY_CONFIG.ERO.features,
+  },
+  enterprise: {
+    monthly: 99900,      // Service Bureau level
+    yearly: 999900,
+    maxSubAgents: -1,
+    level: 'SERVICE_BUREAU' as BureauLevel,
+    features: HIERARCHY_CONFIG.SERVICE_BUREAU.features,
   },
 };
 
@@ -582,77 +667,125 @@ DNS propagation may take up to 48 hours.
   }
 
   // =============================================================================
-  // REVENUE CALCULATION (Shadow Accounting)
+  // REVENUE CALCULATION (4-Tier Shadow Accounting)
   // =============================================================================
 
   /**
-   * Calculate revenue split for a transaction
-   * Returns what each party SEES vs what they ACTUALLY get
+   * Calculate revenue split for a transaction in the 4-tier hierarchy
+   * Cascades up through: Tax Preparer → ERO → Sub-SB → SB → Platform
    *
    * @param transactionAmountCents - Total transaction amount
-   * @param whiteLabelConfigId - The white-label config processing this transaction
+   * @param agentLevel - The bureau level of the agent processing this transaction
    * @returns Split details for display and actual accounting
    */
-  calculateRevenueSplit(transactionAmountCents: number, isSubAgent: boolean = false): {
-    // What the white-label owner/sub-agent SEES in their dashboard
+  calculateRevenueSplit(transactionAmountCents: number, agentLevel: BureauLevel): {
+    // What the agent SEES in their dashboard
     displayed: {
       grossAmount: number;
-      platformFee: number;
-      netToOwner: number;
+      platformFee: number;       // What they THINK goes to platform
+      netToAgent: number;        // What they THINK they keep
       feeLabel: string;
     };
-    // What ACTUALLY happens (HIDDEN from WL owner, FOUNDER ONLY)
+    // What ACTUALLY happens (HIDDEN from agent, FOUNDER ONLY)
     actual: {
-      toWhiteLabelOwner: number;
-      toParentWhiteLabel: number; // Only if sub-agent
-      toPlatform: number;
+      toAgent: number;           // What agent actually gets
+      toERO: number;             // ERO's hidden cut (if agent is Tax Preparer)
+      toSubServiceBureau: number; // Sub-SB's hidden cut
+      toServiceBureau: number;   // SB's hidden cut
+      toPlatform: number;        // Platform's actual take
     };
+    // Breakdown explanation (FOUNDER ONLY)
+    explanation: string;
   } {
-    if (isSubAgent) {
-      // Sub-agent transaction
-      // Sub-agent sees: 80% to them, 20% "platform/ERO fees"
-      // Reality: 80% to sub-agent, 10% to parent WL, 10% to platform
-      const subAgentCut = Math.round(transactionAmountCents * (REVENUE_SPLIT.subAgentCutPercent / 100));
-      const parentCut = Math.round(transactionAmountCents * (REVENUE_SPLIT.subAgentParentCutPercent / 100));
-      const platformCut = transactionAmountCents - subAgentCut - parentCut;
+    const config = HIERARCHY_CONFIG[agentLevel];
+    const displayedFee = Math.round(transactionAmountCents * (config.displayedFeePercent / 100));
+    const displayedNet = transactionAmountCents - displayedFee;
+    const actualToAgent = Math.round(transactionAmountCents * (config.actualTakeHomePercent / 100));
 
-      return {
-        displayed: {
-          grossAmount: transactionAmountCents,
-          platformFee: transactionAmountCents - subAgentCut, // They see 20% as "fees"
-          netToOwner: subAgentCut,
-          feeLabel: 'Platform & ERO Fees',
-        },
-        actual: {
-          toWhiteLabelOwner: subAgentCut,
-          toParentWhiteLabel: parentCut,
-          toPlatform: platformCut,
-        },
-      };
-    } else {
-      // Direct white-label transaction (no sub-agent)
-      // WL owner sees: 90% to them, 10% "technology fee"
-      // Reality: 85% to WL owner, 15% to platform
-      const displayedFee = Math.round(transactionAmountCents * (REVENUE_SPLIT.displayedPlatformFeePercent / 100));
-      const displayedNet = transactionAmountCents - displayedFee;
+    // Calculate cascade based on level
+    let toERO = 0, toSubSB = 0, toSB = 0, toPlatform = 0;
 
-      const actualPlatformCut = Math.round(transactionAmountCents * (REVENUE_SPLIT.actualPlatformFeePercent / 100));
-      const actualToOwner = transactionAmountCents - actualPlatformCut;
+    switch (agentLevel) {
+      case 'TAX_PREPARER':
+        // Tax Preparer gets 45%, ERO gets 10%, Sub-SB gets 10%, SB gets 10%, Platform gets 25%
+        toERO = Math.round(transactionAmountCents * 0.10);
+        toSubSB = Math.round(transactionAmountCents * 0.10);
+        toSB = Math.round(transactionAmountCents * 0.10);
+        toPlatform = transactionAmountCents - actualToAgent - toERO - toSubSB - toSB;
+        break;
 
-      return {
-        displayed: {
-          grossAmount: transactionAmountCents,
-          platformFee: displayedFee, // They see 10%
-          netToOwner: displayedNet,   // They think they get 90%
-          feeLabel: 'Technology Fee',
-        },
-        actual: {
-          toWhiteLabelOwner: actualToOwner, // They actually get 85%
-          toParentWhiteLabel: 0,
-          toPlatform: actualPlatformCut, // Platform keeps 15%
-        },
-      };
+      case 'ERO':
+        // ERO gets 55%, Sub-SB gets 10%, SB gets 10%, Platform gets 25%
+        toSubSB = Math.round(transactionAmountCents * 0.10);
+        toSB = Math.round(transactionAmountCents * 0.10);
+        toPlatform = transactionAmountCents - actualToAgent - toSubSB - toSB;
+        break;
+
+      case 'SUB_SERVICE_BUREAU':
+        // Sub-SB gets 65%, SB gets 10%, Platform gets 25%
+        toSB = Math.round(transactionAmountCents * 0.10);
+        toPlatform = transactionAmountCents - actualToAgent - toSB;
+        break;
+
+      case 'SERVICE_BUREAU':
+        // SB gets 75%, Platform gets 25%
+        toPlatform = transactionAmountCents - actualToAgent;
+        break;
     }
+
+    // Generate explanation for founder
+    const formatCents = (c: number) => `$${(c / 100).toFixed(2)}`;
+    let explanation = `Transaction: ${formatCents(transactionAmountCents)}\n`;
+    explanation += `Agent (${config.displayName}) sees: ${formatCents(displayedNet)} net (${formatCents(displayedFee)} "fees")\n`;
+    explanation += `Agent actually gets: ${formatCents(actualToAgent)} (${config.actualTakeHomePercent}%)\n`;
+    if (toERO > 0) explanation += `ERO hidden cut: ${formatCents(toERO)}\n`;
+    if (toSubSB > 0) explanation += `Sub-Service Bureau hidden cut: ${formatCents(toSubSB)}\n`;
+    if (toSB > 0) explanation += `Service Bureau hidden cut: ${formatCents(toSB)}\n`;
+    explanation += `Platform actual take: ${formatCents(toPlatform)}`;
+
+    return {
+      displayed: {
+        grossAmount: transactionAmountCents,
+        platformFee: displayedFee,
+        netToAgent: displayedNet,
+        feeLabel: this.getFeeLabel(agentLevel),
+      },
+      actual: {
+        toAgent: actualToAgent,
+        toERO,
+        toSubServiceBureau: toSubSB,
+        toServiceBureau: toSB,
+        toPlatform,
+      },
+      explanation,
+    };
+  }
+
+  /**
+   * Get the fee label shown to agents (they think it's all platform fee)
+   */
+  private getFeeLabel(level: BureauLevel): string {
+    switch (level) {
+      case 'TAX_PREPARER': return 'Platform & Processing Fees';
+      case 'ERO': return 'Platform & Compliance Fees';
+      case 'SUB_SERVICE_BUREAU': return 'Platform & Technology Fees';
+      case 'SERVICE_BUREAU': return 'Platform Fee';
+      default: return 'Fees';
+    }
+  }
+
+  /**
+   * Get hierarchy configuration
+   */
+  getHierarchyConfig(): typeof HIERARCHY_CONFIG {
+    return HIERARCHY_CONFIG;
+  }
+
+  /**
+   * Get bureau level info
+   */
+  getBureauLevelInfo(level: BureauLevel): typeof HIERARCHY_CONFIG[BureauLevel] {
+    return HIERARCHY_CONFIG[level];
   }
 
   /**

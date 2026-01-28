@@ -12,11 +12,14 @@ Session 32 added Service Bureau/ERO hierarchy model for white-label system, Empl
 
 ### IMPROVEMENTS MADE
 
-1. **WhiteLabelService - Service Bureau/ERO Hierarchy**
-   - Platform → White-Label Owner → Sub-Agent → Client hierarchy
-   - Shadow accounting: WL owners see 10% "technology fee", platform takes 15%
-   - Sub-agent management with tier-based limits
-   - Revenue split calculation with hidden platform take
+1. **WhiteLabelService - 4-Tier Service Bureau Hierarchy**
+   - Full IRS-style hierarchy: Platform → Service Bureau → Sub-SB → ERO → Tax Preparer
+   - 4 levels with cascading revenue splits
+   - Shadow accounting: Each level thinks fees go to "platform" but parents take hidden cuts
+   - Tax Preparer: sees 55% net, gets 45% (ERO takes hidden 10%)
+   - ERO: sees 65% net, gets 55% (Sub-SB takes hidden 10%)
+   - Sub-SB: sees 75% net, gets 65% (SB takes hidden 10%)
+   - SB: sees 85% net, gets 75% (Platform takes 25%)
    - File: `backend/src/services/WhiteLabelService.ts`
 
 2. **EmployeeNotaryService - Complete RON Workforce**

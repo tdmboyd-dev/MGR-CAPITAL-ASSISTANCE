@@ -1930,14 +1930,23 @@ model NotarySession {
 
 // ============================================
 // WHITE-LABEL BRANDING SYSTEM
-// Session 31: Service Bureau/ERO Hierarchy
-// Similar to tax prep: Platform → White-Label → Sub-Agent → Client
+// Session 32: 4-Tier Service Bureau Hierarchy
+// Platform → Service Bureau → Sub-Service Bureau → ERO → Tax Preparer → Client
 // ============================================
 
+// 4-Tier Bureau Hierarchy (like IRS tax prep industry)
+enum BureauLevel {
+  SERVICE_BUREAU        // Level 1: $999/mo - Can have Sub-SBs and EROs
+  SUB_SERVICE_BUREAU    // Level 2: $499/mo - Can have EROs
+  ERO                   // Level 3: $199/mo - Can have Tax Preparers
+  TAX_PREPARER          // Level 4: $49/mo  - Serves clients directly
+}
+
+// Legacy tier for backwards compatibility
 enum WhiteLabelTier {
-  STARTER       // Custom logo + colors ($99/mo or $999/yr)
-  PROFESSIONAL  // + Custom domain + email ($299/mo or $2,999/yr)
-  ENTERPRISE    // + API access + custom features ($999/mo or $9,999/yr)
+  STARTER       // Maps to TAX_PREPARER
+  PROFESSIONAL  // Maps to ERO
+  ENTERPRISE    // Maps to SERVICE_BUREAU
 }
 
 enum WhiteLabelApplicationStatus {
@@ -1980,7 +1989,8 @@ model WhiteLabelConfig {
   id                  String          @id @default(cuid())
   userId              String          @unique
   companyName         String
-  tier                WhiteLabelTier
+  tier                WhiteLabelTier  // Legacy tier
+  bureauLevel         BureauLevel?    // New 4-tier level
 
   // Branding
   logoUrl             String?
@@ -1989,12 +1999,12 @@ model WhiteLabelConfig {
   secondaryColor      String          @default("#2d3748")
   accentColor         String          @default("#3182ce")
 
-  // Custom Domain (Professional+)
+  // Custom Domain (ERO+ levels)
   customDomain        String?         @unique
   domainVerified      Boolean         @default(false)
   sslCertificateId    String?
 
-  // Custom Email (Professional+)
+  // Custom Email (ERO+ levels)
   emailDomain         String?
   supportEmail        String?
 
@@ -2003,17 +2013,27 @@ model WhiteLabelConfig {
   nextBillingDate     DateTime
   priceCents          Int
 
-  // Sub-agent hierarchy (like ERO system)
-  parentWhiteLabelId  String?         // If this is a sub-agent
-  parentWhiteLabel    WhiteLabelConfig? @relation("SubAgents", fields: [parentWhiteLabelId], references: [id])
-  subAgents           WhiteLabelConfig[] @relation("SubAgents")
-  maxSubAgents        Int             @default(0)  // 0 = no sub-agents allowed
-  subAgentFeePercent  Int             @default(10) // Platform takes this from sub-agents
+  // 4-Tier Hierarchy (Platform → SB → Sub-SB → ERO → Tax Preparer)
+  parentWhiteLabelId  String?         // Direct parent in hierarchy
+  parentWhiteLabel    WhiteLabelConfig? @relation("HierarchyTree", fields: [parentWhiteLabelId], references: [id])
+  children            WhiteLabelConfig[] @relation("HierarchyTree")
+  hierarchyDepth      Int             @default(1)  // 1=SB, 2=Sub-SB, 3=ERO, 4=TP
+  maxChildren         Int             @default(0)  // Max direct children allowed
 
-  // Revenue sharing (like tax prep ERO)
-  platformFeePercent  Int             @default(15) // Platform takes this % of all revenue
-  displayedFeePercent Int             @default(10) // What white-label owner SEES as platform fee
-  // actualPlatformTake = platformFeePercent (hidden from white-label owner)
+  // Revenue sharing (Shadow Accounting)
+  // What agent SEES (thinks all "fees" go to platform)
+  displayedFeePercent Int             @default(45)  // Tax Preparer default
+  // What agent ACTUALLY gets
+  actualTakeHomePercent Int           @default(45)  // Tax Preparer default
+  // Hidden parent cut (agent never sees this)
+  hiddenParentCut     Int             @default(10)
+
+  // Earnings tracking (Shadow Accounting)
+  lifetimeGrossEarningsCents    Int   @default(0)  // Total before "fees"
+  lifetimeDisplayedFeesCents    Int   @default(0)  // What agent THINKS went to platform
+  lifetimeNetToAgentCents       Int   @default(0)  // What agent received
+  lifetimeHiddenParentCutCents  Int   @default(0)  // HIDDEN: What parent took
+  lifetimePlatformTakeCents     Int   @default(0)  // HIDDEN: What platform actually took
 
   isActive            Boolean         @default(true)
   createdAt           DateTime        @default(now())
@@ -2021,9 +2041,11 @@ model WhiteLabelConfig {
 
   @@index([userId])
   @@index([tier])
+  @@index([bureauLevel])
   @@index([isActive])
   @@index([customDomain])
   @@index([parentWhiteLabelId])
+  @@index([hierarchyDepth])
 }
 
 // ============================================
