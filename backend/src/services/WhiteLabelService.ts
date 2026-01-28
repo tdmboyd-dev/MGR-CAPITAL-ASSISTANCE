@@ -292,12 +292,22 @@ class WhiteLabelService {
 
     // Check for existing application
     const existing = await prisma.whiteLabelApplication.findFirst({
-      where: { userId, status: { in: ['pending', 'under_review', 'approved', 'active'] } },
+      where: { userId, status: { in: ['PENDING', 'UNDER_REVIEW', 'APPROVED', 'ACTIVE'] } },
     });
 
     if (existing) {
       throw new Error('You already have an active or pending application');
     }
+
+    // Map tier string to enum
+    const tierMap: Record<string, 'STARTER' | 'PROFESSIONAL' | 'ENTERPRISE'> = {
+      'starter': 'STARTER',
+      'professional': 'PROFESSIONAL',
+      'enterprise': 'ENTERPRISE',
+      'STARTER': 'STARTER',
+      'PROFESSIONAL': 'PROFESSIONAL',
+      'ENTERPRISE': 'ENTERPRISE',
+    };
 
     // Create application
     const application = await prisma.whiteLabelApplication.create({
@@ -310,9 +320,9 @@ class WhiteLabelService {
         contactName: submission.contactName,
         contactEmail: submission.contactEmail,
         contactPhone: submission.contactPhone,
-        tier: submission.tier,
+        tier: tierMap[submission.tier] || 'STARTER',
         billingCycle: submission.billingCycle,
-        status: 'pending',
+        status: 'PENDING',
         submittedAt: new Date(),
       },
     });
@@ -342,12 +352,12 @@ class WhiteLabelService {
       throw new Error('Application not found');
     }
 
-    if (application.status !== 'pending' && application.status !== 'under_review') {
+    if (application.status !== 'PENDING' && application.status !== 'UNDER_REVIEW') {
       throw new Error('Application already processed');
     }
 
     const updateData: any = {
-      status: decision === 'approve' ? 'approved' : 'rejected',
+      status: decision === 'approve' ? 'APPROVED' : 'REJECTED',
       reviewedAt: new Date(),
       reviewedBy: reviewerId,
     };
@@ -383,7 +393,7 @@ class WhiteLabelService {
       where: { id: applicationId },
     });
 
-    if (!application || application.status !== 'approved') {
+    if (!application || application.status !== 'APPROVED') {
       throw new Error('Application not approved');
     }
 
@@ -418,7 +428,7 @@ class WhiteLabelService {
     await prisma.whiteLabelApplication.update({
       where: { id: applicationId },
       data: {
-        status: 'active',
+        status: 'ACTIVE',
         activatedAt: new Date(),
       },
     });
@@ -468,7 +478,7 @@ class WhiteLabelService {
       throw new Error('Config not found');
     }
 
-    if (config.tier === 'starter') {
+    if (config.tier === 'STARTER') {
       throw new Error('Custom domain requires Professional or Enterprise tier');
     }
 
@@ -528,7 +538,7 @@ DNS propagation may take up to 48 hours.
       // Check if payment was made (would check LedgerEntry)
       const recentPayment = await prisma.ledgerEntry.findFirst({
         where: {
-          createdById: config.userId,
+          userId: config.userId,
           type: 'FEE',
           amountCents: config.priceCents,
           createdAt: {
@@ -560,8 +570,8 @@ DNS propagation may take up to 48 hours.
 
         // Update application status
         await prisma.whiteLabelApplication.updateMany({
-          where: { userId: config.userId, status: 'active' },
-          data: { status: 'suspended' },
+          where: { userId: config.userId, status: 'ACTIVE' },
+          data: { status: 'SUSPENDED' },
         });
 
         suspended++;
@@ -596,7 +606,7 @@ DNS propagation may take up to 48 hours.
    */
   async getPendingApplications(): Promise<WhiteLabelApplication[]> {
     const applications = await prisma.whiteLabelApplication.findMany({
-      where: { status: { in: ['pending', 'under_review'] } },
+      where: { status: { in: ['PENDING', 'UNDER_REVIEW'] } },
       orderBy: { submittedAt: 'asc' },
     });
 
@@ -604,88 +614,99 @@ DNS propagation may take up to 48 hours.
   }
 
   // =============================================================================
-  // SUB-AGENT MANAGEMENT (Service Bureau/ERO Hierarchy)
+  // DOWNLINE MANAGEMENT (Partner Hierarchy)
   // =============================================================================
 
   /**
-   * Add sub-agent under a white-label owner
-   * Similar to how tax prep EROs add tax preparers under their umbrella
+   * Add partner to downline
+   * Managing Partner can add Executive Partners or Recovery Directors
+   * Executive Partner can add Recovery Directors
+   * Recovery Director can add Recovery Specialists
    */
-  async addSubAgent(parentConfigId: string, subAgentUserId: string): Promise<WhiteLabelConfig> {
+  async addToDownline(parentConfigId: string, newPartnerUserId: string, partnerLevel: PartnerLevel): Promise<WhiteLabelConfig> {
     const parentConfig = await prisma.whiteLabelConfig.findUnique({
       where: { id: parentConfigId },
-      include: { subAgents: true },
+      include: { downline: true },
     });
 
     if (!parentConfig) {
-      throw new Error('Parent white-label config not found');
+      throw new Error('Partner config not found');
     }
 
-    // Check tier allows sub-agents
-    const tierPricing = WHITE_LABEL_PRICING[parentConfig.tier as WhiteLabelTier];
-    if (tierPricing.maxSubAgents === 0) {
-      throw new Error('Your tier does not allow sub-agents. Upgrade to Professional or Enterprise.');
+    // Check parent can have this type of downline
+    const parentLevel = (parentConfig.partnerLevel || 'RECOVERY_SPECIALIST') as PartnerLevel;
+    const parentLevelConfig = HIERARCHY_CONFIG[parentLevel];
+
+    if (!parentLevelConfig.canHaveChildren.includes(partnerLevel)) {
+      throw new Error(`${parentLevelConfig.displayName} cannot add ${HIERARCHY_CONFIG[partnerLevel].displayName} to their downline`);
     }
 
-    // Check sub-agent limit
-    if (tierPricing.maxSubAgents > 0 && parentConfig.subAgents.length >= tierPricing.maxSubAgents) {
-      throw new Error(`Maximum sub-agents (${tierPricing.maxSubAgents}) reached. Upgrade to Enterprise for unlimited.`);
+    // Check downline limit
+    if (parentLevelConfig.maxChildren > 0 && (parentConfig.downline?.length || 0) >= parentLevelConfig.maxChildren) {
+      throw new Error(`Maximum downline (${parentLevelConfig.maxChildren}) reached`);
     }
 
-    // Create sub-agent config (minimal branding, inherits from parent)
-    const subAgentConfig = await prisma.whiteLabelConfig.create({
+    // Get new partner level config
+    const newLevelConfig = HIERARCHY_CONFIG[partnerLevel];
+
+    // Create downline partner config
+    const newPartnerConfig = await prisma.whiteLabelConfig.create({
       data: {
-        userId: subAgentUserId,
-        companyName: `Sub-Agent of ${parentConfig.companyName}`,
-        tier: 'STARTER', // Sub-agents are always starter tier
+        userId: newPartnerUserId,
+        companyName: `Partner under ${parentConfig.companyName}`,
+        tier: 'STARTER',
+        partnerLevel: partnerLevel,
         primaryColor: parentConfig.primaryColor,
         secondaryColor: parentConfig.secondaryColor,
         accentColor: parentConfig.accentColor,
         billingCycle: 'monthly',
         nextBillingDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-        priceCents: 0, // Sub-agents don't pay subscription, they pay revenue cut
-        parentWhiteLabelId: parentConfigId,
-        maxSubAgents: 0, // Sub-agents can't have their own sub-agents
-        platformFeePercent: REVENUE_SPLIT.subAgentPlatformCutPercent,
-        displayedFeePercent: REVENUE_SPLIT.subAgentPlatformCutPercent + REVENUE_SPLIT.subAgentParentCutPercent,
+        priceCents: newLevelConfig.monthlyPriceCents,
+        parentPartnerId: parentConfigId,
+        hierarchyDepth: newLevelConfig.level,
+        maxDownline: newLevelConfig.maxChildren,
+        displayedFeePercent: newLevelConfig.displayedFeePercent,
+        displayedFeeLabel: newLevelConfig.feeLabel,
+        actualTakeHomePercent: newLevelConfig.actualTakeHomePercent,
+        hiddenUplineCut: newLevelConfig.hiddenParentCut,
         isActive: true,
       },
     });
 
-    logger.info('Sub-agent added', { parentConfigId, subAgentUserId });
+    logger.info('Partner added to downline', { parentConfigId, newPartnerUserId, partnerLevel });
 
-    return this.mapConfig(subAgentConfig);
+    return this.mapConfig(newPartnerConfig);
   }
 
   /**
-   * Remove sub-agent
+   * Remove partner from downline
    */
-  async removeSubAgent(parentConfigId: string, subAgentConfigId: string): Promise<void> {
-    const subAgent = await prisma.whiteLabelConfig.findUnique({
-      where: { id: subAgentConfigId },
+  async removeFromDownline(parentConfigId: string, partnerConfigId: string): Promise<void> {
+    const partner = await prisma.whiteLabelConfig.findUnique({
+      where: { id: partnerConfigId },
     });
 
-    if (!subAgent || subAgent.parentWhiteLabelId !== parentConfigId) {
-      throw new Error('Sub-agent not found or not under this white-label');
+    if (!partner || partner.parentPartnerId !== parentConfigId) {
+      throw new Error('Partner not found or not in your downline');
     }
 
     await prisma.whiteLabelConfig.update({
-      where: { id: subAgentConfigId },
+      where: { id: partnerConfigId },
       data: { isActive: false },
     });
 
-    logger.info('Sub-agent removed', { parentConfigId, subAgentConfigId });
+    logger.info('Partner removed from downline', { parentConfigId, partnerConfigId });
   }
 
   /**
-   * Get all sub-agents for a white-label owner
+   * Get all partners in downline
    */
-  async getSubAgents(parentConfigId: string): Promise<WhiteLabelConfig[]> {
-    const subAgents = await prisma.whiteLabelConfig.findMany({
-      where: { parentWhiteLabelId: parentConfigId, isActive: true },
+  async getDownline(parentConfigId: string): Promise<WhiteLabelConfig[]> {
+    const downline = await prisma.whiteLabelConfig.findMany({
+      where: { parentPartnerId: parentConfigId, isActive: true },
     });
 
-    return subAgents.map(this.mapConfig);
+    return downline.map(this.mapConfig);
   }
 
   // =============================================================================
@@ -832,58 +853,60 @@ DNS propagation may take up to 48 hours.
   }
 
   /**
-   * Get dashboard stats for white-label owner
-   * Shows what they THINK they're earning (shadow accounting)
+   * Get dashboard stats for partner
+   * Shows what they THINK they're earning (professional fee names)
    */
-  async getOwnerDashboardStats(configId: string): Promise<{
-    // What owner SEES
+  async getPartnerDashboardStats(configId: string): Promise<{
+    // What partner SEES (professional fee labels)
     thisMonthGross: number;
     thisMonthFees: number;
+    thisMonthFeeLabel: string;
     thisMonthNet: number;
     lifetimeGross: number;
     lifetimeFees: number;
     lifetimeNet: number;
-    subAgentCount: number;
-    // HIDDEN from owner (FOUNDER ONLY)
-    actualThisMonthPlatformTake: number;
-    actualLifetimePlatformTake: number;
+    downlineCount: number;
+    // FOUNDER ONLY - never exposed to partner
+    _founderOnly: {
+      actualThisMonthHomeOfficeTake: number;
+      actualLifetimeHomeOfficeTake: number;
+    };
   }> {
     const config = await prisma.whiteLabelConfig.findUnique({
       where: { id: configId },
-      include: { subAgents: { where: { isActive: true } } },
+      include: { downline: { where: { isActive: true } } },
     });
 
     if (!config) {
       throw new Error('Config not found');
     }
 
-    // In production, these would be calculated from actual transaction records
-    // For now, return placeholder structure
-    const monthlyTransactions = 0; // Would query ledger
-    const lifetimeTransactions = 0;
+    // Get partner level from config
+    const partnerLevel = (config.partnerLevel || 'RECOVERY_SPECIALIST') as PartnerLevel;
+    const levelConfig = HIERARCHY_CONFIG[partnerLevel];
 
-    const monthSplit = this.calculateRevenueSplit(monthlyTransactions);
-    const lifetimeSplit = this.calculateRevenueSplit(lifetimeTransactions);
+    // In production, calculate from ledger entries
+    // For now, use stored values from config
+    const monthlyGross = config.lifetimeGrossCents || 0;
+    const monthlyFees = config.lifetimeDisplayedFeesCents || 0;
+    const monthlyNet = config.lifetimeNetCents || 0;
+    const monthlyHomeOffice = config.lifetimeHomeOfficeCents || 0;
 
     return {
-      thisMonthGross: monthSplit.displayed.grossAmount,
-      thisMonthFees: monthSplit.displayed.platformFee,
-      thisMonthNet: monthSplit.displayed.netToOwner,
-      lifetimeGross: lifetimeSplit.displayed.grossAmount,
-      lifetimeFees: lifetimeSplit.displayed.platformFee,
-      lifetimeNet: lifetimeSplit.displayed.netToOwner,
-      subAgentCount: config.subAgents.length,
-      // HIDDEN
-      actualThisMonthPlatformTake: monthSplit.actual.toPlatform,
-      actualLifetimePlatformTake: lifetimeSplit.actual.toPlatform,
+      thisMonthGross: monthlyGross,
+      thisMonthFees: monthlyFees,
+      thisMonthFeeLabel: levelConfig.feeLabel,
+      thisMonthNet: monthlyNet,
+      lifetimeGross: config.lifetimeGrossCents || 0,
+      lifetimeFees: config.lifetimeDisplayedFeesCents || 0,
+      lifetimeNet: config.lifetimeNetCents || 0,
+      downlineCount: config.downline?.length || 0,
+      // FOUNDER ONLY
+      _founderOnly: {
+        actualThisMonthHomeOfficeTake: monthlyHomeOffice,
+        actualLifetimeHomeOfficeTake: config.lifetimeHomeOfficeCents || 0,
+      },
     };
-  }
-
-  /**
-   * Get revenue split configuration
-   */
-  getRevenueSplitConfig(): typeof REVENUE_SPLIT {
-    return REVENUE_SPLIT;
   }
 
   // =============================================================================

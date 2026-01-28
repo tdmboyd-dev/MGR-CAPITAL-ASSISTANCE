@@ -179,7 +179,7 @@ const STATE_RON_REQUIREMENTS: Record<string, {
 // TYPES
 // =============================================================================
 
-export type NotaryApplicationStatus = 'pending' | 'documents_required' | 'training_required' | 'background_check' | 'approved' | 'active' | 'suspended' | 'rejected';
+export type NotaryApplicationStatus = 'PENDING' | 'DOCUMENTS_REQUIRED' | 'TRAINING_REQUIRED' | 'BACKGROUND_CHECK' | 'APPROVED' | 'ACTIVE' | 'SUSPENDED' | 'REJECTED';
 
 export interface EmployeeNotaryApplication {
   id: string;
@@ -293,32 +293,31 @@ class EmployeeNotaryService {
     const stateReqs = this.getStateRequirements(state);
 
     // Create application
-    const application = await prisma.employeeNotaryApplication.create({
+    const application = await prisma.notaryApplication.create({
       data: {
-        employeeId,
+        userId: employeeId,
         state: state.toUpperCase(),
-        status: 'pending',
+        status: 'PENDING',
         commissionNumber: commissionData.commissionNumber,
         commissionExpiration: commissionData.commissionExpiration,
         bondNumber: commissionData.bondNumber,
         eoInsurancePolicyNumber: commissionData.eoInsurancePolicyNumber,
         trainingCompleted: !stateReqs.trainingRequired, // Auto-complete if not required
         backgroundCheckCompleted: false,
-        platformCertified: false,
-        submittedAt: new Date(),
+        certified: false,
       },
     });
 
     // Determine next step
-    let nextStatus: NotaryApplicationStatus = 'pending';
+    let nextStatus: NotaryApplicationStatus = 'PENDING';
     if (stateReqs.trainingRequired && !application.trainingCompleted) {
-      nextStatus = 'training_required';
+      nextStatus = 'TRAINING_REQUIRED';
     } else if (stateReqs.backgroundCheckRequired) {
-      nextStatus = 'background_check';
+      nextStatus = 'BACKGROUND_CHECK';
     }
 
-    if (nextStatus !== 'pending') {
-      await prisma.employeeNotaryApplication.update({
+    if (nextStatus !== 'PENDING') {
+      await prisma.notaryApplication.update({
         where: { id: application.id },
         data: { status: nextStatus },
       });
@@ -333,7 +332,7 @@ class EmployeeNotaryService {
    * Complete training module
    */
   async completeTraining(applicationId: string, examScore?: number): Promise<EmployeeNotaryApplication> {
-    const application = await prisma.employeeNotaryApplication.findUnique({
+    const application = await prisma.notaryApplication.findUnique({
       where: { id: applicationId },
     });
 
@@ -348,14 +347,14 @@ class EmployeeNotaryService {
       throw new Error('Must pass exam with 70% or higher');
     }
 
-    const updated = await prisma.employeeNotaryApplication.update({
+    const updated = await prisma.notaryApplication.update({
       where: { id: applicationId },
       data: {
         trainingCompleted: true,
         trainingCompletedAt: new Date(),
         examPassed: stateReqs.examRequired ? (examScore! >= 70) : null,
         examScore,
-        status: stateReqs.backgroundCheckRequired ? 'background_check' : 'documents_required',
+        status: stateReqs.backgroundCheckRequired ? 'BACKGROUND_CHECK' : 'DOCUMENTS_REQUIRED',
       },
     });
 
@@ -366,7 +365,7 @@ class EmployeeNotaryService {
    * Process background check result
    */
   async processBackgroundCheck(applicationId: string, result: 'pass' | 'fail'): Promise<EmployeeNotaryApplication> {
-    const application = await prisma.employeeNotaryApplication.findUnique({
+    const application = await prisma.notaryApplication.findUnique({
       where: { id: applicationId },
     });
 
@@ -374,9 +373,9 @@ class EmployeeNotaryService {
       throw new Error('Application not found');
     }
 
-    const newStatus: NotaryApplicationStatus = result === 'pass' ? 'documents_required' : 'rejected';
+    const newStatus: NotaryApplicationStatus = result === 'pass' ? 'DOCUMENTS_REQUIRED' : 'REJECTED';
 
-    const updated = await prisma.employeeNotaryApplication.update({
+    const updated = await prisma.notaryApplication.update({
       where: { id: applicationId },
       data: {
         backgroundCheckCompleted: true,
@@ -393,7 +392,7 @@ class EmployeeNotaryService {
    * Approve application (Admin/Founder only)
    */
   async approveApplication(applicationId: string, approverId: string): Promise<EmployeeNotaryApplication> {
-    const application = await prisma.employeeNotaryApplication.findUnique({
+    const application = await prisma.notaryApplication.findUnique({
       where: { id: applicationId },
     });
 
@@ -401,24 +400,24 @@ class EmployeeNotaryService {
       throw new Error('Application not found');
     }
 
-    const updated = await prisma.employeeNotaryApplication.update({
+    const updated = await prisma.notaryApplication.update({
       where: { id: applicationId },
       data: {
-        status: 'active',
-        platformCertified: true,
+        status: 'ACTIVE',
+        certified: true,
         certificationDate: new Date(),
         approvedAt: new Date(),
       },
     });
 
     // Create notary profile
-    await prisma.employeeNotaryProfile.create({
+    await prisma.notaryProfile.create({
       data: {
-        employeeId: application.employeeId,
+        userId: application.userId,
         state: application.state,
         commissionNumber: application.commissionNumber!,
         commissionExpiration: application.commissionExpiration!,
-        tier: 'tier_1',
+        level: 'ASSOCIATE_NOTARY',
         totalSignings: 0,
         isActive: true,
       },
@@ -434,8 +433,8 @@ class EmployeeNotaryService {
    * Notary sees professional fee names, never "platform takes X%"
    */
   async getDashboardStats(notaryId: string): Promise<NotaryDashboardStats> {
-    const profile = await prisma.employeeNotaryProfile.findFirst({
-      where: { employeeId: notaryId, isActive: true },
+    const profile = await prisma.notaryProfile.findFirst({
+      where: { userId: notaryId, isActive: true },
     });
 
     if (!profile) {
@@ -466,7 +465,7 @@ class EmployeeNotaryService {
     for (const session of sessions) {
       grossEarnings += session.grossAmountCents;
       displayedFees += session.displayedFeeCents;
-      actualHomeOfficeTake += session.actualPlatformTakeCents;
+      actualHomeOfficeTake += session.homeOfficeTakeCents;
     }
 
     const netEarnings = grossEarnings - displayedFees;
@@ -515,8 +514,8 @@ class EmployeeNotaryService {
     scheduledTime: Date;
     caseId?: string;
   }): Promise<NotarySession> {
-    const profile = await prisma.employeeNotaryProfile.findFirst({
-      where: { employeeId: data.notaryId, isActive: true },
+    const profile = await prisma.notaryProfile.findFirst({
+      where: { userId: data.notaryId, isActive: true },
     });
 
     if (!profile) {
@@ -533,7 +532,7 @@ class EmployeeNotaryService {
 
     const netToNotary = Math.round(grossAmount * (notaryTakePercent / 100));
     const displayedFee = Math.round(grossAmount * (displayedFeePercent / 100));
-    const actualPlatformTake = grossAmount - netToNotary;
+    const homeOfficeTake = grossAmount - netToNotary;
 
     const session = await prisma.notarySessionRecord.create({
       data: {
@@ -549,7 +548,8 @@ class EmployeeNotaryService {
         grossAmountCents: grossAmount,
         displayedFeeCents: displayedFee,
         netToNotaryCents: netToNotary,
-        actualPlatformTakeCents: actualPlatformTake,
+        homeOfficeTakeCents: homeOfficeTake,
+        feeLabel: FEE_LABELS.primary,
       },
     });
 
@@ -579,8 +579,8 @@ class EmployeeNotaryService {
     });
 
     // Update notary profile
-    await prisma.employeeNotaryProfile.updateMany({
-      where: { employeeId: session.notaryId },
+    await prisma.notaryProfile.updateMany({
+      where: { userId: session.notaryId },
       data: { totalSignings: { increment: 1 } },
     });
 
@@ -602,16 +602,16 @@ class EmployeeNotaryService {
     rating: number;
     availableSlots: Date[];
   }[]> {
-    const notaries = await prisma.employeeNotaryProfile.findMany({
+    const notaries = await prisma.notaryProfile.findMany({
       where: { state: state.toUpperCase(), isActive: true },
       include: {
-        employee: { select: { id: true, name: true } },
+        user: { select: { id: true, name: true } },
       },
     });
 
     return notaries.map(n => ({
-      notaryId: n.employeeId,
-      name: n.employee.name,
+      notaryId: n.userId,
+      name: n.user.name,
       tier: this.calculateTier(n.totalSignings).name,
       rating: 4.8, // Would calculate from sessions
       availableSlots: this.generateAvailableSlots(scheduledTime),
@@ -669,23 +669,35 @@ class EmployeeNotaryService {
     }
   }
 
-  private async checkTierUpgrade(employeeId: string): Promise<void> {
-    const profile = await prisma.employeeNotaryProfile.findFirst({
-      where: { employeeId },
+  private async checkTierUpgrade(userId: string): Promise<void> {
+    const profile = await prisma.notaryProfile.findFirst({
+      where: { userId },
     });
 
     if (!profile) return;
 
     const newTier = this.calculateTier(profile.totalSignings);
+    const newLevel = this.tierKeyToLevel(newTier.key);
 
-    if (newTier.key !== profile.tier) {
-      await prisma.employeeNotaryProfile.updateMany({
-        where: { employeeId },
-        data: { tier: newTier.key },
+    if (newLevel !== profile.level) {
+      await prisma.notaryProfile.update({
+        where: { userId },
+        data: { level: newLevel },
       });
 
-      logger.info('Notary tier upgraded', { employeeId, newTier: newTier.key });
+      logger.info('Notary level upgraded', { userId, newLevel });
     }
+  }
+
+  private tierKeyToLevel(tierKey: string): 'ASSOCIATE_NOTARY' | 'CERTIFIED_NOTARY' | 'SENIOR_NOTARY' | 'LEAD_NOTARY' | 'EXECUTIVE_NOTARY' {
+    const mapping: Record<string, 'ASSOCIATE_NOTARY' | 'CERTIFIED_NOTARY' | 'SENIOR_NOTARY' | 'LEAD_NOTARY' | 'EXECUTIVE_NOTARY'> = {
+      'tier_1': 'ASSOCIATE_NOTARY',
+      'tier_2': 'CERTIFIED_NOTARY',
+      'tier_3': 'SENIOR_NOTARY',
+      'tier_4': 'LEAD_NOTARY',
+      'tier_5': 'EXECUTIVE_NOTARY',
+    };
+    return mapping[tierKey] || 'ASSOCIATE_NOTARY';
   }
 
   private generateAvailableSlots(baseTime: Date): Date[] {
@@ -705,7 +717,7 @@ class EmployeeNotaryService {
   private mapApplication(app: any): EmployeeNotaryApplication {
     return {
       id: app.id,
-      employeeId: app.employeeId,
+      employeeId: app.userId,
       state: app.state,
       status: app.status,
       commissionNumber: app.commissionNumber,
@@ -718,7 +730,7 @@ class EmployeeNotaryService {
       examScore: app.examScore,
       backgroundCheckCompleted: app.backgroundCheckCompleted,
       backgroundCheckResult: app.backgroundCheckResult,
-      platformCertified: app.platformCertified,
+      platformCertified: app.certified,
       certificationDate: app.certificationDate,
       submittedAt: app.submittedAt,
       approvedAt: app.approvedAt,
@@ -741,7 +753,7 @@ class EmployeeNotaryService {
       grossAmountCents: session.grossAmountCents,
       displayedFeeCents: session.displayedFeeCents,
       netToNotaryCents: session.netToNotaryCents,
-      actualPlatformTakeCents: session.actualPlatformTakeCents,
+      actualPlatformTakeCents: session.homeOfficeTakeCents,
       videoRecordingUrl: session.videoRecordingUrl,
       auditLogUrl: session.auditLogUrl,
       rating: session.rating,
