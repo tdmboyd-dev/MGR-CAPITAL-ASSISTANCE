@@ -3,13 +3,32 @@
 ## COMPLETE SYSTEM DOCUMENTATION
 
 **Last Updated:** 2026-01-30
-**Status:** CLIENT/SIGN PORTAL + LOGIN FIX — ~99% Production Ready
+**Status:** FEE CAPS + NEW DOCS + EMAIL FIX — ~99% Production Ready
 **All mock data removed, all pages connected to real API**
 **Login:** admin@capitalmgr.com / Dorothy1956!
 
 ---
 
-## LATEST SESSION (2026-01-30) — Full Competitive Analysis + Portal System
+## LATEST SESSION (2026-01-30) — Competitive Analysis Action Items + 75-Feature Blueprint
+
+### What Was Done
+1. **State Fee Cap Auto-Enforcement** — 9 states auto-cap fees per state law. New enforceStateFeeCap() engine. API: GET /api/legal/fee-caps, POST /api/legal/fee-caps/check
+2. **5 New Document Types** — W9_FORM, SCRA_DECLARATION, RELEASE_OF_LIABILITY, SMALL_ESTATE_AFFIDAVIT, HEIRSHIP_CHART with full legal templates
+3. **Email Service Fixed** — Brevo primary, SMTP fallback, 535 auth auto-disable, new templates (portalLink, documentReady)
+4. **75-Feature Industry Dominator Blueprint** — Comprehensive feature list to destroy every competitor
+
+### Files Changed
+- `backend/src/data/stateRules.ts` - Fee cap fields + enforcement engine for all 51 jurisdictions
+- `backend/src/data/documentTemplates.ts` - 5 new document templates (15 total)
+- `backend/prisma/schema.prisma` - 5 new DocumentType enum values (19 total)
+- `backend/src/services/commissionService.ts` - Fee cap integration in payout calculations
+- `backend/src/services/EmailService.ts` - Complete rewrite with Brevo primary + fallback chain
+- `backend/src/routes/legal.ts` - Fee cap API endpoints
+- `backend/src/routes/cases.ts` - Auto-cap fees on case creation
+
+---
+
+## PREVIOUS SESSION (2026-01-30) — Full Competitive Analysis + Portal System
 
 ### What Was Done
 1. **Deep Competitive Analysis** - Compared MGR Capital against 25+ competitors across all features, documents, services, technology, and pricing. Created `docs/COMPETITIVE_ANALYSIS.md` (268 lines).
