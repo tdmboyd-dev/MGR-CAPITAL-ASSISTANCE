@@ -300,9 +300,191 @@ router.patch("/:id", authMiddleware, roleGuard(["ADMIN"]), async (req: AuthReque
 });
 
 // ============================================
+// PORTAL LINK MANAGEMENT — Send/Copy Portal Link
+// ============================================
+
+/**
+ * POST /api/clients/portal-link/:caseId - Generate and optionally send portal link (ADMIN/FOUNDER)
+ */
+router.post("/portal-link/:caseId", authMiddleware, roleGuard(["ADMIN"]), asyncHandler(async (req: AuthRequest, res: Response) => {
+  const { caseId } = req.params;
+  const { action, email, phone } = req.body; // action: "copy" | "email" | "sms"
+
+  const caseData = await prisma.case.findUnique({
+    where: { id: caseId },
+    include: {
+      client: { select: { name: true, email: true, phone: true } }
+    }
+  });
+
+  if (!caseData) {
+    throw Errors.notFound("Case");
+  }
+
+  const portalUrl = `${process.env.API_BASE_URL?.replace(':4000', ':3011') || 'http://localhost:3011'}/client/portal?token=${caseData.publicAccessToken}`;
+  const signPortalUrl = `${process.env.API_BASE_URL?.replace(':4000', ':3011') || 'http://localhost:3011'}/client/sign-portal?token=${caseData.publicAccessToken}`;
+
+  // If portal is expired and not kept alive, re-activate it
+  if (caseData.portalExpiresAt && new Date() > caseData.portalExpiresAt && !caseData.portalKeptAlive) {
+    // Sending a new link resets the expiration
+    const newExpiry = new Date();
+    newExpiry.setDate(newExpiry.getDate() + caseData.portalDissolveAfterDays);
+    await prisma.case.update({
+      where: { id: caseId },
+      data: { portalExpiresAt: newExpiry }
+    });
+  }
+
+  // Log the portal link action
+  await prisma.auditLog.create({
+    data: {
+      userId: req.user!.id,
+      action: "PORTAL_LINK_GENERATED",
+      entityType: "CASE",
+      entityId: caseId,
+      details: { action, portalUrl, signPortalUrl }
+    }
+  });
+
+  // Log communication if sending
+  if (action === "email" || action === "sms") {
+    await prisma.communication.create({
+      data: {
+        caseId: caseData.id,
+        userId: req.user!.id,
+        type: action === "email" ? "EMAIL" : "TEXT",
+        direction: "OUTBOUND",
+        content: `Portal link sent to client: ${portalUrl}`,
+        toAddress: action === "email" ? (email || caseData.client.email) : (phone || caseData.client.phone || "")
+      }
+    });
+  }
+
+  res.json({
+    success: true,
+    data: {
+      portalUrl,
+      signPortalUrl,
+      token: caseData.publicAccessToken,
+      clientName: caseData.client.name,
+      clientEmail: caseData.client.email,
+      expiresAt: caseData.portalExpiresAt,
+      keptAlive: caseData.portalKeptAlive
+    }
+  });
+}));
+
+/**
+ * PATCH /api/clients/portal-settings/:caseId - Update portal expiration settings (ADMIN/FOUNDER)
+ */
+router.patch("/portal-settings/:caseId", authMiddleware, roleGuard(["ADMIN"]), asyncHandler(async (req: AuthRequest, res: Response) => {
+  const { caseId } = req.params;
+  const { portalKeptAlive, portalDissolveAfterDays, portalExpiresAt } = req.body;
+
+  const updateData: any = {};
+  if (typeof portalKeptAlive === "boolean") updateData.portalKeptAlive = portalKeptAlive;
+  if (typeof portalDissolveAfterDays === "number") updateData.portalDissolveAfterDays = portalDissolveAfterDays;
+  if (portalExpiresAt) updateData.portalExpiresAt = new Date(portalExpiresAt);
+
+  const updated = await prisma.case.update({
+    where: { id: caseId },
+    data: updateData,
+    select: {
+      id: true,
+      portalExpiresAt: true,
+      portalDissolveAfterDays: true,
+      portalKeptAlive: true
+    }
+  });
+
+  await prisma.auditLog.create({
+    data: {
+      userId: req.user!.id,
+      action: "PORTAL_SETTINGS_UPDATED",
+      entityType: "CASE",
+      entityId: caseId,
+      details: updateData
+    }
+  });
+
+  res.json({ success: true, data: updated });
+}));
+
+/**
+ * POST /api/clients/auto-expire-portals - Auto-expire portals 12 days after PAID (SYSTEM/FOUNDER)
+ * Can be called by cron or manually by founder
+ */
+router.post("/auto-expire-portals", authMiddleware, roleGuard(["ADMIN"]), asyncHandler(async (_req: AuthRequest, res: Response) => {
+  // Find all PAID cases without expiration set and not kept alive
+  const paidCases = await prisma.case.findMany({
+    where: {
+      status: "PAID",
+      portalExpiresAt: null,
+      portalKeptAlive: false,
+      paidAt: { not: null }
+    }
+  });
+
+  let updatedCount = 0;
+  for (const c of paidCases) {
+    const paidDate = c.paidAt || new Date();
+    const expiresAt = new Date(paidDate);
+    expiresAt.setDate(expiresAt.getDate() + c.portalDissolveAfterDays);
+
+    await prisma.case.update({
+      where: { id: c.id },
+      data: { portalExpiresAt: expiresAt }
+    });
+    updatedCount++;
+  }
+
+  res.json({
+    success: true,
+    message: `Set expiration for ${updatedCount} paid cases`,
+    updatedCount
+  });
+}));
+
+// ============================================
 // CLIENT PORTAL ROUTES — Public (Token-based)
 // Human-friendly, no backend exposure
 // ============================================
+
+/**
+ * Helper: Check portal expiration. Returns error response if expired.
+ */
+async function checkPortalExpiration(token: string, res: Response): Promise<any | null> {
+  const caseData = await prisma.case.findFirst({
+    where: { publicAccessToken: token },
+    select: {
+      id: true,
+      portalExpiresAt: true,
+      portalKeptAlive: true,
+      status: true
+    }
+  });
+
+  if (!caseData) {
+    res.status(404).json({
+      success: false,
+      error: "We couldn't find your case. Please check your link or contact us for help."
+    });
+    return null;
+  }
+
+  // Check if portal has expired
+  if (caseData.portalExpiresAt && new Date() > caseData.portalExpiresAt && !caseData.portalKeptAlive) {
+    res.status(410).json({
+      success: false,
+      error: "This portal link has expired. Your case has been completed and paid out. If you need assistance, please contact us.",
+      expired: true,
+      expiredAt: caseData.portalExpiresAt
+    });
+    return null;
+  }
+
+  return caseData;
+}
 
 /**
  * GET /api/clients/portal/:token - Get portal view (CLIENT)
@@ -310,6 +492,10 @@ router.patch("/:id", authMiddleware, roleGuard(["ADMIN"]), async (req: AuthReque
 router.get("/portal/:token", async (req: Request, res: Response) => {
   try {
     const { token } = req.params;
+
+    // Check expiration first
+    const expirationCheck = await checkPortalExpiration(token, res);
+    if (!expirationCheck) return;
 
     // Find case by public token
     const caseData = await prisma.case.findFirst({
@@ -381,6 +567,10 @@ router.patch("/portal/:token/info", async (req: Request, res: Response) => {
     const { token } = req.params;
     const { name, phone, email, address, city, state, zipCode } = req.body;
 
+    // Check expiration
+    const expirationCheck = await checkPortalExpiration(token, res);
+    if (!expirationCheck) return;
+
     // Find case
     const caseData = await prisma.case.findFirst({
       where: { publicAccessToken: token },
@@ -424,6 +614,10 @@ router.post("/portal/:token/id-upload", async (req: Request, res: Response) => {
   try {
     const { token } = req.params;
     const { fileName, fileUrl, fileSize, mimeType } = req.body;
+
+    // Check expiration
+    const expirationCheck = await checkPortalExpiration(token, res);
+    if (!expirationCheck) return;
 
     // Find case
     const caseData = await prisma.case.findFirst({
@@ -485,6 +679,10 @@ router.post("/portal/:token/sign/:documentId", async (req: Request, res: Respons
         error: "Signature data is required."
       });
     }
+
+    // Check expiration
+    const expirationCheck = await checkPortalExpiration(token, res);
+    if (!expirationCheck) return;
 
     // Verify case and document
     const caseData = await prisma.case.findFirst({
@@ -633,6 +831,10 @@ router.post("/portal/:token/contact", async (req: Request, res: Response) => {
   try {
     const { token } = req.params;
     const { message } = req.body;
+
+    // Check expiration
+    const expirationCheck = await checkPortalExpiration(token, res);
+    if (!expirationCheck) return;
 
     // Find case
     const caseData = await prisma.case.findFirst({

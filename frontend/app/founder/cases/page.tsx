@@ -16,7 +16,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { SkeletonTable } from "@/components/ui/skeleton";
 import { formatCurrency, formatDate } from "@/lib/utils";
-import { Search, ChevronLeft, ChevronRight, FileText } from "lucide-react";
+import { Search, ChevronLeft, ChevronRight, FileText, Link2, X } from "lucide-react";
+import { SendPortalLink } from "@/components/SendPortalLink";
 
 const STATUS_COLORS: Record<string, string> = {
   NEW: "bg-gray-500",
@@ -35,6 +36,7 @@ export default function FounderCasesPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [stateFilter, setStateFilter] = useState("");
+  const [portalLinkCase, setPortalLinkCase] = useState<any>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ["cases", page, search, statusFilter, stateFilter],
@@ -149,6 +151,7 @@ export default function FounderCasesPage() {
                     <th className="text-left p-3 font-medium">Assigned To</th>
                     <th className="text-left p-3 font-medium">Value</th>
                     <th className="text-left p-3 font-medium">Created</th>
+                    <th className="text-left p-3 font-medium">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -189,6 +192,20 @@ export default function FounderCasesPage() {
                       </td>
                       <td className="p-3 text-muted-foreground">
                         {formatDate(caseItem.createdAt)}
+                      </td>
+                      <td className="p-3">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setPortalLinkCase(caseItem);
+                          }}
+                          title="Send Portal Link"
+                        >
+                          <Link2 className="h-3 w-3 mr-1" />
+                          Portal
+                        </Button>
                       </td>
                     </tr>
                   ))}
@@ -232,6 +249,21 @@ export default function FounderCasesPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Portal Link Modal */}
+      {portalLinkCase && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="w-full max-w-lg">
+            <SendPortalLink
+              caseId={portalLinkCase.id}
+              clientName={portalLinkCase.client?.name}
+              clientEmail={portalLinkCase.client?.email}
+              clientPhone={portalLinkCase.client?.phone}
+              onClose={() => setPortalLinkCase(null)}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

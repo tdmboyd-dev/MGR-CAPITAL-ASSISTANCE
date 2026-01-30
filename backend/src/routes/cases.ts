@@ -687,11 +687,26 @@ router.post("/:id/status", authMiddleware, roleGuard(["ADMIN"]), asyncHandler(as
   // Get auto-update fields for this transition
   const autoFields = getAutoUpdateFields(newStatus);
 
+  // Auto-set portal expiration when case moves to PAID
+  const portalData: any = {};
+  if (newStatus === "PAID") {
+    const caseForPortal = await prisma.case.findUnique({
+      where: { id },
+      select: { portalDissolveAfterDays: true, portalKeptAlive: true }
+    });
+    if (caseForPortal && !caseForPortal.portalKeptAlive) {
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + (caseForPortal.portalDissolveAfterDays || 12));
+      portalData.portalExpiresAt = expiresAt;
+    }
+  }
+
   const updatedCase = await prisma.case.update({
     where: { id },
     data: {
       status: newStatus,
-      ...autoFields
+      ...autoFields,
+      ...portalData
     }
   });
 
@@ -707,7 +722,8 @@ router.post("/:id/status", authMiddleware, roleGuard(["ADMIN"]), asyncHandler(as
         newStatus: newStatus,
         notes,
         warnings: validation.warnings,
-        forced: !validation.valid && forceTransition
+        forced: !validation.valid && forceTransition,
+        portalExpiresAt: portalData.portalExpiresAt || null
       }
     }
   });

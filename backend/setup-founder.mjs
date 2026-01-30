@@ -10,7 +10,7 @@ import bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
 
-const FOUNDER_EMAIL = 'time@mgrcapital.com';
+const FOUNDER_EMAIL = 'admin@capitalmgr.com';
 const FOUNDER_PASSWORD = 'Dorothy1956!';
 const FOUNDER_NAME = 'Founder';
 
@@ -78,7 +78,7 @@ async function setupFounder() {
 
     console.log('\n🚀 You can now log in at:');
     console.log('   Frontend: http://localhost:3011');
-    console.log('   Email: time@mgrcapital.com');
+    console.log('   Email: admin@capitalmgr.com');
     console.log('   Password: Dorothy1956!');
 
   } catch (error) {

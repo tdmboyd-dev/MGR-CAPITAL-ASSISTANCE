@@ -1,7 +1,7 @@
 # TIME TODO — MGR CAPITAL ASSISTANCE
 
-**Last Updated:** 2026-01-28 (Session 32)
-**Overall Progress:** ~98% Production Ready
+**Last Updated:** 2026-01-30 (Session 34)
+**Overall Progress:** ~99% Production Ready
 
 ---
 
@@ -78,6 +78,23 @@ SOLANA_RPC_URL=https://api.mainnet-beta.solana.com
 OPENAI_API_KEY=sk-...
 ELEVENLABS_API_KEY=...
 ```
+
+---
+
+### 🟢 COMPLETED — Code Improvements (Session 34)
+
+| Status | Task | File/Area |
+|--------|------|-----------|
+| ✅ | Portal expiration enforcement (12-day auto-dissolve after PAID) | clients.ts, cases.ts |
+| ✅ | Send/Copy Portal Link API (email/SMS/copy) | clients.ts |
+| ✅ | Portal settings API (keep alive, dissolve days) | clients.ts |
+| ✅ | Auto-expire portals endpoint | clients.ts |
+| ✅ | Sign Portal frontend page (public, token-based) | frontend/app/sign-portal/page.tsx |
+| ✅ | SendPortalLink admin component | frontend/components/SendPortalLink.tsx |
+| ✅ | Portal button on Founder cases table | frontend/app/founder/cases/page.tsx |
+| ✅ | Founder email updated to admin@capitalmgr.com | setup-founder.mjs, .env |
+| ✅ | Prisma client regenerated + DB synced | schema.prisma |
+| ✅ | Login verified working | auth.ts |
 
 ---
 
@@ -207,6 +224,7 @@ ELEVENLABS_API_KEY=...
 
 | Session | Date | Focus | Progress |
 |---------|------|-------|----------|
+| 34 | 2026-01-30 | Client/Sign Portal + Expiration + Send Link + Login Fix | +1% (98%→99%) |
 | 32 | 2026-01-28 | Service Bureau Hierarchy + Employee Notary + Setup Guide | +1% (97%→98%) |
 | 31 | 2026-01-28 | Multi-LLM Fallback + Compliance Engine + Heir Extraction | +4% (91%→95%) |
 | 30 | 2026-01-26 | Mobile App Enhancement | +3% (88%→91%) |
@@ -269,7 +287,7 @@ ELEVENLABS_API_KEY=...
 - **Backend:** localhost:4000
 - **Frontend:** localhost:3011
 - **WebSocket:** localhost:4001
-- **Login:** time@mgrcapital.com / Dorothy1956!
+- **Login:** admin@capitalmgr.com / Dorothy1956!
 
 ---
 
@@ -283,7 +301,7 @@ ELEVENLABS_API_KEY=...
 
 ---
 
-**Progress Bar:** █████████▉ (98%)
+**Progress Bar:** █████████▉ (99%)
 
 **Next Steps:**
 1. Add remaining API keys (see docs/SETUP_GUIDE.md)

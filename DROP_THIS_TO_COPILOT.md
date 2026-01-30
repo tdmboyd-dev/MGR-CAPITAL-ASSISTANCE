@@ -2,13 +2,34 @@
 
 ## COMPLETE SYSTEM DOCUMENTATION
 
-**Last Updated:** 2026-01-26
-**Status:** MOBILE APP PRODUCTION-READY — Revolutionary Automation Platform
+**Last Updated:** 2026-01-30
+**Status:** CLIENT/SIGN PORTAL + LOGIN FIX — ~99% Production Ready
 **All mock data removed, all pages connected to real API**
+**Login:** admin@capitalmgr.com / Dorothy1956!
 
 ---
 
-## LATEST SESSION (2026-01-26) — Mobile App Enhancement
+## LATEST SESSION (2026-01-30) — Client/Sign Portal + Portal Expiration + Login Fix
+
+### What Was Built
+1. **Portal Auto-Expiration** - Portals dissolve 12 days after case PAID (override with `portalKeptAlive`)
+2. **Sign Portal** - Public page at `/sign-portal?token=...` with signature canvas, step-by-step signing
+3. **Send/Copy Portal Link** - Admin can generate, copy, email, or SMS portal links to clients
+4. **Portal Settings** - Configure dissolve days, keep alive toggle per case
+5. **Login Fixed** - Founder account: admin@capitalmgr.com, Prisma DLL lock resolved
+6. **Backend + Frontend Running** - localhost:4000 (API), localhost:3011 (UI)
+
+### Files Changed
+- `backend/src/routes/clients.ts` - Portal expiration, send link, settings APIs
+- `backend/src/routes/cases.ts` - Auto-set expiration on PAID status
+- `backend/setup-founder.mjs` - Updated founder email
+- `frontend/app/sign-portal/page.tsx` - Sign Portal page (NEW)
+- `frontend/components/SendPortalLink.tsx` - Send Portal Link component (NEW)
+- `frontend/app/founder/cases/page.tsx` - Portal button on cases table
+
+---
+
+## PREVIOUS SESSION (2026-01-26) — Mobile App Enhancement
 
 ### Mobile App Now Production-Ready
 Enhanced from stub implementation to full production app with:
