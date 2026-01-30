@@ -9,23 +9,28 @@
 
 ---
 
-## LATEST SESSION (2026-01-30) — Industry Technology Deep Dive Research
+## LATEST SESSION (2026-01-30) — Full Competitive Analysis + Portal System
 
 ### What Was Done
-1. **Deep Web Research** - Comprehensive technology landscape analysis of surplus recovery industry
-2. **INDUSTRY_RESEARCH.md Updated** - Added "Technology & Platform Deep Dive" section covering:
-   - Client portal features (SuiteDash, Clio, MyCase, Filevine, Court St. Legal)
-   - Skip tracing tools (TLO, Tracers, Tracerfy, IRB Search, Skipify.ai, LexisNexis, Skip Genie)
-   - CRM platforms (Surplus Systems, Excess Quest, Excess Elite, Tax Sale Resources)
-   - AI/automation (Harvey AI, LexisNexis Protege, Skit.ai voice bots, Convin, Vapi, predictive analytics)
-   - E-signature platforms (DocuSign, HelloSign, PandaDoc, OpenSign, SignNow, Adobe Sign)
-   - RON platforms (Notarize, Proof, NotaryCam, DocuSign Notary)
-   - Payment/payout systems (ACH, wire, check, crypto, Nickel, Stripe, GoCardless)
-   - Trust accounting (QuickBooks + LeanLaw, three-way reconciliation)
-3. **Key Finding** - NO platform combines ALL surplus recovery functions (lead gen + skip trace + CRM + doc gen + e-sign + e-filing + payments + client portal + AI + trust accounting). This is the exact gap MGR Capital fills.
+1. **Deep Competitive Analysis** - Compared MGR Capital against 25+ competitors across all features, documents, services, technology, and pricing. Created `docs/COMPETITIVE_ANALYSIS.md` (268 lines).
+2. **Key Findings:**
+   - MGR Capital scores 86/100 vs best competitor 56/100 (weighted)
+   - ONLY platform with: client portal, mobile app, 9 AI bots, shadow accounting, 4-tier white-label, built-in RON, blockchain payouts
+   - Gaps identified: state fee cap enforcement, missing doc types (W-9, SCRA, Release of Liability), BBB accreditation, attorney partnership
+   - State fee caps need auto-enforcement: FL 12%, TX 25%, MD 10%, IL 15%, AZ 30%, DE 10%/$1K, GA 5%, CA $2.5K/5%, CO 20%
+3. **Client Portal Auto-Expiration** - Portals dissolve 12 days after case PAID (override with `portalKeptAlive`)
+4. **Sign Portal** - Public page at `/sign-portal?token=...` with signature canvas, step-by-step signing
+5. **Send/Copy Portal Link** - Admin can generate, copy, email, or SMS portal links
+6. **Login Fixed** - Founder account: admin@capitalmgr.com, Prisma DLL lock resolved
 
 ### Files Changed
-- `INDUSTRY_RESEARCH.md` - Added full Technology & Platform Deep Dive section with 40+ sources
+- `docs/COMPETITIVE_ANALYSIS.md` - Full industry comparison (NEW)
+- `docs/SURPLUS_FUNDS_LEGAL_DOCUMENTS_RESEARCH.md` - Legal document research (NEW)
+- `backend/src/routes/clients.ts` - Portal expiration, send link, settings APIs
+- `backend/src/routes/cases.ts` - Auto-set expiration on PAID status
+- `frontend/app/sign-portal/page.tsx` - Sign Portal page (NEW)
+- `frontend/components/SendPortalLink.tsx` - Send Portal Link component (NEW)
+- `frontend/app/founder/cases/page.tsx` - Portal button on cases table
 - `TIMEBEUNUS.md` - Updated session status
 - `DROP_THIS_TO_COPILOT.md` - Updated session status
 
