@@ -677,6 +677,364 @@ MGR Capital Assistance is positioned to be the most comprehensive surplus recove
 
 ---
 
+---
+
+## Technology & Platform Deep Dive (Updated 2026-01-30)
+
+### Client Portal Features Used by Top Companies
+
+The surplus recovery industry is rapidly adopting client-facing portals. Here is what the top companies and platforms offer:
+
+#### Case Status Tracking
+- **Court St. Legal** (courtst-legal.com) — Clients get real-time updates, case status tracking, document review, and crucial decision notifications through a secure Client Portal across all 58 California counties.
+- **SuiteDash** — Offers project/case tracking with status updates, task progress, and milestone visibility for clients. Fully white-labeled.
+- **MyCase** — Clients access case updates, invoicing, documents through an online portal. Trusted by 19,000+ law firms.
+- **Clio** — Secure online portals with permissions to protect sensitive case details. Tracks every change including new time entries and documents.
+- **Filevine** — Highly configurable custom case templates, fields, and automated task chains. Best for litigation-heavy practices.
+
+#### Document Viewing/Signing
+- **SuiteDash** — Documents (contracts, agreements) can be viewed inside the platform and digitally eSigned without printing. Includes document generation with merge fields.
+- **MyCase** — Clients sign, initial, and date documents electronically within the portal.
+- **PandaDoc** — Document creation + signing in a single platform. Starts at $19/user/mo (annual).
+- **DocuSign** — Industry standard for e-signatures. Also offers RON via OneNotary partnership.
+- **Dropbox Sign (HelloSign)** — Clean, simple interface. Starts at $15/user/month. Built-in non-editable audit trail.
+- **OpenSign** — Open-source, free self-hosted option. Unlimited document signing, multi-signer support, OTP verification, Zapier integration.
+
+#### Communication Tools
+- **SuiteDash Secure Messaging** — Internal messaging system similar to email but contained within the platform. Supports mass messages, canned responses, file attachments. HIPAA-compliant Privacy Mode hides content from email notifications.
+- **Surplus Systems** — Automated texts and emails eliminating manual outreach.
+- **Clio** — Client communication via secure online portals with permission controls.
+- **MyCase** — In-portal messaging and communication history.
+
+#### Payment Tracking
+- **SuiteDash** — Clients can pay invoices seamlessly within the portal. Includes estimates, invoicing, and payment tracking.
+- **MyCase** — Invoice access and payment through client portal.
+- **Clio** — Billing integration with trust account management. Integrates with QuickBooks.
+
+#### Notification Systems
+- **SuiteDash** — Notification Center for all platform activity. Email notifications when files uploaded to shared folders.
+- **MyCase** — Automated case update notifications.
+- **Clio** — Change tracking and notifications on case updates.
+
+#### Mobile Access
+- **SuiteDash** — Free branded mobile app (Apple/Android) with every account. Your logo appears as the app icon.
+- **Notarize** — Best mobile app with optimized camera interfaces for iOS and Android.
+- **Surplus Systems** — Mobile-accessible CRM ("take it anywhere via cellphone").
+
+#### Auto-Expiring Links
+- **MGR Capital (custom-built)** — 12-day auto-dissolve after case PAID status with override capability. This is a differentiator -- most competitors do NOT have this feature.
+- **General practice** — Most e-signature platforms support link expiration (DocuSign, PandaDoc).
+
+#### Secure Document Upload
+- **SuiteDash** — AES 256 encryption per-file keys. 256-bit SSL. HIPAA and EU Privacy Shield compliant servers. 2FA available. IP-restricted access.
+- **MyCase** — Secure document management with client upload capability.
+- **Clio** — Document management with permission controls.
+
+---
+
+### Internal Tools Used by Recovery Companies
+
+#### CRM Systems (Industry-Specific)
+
+| Platform | Type | Key Features | Pricing |
+|----------|------|-------------|---------|
+| **Surplus Systems** | Surplus-specific CRM | Automated texts/emails, workflow automation, training, support, nationwide county directory, pre-vetted VAs, 5-page professional website | Subscription (not public) |
+| **Excess Quest** | Surplus-specific leads + CRM | In-house CRM, daily foreclosure updates, skip-traced data, nationwide coverage (excl. CO/NY/WV), specialized VA training | Tiered (basic/pro/premium) |
+| **Excess Elite** | Surplus CRM | Simple interface, lead tracking | Subscription |
+| **Tax Sale Resources** | Data platform | Nationwide overage data, state/county filtering, skip trace add-on, 26K+ investors, decade of historical data | Per-county or subscription |
+
+#### General CRM Platforms Used
+
+| Platform | Best For | Key Strength |
+|----------|----------|-------------|
+| **Clio** | Law firms doing surplus work | 150K+ legal professionals, $500M funding, vLex acquisition for AI |
+| **Filevine** | Litigation-heavy firms | Highly configurable templates, AI tools (DemandsAI, MedChron), $400M+ funding |
+| **MyCase** | Simplicity-focused firms | 19K+ law firms, plug-and-play approach, affordable |
+| **SuiteDash** | White-label client portals | Unlimited users, $15/mo starting, fully brandable |
+| **Zoho CRM** | Budget-conscious operations | Built-in AI, automated lead scoring, customizable forms |
+| **Salesforce** | Enterprise operations | Full ecosystem, digital collection software for financial services |
+
+#### Skip Tracing Tools
+
+| Provider | Cost | Data Points | Best For |
+|----------|------|-------------|---------|
+| **TLOxp (TransUnion)** | Enterprise pricing | 100B+ public/proprietary data points. Online, batch, or API. | Experienced teams, attorneys, investigators. Most reliable data. |
+| **Tracers** | Enterprise (less transparent) | 120B records from 6,000+ sources, 98% U.S. adult coverage. Batch + API. | Scale operations needing breadth + automation |
+| **Tracerfy** | $0.009-$0.15/lead | 8 phones, 3 emails, 8 relatives, aliases, past addresses. 75-90% accuracy. | High-volume, low-cost real estate skip tracing |
+| **IRB Search** | Pay-as-you-go or volume packages (500-100K+/mo) | 40+ search report types: assets, court records, property, vehicles, licenses. Founded by PIs. | Deep investigative data, collections industry |
+| **IDI Core** | Variable | Advanced skip tracing, user-friendly interface | Collections industry, affordability |
+| **LexisNexis** | Enterprise pricing | Patented linking technology, thousands of data sources | Seamless integration, batch automation, account monitoring |
+| **Skip Genie** | Variable | Batch skip tracing, deep search, probate/inherited focus | Surplus funds, heir-focused recovery |
+| **Debtor Inspector** | Variable | Bulk batch searches, collections-specific | Debt recovery industry |
+| **Skipify.ai** | Variable | Surplus funds-specific skip tracing data | Asset recovery, surplus funds specifically |
+| **Locate Plus** | Variable | Vast public records collection | Surplus funds and asset recovery |
+
+**Accuracy Rankings (per 450 investigator survey):** Tracers > TLO > IRB Search. In phone verification test: TLO 96%, IDI 88%, IRB 71%.
+
+#### County Record Databases
+
+| Provider | Coverage | Data Types |
+|----------|----------|------------|
+| **Pubrec (PropMix)** | 151M+ properties | Deeds, mortgages, foreclosures |
+| **TaxNetUSA** | 300+ counties (TX, FL full) | Tax assessor records, delinquent bills |
+| **Attom Data** | National | Full property intelligence |
+| **DataScoutPro** | Arkansas focus | County records |
+| **Bid4Assets** | National | Tax deed/lien auction results |
+| **GovEase** | National | Tax lien/deed auctions |
+
+#### Lead Generation Software
+
+| Provider | Type | Features |
+|----------|------|---------|
+| **Excess Quest** | Surplus-specific | Real-time foreclosure excess proceeds, tax sale overages, daily updates, skip-traced data, in-house CRM |
+| **Tax Sale Resources** | Data platform | Nationwide tax sale results, filtering by state/county/property type/min-max overage, skip trace add-on |
+| **Surplus Systems** | CRM + leads | Complete roadmap, claim-filing paperwork, lead finding tools |
+| **PropStream** | Real estate data | Subscription model, free skip trace included |
+
+#### Document Generation/Automation
+- **Filevine** — AI-driven document management, DemandsAI for demand letters, case-flow automation
+- **PandaDoc** — Document creation + e-signing. Templates, merge fields, workflow automation
+- **Clio** — Document management integrated with case data
+- **pdf-lib / docx** — Open source libraries for programmatic document generation (used by MGR Capital)
+- **Harvey AI** — $800M+ funded legal AI platform. 8 of top 10 U.S. law firms. $100M+ ARR.
+
+#### E-Filing Systems
+
+| Platform | Features |
+|----------|---------|
+| **InfoTrack** | Court e-filing API, auto-populate forms |
+| **1eFile** | Electronic court filing |
+| **US Legal Pro** | Court filing integration |
+| **Tyler Odyssey** | Court management system used by many counties |
+
+#### Accounting/Ledger Tools
+
+| Platform | Trust Accounting | Integration | Best For |
+|----------|-----------------|-------------|---------|
+| **QuickBooks Online** | Yes (with setup) | LeanLaw, Clio | Trust accounts as "Other Current Liabilities", per-client subaccounts, three-way reconciliation |
+| **Xero** | Limited (not legal-specific) | General business | General business accounting, simple interface |
+| **LeanLaw** | Yes (native) | QuickBooks Online | Legal-specific, real-time trust sync, automatic three-way reconciliation |
+| **Clio Accounting** | Hourly/flat fee only | Native | NOT suitable for contingency fee practices yet |
+
+**Critical for Surplus Recovery:** Trust accounts must track client funds separately. Monthly three-way reconciliation (bank balance vs. client ledger balances vs. internal trust ledger) is required. Use QuickBooks + LeanLaw for contingency fee + trust account management.
+
+#### Employee Training Platforms
+- **Surplus Systems** — 40 live Q&A calls/month, training included with CRM subscription
+- **Excess Quest** — Specialized VA training on surplus funds, CRM software, professional communication
+- **Investment Recovery Association** — Online IR Learning Center (LMS), CMIR professional certification
+- **Custom LMS** — SuiteDash includes client/team onboarding flows
+
+---
+
+### AI/Automation Features in the Industry
+
+#### AI Document Generation
+- **Harvey AI** — $800M+ funding, serves 8 of top 10 U.S. law firms, $100M+ ARR. Automates document drafting and legal research.
+- **Filevine** — DemandsAI for demand letters, Depositions for transcript analysis, MedChron for medical records.
+- **LexisNexis Protege** — "Next generation" legal AI with agentic infrastructure. AI agents collaborate on complex legal workflows from diverse data sources. Includes Legal Research Agent.
+- **Clio + vLex** — $500M funding at $5B valuation. Acquired vLex for $1B to build unified AI-driven legal platform.
+- **Spellbook** — AI legal drafting tool, recommended for legal document automation.
+- **Juro** — Legal automation platform for contract lifecycle management.
+
+#### AI Legal Research
+- **LexisNexis Protege** — Agentic AI that decomposes user prompts into legal questions and generates answers from relevant legal authorities.
+- **Harvey AI** — Production-level legal research automation.
+- **Westlaw Edge (Thomson Reuters)** — AI-enhanced legal research.
+- **CaseText (acquired by Thomson Reuters)** — AI legal research assistant.
+
+#### Automated Lead Scoring
+- **AI debt collection tools** — Review historical payment patterns, demographic information, and behavioral data to score likelihood of engagement.
+- **Copilot AI** — Reply Prediction AI ranks leads based on likelihood of responding.
+- **Zoho CRM** — Built-in AI for real-time lead scoring.
+- **Custom ML models** — Can be built to score surplus claims by: overage amount, state/county complexity, owner status (alive/deceased), lien priority, time since auction.
+
+#### Chatbots for Client Communication
+- **Gartner predicts** by 2025, AI chatbots handle 75% of customer interactions in collection processes.
+- **LegalZoom, DoNotPay, Rocket Lawyer** — AI chatbots for legal document drafting and dispute resolution.
+- **Gallabox** — AI legal chatbots for law firms.
+- **Rezo.ai** — AI-powered debt collection chatbot with NLP.
+- **Custom chatbots** — Can be built with OpenAI API + knowledge base of surplus recovery FAQs, state laws, and claim procedures.
+
+#### Predictive Analytics
+- **AI debt collection** — Forecasts likelihood of repayment by analyzing behavior patterns. Improves recovery rates beyond 20-30% industry average.
+- **Attom Data** — Property analytics and market predictions.
+- **Custom models** — Predict surplus amount pre-auction using property value (Zillow/Redfin API) + tax/lien data + historical auction premiums.
+
+#### Voice AI / Phone Bots
+- **Skit.ai** — Partnered with 53,000+ creditors across 19+ debt types. Banks, agencies, fintechs, healthcare, utilities.
+- **Convin** — AI phone calls and conversation intelligence for recovery. Handles thousands of calls daily without errors.
+- **Vapi** — Voice AI for lead qualification. Can autonomously conduct thousands of calls in minutes.
+- **Smallest.ai** — AI voice agents for inbound/outbound calls, negotiate plans, answer questions 24/7.
+- **ElevenLabs** — Natural-sounding voice synthesis for AI phone agents.
+
+**Market size:** AI-powered debt collection projected to grow by $2.8B with 15% CAGR between 2024-2029. Total legal AI funding topped $2.4B in 2025 alone.
+
+---
+
+### E-Signature Platforms Used
+
+#### E-Signature Comparison
+
+| Platform | Pricing | Free Plan | Best For | Key Feature |
+|----------|---------|-----------|----------|-------------|
+| **DocuSign** | $10-40/user/mo | Free trial | Industry standard | Widest acceptance, RON via OneNotary |
+| **Dropbox Sign (HelloSign)** | $15-30/user/mo | Free trial | Simple e-signing | Clean UI, audit trail, Dropbox integration |
+| **PandaDoc** | $19-49/user/mo (annual) | Yes (limited, 3 docs) | Doc creation + signing | Templates, merge fields, workflow automation |
+| **OpenSign** | $0 (self-hosted) | Yes (unlimited) | Budget-conscious, tech-savvy | Open source, REST API, OTP verification, Zapier |
+| **SignNow** | $8-50/mo | Free trial | Budget small business | Custom branding, API key, integrations |
+| **Adobe Sign** | $12.99+/mo | Free trial | Adobe ecosystem users | Deep PDF integration |
+
+#### Remote Online Notarization (RON) Platforms
+
+| Platform | Pricing | Coverage | Key Strength |
+|----------|---------|----------|-------------|
+| **Notarize** | $25/notarization | National | Industry leader, <10 min, 24/7, best mobile app, HIPAA compliant |
+| **Proof** | Custom/enterprise | National | Enterprise-grade, fraud prevention, API, white-label, shaped RON legislation |
+| **NotaryCam** | Variable | 50 states + 145 countries | Acquired by Stewart Title, 200K+ notarizations, decade of experience |
+| **DocuSign Notary** | Included with plans | National | MISMO certified, routes through OneNotary network |
+| **SignNow** | $8-50/mo | Variable | Affordable, API key, custom branding |
+| **OneNotary** | Variable | National | Powers DocuSign's RON offering |
+
+#### RON Industry Status
+- **47+ states** have enacted RON laws as of 2025.
+- **SECURE Notarization Act** provides federal recognition -- online notarizations valid across all states.
+- RON is **more secure** than traditional in-person notarization due to tamper-evident sealing, identity verification, and audio-visual recording.
+- Industries adopting RON: real estate, finance, insurance, healthcare, automotive, government.
+
+**Recommendation for MGR Capital:** Use **Proof** for enterprise RON (API + white-label) or **Notarize** for on-demand notarizations. Supplement with **OpenSign** or **DocuSign** for standard e-signatures.
+
+---
+
+### Payment/Payout Systems
+
+#### How Surplus Recovery Companies Pay Clients
+
+The typical flow:
+1. Recovery company files claim with county/court
+2. County approves and disburses funds
+3. Funds go to either: the client directly (single check), attorney trust account (IOLTA), or escrow service
+4. Company collects contingency fee (25-40%)
+
+#### Disbursement Methods
+
+| Method | Speed | Cost | Best For |
+|--------|-------|------|----------|
+| **ACH Transfer** | 1-3 business days | $0-5 per transfer | Standard client payouts |
+| **Wire Transfer** | Same day | $15-45 per wire | Large/urgent disbursements |
+| **Paper Check** | 5-10 business days | $1-3 per check | Clients without bank accounts, court-directed |
+| **Crypto (USDC/USDT)** | Minutes | Gas fees ($0.01-5) | Tech-savvy clients, international |
+| **Real-time (RTP)** | Seconds | $0.50-1.00 | Instant payouts |
+
+#### Payment Processing Platforms
+
+| Provider | ACH Fee | Card Fee | Key Feature |
+|----------|---------|----------|------------|
+| **Nickel** | FREE | 2.9% + $0.30 | Unlimited free ACH, no caps |
+| **GoCardless** | 0.5% + $0.05 (cap $5) | N/A | Good for recurring payments |
+| **Stripe** | 0.8% (cap $5) | 2.9% + $0.30 | Capped ACH, developer-friendly |
+| **Plaid** | Variable | N/A | Bank connection/verification only |
+| **Melio** | FREE (limited) | 2.9% | 5 free ACH/month on free tier |
+| **Alacriti** | Variable | Variable | Digital payouts, instant disbursements |
+| **ACI Worldwide** | Enterprise | Enterprise | Real-time disbursements at scale |
+
+#### Trust Account Management
+- Surplus Refund Corporation provides full accounting statements with every check or wire disbursement.
+- **Three-way reconciliation** is critical: bank statement balance must match sum of all client ledger balances must match internal trust ledger.
+- Use **QuickBooks + LeanLaw** for automated trust reconciliation.
+- Maintain **separate client sub-accounts** under main trust account.
+
+#### Fee Collection Strategies
+
+| Strategy | Reliability | Description |
+|----------|------------|-------------|
+| **Assignment of Interest** | Highest | Client assigns % of claim to company. Filed with court. Court issues TWO checks. Works in FL, TX, GA, CA (some counties). |
+| **Attorney Trust Account (IOLTA)** | High | Attorney receives all funds, deducts fee, disburses remainder. Requires licensed attorney. |
+| **Escrow Service** | High | Third-party escrow auto-splits per agreement. 1-3% escrow fees. |
+| **Direct County Split** | Medium | Some counties issue split checks with proper POA + notarized assignment + court order. County-dependent. |
+| **ACH Authorization** | Lower | Client signs ACH debit authorization at contract signing. Auto-debit when funds received. Risk: client can revoke. |
+
+**Recommendation for MGR Capital:** Primary = Assignment of Interest (court-directed split). Backup = Nickel for free ACH collection. Failsafe = Assignment document enables legal action if client defaults.
+
+---
+
+### SaaS Tools Built For or Commonly Used By Surplus Recovery Companies
+
+#### Purpose-Built Surplus Recovery Platforms
+
+| Platform | URL | What It Does | Notable Features |
+|----------|-----|-------------|-----------------|
+| **Surplus Systems** | surplussystems.io | All-in-one CRM for surplus recovery | Automated texts/emails, mobile CRM, county directory, training, VAs, 5-page website |
+| **Excess Quest** | excessquest.com | Lead generation + CRM | Daily foreclosure data, skip-traced leads, in-house CRM, specialized VA training, nationwide (excl CO/NY/WV) |
+| **Excess Elite** | N/A | Surplus CRM | Simple interface, lead tracking |
+| **Tax Sale Resources** | taxsaleresources.com | Overage data platform | Nationwide results, state/county filtering, skip trace add-on, 26K+ investors |
+| **Surplus Accelerator** | N/A | Training + systems | $100M+ recovered since 2017, more training than software |
+| **Skipify.ai** | skipify.ai | Skip tracing for surplus funds | Surplus-specific data enrichment |
+
+#### General Platforms Adapted for Surplus Recovery
+
+| Platform | Starting Price | Best Feature for Surplus Work |
+|----------|---------------|-------------------------------|
+| **SuiteDash** | $15/mo (unlimited users) | White-label client portal, secure messaging, e-sign, file sharing, invoicing, 4.9/5 rating |
+| **Clio** | $39/user/mo | Case management, trust accounting, client portal, 150K+ legal professionals |
+| **Filevine** | Custom pricing | Highly configurable workflows, AI tools, best for litigation-heavy practices |
+| **MyCase** | $39/user/mo | Simple case management, e-signatures, client portal, 19K+ law firms |
+| **Zoho CRM** | $14/user/mo | AI lead scoring, automation, affordable |
+
+#### Key Market Gap
+
+**No single platform combines ALL functions** needed for surplus recovery:
+- Lead generation + Skip tracing + CRM + Document generation + E-signing + E-filing + Payment collection + Client portal + AI scoring + Trust accounting
+
+This is the exact gap MGR Capital Assistance is designed to fill.
+
+---
+
 **Research compiled by Claude Code**
 **For: MGR Capital Assistance**
-**Date: 2026-01-25**
+**Original Date: 2026-01-25**
+**Technology Deep Dive Updated: 2026-01-30**
+
+### Sources
+
+- [Surplus Systems](https://surplussystems.io/)
+- [Excess Quest](https://excessquest.com/)
+- [Tax Sale Resources](https://www.taxsaleresources.com/blog/tax-sale-overages)
+- [Full Circle Asset Recovery - Yahoo Finance](https://finance.yahoo.com/news/full-circle-asset-recovery-launches-220000469.html)
+- [Court St. Legal - Surplus Funds Experts](https://courtst-legal.com/)
+- [TLOxp by TransUnion](https://www.tlo.com/)
+- [Tracers Skip Tracing](https://www.tracers.com/collections/skip-tracing/)
+- [LexisNexis Skip Tracing](https://risk.lexisnexis.com/collections-and-recovery/skip-tracing)
+- [Tracerfy Skip Tracing](https://tracerfy.com/)
+- [IRB Search](https://www.irbsearch.com/services-pricing.html)
+- [Best TLO Alternatives - Debtor Inspector](https://debtorinspector.com/best-tlo-alternatives/)
+- [Best Skip Tracing for Surplus Funds - Excess Quest](https://excessquest.com/the-best-skip-tracing-tools-for-surplus-funds-and-asset-recovery/)
+- [Skipify.ai Surplus Funds](https://skipify.ai/surplus-funds)
+- [SuiteDash Client Portal](https://suitedash.com/)
+- [SuiteDash Secure Messaging](https://suitedash.com/features/integrated-private-secure-messaging/)
+- [SuiteDash Pricing](https://suitedash.com/pricing/)
+- [MyCase Client Portal](https://www.mycase.com/features/client-portal/)
+- [Clio Case Management](https://www.clio.com/features/case-management/)
+- [Filevine vs MyCase vs Clio - Hona](https://www.hona.com/post/clio-vs-filevine-vs-mycase-which-case-management-platform-fits-your-firm)
+- [DocuSign Notary](https://www.docusign.com/products/notary)
+- [Proof RON Platform](https://www.proof.com/blog/get-to-know-the-top-10-remote-online-notarization-platforms-in-2025)
+- [NotaryCam RON](https://www.notarycam.com/services/remote-online-notarization/)
+- [Top RON Platforms - eNotary On Call](https://www.enotaryoncall.com/blog/top-10-remote-online-notarization-platforms-for-2025/)
+- [DocuSign vs HelloSign vs PandaDoc](https://www.getmonetizely.com/articles/docusign-vs-hellosign-vs-pandadoc-which-e-signature-platform-offers-the-best-value)
+- [OpenSign E-Signature](https://www.eastagile.com/blogs/choosing-the-right-esignature-solution)
+- [AI in Legal Industry - PYMNTS](https://www.pymnts.com/artificial-intelligence-2/2025/ai-makes-inroads-in-legal-industry-as-funding-tops-2billion)
+- [Legal AI Tools 2026 - Spellbook](https://www.spellbook.legal/learn/legal-ai-tools)
+- [LexisNexis Protege AI - LawSites](https://www.lawnext.com/2025/12/lexisnexis-unveils-the-next-generation-of-its-protege-general-ai-callling-it-the-most-integrated-legal-ai-workflow-solution.html)
+- [AI Legal Chatbots - Gallabox](https://gallabox.com/blog/legal-chatbot)
+- [AI in Debt Collection - Rezo.ai](https://www.rezo.ai/our-blogs/ai-in-debt-collection)
+- [Skit.ai Voice AI Collections](https://skit.ai/)
+- [AI Collection Tools - Smallest.ai](https://smallest.ai/blog/ai-collection-tools-guide)
+- [Conversation Intelligence for Recovery - Convin](https://convin.ai/blog/top-conversation-intelligence-software)
+- [QuickBooks Trust Accounting](https://pace.cpa/what-type-is-trust-accounts-liabilities-in-quickbooks/)
+- [Clio + QuickBooks Trust Accounting](https://www.clio.com/resources/legal-accounting/quickbooks-trust-accounting-lawyers/)
+- [LeanLaw Trust Accounting](https://www.leanlaw.co/blog/mastering-california-trust-accounting-a-guide-for-small-and-mid-sized-law-firms/)
+- [Surplus Refund Corporation](https://srcrefund.com/)
+- [Surplus Recovery LLC](https://surplusrecoveryllc.com/)
+- [ClaimSurplus.com](https://www.claimsurplus.com/)
+- [Pierce Law - Surplus Funds Q&A](https://piercelaw.com/news/surplus-funds-qa-series/can-an-asset-recovery-company-legally-collect-the-surplus-funds-for-me-and-what-should-i-watch-for-before-signing-anything-nc/)
+- [Alacriti Digital Payouts](https://www.alacriti.com/products/payouts/)
+- [ACI Worldwide Real-time Disbursements](https://www.aciworldwide.com/solutions/real-time-disbursements)
