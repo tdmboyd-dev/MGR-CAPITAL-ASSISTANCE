@@ -1,11 +1,12 @@
 /**
  * EmailService.ts — MGR CAPITAL ASSISTANCE
- * Custom Email System with nodemailer + MJML templates + drip sequences
+ * Production Email System with nodemailer + MJML templates + drip sequences
  *
- * RECOMMENDED PROVIDERS (see BEST_APIS_GUIDE.md):
- * 1. Brevo (FREE 300 emails/day) - Best free tier
- * 2. Amazon SES ($0.10/1000 emails) - Cheapest at scale
- * 3. MailerSend (FREE 500/month) - Good alternative
+ * PROVIDER CHAIN (automatic failover):
+ * 1. Brevo API (FREE 300 emails/day) — PRIMARY
+ * 2. Amazon SES via SMTP ($0.10/1000) — FALLBACK
+ * 3. Generic SMTP — FALLBACK
+ * 4. Console log — LAST RESORT (dev only)
  */
 
 import nodemailer from 'nodemailer';
@@ -13,26 +14,37 @@ import mjml2html from 'mjml';
 import { config } from '../config/env.js';
 import { logger } from '../utils/logger.js';
 
-// Brevo API key (FREE 300 emails/day)
+// Provider configuration
 const BREVO_API_KEY = process.env.BREVO_API_KEY;
+const BREVO_FROM = process.env.BREVO_FROM || process.env.SMTP_FROM || 'admin@capitalmgr.com';
+const SMTP_FROM = process.env.SMTP_FROM || 'admin@capitalmgr.com';
 
-// Determine email provider
-const EMAIL_PROVIDER = BREVO_API_KEY ? 'brevo' : (process.env.SMTP_HOST ? 'smtp' : 'demo');
+// Build SMTP transporter only if configured
+let smtpTransporter: nodemailer.Transporter | null = null;
+if (process.env.SMTP_HOST) {
+  try {
+    smtpTransporter = nodemailer.createTransport({
+      host: process.env.SMTP_HOST,
+      port: parseInt(process.env.SMTP_PORT || '587'),
+      secure: process.env.SMTP_SECURE === 'true',
+      auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS,
+      },
+      connectionTimeout: 10000,
+      greetingTimeout: 10000,
+      socketTimeout: 15000,
+    });
+  } catch (err: any) {
+    logger.warn(`[EmailService] SMTP transport creation failed: ${err.message}`);
+  }
+}
 
-// SMTP transport (for generic SMTP or Amazon SES)
-const transporter = process.env.SMTP_HOST ? nodemailer.createTransport({
-  host: process.env.SMTP_HOST,
-  port: parseInt(process.env.SMTP_PORT || '587'),
-  secure: process.env.SMTP_SECURE === 'true',
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
-  },
-}) : null;
+// Determine primary provider
+const PRIMARY_PROVIDER = BREVO_API_KEY ? 'brevo' : (smtpTransporter ? 'smtp' : 'log');
+logger.info(`[EmailService] Primary provider: ${PRIMARY_PROVIDER.toUpperCase()}, Brevo: ${BREVO_API_KEY ? 'YES' : 'NO'}, SMTP: ${smtpTransporter ? 'YES' : 'NO'}`);
 
-logger.info(`[EmailService] Using ${EMAIL_PROVIDER.toUpperCase()} for email delivery`);
-
-// Email templates stored in memory (can be moved to DB)
+// Email templates stored in memory
 const TEMPLATES: Record<string, (data: any) => string> = {
   welcome: (data) => `
     <mjml>
@@ -132,44 +144,122 @@ const TEMPLATES: Record<string, (data: any) => string> = {
     </mjml>
   `,
 
+  portalLink: (data) => `
+    <mjml>
+      <mj-body background-color="#f4f4f4">
+        <mj-section padding="40px 20px" background-color="#ffffff" border-radius="8px">
+          <mj-column>
+            <mj-image width="120px" src="https://mgrcapital.com/logo.png" alt="MGR Capital" />
+            <mj-text font-size="24px" color="#1e40af" font-weight="bold" align="center">
+              Your Case Portal is Ready
+            </mj-text>
+            <mj-text font-size="16px" color="#333" line-height="1.6">
+              Hello ${data.clientName}, your secure case portal has been set up. Use the link below to view your case status, upload documents, and sign forms.
+            </mj-text>
+            <mj-button background-color="#3b82f6" color="white" href="${data.portalUrl}" border-radius="8px" font-size="16px">
+              Open Your Portal
+            </mj-button>
+            <mj-text font-size="12px" color="#888" align="center">
+              This link is secure and does not require a password. Do not share it with others.
+            </mj-text>
+          </mj-column>
+        </mj-section>
+      </mj-body>
+    </mjml>
+  `,
+
+  documentReady: (data) => `
+    <mjml>
+      <mj-body background-color="#f4f4f4">
+        <mj-section padding="40px 20px" background-color="#ffffff" border-radius="8px">
+          <mj-column>
+            <mj-text font-size="24px" color="#1e40af" font-weight="bold">
+              Documents Ready for Signing
+            </mj-text>
+            <mj-text font-size="16px" color="#333">
+              Hello ${data.clientName}, your documents are ready to be reviewed and signed.
+            </mj-text>
+            <mj-text font-size="14px" color="#666">
+              Case: ${data.caseNumber}
+            </mj-text>
+            <mj-button background-color="#16a34a" color="white" href="${data.signUrl}" border-radius="8px" font-size="16px">
+              Review & Sign Documents
+            </mj-button>
+            <mj-text font-size="12px" color="#888">
+              Please complete signing within 7 days to avoid delays in your case.
+            </mj-text>
+          </mj-column>
+        </mj-section>
+      </mj-body>
+    </mjml>
+  `,
+
   sms: (data) => data.body, // Plain text for SMS gateway
 };
 
 export class EmailService {
-  private provider: string;
+  private smtpVerified: boolean = false;
+  private smtpFailed: boolean = false;
 
   constructor() {
-    this.provider = EMAIL_PROVIDER;
+    // Verify SMTP connection asynchronously (don't block startup)
+    if (smtpTransporter) {
+      smtpTransporter.verify()
+        .then(() => {
+          this.smtpVerified = true;
+          logger.info('[EmailService] SMTP connection verified');
+        })
+        .catch((err: any) => {
+          this.smtpFailed = true;
+          logger.warn(`[EmailService] SMTP verification failed (${err.message}) — will use Brevo`);
+        });
+    }
   }
 
   /**
    * Get service status
    */
-  getStatus(): { provider: string; configured: boolean } {
+  getStatus(): { provider: string; configured: boolean; brevo: boolean; smtp: boolean; smtpVerified: boolean } {
     return {
-      provider: this.provider,
-      configured: this.provider !== 'demo',
+      provider: PRIMARY_PROVIDER,
+      configured: PRIMARY_PROVIDER !== 'log',
+      brevo: !!BREVO_API_KEY,
+      smtp: !!smtpTransporter,
+      smtpVerified: this.smtpVerified,
     };
   }
 
+  /**
+   * Send email with automatic failover chain:
+   * Brevo API → SMTP → Console Log
+   */
   async send(templateName: string, to: string, data: Record<string, any>): Promise<boolean> {
     const html = this.renderTemplate(templateName, data);
     const subject = data.subject || 'MGR Capital Notification';
     const plainText = data.plainText || this.stripHtml(html);
 
-    // Use Brevo if configured (FREE 300 emails/day)
+    // Try Brevo first (most reliable, FREE)
     if (BREVO_API_KEY) {
-      return this.sendViaBrevo(to, subject, html, plainText);
+      const brevoResult = await this.sendViaBrevo(to, subject, html, plainText);
+      if (brevoResult) return true;
+      logger.warn('[EmailService] Brevo failed, trying SMTP fallback...');
     }
 
-    // Use SMTP if configured
-    if (transporter) {
-      return this.sendViaSMTP(to, subject, html, plainText);
+    // Try SMTP second (only if not known-failed)
+    if (smtpTransporter && !this.smtpFailed) {
+      const smtpResult = await this.sendViaSMTP(to, subject, html, plainText);
+      if (smtpResult) return true;
+      logger.warn('[EmailService] SMTP failed, falling back to log mode');
     }
 
-    // Demo mode - log but don't send
-    logger.info('[DEMO] Email would be sent', { template: templateName, to, subject });
-    return true;
+    // Last resort: log the email
+    logger.info('[EmailService] Email logged (no working provider)', {
+      template: templateName,
+      to,
+      subject,
+      bodyPreview: plainText.substring(0, 200),
+    });
+    return process.env.NODE_ENV === 'development'; // Return true in dev so flows don't break
   }
 
   /**
@@ -182,11 +272,12 @@ export class EmailService {
         headers: {
           'api-key': BREVO_API_KEY!,
           'Content-Type': 'application/json',
+          'Accept': 'application/json',
         },
         body: JSON.stringify({
           sender: {
-            name: 'MGR Capital',
-            email: process.env.BREVO_FROM || 'no-reply@mgrcapital.com',
+            name: 'MGR Capital Assistance',
+            email: BREVO_FROM,
           },
           to: [{ email: to }],
           subject,
@@ -196,40 +287,50 @@ export class EmailService {
       });
 
       if (!response.ok) {
-        const error = await response.text();
-        logger.error('Brevo API error', { error });
+        const errorBody = await response.text();
+        logger.error('[EmailService] Brevo API error', { status: response.status, error: errorBody });
         return false;
       }
 
-      logger.info('Email sent via Brevo', { to, subject });
+      const result = await response.json();
+      logger.info('[EmailService] Email sent via Brevo', { to, subject, messageId: result.messageId });
       return true;
     } catch (error: any) {
-      logger.error('Brevo send failed', { error: error.message });
+      logger.error('[EmailService] Brevo send exception', { error: error.message });
       return false;
     }
   }
 
   /**
-   * Send email via SMTP (Amazon SES, generic SMTP)
+   * Send email via SMTP (Amazon SES or generic SMTP)
    */
   private async sendViaSMTP(to: string, subject: string, html: string, text: string): Promise<boolean> {
     try {
-      await transporter!.sendMail({
-        from: `"MGR Capital" <${process.env.SMTP_FROM || 'no-reply@mgrcapital.com'}>`,
+      const info = await smtpTransporter!.sendMail({
+        from: `"MGR Capital Assistance" <${SMTP_FROM}>`,
         to,
         subject,
         html,
         text,
       });
 
-      logger.info('Email sent via SMTP', { to, subject });
+      logger.info('[EmailService] Email sent via SMTP', { to, subject, messageId: info.messageId });
+      this.smtpVerified = true; // Mark as working
       return true;
     } catch (error: any) {
-      logger.error('SMTP send failed', { error: error.message });
+      logger.error('[EmailService] SMTP send failed', { error: error.message, code: error.code });
+      // If auth failed (535), mark SMTP as permanently failed for this session
+      if (error.responseCode === 535 || error.code === 'EAUTH') {
+        this.smtpFailed = true;
+        logger.warn('[EmailService] SMTP auth failed permanently (535) — disabling SMTP for this session');
+      }
       return false;
     }
   }
 
+  /**
+   * Send drip email sequence with delays
+   */
   async sendDripSequence(
     to: string,
     sequence: { template: string; delayMs: number; data: any }[]
@@ -242,6 +343,9 @@ export class EmailService {
     }
   }
 
+  /**
+   * Send bulk emails to multiple recipients
+   */
   async sendBulk(
     recipients: string[],
     templateName: string,
@@ -254,15 +358,25 @@ export class EmailService {
       const success = await this.send(templateName, to, data);
       if (success) sent++;
       else failed++;
+
+      // Rate limit: 100ms between sends to avoid provider throttling
+      await new Promise(r => setTimeout(r, 100));
     }
 
     return { sent, failed };
   }
 
+  /**
+   * Send a simple text email (no template)
+   */
+  async sendRaw(to: string, subject: string, body: string): Promise<boolean> {
+    return this.send('_raw', to, { subject, body, title: subject });
+  }
+
   private renderTemplate(name: string, data: any): string {
     const templateFn = TEMPLATES[name];
     if (!templateFn) {
-      // Default template
+      // Default template for any unrecognized name
       const mjml = `
         <mjml>
           <mj-body background-color="#f0f0f0">

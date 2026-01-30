@@ -1,6 +1,6 @@
 // ============================================
 // DOCUMENT TEMPLATES — MGR CAPITAL ASSISTANCE
-// Production-ready templates for all 10 document types
+// Production-ready templates for all 15 document types
 // ============================================
 
 export interface DocumentTemplateData {
@@ -966,6 +966,580 @@ _________________________________
 MGR Capital Assistance
 
 Enclosure: Limited Power of Attorney`
+  },
+
+  // ============================================
+  // 11. W-9 FORM (IRS Tax Identification)
+  // ============================================
+  {
+    type: "W9_FORM",
+    name: "IRS W-9 Request for Taxpayer Identification",
+    description: "W-9 form for IRS reporting of surplus fund disbursements — required for 1099 compliance",
+    requiredFields: [
+      "CLIENT_NAME",
+      "CLIENT_ADDRESS",
+      "CLIENT_CITY",
+      "CLIENT_STATE",
+      "CLIENT_ZIP",
+      "CLIENT_SSN_LAST_4",
+      "TODAY_DATE",
+      "CASE_NUMBER"
+    ],
+    content: `W-9 REQUEST FOR TAXPAYER IDENTIFICATION NUMBER AND CERTIFICATION
+
+Case Reference: {{CASE_NUMBER}}
+Date: {{TODAY_DATE}}
+
+IMPORTANT: This form is used to collect taxpayer information required by the Internal Revenue Service (IRS) for surplus fund disbursements. The paying county/court may issue a 1099-MISC for amounts over $600.
+
+═══════════════════════════════════════════════════════════════
+
+PART I — TAXPAYER IDENTIFICATION
+
+1. Name (as shown on your income tax return):
+
+   {{CLIENT_NAME}}
+
+2. Business name/disregarded entity name (if different from above):
+
+   _______________________________________________________________
+
+3. Tax Classification (check one):
+   □ Individual/Sole proprietor
+   □ C Corporation
+   □ S Corporation
+   □ Partnership
+   □ Trust/estate
+   □ LLC (classified as: ___________)
+   □ Other: _______________
+
+4. Address:
+   {{CLIENT_ADDRESS}}
+   {{CLIENT_CITY}}, {{CLIENT_STATE}} {{CLIENT_ZIP}}
+
+5. Taxpayer Identification Number (TIN):
+   Social Security Number: XXX-XX-{{CLIENT_SSN_LAST_4}}
+   OR
+   Employer Identification Number: _______________
+
+═══════════════════════════════════════════════════════════════
+
+PART II — CERTIFICATION
+
+Under penalties of perjury, I certify that:
+
+1. The number shown on this form is my correct taxpayer identification number (or I am waiting for a number to be issued to me); and
+
+2. I am not subject to backup withholding because: (a) I am exempt from backup withholding, or (b) I have not been notified by the IRS that I am subject to backup withholding as a result of a failure to report all interest or dividends, or (c) the IRS has notified me that I am no longer subject to backup withholding; and
+
+3. I am a U.S. citizen or other U.S. person (defined below); and
+
+4. The FATCA code(s) entered on this form (if any) indicating that I am exempt from FATCA reporting is correct.
+
+═══════════════════════════════════════════════════════════════
+
+SIGNATURE
+
+_________________________________
+{{CLIENT_NAME}}
+Date: {{TODAY_DATE}}
+
+═══════════════════════════════════════════════════════════════
+
+INTERNAL USE ONLY — MGR CAPITAL ASSISTANCE
+
+Received Date: _______________
+Verified By: _______________
+Filed With: _______________
+1099 Required: □ Yes  □ No
+Amount: $_______________`
+  },
+
+  // ============================================
+  // 12. SCRA DECLARATION
+  // ============================================
+  {
+    type: "SCRA_DECLARATION",
+    name: "Servicemembers Civil Relief Act Declaration",
+    description: "SCRA declaration required for court filings involving non-appearing respondents — verifies military service status",
+    requiredFields: [
+      "CLIENT_NAME",
+      "CLIENT_ADDRESS",
+      "CLIENT_CITY",
+      "CLIENT_STATE",
+      "CLIENT_ZIP",
+      "CLIENT_DOB",
+      "PROPERTY_ADDRESS",
+      "PROPERTY_COUNTY",
+      "PROPERTY_STATE",
+      "COURT_CASE_NUMBER",
+      "TODAY_DATE",
+      "CASE_NUMBER"
+    ],
+    content: `DECLARATION UNDER THE SERVICEMEMBERS CIVIL RELIEF ACT (SCRA)
+50 U.S.C. §§ 3901 et seq.
+
+Case Reference: {{CASE_NUMBER}}
+Court Case No.: {{COURT_CASE_NUMBER}}
+
+IN THE COURT OF {{PROPERTY_COUNTY}} COUNTY, {{PROPERTY_STATE}}
+
+═══════════════════════════════════════════════════════════════
+
+DECLARATION
+
+I, the undersigned, hereby declare under penalty of perjury:
+
+1. PARTIES IDENTIFIED
+
+This declaration is made in connection with a claim for surplus funds related to property located at:
+
+   {{PROPERTY_ADDRESS}}
+   {{PROPERTY_COUNTY}} County, {{PROPERTY_STATE}}
+
+2. MILITARY SERVICE VERIFICATION
+
+Pursuant to Section 3931 of the Servicemembers Civil Relief Act (50 U.S.C. § 3931), I have conducted a search of the Department of Defense Manpower Data Center (DMDC) database to determine whether the following party/parties are in active military service:
+
+   Name: {{CLIENT_NAME}}
+   Date of Birth: {{CLIENT_DOB}}
+   Address: {{CLIENT_ADDRESS}}, {{CLIENT_CITY}}, {{CLIENT_STATE}} {{CLIENT_ZIP}}
+
+3. SEARCH RESULTS
+
+Based on my search of the DMDC database conducted on {{TODAY_DATE}}:
+
+   □ The above-named individual IS NOT currently in active military service
+   □ The above-named individual IS currently in active military service
+   □ Military status could NOT be determined
+
+4. SCRA STATUS CERTIFICATE
+
+DMDC Certificate Number: _______________
+Date of Certificate: _______________
+
+5. IMPLICATIONS
+
+If the party is in active military service, the provisions of the SCRA apply, including but not limited to:
+a) A stay of proceedings upon request
+b) Default judgment protections under § 3931
+c) Interest rate limitations under § 3937
+d) Protection of property under § 3953
+
+6. VERIFICATION
+
+I have made a good faith effort to determine the military service status of the above-named individual and state that the information provided above is true and correct to the best of my knowledge.
+
+═══════════════════════════════════════════════════════════════
+
+DECLARANT
+
+_________________________________
+MGR Capital Assistance
+Authorized Representative
+Date: {{TODAY_DATE}}
+
+═══════════════════════════════════════════════════════════════
+
+ATTACHMENT: DMDC Certificate (to be attached)
+
+NOTE: This declaration is required under 50 U.S.C. § 3931(b)(1) before any court may enter a default judgment. The DMDC database is available at https://scra.dmdc.osd.mil/`
+  },
+
+  // ============================================
+  // 13. RELEASE OF LIABILITY
+  // ============================================
+  {
+    type: "RELEASE_OF_LIABILITY",
+    name: "Release of Liability and Indemnification",
+    description: "Release of liability required by some counties before disbursing surplus funds — protects county from future claims",
+    requiredFields: [
+      "CLIENT_NAME",
+      "CLIENT_ADDRESS",
+      "CLIENT_CITY",
+      "CLIENT_STATE",
+      "CLIENT_ZIP",
+      "PROPERTY_ADDRESS",
+      "PROPERTY_COUNTY",
+      "PROPERTY_STATE",
+      "PARCEL_NUMBER",
+      "SALE_DATE",
+      "SURPLUS_AMOUNT",
+      "TODAY_DATE",
+      "CASE_NUMBER"
+    ],
+    content: `RELEASE OF LIABILITY AND INDEMNIFICATION AGREEMENT
+
+Case Reference: {{CASE_NUMBER}}
+
+═══════════════════════════════════════════════════════════════
+
+PARTIES
+
+This Release of Liability and Indemnification Agreement ("Release") is entered into by:
+
+RELEASOR:
+{{CLIENT_NAME}}
+{{CLIENT_ADDRESS}}
+{{CLIENT_CITY}}, {{CLIENT_STATE}} {{CLIENT_ZIP}}
+
+RELEASEE:
+{{PROPERTY_COUNTY}} County, {{PROPERTY_STATE}}
+(including its officers, employees, agents, and successors)
+
+═══════════════════════════════════════════════════════════════
+
+RECITALS
+
+WHEREAS, real property located at {{PROPERTY_ADDRESS}}, Parcel Number {{PARCEL_NUMBER}}, {{PROPERTY_COUNTY}} County, {{PROPERTY_STATE}} (the "Property"), was sold at a tax sale on or about {{SALE_DATE}};
+
+WHEREAS, said tax sale resulted in surplus funds in the approximate amount of ${"$"}{{SURPLUS_AMOUNT}} (the "Surplus Funds");
+
+WHEREAS, Releasor has submitted a claim for said Surplus Funds and the claim has been approved for payment;
+
+WHEREAS, Releasee requires this Release as a condition of disbursement;
+
+NOW, THEREFORE, in consideration of the disbursement of the Surplus Funds, Releasor agrees as follows:
+
+═══════════════════════════════════════════════════════════════
+
+TERMS
+
+1. RELEASE
+
+Releasor hereby releases, acquits, and forever discharges Releasee from any and all claims, demands, damages, actions, causes of action, or suits of any kind or nature whatsoever, which Releasor now has or may hereafter have, arising out of or in any way connected with:
+
+a) The tax sale of the Property;
+b) The collection, holding, or disbursement of the Surplus Funds;
+c) Any interest, penalties, or fees associated with the Surplus Funds;
+d) Any actions or omissions by Releasee in connection with the above.
+
+2. INDEMNIFICATION
+
+Releasor agrees to indemnify, defend, and hold harmless Releasee from and against any and all claims, losses, damages, liabilities, judgments, costs, and expenses (including reasonable attorneys' fees) arising from:
+
+a) Any claim by a third party to the Surplus Funds;
+b) Any inaccuracy in the representations made by Releasor;
+c) Any breach of this Release.
+
+3. REPRESENTATIONS
+
+Releasor represents and warrants that:
+
+a) Releasor is the rightful claimant to the Surplus Funds;
+b) Releasor has not assigned, transferred, or encumbered the right to claim the Surplus Funds;
+c) To the best of Releasor's knowledge, no other person or entity has a superior or competing claim to the Surplus Funds;
+d) Releasor has full authority to execute this Release.
+
+4. ENTIRE AGREEMENT
+
+This Release constitutes the entire agreement between the parties with respect to the subject matter hereof and supersedes all prior agreements and understandings.
+
+5. GOVERNING LAW
+
+This Release shall be governed by the laws of the State of {{PROPERTY_STATE}}.
+
+6. BINDING EFFECT
+
+This Release shall be binding upon and inure to the benefit of the parties and their respective heirs, successors, and assigns.
+
+═══════════════════════════════════════════════════════════════
+
+SIGNATURES
+
+RELEASOR:
+
+_________________________________
+{{CLIENT_NAME}}
+Date: {{TODAY_DATE}}
+
+STATE OF {{PROPERTY_STATE}}
+COUNTY OF {{PROPERTY_COUNTY}}
+
+Before me, the undersigned notary public, on this _____ day of _____________, 20___, personally appeared {{CLIENT_NAME}}, known to me to be the person whose name is subscribed to this instrument, and acknowledged that they executed it.
+
+_________________________________
+Notary Public
+My Commission Expires: _______________
+
+[NOTARY SEAL]`
+  },
+
+  // ============================================
+  // 14. SMALL ESTATE AFFIDAVIT
+  // ============================================
+  {
+    type: "SMALL_ESTATE_AFFIDAVIT",
+    name: "Small Estate Affidavit",
+    description: "Affidavit for estates under state threshold amounts — allows heir claims without full probate",
+    requiredFields: [
+      "HEIR_NAME",
+      "HEIR_ADDRESS",
+      "HEIR_CITY",
+      "HEIR_STATE",
+      "HEIR_ZIP",
+      "HEIR_RELATIONSHIP",
+      "DECEDENT_NAME",
+      "DECEDENT_DOD",
+      "DECEDENT_ADDRESS",
+      "PROPERTY_ADDRESS",
+      "PROPERTY_COUNTY",
+      "PROPERTY_STATE",
+      "ESTATE_VALUE",
+      "STATE_THRESHOLD",
+      "TODAY_DATE",
+      "CASE_NUMBER"
+    ],
+    content: `SMALL ESTATE AFFIDAVIT
+
+Case Reference: {{CASE_NUMBER}}
+
+STATE OF {{PROPERTY_STATE}}
+COUNTY OF {{PROPERTY_COUNTY}}
+
+═══════════════════════════════════════════════════════════════
+
+AFFIDAVIT OF SMALL ESTATE
+
+I, {{HEIR_NAME}}, being duly sworn, state under oath:
+
+1. AFFIANT INFORMATION
+
+Name: {{HEIR_NAME}}
+Address: {{HEIR_ADDRESS}}, {{HEIR_CITY}}, {{HEIR_STATE}} {{HEIR_ZIP}}
+Relationship to Decedent: {{HEIR_RELATIONSHIP}}
+
+2. DECEDENT INFORMATION
+
+Name of Decedent: {{DECEDENT_NAME}}
+Date of Death: {{DECEDENT_DOD}}
+Last Known Address: {{DECEDENT_ADDRESS}}
+Place of Death: _______________
+
+3. ESTATE QUALIFICATION
+
+The total value of the decedent's personal property estate, less liens and encumbrances, does not exceed the state threshold of ${"$"}{{STATE_THRESHOLD}}.
+
+Estimated total estate value: ${"$"}{{ESTATE_VALUE}}
+
+4. PROPERTY AT ISSUE
+
+The decedent was the owner of record of real property located at:
+
+{{PROPERTY_ADDRESS}}
+{{PROPERTY_COUNTY}} County, {{PROPERTY_STATE}}
+
+Said property was sold at a tax sale and surplus funds are being held by the county/court.
+
+5. RIGHT TO CLAIM
+
+I am entitled to the surplus funds from the tax sale of the above-described property because:
+
+□ I am the surviving spouse of the decedent
+□ I am a child of the decedent
+□ I am a parent of the decedent
+□ I am a sibling of the decedent
+□ Other relationship: {{HEIR_RELATIONSHIP}}
+
+6. NO PROBATE
+
+□ No probate proceeding has been filed for the decedent's estate
+□ A probate proceeding was filed but has been closed
+□ The estate qualifies for small estate procedures under state law
+
+7. OTHER HEIRS
+
+To the best of my knowledge, the following persons may also have an interest in the decedent's estate:
+
+Name: _________________________  Relationship: _______________
+Name: _________________________  Relationship: _______________
+Name: _________________________  Relationship: _______________
+
+8. DEBTS AND LIABILITIES
+
+To the best of my knowledge:
+□ The decedent had no outstanding debts
+□ The decedent's outstanding debts have been satisfied
+□ The decedent had the following outstanding debts: _______________
+
+9. CERTIFICATION
+
+I declare under penalty of perjury that:
+
+a) At least 30 days have elapsed since the decedent's death;
+b) No application or petition for appointment of a personal representative is pending or has been granted in any jurisdiction;
+c) The gross value of the decedent's estate does not exceed the statutory threshold;
+d) I am entitled to receive the property claimed;
+e) All statements made herein are true and correct to the best of my knowledge.
+
+═══════════════════════════════════════════════════════════════
+
+AFFIANT SIGNATURE
+
+_________________________________
+{{HEIR_NAME}}
+Date: {{TODAY_DATE}}
+
+SUBSCRIBED AND SWORN TO before me on this _____ day of _____________, 20___.
+
+_________________________________
+Notary Public
+State of {{PROPERTY_STATE}}
+My Commission Expires: _______________
+
+[NOTARY SEAL]
+
+═══════════════════════════════════════════════════════════════
+
+ATTACHMENTS REQUIRED:
+□ Certified copy of death certificate
+□ Proof of relationship to decedent
+□ Government-issued photo ID of affiant
+□ Proof of property ownership by decedent`
+  },
+
+  // ============================================
+  // 15. HEIRSHIP / PEDIGREE CHART
+  // ============================================
+  {
+    type: "HEIRSHIP_CHART",
+    name: "Heirship Affidavit and Pedigree Chart",
+    description: "Visual heir relationship diagram with sworn attestation — required for court filings involving heir claims",
+    requiredFields: [
+      "DECEDENT_NAME",
+      "DECEDENT_DOD",
+      "DECEDENT_DOB",
+      "DECEDENT_ADDRESS",
+      "HEIR_NAME",
+      "HEIR_RELATIONSHIP",
+      "PROPERTY_ADDRESS",
+      "PROPERTY_COUNTY",
+      "PROPERTY_STATE",
+      "TODAY_DATE",
+      "CASE_NUMBER"
+    ],
+    content: `AFFIDAVIT OF HEIRSHIP AND PEDIGREE CHART
+
+Case Reference: {{CASE_NUMBER}}
+
+STATE OF {{PROPERTY_STATE}}
+COUNTY OF {{PROPERTY_COUNTY}}
+
+═══════════════════════════════════════════════════════════════
+
+AFFIDAVIT OF HEIRSHIP
+
+I, {{HEIR_NAME}}, being of legal age and duly sworn, depose and say:
+
+1. DECEDENT INFORMATION
+
+Full Legal Name: {{DECEDENT_NAME}}
+Date of Birth: {{DECEDENT_DOB}}
+Date of Death: {{DECEDENT_DOD}}
+Last Known Address: {{DECEDENT_ADDRESS}}
+Place of Death: _______________
+
+2. MARITAL HISTORY
+
+The decedent was:
+□ Married at time of death to: _______________
+□ Divorced (date of divorce: _______________)
+□ Widowed (date of spouse's death: _______________)
+□ Never married
+
+Previous marriages:
+Spouse: _______________  Dates: _______________ to _______________
+Spouse: _______________  Dates: _______________ to _______________
+
+3. CHILDREN OF THE DECEDENT
+
+The decedent had the following children (natural and adopted):
+
+Name: _______________  DOB: _______________  □ Living  □ Deceased
+Name: _______________  DOB: _______________  □ Living  □ Deceased
+Name: _______________  DOB: _______________  □ Living  □ Deceased
+Name: _______________  DOB: _______________  □ Living  □ Deceased
+
+4. PARENTS OF THE DECEDENT
+
+Father: _______________  □ Living  □ Deceased
+Mother: _______________  □ Living  □ Deceased
+
+5. SIBLINGS OF THE DECEDENT
+
+Name: _______________  □ Living  □ Deceased
+Name: _______________  □ Living  □ Deceased
+Name: _______________  □ Living  □ Deceased
+
+═══════════════════════════════════════════════════════════════
+
+PEDIGREE CHART
+
+                        ┌── [Father's Father]
+              ┌── [Father] ──┤
+              │         └── [Father's Mother]
+[DECEDENT] ──┤
+              │         ┌── [Mother's Father]
+              └── [Mother] ──┤
+                        └── [Mother's Mother]
+
+DECEDENT'S DESCENDANTS:
+
+{{DECEDENT_NAME}} (Deceased: {{DECEDENT_DOD}})
+├── [Child 1 Name] ({{HEIR_RELATIONSHIP}})
+│   ├── [Grandchild 1]
+│   └── [Grandchild 2]
+├── [Child 2 Name]
+└── [Child 3 Name]
+
+(Fill in actual names and relationships above)
+
+═══════════════════════════════════════════════════════════════
+
+6. PROPERTY AT ISSUE
+
+{{PROPERTY_ADDRESS}}
+{{PROPERTY_COUNTY}} County, {{PROPERTY_STATE}}
+
+7. WILL STATUS
+
+□ The decedent died intestate (without a will)
+□ The decedent left a will dated _______________
+□ Will status unknown
+
+8. AFFIANT'S RELATIONSHIP
+
+I, {{HEIR_NAME}}, am the {{HEIR_RELATIONSHIP}} of the decedent.
+
+9. TRUTH AND ACCURACY
+
+I declare under penalty of perjury that the facts stated in this affidavit, including the family tree/pedigree chart, are true and correct to the best of my knowledge and belief.
+
+═══════════════════════════════════════════════════════════════
+
+AFFIANT SIGNATURE
+
+_________________________________
+{{HEIR_NAME}}
+Date: {{TODAY_DATE}}
+
+CORROBORATING WITNESS (non-heir):
+
+I, ___________________________, personally knew {{DECEDENT_NAME}} and confirm the family relationships described above are accurate to the best of my knowledge.
+
+_________________________________
+Witness Name: _______________
+Address: _______________
+Date: _______________
+
+SUBSCRIBED AND SWORN TO before me on this _____ day of _____________, 20___.
+
+_________________________________
+Notary Public
+State of {{PROPERTY_STATE}}
+My Commission Expires: _______________
+
+[NOTARY SEAL]`
   }
 ];
 

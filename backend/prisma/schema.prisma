@@ -55,6 +55,11 @@ enum DocumentType {
   CLIENT_ID
   PROPERTY_DEED
   TAX_RECORD
+  W9_FORM
+  SCRA_DECLARATION
+  RELEASE_OF_LIABILITY
+  SMALL_ESTATE_AFFIDAVIT
+  HEIRSHIP_CHART
   OTHER
 }
 
@@ -372,6 +377,11 @@ model Case {
   fundsDisbursedAt      DateTime?
   paidAt                DateTime?
   closedAt              DateTime?
+
+  // Portal Access Control
+  portalExpiresAt           DateTime?    // When client portal access expires
+  portalDissolveAfterDays   Int          @default(12)  // Days after PAID to auto-expire
+  portalKeptAlive           Boolean      @default(false) // Override: keep portal alive indefinitely
 
   // Metadata
   source                String?      // Where lead came from

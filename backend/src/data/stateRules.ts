@@ -20,6 +20,85 @@ export interface StateRuleData {
   specialRequirements: string | null;
   restrictions: string | null;
   sourceUrl: string | null;
+  /** Maximum recovery agent fee percentage allowed by state law (null = no cap) */
+  feeCapPercent: number | null;
+  /** Maximum flat fee in cents allowed by state law (null = no flat cap) */
+  feeCapFlatCents: number | null;
+  /** Source statute for fee cap */
+  feeCapStatute: string | null;
+}
+
+// ============================================
+// STATE FEE CAP ENFORCEMENT ENGINE
+// Auto-limits contingency fees per state law
+// ============================================
+
+/**
+ * Enforce state fee cap on a given fee percentage.
+ * Returns the capped fee percent and whether a cap was applied.
+ */
+export function enforceStateFeeCap(
+  stateCode: string,
+  requestedFeePercent: number,
+  surplusAmountCents: number
+): {
+  effectiveFeePercent: number;
+  wasCapped: boolean;
+  capReason: string | null;
+  maxAllowedCents: number | null;
+} {
+  const rule = getStateRule(stateCode);
+  if (!rule) {
+    return { effectiveFeePercent: requestedFeePercent, wasCapped: false, capReason: null, maxAllowedCents: null };
+  }
+
+  let effectiveFeePercent = requestedFeePercent;
+  let wasCapped = false;
+  let capReason: string | null = null;
+  let maxAllowedCents: number | null = null;
+
+  // Check percentage cap
+  if (rule.feeCapPercent !== null && requestedFeePercent > rule.feeCapPercent) {
+    effectiveFeePercent = rule.feeCapPercent;
+    wasCapped = true;
+    capReason = `${rule.stateName} caps recovery agent fees at ${rule.feeCapPercent}% (${rule.feeCapStatute})`;
+  }
+
+  // Check flat cap (e.g., TX $1,000 max, CA $2,500 max)
+  if (rule.feeCapFlatCents !== null) {
+    const feeAtCurrentPercent = Math.round((surplusAmountCents * effectiveFeePercent) / 100);
+    if (feeAtCurrentPercent > rule.feeCapFlatCents) {
+      // Reduce percentage to fit within flat cap
+      effectiveFeePercent = Math.floor((rule.feeCapFlatCents / surplusAmountCents) * 10000) / 100;
+      if (effectiveFeePercent < 0) effectiveFeePercent = 0;
+      wasCapped = true;
+      maxAllowedCents = rule.feeCapFlatCents;
+      capReason = `${rule.stateName} caps recovery agent fees at $${(rule.feeCapFlatCents / 100).toFixed(2)} (${rule.feeCapStatute})`;
+    }
+  }
+
+  return { effectiveFeePercent, wasCapped, capReason, maxAllowedCents };
+}
+
+/**
+ * Get all states with fee caps for admin display
+ */
+export function getStatesWithFeeCaps(): Array<{
+  stateCode: string;
+  stateName: string;
+  feeCapPercent: number | null;
+  feeCapFlatCents: number | null;
+  feeCapStatute: string | null;
+}> {
+  return STATE_RULES
+    .filter(r => r.feeCapPercent !== null || r.feeCapFlatCents !== null)
+    .map(r => ({
+      stateCode: r.stateCode,
+      stateName: r.stateName,
+      feeCapPercent: r.feeCapPercent,
+      feeCapFlatCents: r.feeCapFlatCents,
+      feeCapStatute: r.feeCapStatute,
+    }));
 }
 
 export const STATE_RULES: StateRuleData[] = [
@@ -37,7 +116,10 @@ export const STATE_RULES: StateRuleData[] = [
     deadlineCalculation: "3 years from date of tax sale. Redemption period is 1 year from sale date.",
     specialRequirements: "Must provide proof of ownership at time of sale. Heir claims require probate documentation.",
     restrictions: "Surplus under $25 may be retained by county.",
-    sourceUrl: "https://law.justia.com/codes/alabama/title-40/chapter-10/"
+    sourceUrl: "https://law.justia.com/codes/alabama/title-40/chapter-10/",
+    feeCapPercent: null,
+    feeCapFlatCents: null,
+    feeCapStatute: null
   },
   {
     stateCode: "AK",
@@ -53,7 +135,10 @@ export const STATE_RULES: StateRuleData[] = [
     deadlineCalculation: "2 years from date of tax foreclosure sale.",
     specialRequirements: "Borough-specific procedures may apply.",
     restrictions: null,
-    sourceUrl: "https://law.justia.com/codes/alaska/title-29/"
+    sourceUrl: "https://law.justia.com/codes/alaska/title-29/",
+    feeCapPercent: null,
+    feeCapFlatCents: null,
+    feeCapStatute: null
   },
   {
     stateCode: "AZ",
@@ -69,7 +154,10 @@ export const STATE_RULES: StateRuleData[] = [
     deadlineCalculation: "2 years from date excess proceeds became available.",
     specialRequirements: "Must file verified claim with county treasurer.",
     restrictions: "Claims under $10 may be denied.",
-    sourceUrl: "https://www.azleg.gov/ars/42/18303.htm"
+    sourceUrl: "https://www.azleg.gov/ars/42/18303.htm",
+    feeCapPercent: 30,
+    feeCapFlatCents: null,
+    feeCapStatute: "A.R.S. § 42-18303 — 30% maximum"
   },
   {
     stateCode: "AR",
@@ -85,7 +173,10 @@ export const STATE_RULES: StateRuleData[] = [
     deadlineCalculation: "3 years from date of tax sale deed confirmation.",
     specialRequirements: "Commissioner of State Lands handles some surplus claims.",
     restrictions: null,
-    sourceUrl: "https://law.justia.com/codes/arkansas/title-26/"
+    sourceUrl: "https://law.justia.com/codes/arkansas/title-26/",
+    feeCapPercent: null,
+    feeCapFlatCents: null,
+    feeCapStatute: null
   },
   {
     stateCode: "CA",
@@ -101,7 +192,10 @@ export const STATE_RULES: StateRuleData[] = [
     deadlineCalculation: "1 year from recordation of tax deed to purchaser.",
     specialRequirements: "Must file claim with county tax collector. Court petition may be required for disputes.",
     restrictions: "Priority given to former owner, then lienholders in order of priority.",
-    sourceUrl: "https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?sectionNum=4675"
+    sourceUrl: "https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?sectionNum=4675",
+    feeCapPercent: 5,
+    feeCapFlatCents: 250000,
+    feeCapStatute: "Rev. & Tax Code § 4675 — $2,500 or 5% max"
   },
   {
     stateCode: "CO",
@@ -117,7 +211,10 @@ export const STATE_RULES: StateRuleData[] = [
     deadlineCalculation: "3 years from issuance of treasurer's deed.",
     specialRequirements: "Must provide proof of ownership interest.",
     restrictions: null,
-    sourceUrl: "https://law.justia.com/codes/colorado/title-39/"
+    sourceUrl: "https://law.justia.com/codes/colorado/title-39/",
+    feeCapPercent: 20,
+    feeCapFlatCents: null,
+    feeCapStatute: "C.R.S. § 39-11-151 — 20% maximum"
   },
   {
     stateCode: "CT",
@@ -133,7 +230,10 @@ export const STATE_RULES: StateRuleData[] = [
     deadlineCalculation: "6 years from date of tax sale.",
     specialRequirements: "Municipality-specific procedures apply.",
     restrictions: null,
-    sourceUrl: "https://law.justia.com/codes/connecticut/title-12/"
+    sourceUrl: "https://law.justia.com/codes/connecticut/title-12/",
+    feeCapPercent: null,
+    feeCapFlatCents: null,
+    feeCapStatute: null
   },
   {
     stateCode: "DE",
@@ -149,7 +249,10 @@ export const STATE_RULES: StateRuleData[] = [
     deadlineCalculation: "3 years from date of sale.",
     specialRequirements: "Kent, New Castle, and Sussex counties have different procedures.",
     restrictions: null,
-    sourceUrl: "https://law.justia.com/codes/delaware/title-9/"
+    sourceUrl: "https://law.justia.com/codes/delaware/title-9/",
+    feeCapPercent: 10,
+    feeCapFlatCents: 100000,
+    feeCapStatute: "9 Del. C. § 8772 — 10% or $1,000 max"
   },
   {
     stateCode: "FL",
@@ -165,7 +268,10 @@ export const STATE_RULES: StateRuleData[] = [
     deadlineCalculation: "10 years from date of tax deed sale. After 10 years, funds escheat to county.",
     specialRequirements: "Clerk of Court holds surplus. May require court order for disbursement.",
     restrictions: "Processing fee may be deducted from surplus.",
-    sourceUrl: "http://www.leg.state.fl.us/statutes/index.cfm?App_mode=Display_Statute&Search_String=&URL=0100-0199/0197/Sections/0197.582.html"
+    sourceUrl: "http://www.leg.state.fl.us/statutes/index.cfm?App_mode=Display_Statute&Search_String=&URL=0100-0199/0197/Sections/0197.582.html",
+    feeCapPercent: 12,
+    feeCapFlatCents: null,
+    feeCapStatute: "F.S. § 28.2401(3) — 12% maximum"
   },
   {
     stateCode: "GA",
@@ -181,7 +287,10 @@ export const STATE_RULES: StateRuleData[] = [
     deadlineCalculation: "5 years from date of tax sale. One-year redemption period from date of sale.",
     specialRequirements: "Must file petition in Superior Court. Court hearing required.",
     restrictions: "Attorney representation recommended for court proceedings.",
-    sourceUrl: "https://law.justia.com/codes/georgia/title-48/chapter-4/"
+    sourceUrl: "https://law.justia.com/codes/georgia/title-48/chapter-4/",
+    feeCapPercent: 5,
+    feeCapFlatCents: null,
+    feeCapStatute: "O.C.G.A. § 48-4-5 — 5% max (some counties)"
   },
   {
     stateCode: "HI",
@@ -197,7 +306,10 @@ export const STATE_RULES: StateRuleData[] = [
     deadlineCalculation: "5 years from date of sale.",
     specialRequirements: "Must file claim with county director of finance.",
     restrictions: null,
-    sourceUrl: "https://law.justia.com/codes/hawaii/title-14/"
+    sourceUrl: "https://law.justia.com/codes/hawaii/title-14/",
+    feeCapPercent: null,
+    feeCapFlatCents: null,
+    feeCapStatute: null
   },
   {
     stateCode: "ID",
@@ -213,7 +325,10 @@ export const STATE_RULES: StateRuleData[] = [
     deadlineCalculation: "2 years from date tax deed is issued.",
     specialRequirements: null,
     restrictions: null,
-    sourceUrl: "https://legislature.idaho.gov/statutesrules/idstat/Title63/"
+    sourceUrl: "https://legislature.idaho.gov/statutesrules/idstat/Title63/",
+    feeCapPercent: null,
+    feeCapFlatCents: null,
+    feeCapStatute: null
   },
   {
     stateCode: "IL",
@@ -229,7 +344,10 @@ export const STATE_RULES: StateRuleData[] = [
     deadlineCalculation: "3 years from date of tax deed. Redemption period varies by property type.",
     specialRequirements: "Residential property has 2.5-year redemption. Other property has 2-year redemption.",
     restrictions: null,
-    sourceUrl: "https://www.ilga.gov/legislation/ilcs/ilcs3.asp?ActID=596"
+    sourceUrl: "https://www.ilga.gov/legislation/ilcs/ilcs3.asp?ActID=596",
+    feeCapPercent: 15,
+    feeCapFlatCents: null,
+    feeCapStatute: "35 ILCS 200/21-355 — 15% maximum"
   },
   {
     stateCode: "IN",
@@ -245,7 +363,10 @@ export const STATE_RULES: StateRuleData[] = [
     deadlineCalculation: "3 years from date of tax sale.",
     specialRequirements: "Must file petition with county auditor.",
     restrictions: null,
-    sourceUrl: "https://iga.in.gov/legislative/laws/2021/ic/titles/006"
+    sourceUrl: "https://iga.in.gov/legislative/laws/2021/ic/titles/006",
+    feeCapPercent: null,
+    feeCapFlatCents: null,
+    feeCapStatute: null
   },
   {
     stateCode: "IA",
@@ -261,7 +382,10 @@ export const STATE_RULES: StateRuleData[] = [
     deadlineCalculation: "2 years from date tax deed is issued.",
     specialRequirements: "1.5-year redemption period from date of sale.",
     restrictions: null,
-    sourceUrl: "https://www.legis.iowa.gov/law/iowaCode/sections?codeChapter=446"
+    sourceUrl: "https://www.legis.iowa.gov/law/iowaCode/sections?codeChapter=446",
+    feeCapPercent: null,
+    feeCapFlatCents: null,
+    feeCapStatute: null
   },
   {
     stateCode: "KS",
@@ -277,7 +401,10 @@ export const STATE_RULES: StateRuleData[] = [
     deadlineCalculation: "3 years from date of tax sale deed.",
     specialRequirements: null,
     restrictions: null,
-    sourceUrl: "https://www.ksrevisor.org/statutes/chapters/ch79/"
+    sourceUrl: "https://www.ksrevisor.org/statutes/chapters/ch79/",
+    feeCapPercent: null,
+    feeCapFlatCents: null,
+    feeCapStatute: null
   },
   {
     stateCode: "KY",
@@ -293,7 +420,10 @@ export const STATE_RULES: StateRuleData[] = [
     deadlineCalculation: "3 years from date of sale. Court action required.",
     specialRequirements: "Must file motion in circuit court.",
     restrictions: null,
-    sourceUrl: "https://apps.legislature.ky.gov/law/statutes/chapter.aspx?id=39282"
+    sourceUrl: "https://apps.legislature.ky.gov/law/statutes/chapter.aspx?id=39282",
+    feeCapPercent: null,
+    feeCapFlatCents: null,
+    feeCapStatute: null
   },
   {
     stateCode: "LA",
@@ -309,7 +439,10 @@ export const STATE_RULES: StateRuleData[] = [
     deadlineCalculation: "3 years from date of tax sale adjudication.",
     specialRequirements: "Parish-specific procedures. Some parishes hold annual sales.",
     restrictions: null,
-    sourceUrl: "https://law.justia.com/codes/louisiana/title-47/"
+    sourceUrl: "https://law.justia.com/codes/louisiana/title-47/",
+    feeCapPercent: null,
+    feeCapFlatCents: null,
+    feeCapStatute: null
   },
   {
     stateCode: "ME",
@@ -325,7 +458,10 @@ export const STATE_RULES: StateRuleData[] = [
     deadlineCalculation: "3 years from date of foreclosure.",
     specialRequirements: "Must file claim with municipality.",
     restrictions: null,
-    sourceUrl: "https://legislature.maine.gov/statutes/36/title36sec943.html"
+    sourceUrl: "https://legislature.maine.gov/statutes/36/title36sec943.html",
+    feeCapPercent: null,
+    feeCapFlatCents: null,
+    feeCapStatute: null
   },
   {
     stateCode: "MD",
@@ -341,7 +477,10 @@ export const STATE_RULES: StateRuleData[] = [
     deadlineCalculation: "3 years from date surplus deposited with collector.",
     specialRequirements: "Different rules for Baltimore City.",
     restrictions: null,
-    sourceUrl: "https://law.justia.com/codes/maryland/tax-property/"
+    sourceUrl: "https://law.justia.com/codes/maryland/tax-property/",
+    feeCapPercent: 10,
+    feeCapFlatCents: null,
+    feeCapStatute: "Md. Tax-Property § 14-844 — 10% maximum"
   },
   {
     stateCode: "MA",
@@ -357,7 +496,10 @@ export const STATE_RULES: StateRuleData[] = [
     deadlineCalculation: "6 years from date of sale.",
     specialRequirements: "Must file petition with Land Court for surplus over $10,000.",
     restrictions: null,
-    sourceUrl: "https://malegislature.gov/Laws/GeneralLaws/PartI/TitleIX/Chapter60"
+    sourceUrl: "https://malegislature.gov/Laws/GeneralLaws/PartI/TitleIX/Chapter60",
+    feeCapPercent: null,
+    feeCapFlatCents: null,
+    feeCapStatute: null
   },
   {
     stateCode: "MI",
@@ -373,7 +515,10 @@ export const STATE_RULES: StateRuleData[] = [
     deadlineCalculation: "Must claim within 21 days of sale, or file circuit court action within 2 years.",
     specialRequirements: "Recent court decisions (Rafaeli) expanded owner rights to surplus.",
     restrictions: null,
-    sourceUrl: "https://www.legislature.mi.gov/mileg.aspx?page=getObject&objectName=mcl-211-78t"
+    sourceUrl: "https://www.legislature.mi.gov/mileg.aspx?page=getObject&objectName=mcl-211-78t",
+    feeCapPercent: null,
+    feeCapFlatCents: null,
+    feeCapStatute: null
   },
   {
     stateCode: "MN",
@@ -389,7 +534,10 @@ export const STATE_RULES: StateRuleData[] = [
     deadlineCalculation: "6 years from date of forfeiture. 3-year redemption period.",
     specialRequirements: null,
     restrictions: null,
-    sourceUrl: "https://www.revisor.mn.gov/statutes/cite/281.25"
+    sourceUrl: "https://www.revisor.mn.gov/statutes/cite/281.25",
+    feeCapPercent: null,
+    feeCapFlatCents: null,
+    feeCapStatute: null
   },
   {
     stateCode: "MS",
@@ -405,7 +553,10 @@ export const STATE_RULES: StateRuleData[] = [
     deadlineCalculation: "2 years from date tax deed matures.",
     specialRequirements: null,
     restrictions: null,
-    sourceUrl: "https://law.justia.com/codes/mississippi/title-27/"
+    sourceUrl: "https://law.justia.com/codes/mississippi/title-27/",
+    feeCapPercent: null,
+    feeCapFlatCents: null,
+    feeCapStatute: null
   },
   {
     stateCode: "MO",
@@ -421,7 +572,10 @@ export const STATE_RULES: StateRuleData[] = [
     deadlineCalculation: "3 years from date of tax sale.",
     specialRequirements: null,
     restrictions: null,
-    sourceUrl: "https://revisor.mo.gov/main/OneSection.aspx?section=140.230"
+    sourceUrl: "https://revisor.mo.gov/main/OneSection.aspx?section=140.230",
+    feeCapPercent: null,
+    feeCapFlatCents: null,
+    feeCapStatute: null
   },
   {
     stateCode: "MT",
@@ -437,7 +591,10 @@ export const STATE_RULES: StateRuleData[] = [
     deadlineCalculation: "3 years from date of tax deed issuance.",
     specialRequirements: "3-year redemption period from date of tax lien.",
     restrictions: null,
-    sourceUrl: "https://leg.mt.gov/bills/mca/title_0150/chapter_0170/part_0030/section_0230/0150-0170-0030-0230.html"
+    sourceUrl: "https://leg.mt.gov/bills/mca/title_0150/chapter_0170/part_0030/section_0230/0150-0170-0030-0230.html",
+    feeCapPercent: null,
+    feeCapFlatCents: null,
+    feeCapStatute: null
   },
   {
     stateCode: "NE",
@@ -453,7 +610,10 @@ export const STATE_RULES: StateRuleData[] = [
     deadlineCalculation: "2 years from date of tax deed.",
     specialRequirements: null,
     restrictions: null,
-    sourceUrl: "https://nebraskalegislature.gov/laws/statutes.php?statute=77-1912"
+    sourceUrl: "https://nebraskalegislature.gov/laws/statutes.php?statute=77-1912",
+    feeCapPercent: null,
+    feeCapFlatCents: null,
+    feeCapStatute: null
   },
   {
     stateCode: "NV",
@@ -469,7 +629,10 @@ export const STATE_RULES: StateRuleData[] = [
     deadlineCalculation: "3 years from date of tax deed.",
     specialRequirements: null,
     restrictions: null,
-    sourceUrl: "https://www.leg.state.nv.us/nrs/NRS-361.html"
+    sourceUrl: "https://www.leg.state.nv.us/nrs/NRS-361.html",
+    feeCapPercent: null,
+    feeCapFlatCents: null,
+    feeCapStatute: null
   },
   {
     stateCode: "NH",
@@ -485,7 +648,10 @@ export const STATE_RULES: StateRuleData[] = [
     deadlineCalculation: "3 years from date of tax collector's deed.",
     specialRequirements: null,
     restrictions: null,
-    sourceUrl: "https://www.gencourt.state.nh.us/rsa/html/V/80/80-88.htm"
+    sourceUrl: "https://www.gencourt.state.nh.us/rsa/html/V/80/80-88.htm",
+    feeCapPercent: null,
+    feeCapFlatCents: null,
+    feeCapStatute: null
   },
   {
     stateCode: "NJ",
@@ -501,7 +667,10 @@ export const STATE_RULES: StateRuleData[] = [
     deadlineCalculation: "3 years from date of tax sale foreclosure.",
     specialRequirements: "Must file claim with municipality.",
     restrictions: null,
-    sourceUrl: "https://law.justia.com/codes/new-jersey/title-54/"
+    sourceUrl: "https://law.justia.com/codes/new-jersey/title-54/",
+    feeCapPercent: null,
+    feeCapFlatCents: null,
+    feeCapStatute: null
   },
   {
     stateCode: "NM",
@@ -517,7 +686,10 @@ export const STATE_RULES: StateRuleData[] = [
     deadlineCalculation: "3 years from date of sale.",
     specialRequirements: null,
     restrictions: null,
-    sourceUrl: "https://nmonesource.com/nmos/nmsa/en/item/4340/index.do"
+    sourceUrl: "https://nmonesource.com/nmos/nmsa/en/item/4340/index.do",
+    feeCapPercent: null,
+    feeCapFlatCents: null,
+    feeCapStatute: null
   },
   {
     stateCode: "NY",
@@ -533,7 +705,10 @@ export const STATE_RULES: StateRuleData[] = [
     deadlineCalculation: "4 years from date of tax deed. Court petition required.",
     specialRequirements: "Must file petition in Supreme Court or County Court. NYC has different procedures.",
     restrictions: null,
-    sourceUrl: "https://www.nysenate.gov/legislation/laws/RPT/1136"
+    sourceUrl: "https://www.nysenate.gov/legislation/laws/RPT/1136",
+    feeCapPercent: null,
+    feeCapFlatCents: null,
+    feeCapStatute: null
   },
   {
     stateCode: "NC",
@@ -549,7 +724,10 @@ export const STATE_RULES: StateRuleData[] = [
     deadlineCalculation: "10 years from date of foreclosure sale.",
     specialRequirements: "Must file claim with county tax collector.",
     restrictions: null,
-    sourceUrl: "https://www.ncleg.gov/EnactedLegislation/Statutes/PDF/BySection/Chapter_105/GS_105-374.pdf"
+    sourceUrl: "https://www.ncleg.gov/EnactedLegislation/Statutes/PDF/BySection/Chapter_105/GS_105-374.pdf",
+    feeCapPercent: null,
+    feeCapFlatCents: null,
+    feeCapStatute: null
   },
   {
     stateCode: "ND",
@@ -565,7 +743,10 @@ export const STATE_RULES: StateRuleData[] = [
     deadlineCalculation: "3 years from date of tax deed.",
     specialRequirements: null,
     restrictions: null,
-    sourceUrl: "https://www.ndlegis.gov/cencode/t57c28.pdf"
+    sourceUrl: "https://www.ndlegis.gov/cencode/t57c28.pdf",
+    feeCapPercent: null,
+    feeCapFlatCents: null,
+    feeCapStatute: null
   },
   {
     stateCode: "OH",
@@ -581,7 +762,10 @@ export const STATE_RULES: StateRuleData[] = [
     deadlineCalculation: "3 years from date of judicial sale. Court filing required.",
     specialRequirements: "Must file motion with Common Pleas Court.",
     restrictions: null,
-    sourceUrl: "https://codes.ohio.gov/ohio-revised-code/section-5721.20"
+    sourceUrl: "https://codes.ohio.gov/ohio-revised-code/section-5721.20",
+    feeCapPercent: null,
+    feeCapFlatCents: null,
+    feeCapStatute: null
   },
   {
     stateCode: "OK",
@@ -597,7 +781,10 @@ export const STATE_RULES: StateRuleData[] = [
     deadlineCalculation: "3 years from date of tax deed.",
     specialRequirements: null,
     restrictions: null,
-    sourceUrl: "https://law.justia.com/codes/oklahoma/title-68/"
+    sourceUrl: "https://law.justia.com/codes/oklahoma/title-68/",
+    feeCapPercent: null,
+    feeCapFlatCents: null,
+    feeCapStatute: null
   },
   {
     stateCode: "OR",
@@ -613,7 +800,10 @@ export const STATE_RULES: StateRuleData[] = [
     deadlineCalculation: "5 years from date of foreclosure.",
     specialRequirements: null,
     restrictions: null,
-    sourceUrl: "https://www.oregonlegislature.gov/bills_laws/ors/ors312.html"
+    sourceUrl: "https://www.oregonlegislature.gov/bills_laws/ors/ors312.html",
+    feeCapPercent: null,
+    feeCapFlatCents: null,
+    feeCapStatute: null
   },
   {
     stateCode: "PA",
@@ -629,7 +819,10 @@ export const STATE_RULES: StateRuleData[] = [
     deadlineCalculation: "5 years from date of tax sale. Court petition required.",
     specialRequirements: "Must file petition in Court of Common Pleas. Different procedures for Philadelphia.",
     restrictions: null,
-    sourceUrl: "https://www.legis.state.pa.us/cfdocs/legis/li/uconsCheck.cfm?yr=1947&sessInd=0&act=542"
+    sourceUrl: "https://www.legis.state.pa.us/cfdocs/legis/li/uconsCheck.cfm?yr=1947&sessInd=0&act=542",
+    feeCapPercent: null,
+    feeCapFlatCents: null,
+    feeCapStatute: null
   },
   {
     stateCode: "RI",
@@ -645,7 +838,10 @@ export const STATE_RULES: StateRuleData[] = [
     deadlineCalculation: "5 years from date of tax sale.",
     specialRequirements: null,
     restrictions: null,
-    sourceUrl: "https://law.justia.com/codes/rhode-island/title-44/"
+    sourceUrl: "https://law.justia.com/codes/rhode-island/title-44/",
+    feeCapPercent: null,
+    feeCapFlatCents: null,
+    feeCapStatute: null
   },
   {
     stateCode: "SC",
@@ -661,7 +857,10 @@ export const STATE_RULES: StateRuleData[] = [
     deadlineCalculation: "5 years from date of tax sale.",
     specialRequirements: null,
     restrictions: null,
-    sourceUrl: "https://www.scstatehouse.gov/code/t12c051.php"
+    sourceUrl: "https://www.scstatehouse.gov/code/t12c051.php",
+    feeCapPercent: null,
+    feeCapFlatCents: null,
+    feeCapStatute: null
   },
   {
     stateCode: "SD",
@@ -677,7 +876,10 @@ export const STATE_RULES: StateRuleData[] = [
     deadlineCalculation: "3 years from date of tax deed.",
     specialRequirements: null,
     restrictions: null,
-    sourceUrl: "https://sdlegislature.gov/Statutes/Codified_Laws/DisplayStatute.aspx?Type=Statute&Statute=10-25-1"
+    sourceUrl: "https://sdlegislature.gov/Statutes/Codified_Laws/DisplayStatute.aspx?Type=Statute&Statute=10-25-1",
+    feeCapPercent: null,
+    feeCapFlatCents: null,
+    feeCapStatute: null
   },
   {
     stateCode: "TN",
@@ -693,7 +895,10 @@ export const STATE_RULES: StateRuleData[] = [
     deadlineCalculation: "10 years from date of tax sale. Court petition required.",
     specialRequirements: "Must file petition in Chancery Court or Circuit Court. Interpleader action may be required.",
     restrictions: "Processing fees may be deducted.",
-    sourceUrl: "https://law.justia.com/codes/tennessee/title-67/chapter-5/part-27/"
+    sourceUrl: "https://law.justia.com/codes/tennessee/title-67/chapter-5/part-27/",
+    feeCapPercent: null,
+    feeCapFlatCents: null,
+    feeCapStatute: null
   },
   {
     stateCode: "TX",
@@ -709,7 +914,10 @@ export const STATE_RULES: StateRuleData[] = [
     deadlineCalculation: "2 years from date of tax deed. Court order required for disbursement.",
     specialRequirements: "Must file petition with district court. 2-year redemption for homestead/agricultural.",
     restrictions: "6-month redemption for non-homestead.",
-    sourceUrl: "https://statutes.capitol.texas.gov/Docs/TX/htm/TX.34.htm"
+    sourceUrl: "https://statutes.capitol.texas.gov/Docs/TX/htm/TX.34.htm",
+    feeCapPercent: 25,
+    feeCapFlatCents: 100000,
+    feeCapStatute: "Tex. Prop. Code § 34.015 — 25% or $1,000 max"
   },
   {
     stateCode: "UT",
@@ -725,7 +933,10 @@ export const STATE_RULES: StateRuleData[] = [
     deadlineCalculation: "5 years from date of tax sale.",
     specialRequirements: null,
     restrictions: null,
-    sourceUrl: "https://le.utah.gov/xcode/Title59/Chapter2/59-2-S1351.1.html"
+    sourceUrl: "https://le.utah.gov/xcode/Title59/Chapter2/59-2-S1351.1.html",
+    feeCapPercent: null,
+    feeCapFlatCents: null,
+    feeCapStatute: null
   },
   {
     stateCode: "VT",
@@ -741,7 +952,10 @@ export const STATE_RULES: StateRuleData[] = [
     deadlineCalculation: "6 years from date of tax sale.",
     specialRequirements: null,
     restrictions: null,
-    sourceUrl: "https://legislature.vermont.gov/statutes/section/32/133/05260"
+    sourceUrl: "https://legislature.vermont.gov/statutes/section/32/133/05260",
+    feeCapPercent: null,
+    feeCapFlatCents: null,
+    feeCapStatute: null
   },
   {
     stateCode: "VA",
@@ -757,7 +971,10 @@ export const STATE_RULES: StateRuleData[] = [
     deadlineCalculation: "2 years from date of tax sale deed.",
     specialRequirements: null,
     restrictions: null,
-    sourceUrl: "https://law.lis.virginia.gov/vacode/title58.1/chapter39/"
+    sourceUrl: "https://law.lis.virginia.gov/vacode/title58.1/chapter39/",
+    feeCapPercent: null,
+    feeCapFlatCents: null,
+    feeCapStatute: null
   },
   {
     stateCode: "WA",
@@ -773,7 +990,10 @@ export const STATE_RULES: StateRuleData[] = [
     deadlineCalculation: "3 years from date of tax deed.",
     specialRequirements: null,
     restrictions: null,
-    sourceUrl: "https://app.leg.wa.gov/rcw/default.aspx?cite=84.64.080"
+    sourceUrl: "https://app.leg.wa.gov/rcw/default.aspx?cite=84.64.080",
+    feeCapPercent: null,
+    feeCapFlatCents: null,
+    feeCapStatute: null
   },
   {
     stateCode: "WV",
@@ -789,7 +1009,10 @@ export const STATE_RULES: StateRuleData[] = [
     deadlineCalculation: "3 years from date of tax deed.",
     specialRequirements: "18-month redemption period from date of sale.",
     restrictions: null,
-    sourceUrl: "https://www.wvlegislature.gov/WVCODE/ChapterEntire.cfm?chap=11a&art=3"
+    sourceUrl: "https://www.wvlegislature.gov/WVCODE/ChapterEntire.cfm?chap=11a&art=3",
+    feeCapPercent: null,
+    feeCapFlatCents: null,
+    feeCapStatute: null
   },
   {
     stateCode: "WI",
@@ -805,7 +1028,10 @@ export const STATE_RULES: StateRuleData[] = [
     deadlineCalculation: "2 years from date of tax deed.",
     specialRequirements: null,
     restrictions: null,
-    sourceUrl: "https://docs.legis.wisconsin.gov/statutes/statutes/75/36"
+    sourceUrl: "https://docs.legis.wisconsin.gov/statutes/statutes/75/36",
+    feeCapPercent: null,
+    feeCapFlatCents: null,
+    feeCapStatute: null
   },
   {
     stateCode: "WY",
@@ -821,7 +1047,10 @@ export const STATE_RULES: StateRuleData[] = [
     deadlineCalculation: "4 years from date of tax deed. 4-year redemption period.",
     specialRequirements: null,
     restrictions: null,
-    sourceUrl: "https://wyoleg.gov/statutes/compress/title39.pdf"
+    sourceUrl: "https://wyoleg.gov/statutes/compress/title39.pdf",
+    feeCapPercent: null,
+    feeCapFlatCents: null,
+    feeCapStatute: null
   },
   {
     stateCode: "DC",
@@ -837,7 +1066,10 @@ export const STATE_RULES: StateRuleData[] = [
     deadlineCalculation: "6 years from date of tax sale.",
     specialRequirements: "Must file claim with Office of Tax and Revenue.",
     restrictions: null,
-    sourceUrl: "https://code.dccouncil.us/us/dc/council/code/titles/47/chapters/13A/"
+    sourceUrl: "https://code.dccouncil.us/us/dc/council/code/titles/47/chapters/13A/",
+    feeCapPercent: null,
+    feeCapFlatCents: null,
+    feeCapStatute: null
   }
 ];
 

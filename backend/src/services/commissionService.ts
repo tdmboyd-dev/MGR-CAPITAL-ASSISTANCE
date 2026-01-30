@@ -5,6 +5,7 @@
 // ============================================
 
 import { PrismaClient, EmployeeTier } from "@prisma/client";
+import { enforceStateFeeCap } from "../data/stateRules.js";
 
 const prisma = new PrismaClient();
 
@@ -127,13 +128,14 @@ export class CommissionService {
   }
 
   /**
-   * Get full payout breakdown for a case
+   * Get full payout breakdown for a case with STATE FEE CAP ENFORCEMENT
    * FOUNDER ONLY - shows actual amounts
    */
   calculateFullPayout(params: {
     surplusAmountCents: number;
     feePercent: number;
     employeeTier: EmployeeTier | string;
+    state?: string;
   }): {
     surplusAmountCents: number;
     feeAmountCents: number;
@@ -142,11 +144,27 @@ export class CommissionService {
     employeeDisplayedCommissionCents: number;
     founderShareCents: number;
     companyFeeCents: number;
+    feeCapApplied: boolean;
+    feeCapReason: string | null;
+    originalFeePercent: number;
+    effectiveFeePercent: number;
   } {
-    const { surplusAmountCents, feePercent, employeeTier } = params;
+    const { surplusAmountCents, feePercent, employeeTier, state } = params;
 
-    // Calculate fee (what MGR keeps)
-    const feeAmountCents = Math.round((surplusAmountCents * feePercent) / 100);
+    // STATE FEE CAP ENFORCEMENT — auto-limit fee per state law
+    let effectiveFeePercent = feePercent;
+    let feeCapApplied = false;
+    let feeCapReason: string | null = null;
+
+    if (state) {
+      const capResult = enforceStateFeeCap(state, feePercent, surplusAmountCents);
+      effectiveFeePercent = capResult.effectiveFeePercent;
+      feeCapApplied = capResult.wasCapped;
+      feeCapReason = capResult.capReason;
+    }
+
+    // Calculate fee (what MGR keeps) — USING CAPPED RATE
+    const feeAmountCents = Math.round((surplusAmountCents * effectiveFeePercent) / 100);
 
     // Client gets the rest
     const clientPayoutCents = surplusAmountCents - feeAmountCents;
@@ -175,6 +193,10 @@ export class CommissionService {
       employeeDisplayedCommissionCents,
       founderShareCents,
       companyFeeCents,
+      feeCapApplied,
+      feeCapReason,
+      originalFeePercent: feePercent,
+      effectiveFeePercent,
     };
   }
 

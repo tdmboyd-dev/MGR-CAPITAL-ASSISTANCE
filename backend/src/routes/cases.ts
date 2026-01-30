@@ -9,6 +9,7 @@ import { authMiddleware, AuthRequest } from "../middleware/authMiddleware.js";
 import { roleGuard } from "../middleware/roleGuard.js";
 import { asyncHandler, AppError, Errors } from "../middleware/errorHandler.js";
 import { legalService } from "../services/legalService.js";
+import { enforceStateFeeCap } from "../data/stateRules.js";
 import { notificationCenterService } from "../services/NotificationCenterService.js";
 import {
   isValidTransition,
@@ -544,6 +545,15 @@ router.post("/", authMiddleware, roleGuard(["ADMIN"]), async (req: AuthRequest, 
     // Get state rule for deadline calculation
     const stateRule = legalService.getStateRules(state);
 
+    // STATE FEE CAP ENFORCEMENT — auto-limit fee per state law
+    const requestedFee = feePercent || 33;
+    const feeCap = state ? enforceStateFeeCap(state, requestedFee, surplusAmountCents || 0) : null;
+    const effectiveFee = feeCap ? feeCap.effectiveFeePercent : requestedFee;
+
+    if (feeCap?.wasCapped) {
+      console.log(`[FEE CAP] ${state}: Requested ${requestedFee}% → Capped to ${effectiveFee}% (${feeCap.capReason})`);
+    }
+
     const newCase = await prisma.case.create({
       data: {
         internalCode,
@@ -554,7 +564,7 @@ router.post("/", authMiddleware, roleGuard(["ADMIN"]), async (req: AuthRequest, 
         parcelNumber,
         saleDate: saleDate ? new Date(saleDate) : null,
         surplusAmountCents: surplusAmountCents || 0,
-        feePercent: feePercent || 33,
+        feePercent: effectiveFee,
         assignedEmployeeId,
         status: "NEW",
         priority: surplusAmountCents >= 1000000 ? 100 : 50,

@@ -9,7 +9,7 @@ import { PrismaClient } from "@prisma/client";
 import { authMiddleware, AuthRequest } from "../middleware/authMiddleware.js";
 import { roleGuard } from "../middleware/roleGuard.js";
 import { legalService } from "../services/legalService.js";
-import { getStateRule, STATE_RULES } from "../data/stateRules.js";
+import { getStateRule, STATE_RULES, getStatesWithFeeCaps, enforceStateFeeCap } from "../data/stateRules.js";
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -346,6 +346,56 @@ router.get("/stats", authMiddleware, roleGuard(["ADMIN"]), async (_req: Request,
   } catch (error: any) {
     console.error("Legal error:", error);
     res.status(500).json({ success: false, error: "An error occurred. Please try again." });
+  }
+});
+
+// ============================================
+// FEE CAP ENFORCEMENT ENDPOINTS
+// ============================================
+
+/**
+ * GET /api/legal/fee-caps - Get all states with fee caps
+ */
+router.get("/fee-caps", authMiddleware, roleGuard(["ADMIN"]), async (_req: Request, res: Response) => {
+  try {
+    const caps = getStatesWithFeeCaps();
+    res.json({
+      success: true,
+      count: caps.length,
+      data: caps
+    });
+  } catch (error: any) {
+    console.error("Fee caps error:", error);
+    res.status(500).json({ success: false, error: "An error occurred." });
+  }
+});
+
+/**
+ * POST /api/legal/fee-caps/check - Check fee cap for a specific state + amount
+ * Body: { state, feePercent, surplusAmountCents }
+ */
+router.post("/fee-caps/check", authMiddleware, roleGuard(["ADMIN"]), async (req: Request, res: Response) => {
+  try {
+    const { state, feePercent, surplusAmountCents } = req.body;
+    if (!state || feePercent === undefined || !surplusAmountCents) {
+      return res.status(400).json({ success: false, error: "state, feePercent, and surplusAmountCents required" });
+    }
+
+    const result = enforceStateFeeCap(state, feePercent, surplusAmountCents);
+    res.json({
+      success: true,
+      data: {
+        state,
+        requestedFeePercent: feePercent,
+        ...result,
+        surplusAmountCents,
+        originalFeeCents: Math.round((surplusAmountCents * feePercent) / 100),
+        cappedFeeCents: Math.round((surplusAmountCents * result.effectiveFeePercent) / 100),
+      }
+    });
+  } catch (error: any) {
+    console.error("Fee cap check error:", error);
+    res.status(500).json({ success: false, error: "An error occurred." });
   }
 });
 
