@@ -1,6 +1,8 @@
 import OpenAI from 'openai';
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+const openai = process.env.OPENAI_API_KEY
+  ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+  : null;
 
 export interface AuditResult {
   errors: string[];
@@ -48,6 +50,9 @@ Output JSON only:
 }`;
 
     try {
+      if (!openai) {
+        return this.getMockAudit(state, type);
+      }
       const response = await openai.chat.completions.create({
         model: 'gpt-4o',
         messages: [
