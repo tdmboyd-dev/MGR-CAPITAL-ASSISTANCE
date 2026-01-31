@@ -11,6 +11,7 @@ import { asyncHandler, AppError, Errors } from "../middleware/errorHandler.js";
 import { legalService } from "../services/legalService.js";
 import { enforceStateFeeCap } from "../data/stateRules.js";
 import { notificationCenterService } from "../services/NotificationCenterService.js";
+import { notificationService } from "../services/notificationService.js";
 import {
   isValidTransition,
   validateTransition,
@@ -149,6 +150,42 @@ router.post("/my/:id/status", authMiddleware, roleGuard(["EMPLOYEE"]), asyncHand
       }
     }
   });
+
+  // Email notifications on status change
+  try {
+    const fullCase = await prisma.case.findUnique({
+      where: { id },
+      include: {
+        client: { select: { email: true, name: true } },
+        documents: { where: { status: "PENDING_SIGNATURE" } },
+      },
+    });
+
+    if (fullCase?.client?.email) {
+      // Notify client of status change
+      await notificationService.notifyCaseStatusChange({
+        clientEmail: fullCase.client.email,
+        clientName: fullCase.client.name || "Valued Client",
+        caseId: id,
+        caseCode: caseData.internalCode,
+        oldStatus: currentStatus,
+        newStatus: newStatus,
+      });
+
+      // If DOCS_PENDING, also notify documents ready
+      if (newStatus === "DOCS_PENDING" && fullCase.documents.length > 0) {
+        await notificationService.notifyDocumentsReady({
+          clientEmail: fullCase.client.email,
+          clientName: fullCase.client.name || "Valued Client",
+          caseId: id,
+          caseCode: caseData.internalCode,
+          documentCount: fullCase.documents.length,
+        });
+      }
+    }
+  } catch (notifError) {
+    console.error("Failed to send case status notification:", notifError);
+  }
 
   res.json({
     success: true,
@@ -737,6 +774,54 @@ router.post("/:id/status", authMiddleware, roleGuard(["ADMIN"]), asyncHandler(as
       }
     }
   });
+
+  // Email notifications on founder status change
+  try {
+    const fullCase = await prisma.case.findUnique({
+      where: { id },
+      include: {
+        client: { select: { email: true, name: true } },
+        documents: { where: { status: "PENDING_SIGNATURE" } },
+      },
+    });
+
+    if (fullCase?.client?.email) {
+      // Notify client of status change
+      await notificationService.notifyCaseStatusChange({
+        clientEmail: fullCase.client.email,
+        clientName: fullCase.client.name || "Valued Client",
+        caseId: id,
+        caseCode: fullCase.internalCode,
+        oldStatus: currentStatus,
+        newStatus: newStatus,
+      });
+
+      // If DOCS_PENDING, notify documents ready
+      if (newStatus === "DOCS_PENDING" && fullCase.documents.length > 0) {
+        await notificationService.notifyDocumentsReady({
+          clientEmail: fullCase.client.email,
+          clientName: fullCase.client.name || "Valued Client",
+          caseId: id,
+          caseCode: fullCase.internalCode,
+          documentCount: fullCase.documents.length,
+        });
+      }
+
+      // If PAID, notify payout completed
+      if (newStatus === "PAID" && fullCase.clientPayoutCents) {
+        await notificationService.notifyPayoutCompleted({
+          clientEmail: fullCase.client.email,
+          clientName: fullCase.client.name || "Valued Client",
+          caseId: id,
+          caseCode: fullCase.internalCode,
+          amountCents: fullCase.clientPayoutCents,
+          paymentMethod: "Direct Deposit",
+        });
+      }
+    }
+  } catch (notifError) {
+    console.error("Failed to send founder case status notification:", notifError);
+  }
 
   res.json({
     success: true,

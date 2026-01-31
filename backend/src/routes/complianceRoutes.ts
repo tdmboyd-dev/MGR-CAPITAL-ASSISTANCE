@@ -21,6 +21,39 @@ router.use(authMiddleware);
 router.use(roleGuard(ROLE_GROUPS.COMPLIANCE_ACCESS));
 
 // ============================================
+// COMPLIANCE STATUS (summary endpoint)
+// ============================================
+
+router.get("/status", async (_req: AuthenticatedRequest, res: Response) => {
+  try {
+    const now = new Date();
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+    const [totalLogs, recentLogs, flaggedCount] = await Promise.all([
+      prisma.auditLog.count(),
+      prisma.auditLog.count({ where: { createdAt: { gte: thirtyDaysAgo } } }),
+      prisma.auditLog.count({
+        where: { action: "LOGIN_FAILED", createdAt: { gte: thirtyDaysAgo } }
+      }),
+    ]);
+
+    res.json({
+      success: true,
+      status: "operational",
+      compliance: {
+        totalAuditLogs: totalLogs,
+        last30DaysLogs: recentLogs,
+        failedLogins30d: flaggedCount,
+        lastChecked: now.toISOString(),
+      },
+    });
+  } catch (error: any) {
+    logger.error("Compliance status error:", error);
+    res.status(500).json({ success: false, error: "Failed to get compliance status" });
+  }
+});
+
+// ============================================
 // COMPLIANCE DASHBOARD
 // ============================================
 

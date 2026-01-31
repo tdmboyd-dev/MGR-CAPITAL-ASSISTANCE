@@ -149,6 +149,9 @@ enum IngestionSourceType {
   AUCTION_RESULT
   COUNTY_WEBSITE
   MANUAL_ENTRY
+  WEBHOOK
+  EMAIL_INBOX
+  BULK_UPLOAD
 }
 
 // ============================================
@@ -205,6 +208,11 @@ model Tenant {
   maxUsers        Int       @default(50)
   maxCases        Int       @default(1000)
   settings        Json?     // Tenant-specific settings
+
+  // Child company hierarchy (internal field)
+  // Displayed as parentTenantId to child company employees
+  SUBparentTenantId String?
+
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
@@ -1082,13 +1090,24 @@ model IngestionSource {
   nextFetch       DateTime?
 
   isActive        Boolean             @default(true)
+
+  // Autopilot fields
+  lastError           String?
+  consecutiveErrors   Int                 @default(0)
+  totalFetches        Int                 @default(0)
+  totalCasesCreated   Int                 @default(0)
+  webhookSecret       String?             // For WEBHOOK type sources
+  emailConfig         Json?               // IMAP config for EMAIL_INBOX type
+
   createdAt       DateTime            @default(now())
   updatedAt       DateTime            @updatedAt
 
   batches         IngestionBatch[]
+  autopilotRuns   AutopilotRun[]
 
   @@index([state])
   @@index([type])
+  @@index([isActive, nextFetch])
 }
 
 model IngestionBatch {
@@ -1176,6 +1195,40 @@ model IngestionRecord {
   // Performance indexes (compound for hot queries)
   @@index([status, predictedValueCents(sort: Desc)])
   @@index([isHighValue, status, createdAt(sort: Desc)])
+}
+
+// ============================================
+// AUTOPILOT RUNS — Track automatic ingestion runs
+// ============================================
+
+model AutopilotRun {
+  id              String           @id @default(cuid())
+  sourceId        String?
+  source          IngestionSource? @relation(fields: [sourceId], references: [id])
+  batchId         String?
+
+  // Run details
+  runType         String           // "scheduled", "manual", "webhook", "email", "bulk_upload"
+  sourcesFetched  Int              @default(0)
+  recordsParsed   Int              @default(0)
+  casesCreated    Int              @default(0)
+  casesRouted     Int              @default(0)
+  errors          Json?            // Array of error messages
+
+  // Timing
+  startedAt       DateTime         @default(now())
+  completedAt     DateTime?
+  durationMs      Int?
+
+  // Status
+  status          String           @default("running") // running, completed, failed
+
+  createdAt       DateTime         @default(now())
+
+  @@index([sourceId])
+  @@index([runType])
+  @@index([startedAt])
+  @@index([status])
 }
 
 // ============================================
@@ -2378,5 +2431,258 @@ model TokenReward {
   @@index([userId])
   @@index([type])
   @@index([createdAt])
+}
+
+// ============================================
+// CHILD COMPANY SYSTEM (Phase 2)
+// Tier 3+ employees can start their own company
+// Shadow accounting: 50% hidden off top, then tier-based splits
+// ============================================
+
+enum ChildCompanyPlan {
+  BRANDED       // $300/year — MGR branding visible, subdomain
+  WHITE_LABEL   // $600/year — custom branding, own domain
+}
+
+enum ChildCompanyStatus {
+  OFFER_PENDING     // Offer sent, not yet accepted
+  OFFER_ACCEPTED    // Accepted, 30-day activation window
+  ACTIVATING        // Setting up (needs 3+ employees)
+  ACTIVE            // Live and operational
+  SUSPENDED         // Temporarily suspended
+  DEACTIVATED       // Permanently closed
+}
+
+enum TransferStatus {
+  PENDING           // Transfer initiated
+  COOLING_PERIOD    // 5-day cooling period
+  COMPLETED         // Transfer finalized
+  CANCELLED         // Employee cancelled during cooling
+}
+
+model ChildCompany {
+  id                  String              @id @default(cuid())
+  tenantId            String?
+  founderId           String              // MGR Capital founder
+  ownerId             String              // Employee who owns this child company
+  companyName         String
+  slug                String              @unique  // URL-friendly: sarahsrecovery
+  status              ChildCompanyStatus  @default(OFFER_PENDING)
+  plan                ChildCompanyPlan    @default(BRANDED)
+
+  // Branding
+  logoUrl             String?
+  primaryColor        String              @default("#1a365d")
+  secondaryColor      String              @default("#2d3748")
+  accentColor         String              @default("#3182ce")
+
+  // Domain
+  subdomain           String?             // sarahsrecovery.capitalmgr.com
+  customDomain        String?             @unique  // app.sarahsrecovery.com (white-label only)
+  domainVerified      Boolean             @default(false)
+
+  // Shadow Accounting — Founder's cut of company profit by employee tier
+  // Tier 1 employee: Founder gets 40% of company profit
+  // Tier 2 employee: Founder gets 30% of company profit
+  // Tier 3+ employee: Founder gets 0% of company profit
+  parentCutTier1      Int                 @default(40)  // % of company profit
+  parentCutTier2      Int                 @default(30)
+  parentCutTier3Plus  Int                 @default(0)
+
+  // Billing
+  annualFeeCents      Int                 @default(30000)  // $300 for branded
+  nextBillingDate     DateTime?
+  billingActive       Boolean             @default(false)
+
+  // Activation
+  activationDeadline  DateTime?           // 30 days from acceptance
+  activatedAt         DateTime?
+  employeeCount       Int                 @default(0)
+  minEmployees        Int                 @default(3)
+
+  // Revenue tracking (FOUNDER ONLY)
+  lifetimeRevenueCents      Int           @default(0)
+  lifetimeFounderCutCents   Int           @default(0)
+  lifetimeOwnerCutCents     Int           @default(0)
+
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+
+  // Relations
+  offers              ChildCompanyOffer[]
+  transfers           EmployeeTransfer[]
+
+  @@index([ownerId])
+  @@index([status])
+  @@index([slug])
+  @@index([tenantId])
+}
+
+model ChildCompanyOffer {
+  id                  String              @id @default(cuid())
+  employeeId          String
+  childCompanyId      String?
+  childCompany        ChildCompany?       @relation(fields: [childCompanyId], references: [id])
+
+  // Qualification
+  employeeTierAtOffer String              // TIER_3_SENIOR_SPECIALIST
+  teamSizeAtOffer     Int                 // Number of recruited employees
+  qualifiedAt         DateTime            @default(now())
+
+  // Offer status
+  isAccepted          Boolean             @default(false)
+  acceptedAt          DateTime?
+  isDeclined          Boolean             @default(false)
+  declinedAt          DateTime?
+
+  // Re-send tracking
+  timesSent           Int                 @default(1)
+  lastSentAt          DateTime            @default(now())
+
+  // Plan selection
+  selectedPlan        ChildCompanyPlan?
+
+  expiresAt           DateTime?           // Offers don't expire, but can be tracked
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+
+  @@index([employeeId])
+  @@index([isAccepted])
+}
+
+model EmployeeTransfer {
+  id                  String              @id @default(cuid())
+  employeeId          String
+  fromTenantId        String?             // null = MGR Capital direct
+  toChildCompanyId    String
+  toChildCompany      ChildCompany        @relation(fields: [toChildCompanyId], references: [id])
+  status              TransferStatus      @default(PENDING)
+
+  // 5-day cooling period
+  coolingStartDate    DateTime?
+  coolingEndDate      DateTime?
+  currentCoolingDay   Int                 @default(0)
+
+  // Identity block (prevent multi-company employment)
+  employeeName        String
+  employeeDob         DateTime?
+  employeeSsn4        String?             // Last 4 digits for identity matching
+
+  // Tier info
+  tierBeforeTransfer  String?             // Employee's tier before transfer
+  tierAfterTransfer   String              @default("TIER_1_ASSOCIATE")  // Always resets
+
+  // Estimated loss (shown in cooling alerts)
+  estimatedMonthlyLossCents Int           @default(0)
+
+  // Resolution
+  completedAt         DateTime?
+  cancelledAt         DateTime?
+  cancelReason        String?
+
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+
+  @@index([employeeId])
+  @@index([status])
+  @@index([toChildCompanyId])
+}
+
+// ============================================
+// EMAIL HOSTING SYSTEM (Phase 3)
+// Modoboa integration — custom email for companies/employees
+// $12 setup + $6/mo employees, $8/mo companies
+// ============================================
+
+enum EmailDomainStatus {
+  PENDING_DNS       // DNS records not yet configured
+  DNS_VERIFIED      // MX, SPF, DKIM, DMARC all verified
+  ACTIVE            // Domain is live and receiving mail
+  SUSPENDED         // Domain suspended (billing or abuse)
+  DELETED           // Domain removed
+}
+
+enum EmailAccountStatus {
+  PROVISIONING      // Being created in Modoboa
+  ACTIVE            // Live and working
+  SUSPENDED         // Suspended (billing)
+  GRACE_PERIOD      // 10-day deletion grace period
+  DELETED           // Permanently deleted
+}
+
+model EmailDomain {
+  id                  String              @id @default(cuid())
+  domain              String              @unique  // e.g., sarahsrecovery.com
+  status              EmailDomainStatus   @default(PENDING_DNS)
+
+  // Modoboa integration
+  modoboaDomainId     String?             // ID in Modoboa system
+
+  // DNS verification
+  mxVerified          Boolean             @default(false)
+  spfVerified         Boolean             @default(false)
+  dkimVerified        Boolean             @default(false)
+  dmarcVerified       Boolean             @default(false)
+  lastDnsCheck        DateTime?
+
+  // DNS records to configure
+  mxRecord            String?
+  spfRecord           String?
+  dkimRecord          String?
+  dmarcRecord         String?
+
+  // Ownership
+  ownerId             String              // User who owns this domain
+  childCompanyId      String?             // If owned by a child company
+
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+
+  // Relations
+  accounts            EmailAccount[]
+
+  @@index([domain])
+  @@index([status])
+  @@index([ownerId])
+}
+
+model EmailAccount {
+  id                  String              @id @default(cuid())
+  emailAddress        String              @unique  // user@domain.com
+  displayName         String
+  userId              String              // MGR user who owns this email
+  domainId            String
+  domain              EmailDomain         @relation(fields: [domainId], references: [id])
+  status              EmailAccountStatus  @default(PROVISIONING)
+
+  // Modoboa integration
+  modoboaMailboxId    String?             // ID in Modoboa system
+
+  // Storage
+  storageUsedMb       Int                 @default(0)
+  storageQuotaMb      Int                 @default(1024)  // 1GB default
+
+  // Billing
+  setupFeeCents       Int                 @default(1200)   // $12 setup
+  monthlyFeeCents     Int                 @default(600)    // $6/mo for employees
+  nextBillingDate     DateTime?
+  billingActive       Boolean             @default(false)
+
+  // Founder free email pool
+  isFree              Boolean             @default(false)
+  assignedByFounder   Boolean             @default(false)
+
+  // Deletion grace period
+  deletionRequestedAt DateTime?
+  deletionScheduledAt DateTime?           // 10 days after request
+  deletionCancelledAt DateTime?
+
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+
+  @@index([userId])
+  @@index([domainId])
+  @@index([status])
+  @@index([emailAddress])
 }
 

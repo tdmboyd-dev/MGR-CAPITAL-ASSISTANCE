@@ -10,6 +10,7 @@ import { roleGuard } from "../middleware/roleGuard.js";
 import { asyncHandler, Errors } from "../middleware/errorHandler.js";
 import { clientService } from "../services/clientService.js";
 import { legalService } from "../services/legalService.js";
+import { notificationService } from "../services/notificationService.js";
 import {
   isValidDocumentTransition,
   validateDocumentTransition,
@@ -154,6 +155,20 @@ router.post("/", authMiddleware, roleGuard(["ADMIN"]), async (req: AuthRequest, 
         details: { email, name }
       }
     });
+
+    // Send welcome email to client
+    if (email) {
+      try {
+        await notificationService.sendWelcomeEmail({
+          to: email,
+          toName: name || "Valued Client",
+          userId: client.id,
+          role: "CLIENT",
+        });
+      } catch (emailError) {
+        console.error("Failed to send client welcome email:", emailError);
+      }
+    }
 
     res.status(201).json({
       success: true,

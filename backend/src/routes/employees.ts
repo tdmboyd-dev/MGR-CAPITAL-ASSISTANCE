@@ -11,6 +11,7 @@ import { roleGuard } from "../middleware/roleGuard.js";
 import { employeeService } from "../services/employeeService.js";
 import { trainingService } from "../services/trainingService.js";
 import { bankingService } from "../services/bankingService.js";
+import { notificationService } from "../services/notificationService.js";
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -528,6 +529,18 @@ router.post("/", authMiddleware, roleGuard(["ADMIN"]), async (req: AuthRequest, 
         details: { email, tier }
       }
     });
+
+    // Send welcome email
+    try {
+      await notificationService.sendWelcomeEmail({
+        to: employee.email,
+        toName: employee.name,
+        userId: employee.id,
+        role: "EMPLOYEE",
+      });
+    } catch (emailError) {
+      console.error("Failed to send welcome email:", emailError);
+    }
 
     res.status(201).json({
       success: true,

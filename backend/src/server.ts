@@ -48,6 +48,13 @@ import notificationRoutes from "./routes/notificationRoutes.js";
 // Feedback System (Phase 18)
 import feedbackRoutes from "./routes/feedbackRoutes.js";
 
+// Email Dashboard & Hosting
+import emailDashboardRoutes from "./routes/emailRoutes.js";
+import emailHostingRoutes from "./routes/emailHostingRoutes.js";
+
+// Child Company System
+import childCompanyRoutes from "./routes/childCompanyRoutes.js";
+
 // Global Search (Phase 20)
 import searchRoutes from "./routes/searchRoutes.js";
 
@@ -101,6 +108,12 @@ import { loginRateLimit, passwordResetRateLimit } from "./middleware/rateLimit.j
 
 // Services that need initialization
 import { notificationService } from "./services/notificationService.js";
+
+// Webhook routes (external partner leads)
+import webhookRoutes from "./routes/webhookRoutes.js";
+
+// Scheduler (autopilot crons)
+import scheduler from "./cron/scheduler.js";
 
 const app = express();
 
@@ -221,6 +234,18 @@ app.use("/api/marketplace", marketplaceRoutes);
 // State Law Oracle
 app.use("/api/oracle", oracleRoutes);
 
+// Email Dashboard (Founder)
+app.use("/api/emails", emailDashboardRoutes);
+
+// Email Hosting (Phase 3)
+app.use("/api/email-hosting", emailHostingRoutes);
+
+// Child Company System (Phase 2)
+app.use("/api/child-companies", childCompanyRoutes);
+
+// Webhook Lead Receiver (Autopilot)
+app.use("/api/webhooks", webhookRoutes);
+
 // ============================================
 // HEALTH CHECK
 // ============================================
@@ -322,6 +347,19 @@ app.listen(PORT, async () => {
   // Initialize services
   const smtpReady = await notificationService.initialize();
   console.log(`[Email] SMTP ${smtpReady ? 'initialized' : 'not configured (emails will be logged)'}`);
+
+  // Start scheduler if enabled
+  const enableScheduler = process.env.ENABLE_SCHEDULER === "true";
+  if (enableScheduler) {
+    try {
+      await scheduler.start();
+      console.log(`[Scheduler] Autopilot scheduler STARTED`);
+    } catch (err) {
+      console.error(`[Scheduler] Failed to start:`, err);
+    }
+  } else {
+    console.log(`[Scheduler] Disabled (set ENABLE_SCHEDULER=true to enable)`);
+  }
 
   console.log(`
 ╔════════════════════════════════════════════════╗

@@ -20,6 +20,9 @@ import parserService, {
 import { scraperService } from "../services/scraperService.js";
 import { ingestionIntelligenceService } from "../services/IngestionIntelligenceService.js";
 import { JurisdictionKey } from "../types/ingestionTypes.js";
+import { caseRoutingService } from "../services/CaseRoutingService.js";
+import { runAutoIngestion, fetchSingleSource } from "../cron/autoIngestionCron.js";
+import multer from "multer";
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -65,6 +68,9 @@ router.post("/sources", authMiddleware, roleGuard(["ADMIN"]), async (req: AuthRe
       "AUCTION_RESULT",
       "COUNTY_WEBSITE",
       "MANUAL_ENTRY",
+      "WEBHOOK",
+      "EMAIL_INBOX",
+      "BULK_UPLOAD",
     ];
 
     if (!validTypes.includes(type)) {
@@ -1334,6 +1340,353 @@ router.post(
       count: duplicates.length,
       data: duplicates,
     });
+  })
+);
+
+// ============================================
+// BULK FILE UPLOAD (multer)
+// ============================================
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 50 * 1024 * 1024, files: 10 }, // 50MB per file, max 10 files
+  fileFilter: (_req, file, cb) => {
+    const allowed = [
+      "text/csv",
+      "application/csv",
+      "application/pdf",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "application/vnd.ms-excel",
+      "text/plain",
+    ];
+    const ext = file.originalname.toLowerCase();
+    if (allowed.includes(file.mimetype) || ext.endsWith(".csv") || ext.endsWith(".pdf") || ext.endsWith(".xlsx") || ext.endsWith(".xls")) {
+      cb(null, true);
+    } else {
+      cb(new Error(`Unsupported file type: ${file.mimetype}`));
+    }
+  },
+});
+
+/**
+ * POST /api/ingestion/upload — Bulk file upload
+ * Accepts CSV, PDF, XLSX files (up to 50MB, max 10 files)
+ */
+router.post(
+  "/upload",
+  authMiddleware,
+  roleGuard(["ADMIN"]),
+  upload.array("files", 10),
+  asyncHandler(async (req: AuthRequest, res: Response) => {
+    const files = req.files as Express.Multer.File[];
+
+    if (!files || files.length === 0) {
+      throw Errors.badRequest("No files uploaded");
+    }
+
+    const { sourceId } = req.body;
+
+    // Find or create a BULK_UPLOAD source
+    let source: any;
+    if (sourceId) {
+      source = await prisma.ingestionSource.findUnique({ where: { id: sourceId } });
+      if (!source) throw Errors.notFound("Ingestion source");
+    } else {
+      source = await prisma.ingestionSource.findFirst({ where: { type: "BULK_UPLOAD", isActive: true } });
+      if (!source) {
+        source = await prisma.ingestionSource.create({
+          data: { name: "Bulk File Upload", type: "BULK_UPLOAD", state: "ALL", isActive: true },
+        });
+      }
+    }
+
+    const results: Array<{ fileName: string; recordsParsed: number; casesCreated: number; errors: string[] }> = [];
+
+    for (const file of files) {
+      const fileResult = { fileName: file.originalname, recordsParsed: 0, casesCreated: 0, errors: [] as string[] };
+
+      try {
+        const content = file.buffer.toString("utf-8");
+
+        const parseResult = await parseContent(content, {
+          filename: file.originalname,
+        });
+
+        fileResult.recordsParsed = parseResult.totalRecords;
+
+        if (parseResult.records.length > 0) {
+          const batchId = await ingestionService.createBatch(source.id, file.originalname);
+          const batchResult = await ingestionService.processBatch(
+            batchId,
+            parseResult.records.map((r) => r.normalizedData || r.rawData || {}),
+          );
+          fileResult.casesCreated = batchResult.created;
+          fileResult.errors = batchResult.errors;
+
+          // Create autopilot run
+          await prisma.autopilotRun.create({
+            data: {
+              sourceId: source.id,
+              batchId,
+              runType: "bulk_upload",
+              recordsParsed: parseResult.totalRecords,
+              casesCreated: batchResult.created,
+              status: "completed",
+              completedAt: new Date(),
+            },
+          });
+
+          // Auto-route
+          const routingConfig = await caseRoutingService.getConfig();
+          if (routingConfig.enabled && routingConfig.autoAssignOnIngestion) {
+            const newRecords = await prisma.ingestionRecord.findMany({
+              where: { batchId, caseId: { not: null } },
+              select: { caseId: true },
+            });
+            const caseIds = newRecords.map((r) => r.caseId!).filter(Boolean);
+            if (caseIds.length > 0) {
+              await caseRoutingService.autoAssignBatch(caseIds);
+            }
+          }
+        }
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : "Unknown error";
+        fileResult.errors.push(msg);
+      }
+
+      results.push(fileResult);
+    }
+
+    // Log audit
+    await prisma.auditLog.create({
+      data: {
+        userId: req.user!.id,
+        action: "INGESTION_BULK_UPLOAD",
+        entityType: "INGESTION_BATCH",
+        entityId: "bulk",
+        details: {
+          fileCount: files.length,
+          totalRecords: results.reduce((s, r) => s + r.recordsParsed, 0),
+          totalCases: results.reduce((s, r) => s + r.casesCreated, 0),
+        },
+      },
+    });
+
+    res.json({
+      success: true,
+      data: {
+        filesProcessed: results.length,
+        totalRecordsParsed: results.reduce((s, r) => s + r.recordsParsed, 0),
+        totalCasesCreated: results.reduce((s, r) => s + r.casesCreated, 0),
+        perFile: results,
+      },
+    });
+  })
+);
+
+// ============================================
+// SOURCE MANAGEMENT ROUTES
+// ============================================
+
+/**
+ * PUT /api/ingestion/sources/:id — Update source
+ */
+router.put(
+  "/sources/:id",
+  authMiddleware,
+  roleGuard(["ADMIN"]),
+  asyncHandler(async (req: AuthRequest, res: Response) => {
+    const { id } = req.params;
+    const { name, url, frequency, isActive, parserConfig, state, county } = req.body;
+
+    const source = await prisma.ingestionSource.findUnique({ where: { id } });
+    if (!source) throw Errors.notFound("Ingestion source");
+
+    const updated = await prisma.ingestionSource.update({
+      where: { id },
+      data: {
+        ...(name !== undefined && { name }),
+        ...(url !== undefined && { url }),
+        ...(frequency !== undefined && { frequency }),
+        ...(isActive !== undefined && { isActive }),
+        ...(parserConfig !== undefined && { parserConfig }),
+        ...(state !== undefined && { state }),
+        ...(county !== undefined && { county }),
+      },
+    });
+
+    await prisma.auditLog.create({
+      data: {
+        userId: req.user!.id,
+        action: "INGESTION_SOURCE_UPDATED",
+        entityType: "INGESTION_SOURCE",
+        entityId: id,
+        details: req.body,
+      },
+    });
+
+    res.json({ success: true, data: updated });
+  })
+);
+
+/**
+ * DELETE /api/ingestion/sources/:id — Soft delete source
+ */
+router.delete(
+  "/sources/:id",
+  authMiddleware,
+  roleGuard(["ADMIN"]),
+  asyncHandler(async (req: AuthRequest, res: Response) => {
+    const { id } = req.params;
+
+    const source = await prisma.ingestionSource.findUnique({ where: { id } });
+    if (!source) throw Errors.notFound("Ingestion source");
+
+    await prisma.ingestionSource.update({
+      where: { id },
+      data: { isActive: false },
+    });
+
+    await prisma.auditLog.create({
+      data: {
+        userId: req.user!.id,
+        action: "INGESTION_SOURCE_DELETED",
+        entityType: "INGESTION_SOURCE",
+        entityId: id,
+      },
+    });
+
+    res.json({ success: true, message: "Source deactivated" });
+  })
+);
+
+/**
+ * POST /api/ingestion/sources/:id/fetch-now — Manually trigger single source fetch
+ */
+router.post(
+  "/sources/:id/fetch-now",
+  authMiddleware,
+  roleGuard(["ADMIN"]),
+  asyncHandler(async (req: AuthRequest, res: Response) => {
+    const { id } = req.params;
+
+    const source = await prisma.ingestionSource.findUnique({ where: { id } });
+    if (!source) throw Errors.notFound("Ingestion source");
+
+    const result = await fetchSingleSource(id);
+
+    await prisma.auditLog.create({
+      data: {
+        userId: req.user!.id,
+        action: "INGESTION_MANUAL_FETCH",
+        entityType: "INGESTION_SOURCE",
+        entityId: id,
+        details: { sourcesFetched: result.sourcesFetched, casesCreated: result.casesCreated },
+      },
+    });
+
+    res.json({ success: true, data: result });
+  })
+);
+
+// ============================================
+// AUTOPILOT STATUS & HISTORY
+// ============================================
+
+/**
+ * GET /api/ingestion/autopilot/status — Dashboard data
+ */
+router.get(
+  "/autopilot/status",
+  authMiddleware,
+  roleGuard(["ADMIN"]),
+  asyncHandler(async (_req: Request, res: Response) => {
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    const [activeSources, totalSources, casesToday, recentRuns, nextFetch] = await Promise.all([
+      prisma.ingestionSource.count({ where: { isActive: true } }),
+      prisma.ingestionSource.count(),
+      prisma.autopilotRun.aggregate({
+        where: { startedAt: { gte: todayStart } },
+        _sum: { casesCreated: true },
+      }),
+      prisma.autopilotRun.findMany({
+        where: { startedAt: { gte: todayStart } },
+        orderBy: { startedAt: "desc" },
+        take: 10,
+      }),
+      prisma.ingestionSource.findFirst({
+        where: { isActive: true, nextFetch: { not: null } },
+        orderBy: { nextFetch: "asc" },
+        select: { nextFetch: true, name: true },
+      }),
+    ]);
+
+    const successToday = recentRuns.filter((r) => r.status === "completed").length;
+    const failedToday = recentRuns.filter((r) => r.status === "failed").length;
+    const successRate = recentRuns.length > 0 ? Math.round((successToday / recentRuns.length) * 100) : 100;
+
+    res.json({
+      success: true,
+      data: {
+        activeSources,
+        totalSources,
+        casesCreatedToday: casesToday._sum.casesCreated || 0,
+        successRate,
+        nextFetch: nextFetch?.nextFetch,
+        nextFetchSource: nextFetch?.name,
+        runsToday: recentRuns.length,
+        successToday,
+        failedToday,
+      },
+    });
+  })
+);
+
+/**
+ * GET /api/ingestion/autopilot/history — Recent autopilot runs
+ */
+router.get(
+  "/autopilot/history",
+  authMiddleware,
+  roleGuard(["ADMIN"]),
+  asyncHandler(async (req: Request, res: Response) => {
+    const limit = parseInt(req.query.limit as string) || 50;
+
+    const runs = await prisma.autopilotRun.findMany({
+      orderBy: { startedAt: "desc" },
+      take: limit,
+      include: {
+        source: { select: { name: true, type: true, state: true } },
+      },
+    });
+
+    res.json({ success: true, count: runs.length, data: runs });
+  })
+);
+
+/**
+ * POST /api/ingestion/autopilot/trigger — Manually trigger full autopilot run
+ */
+router.post(
+  "/autopilot/trigger",
+  authMiddleware,
+  roleGuard(["ADMIN"]),
+  asyncHandler(async (req: AuthRequest, res: Response) => {
+    const result = await runAutoIngestion();
+
+    await prisma.auditLog.create({
+      data: {
+        userId: req.user!.id,
+        action: "AUTOPILOT_MANUAL_TRIGGER",
+        entityType: "AUTOPILOT",
+        entityId: "manual",
+        details: { ...result } as any,
+      },
+    });
+
+    res.json({ success: true, data: result });
   })
 );
 

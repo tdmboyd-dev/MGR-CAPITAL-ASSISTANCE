@@ -7,8 +7,10 @@ import { Router, Request, Response } from "express";
 import { authMiddleware, AuthRequest } from "../middleware/authMiddleware.js";
 import { roleGuard } from "../middleware/roleGuard.js";
 import { documentVaultService } from "../services/documentVaultService.js";
-import { DocumentType } from "@prisma/client";
+import { PrismaClient, DocumentType } from "@prisma/client";
 import multer from "multer";
+
+const prisma = new PrismaClient();
 
 const router = Router();
 
@@ -22,6 +24,45 @@ const upload = multer({
 
 // All routes require authentication
 router.use(authMiddleware);
+
+// ============================================
+// LIST ALL DOCUMENTS
+// ============================================
+
+/**
+ * GET /api/documents
+ * List all documents (FOUNDER/ADMIN see all, others see their own)
+ */
+router.get("/", async (req: AuthRequest, res: Response) => {
+  try {
+    const user = req.user!;
+    const where: any = {};
+
+    // Non-founders only see documents from their cases
+    if (user.role !== "FOUNDER" && user.role !== "ADMIN") {
+      where.OR = [
+        { uploadedById: user.userId },
+        { case: { assignedToId: user.userId } },
+        { case: { clientId: user.userId } },
+      ];
+    }
+
+    const documents = await prisma.document.findMany({
+      where,
+      include: {
+        uploadedBy: { select: { id: true, name: true, role: true } },
+        case: { select: { id: true, caseCode: true, state: true } },
+      },
+      orderBy: { createdAt: "desc" },
+      take: 100,
+    });
+
+    res.json({ success: true, documents, total: documents.length });
+  } catch (error: any) {
+    console.error("List documents error:", error);
+    res.status(500).json({ success: false, error: "Failed to list documents" });
+  }
+});
 
 // ============================================
 // UPLOAD ENDPOINTS

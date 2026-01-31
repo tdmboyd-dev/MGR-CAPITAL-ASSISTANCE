@@ -35,6 +35,10 @@ import { backupService } from "../services/BackupService.js";
 import { reportingService } from "../services/ReportingService.js";
 import { complianceExportService } from "../services/ComplianceExportService.js";
 
+// Autopilot imports
+import { runAutoIngestion } from "./autoIngestionCron.js";
+import { emailIngestionService } from "../services/EmailIngestionService.js";
+
 const prisma = new PrismaClient();
 
 // =============================================================================
@@ -194,6 +198,32 @@ const jobs: CronJob[] = [
     category: "report",
     task: async () => {
       await complianceExportService.generateWeeklyDigest();
+    },
+  },
+
+  // ===========================================
+  // AUTOPILOT INGESTION SCHEDULES
+  // ===========================================
+  {
+    name: "Auto-Ingestion Fetch",
+    key: "auto_ingestion_fetch",
+    cronExpression: "*/30 * * * *", // Every 30 minutes
+    description: "Fetch due ingestion sources, parse content, create cases, auto-assign",
+    enabledByDefault: false, // FOUNDER must enable via ENABLE_SCHEDULER
+    category: "bot",
+    task: async () => {
+      await runAutoIngestion();
+    },
+  },
+  {
+    name: "Email Inbox Poll",
+    key: "email_inbox_poll",
+    cronExpression: "*/5 * * * *", // Every 5 minutes
+    description: "Poll email inbox for leads (attachments + body parsing)",
+    enabledByDefault: false,
+    category: "bot",
+    task: async () => {
+      await emailIngestionService.pollInbox();
     },
   },
 
