@@ -107,7 +107,7 @@ router.get("/nickel", authMiddleware, roleGuard(["ADMIN", "FOUNDER"]), async (_r
     const cases = await prisma.case.findMany({
       where: {
         status: {
-          in: ["PAID", "AWAITING_FUNDS", "SIGNED"]
+          in: ["PAID", "AWAITING_FUNDS", "DOCS_SIGNED"]
         }
       },
       include: {
@@ -122,7 +122,7 @@ router.get("/nickel", authMiddleware, roleGuard(["ADMIN", "FOUNDER"]), async (_r
       where: { email: process.env.FOUNDER_EMAIL || "admin@capitalmgr.com" }
     });
 
-    const nickelPayouts = cases.map(c => {
+    const nickelPayouts = cases.map((c: any) => {
       const surplusAmount = c.surplusAmountCents || 0;
       const feePercent = c.feePercent || 33;
 
@@ -160,7 +160,7 @@ router.get("/nickel", authMiddleware, roleGuard(["ADMIN", "FOUNDER"]), async (_r
 
         // CLIENT PAYOUT (70% of surplus to client)
         client: {
-          name: c.client?.name || c.ownerName || 'Unknown',
+          name: c.client?.name || 'Unknown',
           email: c.client?.email || '',
           phone: c.client?.phone || '',
           bankName: metadata.clientBankName || metadata.bankName,
@@ -180,7 +180,7 @@ router.get("/nickel", authMiddleware, roleGuard(["ADMIN", "FOUNDER"]), async (_r
           routingNumber: metadata.employeeRoutingNumber,
           accountNumber: metadata.employeeAccountNumber,
           commissionCents: calculation.employeeCommissionCents,
-          commissionRate: calculation.employeeActualRate,
+          commissionRate: (calculation as any).employeeActualRate,
         } : null,
 
         // FOUNDER SHARE (remainder after employee commission)

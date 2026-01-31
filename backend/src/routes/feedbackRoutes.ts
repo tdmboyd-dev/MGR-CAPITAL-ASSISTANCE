@@ -9,9 +9,8 @@ import express from "express";
 import { authenticate, roleGuard } from "../middleware/authMiddleware.js";
 import { feedbackService } from "../services/FeedbackService.js";
 
-// Define FeedbackCategory locally if not in Prisma schema
-type FeedbackCategory = "BUG" | "FEATURE" | "IMPROVEMENT" | "QUESTION" | "OTHER";
-const FeedbackCategoryValues: FeedbackCategory[] = ["BUG", "FEATURE", "IMPROVEMENT", "QUESTION", "OTHER"];
+// Use Prisma's FeedbackCategory enum values
+const FeedbackCategoryValues = ["GENERAL", "AI_RESPONSE", "FEATURE", "UI_UX", "BUG", "PERFORMANCE", "TRAINING", "DOCUMENT"];
 
 const router = express.Router();
 
@@ -23,7 +22,7 @@ const router = express.Router();
  * POST /api/feedback/submit
  * Submit user feedback
  */
-router.post("/submit", authenticate, async (req, res) => {
+router.post("/submit", authenticate, async (req: any, res) => {
   try {
     const userId = req.user.id;
     const {
@@ -52,7 +51,7 @@ router.post("/submit", authenticate, async (req, res) => {
 
     const result = await feedbackService.submitFeedback({
       userId,
-      category: category as FeedbackCategory,
+      category: category as any,
       feature,
       rating,
       comment,
@@ -74,7 +73,7 @@ router.post("/submit", authenticate, async (req, res) => {
  * GET /api/feedback/my
  * Get current user's feedback history
  */
-router.get("/my", authenticate, async (req, res) => {
+router.get("/my", authenticate, async (req: any, res) => {
   try {
     const userId = req.user.id;
     const limit = parseInt(req.query.limit as string) || 20;
@@ -121,7 +120,7 @@ router.get("/", authenticate, roleGuard(["FOUNDER", "ADMIN"]), async (req, res) 
     } = req.query;
 
     const result = await feedbackService.getFeedbacks({
-      category: category as FeedbackCategory,
+      category: category as any,
       feature: feature as string,
       minRating: minRating ? parseInt(minRating as string) : undefined,
       maxRating: maxRating ? parseInt(maxRating as string) : undefined,
@@ -177,7 +176,7 @@ router.patch(
   "/:id/respond",
   authenticate,
   roleGuard(["FOUNDER", "ADMIN"]),
-  async (req, res) => {
+  async (req: any, res) => {
     try {
       const { id } = req.params;
       const { response } = req.body;

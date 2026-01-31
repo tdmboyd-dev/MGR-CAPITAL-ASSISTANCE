@@ -758,7 +758,7 @@ class WatchService {
     alertsCreated: number;
   }> {
     const watchTargets = await prisma.watchTarget.findMany({
-      where: { enabled: true },
+      where: { isActive: true },
     });
 
     let healthy = 0;
@@ -935,7 +935,7 @@ class WatchService {
     const existingAlert = await prisma.watchAlert.findFirst({
       where: {
         type: alertType as WatchAlertType,
-        watchTargetId: target.id,
+        details: { path: ["watchTargetId"], equals: target.id },
         isResolved: false,
       },
     });
@@ -976,7 +976,6 @@ class WatchService {
         },
         state: target.state,
         county: target.county,
-        watchTargetId: target.id,
       },
     });
 
@@ -993,11 +992,11 @@ class WatchService {
       url: string;
       state: string | null;
       county: string | null;
-      enabled: boolean;
+      isActive: boolean;
       healthScore: number;
       healthStatus: string;
-      lastCheckedAt: Date | null;
-      lastChangeAt: Date | null;
+      lastScrapedAt: Date | null;
+      lastSuccessAt: Date | null;
     }>;
     summary: {
       total: number;
@@ -1021,11 +1020,11 @@ class WatchService {
           url: target.url,
           state: target.state,
           county: target.county,
-          enabled: target.enabled,
+          isActive: target.isActive,
           healthScore: health.score,
           healthStatus: health.status,
-          lastCheckedAt: target.lastCheckedAt,
-          lastChangeAt: target.lastChangeAt,
+          lastScrapedAt: target.lastScrapedAt,
+          lastSuccessAt: target.lastSuccessAt,
         };
       })
     );
@@ -1060,12 +1059,12 @@ class WatchService {
         where: { id: data.id },
         data: {
           name: data.name,
-          watchType: data.watchType,
+          type: data.watchType,
           url: data.url,
           state: data.state,
           county: data.county,
-          enabled: data.enabled ?? true,
-          checkIntervalMinutes: data.checkIntervalMinutes ?? 360,
+          isActive: data.enabled ?? true,
+          config: { checkIntervalMinutes: data.checkIntervalMinutes ?? 360 },
         },
       });
     }
@@ -1073,12 +1072,12 @@ class WatchService {
     return prisma.watchTarget.create({
       data: {
         name: data.name,
-        watchType: data.watchType,
+        type: data.watchType,
         url: data.url,
         state: data.state,
         county: data.county,
-        enabled: data.enabled ?? true,
-        checkIntervalMinutes: data.checkIntervalMinutes ?? 360,
+        isActive: data.enabled ?? true,
+        config: { checkIntervalMinutes: data.checkIntervalMinutes ?? 360 },
       },
     });
   }
@@ -1098,16 +1097,6 @@ class WatchService {
   async getWatchTarget(id: string): Promise<unknown> {
     return prisma.watchTarget.findUnique({
       where: { id },
-      include: {
-        scrapedItems: {
-          orderBy: { fetchedAt: "desc" },
-          take: 10,
-        },
-        watchAlerts: {
-          where: { isResolved: false },
-          orderBy: { createdAt: "desc" },
-        },
-      },
     });
   }
 

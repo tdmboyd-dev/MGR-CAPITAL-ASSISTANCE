@@ -347,8 +347,8 @@ class TrainingIntelligenceService {
         recommendedModules.push({
           moduleId,
           moduleTitle: moduleId.replace(/-/g, " ").replace(/\b\w/g, (l) => l.toUpperCase()),
-          reason: "TIER_REQUIREMENT",
-          priority: "HIGH",
+          reason: "TIER_REQUIREMENT" as TrainingRecommendationReason,
+          priority: "HIGH" as TrainingRecommendationPriority,
           estimatedDuration: 30,
           mandatory: true,
         });
@@ -362,8 +362,8 @@ class TrainingIntelligenceService {
           recommendedModules.push({
             moduleId,
             moduleTitle: moduleId.replace(/-/g, " ").replace(/\b\w/g, (l) => l.toUpperCase()),
-            reason: "MISSING_SKILLS",
-            priority: gap.gap > 30 ? "URGENT" : "NORMAL",
+            reason: "MISSING_SKILLS" as TrainingRecommendationReason,
+            priority: (gap.gap > 30 ? "URGENT" : "NORMAL") as TrainingRecommendationPriority,
             estimatedDuration: 45,
             mandatory: false,
           });
@@ -378,8 +378,8 @@ class TrainingIntelligenceService {
           recommendedModules.push({
             moduleId,
             moduleTitle: moduleId.replace(/-/g, " ").replace(/\b\w/g, (l) => l.toUpperCase()),
-            reason: "PROMOTION_PATH",
-            priority: "NORMAL",
+            reason: "PROMOTION_PATH" as TrainingRecommendationReason,
+            priority: "NORMAL" as TrainingRecommendationPriority,
             estimatedDuration: 60,
             mandatory: false,
           });
@@ -392,20 +392,20 @@ class TrainingIntelligenceService {
       coachingAreas.push("New hire onboarding completion");
       recommendedModules.forEach((m) => {
         if (m.reason === "TIER_REQUIREMENT") {
-          m.priority = "URGENT";
+          m.priority = "URGENT" as TrainingRecommendationPriority;
           m.dueDate = new Date(Date.now() + this.config.mandatoryTrainingDeadlineDays * 24 * 60 * 60 * 1000);
         }
       });
     }
 
     // Calculate overall priority
-    let overallPriority: TrainingRecommendationPriority = "NORMAL";
+    let overallPriority = "NORMAL" as TrainingRecommendationPriority;
     if (recommendedModules.some((m) => m.priority === "URGENT" || m.priority === "MANDATORY")) {
-      overallPriority = "URGENT";
+      overallPriority = "URGENT" as TrainingRecommendationPriority;
     } else if (recommendedModules.some((m) => m.priority === "HIGH")) {
-      overallPriority = "HIGH";
+      overallPriority = "HIGH" as TrainingRecommendationPriority;
     } else if (recommendedModules.length === 0) {
-      overallPriority = "LOW";
+      overallPriority = "LOW" as TrainingRecommendationPriority;
     }
 
     return {
@@ -450,7 +450,7 @@ class TrainingIntelligenceService {
         if (!insight) return null;
 
         title = `Update: ${insight.title}`;
-        description = insight.summary;
+        description = insight.summary || "";
         content = this.buildContentFromInsight(insight);
         quizQuestions = this.generateQuizFromInsight(insight);
         expiresAt = new Date(Date.now() + this.config.moduleExpirationDays * 24 * 60 * 60 * 1000);
@@ -788,11 +788,11 @@ class TrainingIntelligenceService {
     // Determine status
     let status: TierProgressionStatus;
     if (metCount === requirementsMet.length) {
-      status = this.config.tierProgressionReviewRequired ? "PENDING_REVIEW" : "REQUIREMENTS_MET";
+      status = this.config.tierProgressionReviewRequired ? ("PENDING_REVIEW" as TierProgressionStatus) : ("REQUIREMENTS_MET" as TierProgressionStatus);
     } else if (overallProgress >= 70) {
-      status = "IN_PROGRESS";
+      status = "IN_PROGRESS" as TierProgressionStatus;
     } else {
-      status = "NOT_ELIGIBLE";
+      status = "NOT_ELIGIBLE" as TierProgressionStatus;
     }
 
     return {

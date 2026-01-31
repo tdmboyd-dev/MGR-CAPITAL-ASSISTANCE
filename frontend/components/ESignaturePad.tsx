@@ -87,7 +87,7 @@ export function ESignaturePad({
 
       // Save the signed PDF
       const signedPdfBytes = await pdfDoc.save();
-      const blob = new Blob([signedPdfBytes], { type: "application/pdf" });
+      const blob = new Blob([new Uint8Array(signedPdfBytes)], { type: "application/pdf" });
 
       if (onSigned) {
         onSigned(blob);

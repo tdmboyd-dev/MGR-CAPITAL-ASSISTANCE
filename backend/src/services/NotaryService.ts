@@ -228,7 +228,7 @@ class NotaryService {
         throw new Error(`Notarize API error: ${response.status}`);
       }
 
-      const data = await response.json();
+      const data: any = await response.json();
 
       // Log the session in database
       await this.logNotarySession({
@@ -283,7 +283,7 @@ class NotaryService {
         throw new Error(`NotaryCam API error: ${response.status}`);
       }
 
-      const data = await response.json();
+      const data: any = await response.json();
 
       await this.logNotarySession({
         caseId: request.caseId,
@@ -363,7 +363,7 @@ class NotaryService {
           headers: { 'Authorization': `Bearer ${NOTARIZE_API_KEY}` },
         });
         if (response.ok) {
-          const data = await response.json();
+          const data: any = await response.json();
           return {
             id: sessionId,
             status: this.mapNotarizeStatus(data.status),
@@ -430,7 +430,7 @@ class NotaryService {
           headers: { 'Authorization': `Bearer ${NOTARIZE_API_KEY}` },
         });
         if (response.ok) {
-          const data = await response.json();
+          const data: any = await response.json();
           return {
             available: data.available,
             nextAvailableSlot: data.next_slot ? new Date(data.next_slot) : undefined,
@@ -519,7 +519,7 @@ class NotaryService {
       await prisma.document.update({
         where: { id: data.documentId },
         data: {
-          status: DocumentStatus.PENDING,
+          status: DocumentStatus.PENDING_SIGNATURE,
           metadata: {
             notarySessionId: data.externalId,
             notaryProvider: data.provider,
@@ -539,7 +539,7 @@ class NotaryService {
           data: {
             caseId: data.caseId,
             userId: caseData.clientId,
-            type: 'OTHER',
+            type: 'CALL',
             direction: 'OUTBOUND',
             subject: 'Notarization Session Requested',
             content: `A remote online notarization session has been scheduled. Provider: ${data.provider}, Session ID: ${data.externalId}`,

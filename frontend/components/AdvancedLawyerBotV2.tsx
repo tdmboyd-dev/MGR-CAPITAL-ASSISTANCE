@@ -101,7 +101,7 @@ function BotModel({
   const rightEyeRef = useRef<THREE.Mesh>(null!)
   const browRef = useRef<THREE.Mesh>(null!)
 
-  const [targetViseme, setTargetViseme] = useState(VISEMES.silence)
+  const [targetViseme, setTargetViseme] = useState<{ mouthOpen: number; mouthWide: number; jawOpen: number }>(VISEMES.silence)
   const [currentMouth, setCurrentMouth] = useState({ open: 0, wide: 0, jaw: 0 })
   const [blinkTimer, setBlinkTimer] = useState(Math.random() * 3)
   const [isBlinking, setIsBlinking] = useState(false)

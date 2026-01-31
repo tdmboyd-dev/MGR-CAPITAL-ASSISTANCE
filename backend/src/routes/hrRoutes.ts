@@ -55,14 +55,14 @@ router.get("/dashboard", async (_req: AuthenticatedRequest, res: Response) => {
 
     // Get tier distribution
     const tierCounts = await prisma.user.groupBy({
-      by: ["tier"],
+      by: ["employeeTier"],
       where: { role: { in: ["EMPLOYEE", "TEAM_LEAD"] } },
       _count: true
     });
 
     const tierDistribution: Record<string, number> = {};
-    tierCounts.forEach(t => {
-      if (t.tier) tierDistribution[t.tier] = t._count;
+    tierCounts.forEach((t: any) => {
+      if (t.employeeTier) tierDistribution[t.employeeTier] = t._count;
     });
 
     // Get role distribution
@@ -137,7 +137,7 @@ router.get("/employees", async (_req: AuthenticatedRequest, res: Response) => {
     const employees = await prisma.user.findMany({
       where: { role: { in: ["EMPLOYEE", "TEAM_LEAD", "HR", "COMPLIANCE"] } },
       include: {
-        teamLead: {
+        teamLeader: {
           select: { id: true, name: true }
         },
         assignedCases: {
@@ -159,11 +159,11 @@ router.get("/employees", async (_req: AuthenticatedRequest, res: Response) => {
         email: emp.email,
         phone: emp.phone,
         role: emp.role,
-        tier: emp.tier || "TIER_1_ASSOCIATE",
+        tier: emp.employeeTier || "TIER_1_ASSOCIATE",
         status: emp.isActive ? "ACTIVE" : "INACTIVE",
         hireDate: emp.createdAt.toISOString(),
-        teamLeadId: emp.teamLeadId,
-        teamLeadName: emp.teamLead?.name,
+        teamLeadId: emp.teamLeaderId,
+        teamLeadName: emp.teamLeader?.name,
         casesHandled: emp.assignedCases.length,
         trainingProgress: Math.round((completed / total) * 100),
         lastActive: emp.updatedAt.toISOString()
@@ -214,7 +214,7 @@ router.patch("/employees/:id/tier", async (req: AuthenticatedRequest, res: Respo
 
     await prisma.user.update({
       where: { id },
-      data: { tier }
+      data: { employeeTier: tier }
     });
 
     res.json({ success: true, message: "Employee tier updated" });
@@ -280,7 +280,7 @@ router.post("/onboarding", async (req: AuthenticatedRequest, res: Response) => {
         phone,
         passwordHash: "PENDING_ONBOARDING", // Will be set during activation
         role: "EMPLOYEE",
-        tier: "TIER_1_ASSOCIATE",
+        employeeTier: "TIER_1_ASSOCIATE",
         isActive: false
       }
     });
@@ -390,7 +390,7 @@ router.get("/performance", async (_req: AuthenticatedRequest, res: Response) => 
         new Date(c.createdAt) < thisMonthStart
       ).length;
 
-      const successfulCases = cases.filter(c => c.status === "COMPLETED" || c.status === "CLOSED").length;
+      const successfulCases = cases.filter(c => c.status === "PAID" || c.status === "CLOSED").length;
       const successRate = cases.length > 0 ? Math.round((successfulCases / cases.length) * 100) : 0;
 
       // Calculate tier progress (simplified)
@@ -401,7 +401,7 @@ router.get("/performance", async (_req: AuthenticatedRequest, res: Response) => 
         TIER_4_TEAM_LEADER: 4,
         TIER_5_EXECUTIVE_PARTNER: 5
       };
-      const currentLevel = tierLevels[emp.tier || "TIER_1_ASSOCIATE"] || 1;
+      const currentLevel = tierLevels[emp.employeeTier || "TIER_1_ASSOCIATE"] || 1;
       const progressPercent = Math.min(((cases.length / 10) + (successRate / 2)) % 100, 100);
 
       // Flags based on performance
@@ -412,7 +412,7 @@ router.get("/performance", async (_req: AuthenticatedRequest, res: Response) => 
       return {
         employeeId: emp.id,
         employeeName: emp.name,
-        tier: emp.tier || "TIER_1_ASSOCIATE",
+        tier: emp.employeeTier || "TIER_1_ASSOCIATE",
         casesThisMonth: thisMonth,
         casesLastMonth: lastMonth,
         successRate,
@@ -463,7 +463,7 @@ router.get("/training-compliance", async (_req: AuthenticatedRequest, res: Respo
       // Get certifications (completed modules that are marked as certifications)
       const certifications = progress
         .filter(p => p.completedAt && p.module?.isCertification)
-        .map(p => p.module?.name || "Certification");
+        .map(p => p.module?.title || "Certification");
 
       // Find next deadline
       const upcomingDeadlines = progress
@@ -480,7 +480,7 @@ router.get("/training-compliance", async (_req: AuthenticatedRequest, res: Respo
         employeeId: emp.id,
         employeeName: emp.name,
         role: emp.role,
-        tier: emp.tier || "TIER_1_ASSOCIATE",
+        tier: emp.employeeTier || "TIER_1_ASSOCIATE",
         totalModules: total,
         completedModules: completed,
         overdueModules: overdue,
@@ -522,14 +522,15 @@ router.post("/training/remind/:employeeId", async (req: AuthenticatedRequest, re
     // Log the notification (in real system, would send email/SMS)
     await prisma.notificationLog.create({
       data: {
-        userId: employeeId,
-        type: "TRAINING_REMINDER",
-        channel: "EMAIL",
-        recipient: employee.email,
+        type: "EMAIL",
+        toAddress: employee.email,
+        toName: employee.name,
         subject: "Training Reminder - Action Required",
-        body: `Hi ${employee.name}, you have overdue training modules. Please complete them as soon as possible.`,
+        bodyPreview: `Hi ${employee.name}, you have overdue training modules.`,
+        bodyFull: `Hi ${employee.name}, you have overdue training modules. Please complete them as soon as possible.`,
         status: "SENT",
-        sentAt: new Date()
+        sentAt: new Date(),
+        relatedUserId: employeeId
       }
     });
 
@@ -553,7 +554,7 @@ router.get("/teams", async (_req: AuthenticatedRequest, res: Response) => {
         teamMembers: {
           include: {
             assignedCases: {
-              where: { status: { in: ["NEW", "PENDING", "IN_PROGRESS", "UNDER_REVIEW"] } },
+              where: { status: { in: ["NEW", "CONTACTED", "DOCS_PENDING", "FILED"] } },
               select: { id: true }
             },
             trainingProgress: {
@@ -564,10 +565,10 @@ router.get("/teams", async (_req: AuthenticatedRequest, res: Response) => {
       }
     });
 
-    const teams = teamLeads.map(lead => {
+    const teams = teamLeads.map((lead: any) => {
       const members = lead.teamMembers || [];
-      const totalCases = members.reduce((sum, m) => sum + m.assignedCases.length, 0);
-      const pendingTraining = members.reduce((sum, m) => sum + m.trainingProgress.length, 0);
+      const totalCases = members.reduce((sum: number, m: any) => sum + m.assignedCases.length, 0);
+      const pendingTraining = members.reduce((sum: number, m: any) => sum + m.trainingProgress.length, 0);
 
       // Calculate average performance (simplified)
       const avgPerformance = members.length > 0

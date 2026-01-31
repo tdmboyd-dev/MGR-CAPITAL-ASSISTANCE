@@ -372,7 +372,7 @@ class MetaBot {
         priority,
         title: `Bot Performance Report: ${report.overallHealth.toUpperCase()}`,
         summary: this.generateSummary(report),
-        details: report as unknown as Record<string, unknown>,
+        details: report as any,
         plainEnglish: this.generatePlainEnglishReport(report),
         recommendations: report.recommendations,
         relatedCaseIds: [],
@@ -387,12 +387,11 @@ class MetaBot {
     await prisma.botRunLog.create({
       data: {
         botName: BOT_NAME,
-        runType: "performance_analysis",
-        status: "SUCCESS",
-        resultSummary: `Analyzed ${report.bots.length} bots. Overall health: ${report.overallHealth}`,
+        
+        success: true,
+        summary: `Analyzed ${report.bots.length} bots. Overall health: ${report.overallHealth}`,
         recordsProcessed: report.bots.reduce((sum, b) => sum + b.totalRuns, 0),
         insightsGenerated: report.insights.length,
-        errorsEncountered: 0,
         durationMs: 0,
       },
     });
@@ -537,12 +536,11 @@ class MetaBot {
       await prisma.botRunLog.create({
         data: {
           botName: BOT_NAME,
-          runType: "feedback_analysis",
-          status: "SUCCESS",
-          resultSummary: `Analyzed ${analysis.stats.totalFeedback} feedbacks. Avg rating: ${analysis.stats.averageRating}/5. Trend: ${analysis.stats.recentTrend}`,
+          
+          success: true,
+          summary: `Analyzed ${analysis.stats.totalFeedback} feedbacks. Avg rating: ${analysis.stats.averageRating}/5. Trend: ${analysis.stats.recentTrend}`,
           recordsProcessed: analysis.stats.totalFeedback,
           insightsGenerated: analysis.insights.length,
-          errorsEncountered: 0,
           durationMs: 0,
         },
       });
@@ -565,12 +563,11 @@ class MetaBot {
       await prisma.botRunLog.create({
         data: {
           botName: BOT_NAME,
-          runType: "feedback_analysis",
-          status: "ERROR",
-          resultSummary: `Feedback analysis failed: ${errorMessage}`,
+          
+          success: false,
+          summary: `Feedback analysis failed: ${errorMessage}`,
           recordsProcessed: 0,
           insightsGenerated: 0,
-          errorsEncountered: 1,
           durationMs: 0,
         },
       });

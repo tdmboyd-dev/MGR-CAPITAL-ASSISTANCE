@@ -84,17 +84,23 @@ export class NFTService {
       await prisma.document.create({
         data: {
           caseId: data.claimId,
-          type: 'NFT_CERTIFICATE',
-          status: 'UPLOADED',
+          type: 'OTHER' as any,
+          status: 'DRAFT',
+          fileName: `nft_${data.claimId}.json`,
+          fileUrl: mintAddress,
+          fileSize: 0,
+          mimeType: 'application/json',
+          uploadedById: data.ownerAddress,
           filePath: mintAddress,
           metadata: JSON.stringify({
+            nftType: 'NFT_CERTIFICATE',
             mintAddress,
             metadataUri,
             ownerAddress: data.ownerAddress,
             amount: data.amount,
             mintedAt: new Date().toISOString(),
           }),
-        },
+        } as any,
       });
 
       logger.info('NFT minted', { claimId: data.claimId, mintAddress });
@@ -292,7 +298,7 @@ export class NFTService {
   async listMintedNFTs(limit: number = 50): Promise<any[]> {
     try {
       const docs = await prisma.document.findMany({
-        where: { type: 'NFT_CERTIFICATE' },
+        where: { type: 'OTHER' as any },
         take: limit,
         orderBy: { createdAt: 'desc' },
       });
@@ -333,7 +339,7 @@ export class NFTService {
         await prisma.document.update({
           where: { id: doc.id },
           data: {
-            status: 'DELETED',
+            status: 'REJECTED' as any,
             metadata: JSON.stringify(metadata),
           },
         });

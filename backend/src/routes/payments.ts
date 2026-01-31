@@ -355,7 +355,7 @@ router.post("/webhook/docusign", async (req, res) => {
 
     logger.info("DocuSign webhook received", { event: event.event });
 
-    await documentSigningService.handleWebhook(event);
+    await documentSigningService.handleWebhook("docusign", event);
 
     res.json({ received: true });
   } catch (error: any) {

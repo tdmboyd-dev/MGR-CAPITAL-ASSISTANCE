@@ -811,9 +811,9 @@ router.patch("/:id/assign", authMiddleware, roleGuard(["FOUNDER", "ADMIN"]), asy
 
     // Create notification for assigned employee
     try {
-      await notificationCenterService.create({
+      await notificationCenterService.sendNotification({
         userId: assignedEmployeeId,
-        category: "case",
+        category: "case_update",
         priority: "high",
         title: "New Case Assignment",
         message: `You have been assigned to case ${updatedCase.internalCode} - ${updatedCase.client?.name || "Unknown Client"}`,

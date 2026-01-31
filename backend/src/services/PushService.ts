@@ -3,6 +3,7 @@
  * Custom Web Push Notifications (VAPID + service worker)
  */
 
+// @ts-ignore - optional dependency, types may not be installed
 import webpush from 'web-push';
 import { PrismaClient } from '@prisma/client';
 import { logger } from '../utils/logger.js';
@@ -195,7 +196,12 @@ export class PushService {
   ): Promise<boolean> {
     try {
       await prisma.pushSubscription.upsert({
-        where: { endpoint: subscription.endpoint },
+        where: {
+          userId_endpoint: {
+            userId,
+            endpoint: subscription.endpoint,
+          },
+        },
         update: {
           p256dh: subscription.keys.p256dh,
           auth: subscription.keys.auth,
@@ -222,7 +228,7 @@ export class PushService {
    */
   async unsubscribe(endpoint: string): Promise<boolean> {
     try {
-      await prisma.pushSubscription.delete({
+      await prisma.pushSubscription.deleteMany({
         where: { endpoint },
       });
       return true;

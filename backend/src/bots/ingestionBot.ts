@@ -133,13 +133,12 @@ class IngestionBot {
     // Log the run
     await prisma.botRunLog.create({
       data: {
-        botName: BOT_NAME,
-        runType: "FULL_ANALYSIS",
-        status: alerts.some((a) => a.severity === "critical") ? "WARNING" : "SUCCESS",
-        resultSummary: `Analyzed ${totalRecords} records with ${errorRate.toFixed(1)}% error rate. ${highValueCount} high-value found.`,
+        botName: `${BOT_NAME}:FULL_ANALYSIS`,
+        success: !alerts.some((a) => a.severity === "critical"),
+        summary: `Analyzed ${totalRecords} records with ${errorRate.toFixed(1)}% error rate. ${highValueCount} high-value found.`,
         recordsProcessed: totalRecords,
         insightsGenerated: patterns.length + (intelligenceResults?.parserSuggestionsGenerated || 0),
-        errorsEncountered: Math.round((totalRecords * errorRate) / 100),
+        alertsCreated: Math.round((totalRecords * errorRate) / 100),
         durationMs: Date.now() - startTime,
       },
     });
@@ -255,10 +254,10 @@ class IngestionBot {
         title: `Ingestion Pattern: ${cluster.errorPattern.slice(0, 50)}`,
         description: `Training module auto-generated from ingestion error pattern affecting ${cluster.recordCount} records`,
         sourceType: "OPS_INSIGHT",
-        dynamicContent: moduleContent,
+        content: moduleContent as any,
         targetRoles: ["ADMIN", "EMPLOYEE"],
-        priority: cluster.recordCount > 50 ? "HIGH" : "MEDIUM",
         expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
+        generatedBy: BOT_NAME,
       },
     });
 
@@ -632,7 +631,7 @@ class IngestionBot {
         priority: priority as OpsInsightPriority,
         title: `Ingestion Analysis (${analysis.period})`,
         summary: `${analysis.totalRecords} records processed with ${analysis.errorRate}% error rate. ${analysis.highValueCount} high-value records found. ${analysis.intelligenceResults?.autoFileCandidates || 0} auto-file candidates.`,
-        details: analysis as unknown as Record<string, unknown>,
+        details: analysis as any,
         plainEnglish,
         recommendations: analysis.recommendations,
         relatedCaseIds: [],
@@ -794,13 +793,12 @@ class IngestionBot {
     // Log the run
     await prisma.botRunLog.create({
       data: {
-        botName: BOT_NAME,
-        runType: "AUTO_FILE_BATCH",
-        status: successful > 0 ? "SUCCESS" : "WARNING",
-        resultSummary: `Auto-filed ${successful}/${results.length} candidates`,
+        botName: `${BOT_NAME}:AUTO_FILE_BATCH`,
+        success: successful > 0,
+        summary: `Auto-filed ${successful}/${results.length} candidates`,
         recordsProcessed: results.length,
         insightsGenerated: successful,
-        errorsEncountered: results.length - successful,
+        alertsCreated: results.length - successful,
         durationMs: 0,
       },
     });

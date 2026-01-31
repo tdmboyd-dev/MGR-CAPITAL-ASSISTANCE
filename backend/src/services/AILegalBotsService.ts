@@ -337,7 +337,7 @@ class AILegalBotsService {
       const now = new Date();
       for (const deadline of caseData.deadlines || []) {
         if (new Date(deadline.dueDate) < now && !deadline.completedAt) {
-          issues.push(`MISSED DEADLINE: ${deadline.type} was due ${deadline.dueDate}`);
+          issues.push(`MISSED DEADLINE: ${deadline.title} was due ${deadline.dueDate}`);
         }
       }
 
@@ -536,7 +536,7 @@ class AILegalBotsService {
 
     // Base responses based on bot specialty
     let response = "";
-    const suggestions: string[] = [];
+    let suggestions: string[] = [];
 
     switch (bot.id) {
       case "compliance-bot":

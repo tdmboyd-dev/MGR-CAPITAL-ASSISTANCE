@@ -187,7 +187,7 @@ class ProfessionalEmailService {
         }),
       });
 
-      const tokenData = await tokenResponse.json();
+      const tokenData: any = await tokenResponse.json();
       const accessToken = tokenData.access_token;
 
       // Create user account
@@ -211,7 +211,7 @@ class ProfessionalEmailService {
         throw new Error(`Zoho API error: ${createResponse.status}`);
       }
 
-      const data = await createResponse.json();
+      const data: any = await createResponse.json();
 
       return {
         id: data.data.accountId,
@@ -265,7 +265,7 @@ class ProfessionalEmailService {
         throw new Error(`ImprovMX API error: ${response.status}`);
       }
 
-      const data = await response.json();
+      const data: any = await response.json();
 
       return {
         id: data.alias.id || `improvmx_${username}`,

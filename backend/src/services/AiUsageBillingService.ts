@@ -308,12 +308,12 @@ class AiUsageBillingService {
       await prisma.ledgerEntry.create({
         data: {
           caseId: (await prisma.case.findFirst({ select: { id: true } }))?.id || '', // System entry
-          type: 'OTHER',
+          type: 'ADJUSTMENT',
           status: 'COMPLETED',
           amountCents,
           displayedAmountCents: amountCents,
           description: `AI Credits top-up via ${paymentMethod}`,
-          createdById: userId,
+          userId,
           metadata: { type: 'ai_credits_topup', paymentMethod },
         },
       });

@@ -28,7 +28,7 @@ if (process.env.PLIVO_AUTH_ID && process.env.PLIVO_AUTH_TOKEN) {
   };
 
   // Dynamic import to avoid errors if plivo not installed
-  import('plivo').then(plivo => {
+  import('plivo').then((plivo: any) => {
     plivoClient = new plivo.Client(plivoConfig!.authId, plivoConfig!.authToken);
     logger.info('Plivo SMS client initialized');
   }).catch(() => {

@@ -388,6 +388,9 @@ model Case {
   priority              Int          @default(0) // Higher = more priority
   notes                 String?      // Internal notes (founder only)
   rejectionReason       String?
+  caseCode              String?      // Alternative case identifier
+  metadata              Json?
+  recoveryAmountCents   Int?         // Actual recovery amount
 
   createdAt             DateTime     @default(now())
   updatedAt             DateTime     @updatedAt
@@ -468,6 +471,11 @@ model Document {
   approvedAt      DateTime?
   rejectedAt      DateTime?
   rejectionReason String?
+
+  // Extensible metadata
+  metadata        Json?
+  contentLength   Int?
+  filename        String?
 
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
@@ -619,6 +627,8 @@ model LedgerEntry {
   completedAt           DateTime?
   reference             String?           // External reference (check #, wire ref, etc.)
   notes                 String?           // Admin notes
+  metadata              Json?
+  balanceAfterCents     Int?
 
   createdAt             DateTime          @default(now())
   updatedAt             DateTime          @updatedAt
@@ -690,6 +700,7 @@ model Communication {
   // Outcome
   outcome         String?
   nextAction      String?
+  metadata        Json?
 
   createdAt       DateTime               @default(now())
 
@@ -907,6 +918,7 @@ model DynamicTrainingModule {
   title           String
   description     String                    @db.Text
   content         Json                      // DynamicModuleContent structure
+  dynamicContent  String?                   @db.Text
 
   // Source
   sourceType      TrainingModuleSourceType
@@ -1016,11 +1028,14 @@ model FounderConfig {
 model BotRunLog {
   id              String   @id @default(cuid())
   botName         String
+  runType         String?
 
   // Execution
   startedAt       DateTime @default(now())
   completedAt     DateTime?
   durationMs      Int?
+  status          String?  @default("SUCCESS")
+  resultSummary   String?  @db.Text
 
   // Result
   success         Boolean  @default(false)
@@ -1030,6 +1045,7 @@ model BotRunLog {
   recordsProcessed Int     @default(0)
   insightsGenerated Int    @default(0)
   alertsCreated   Int      @default(0)
+  errorsEncountered Int    @default(0)
 
   // Output
   summary         String?  @db.Text
@@ -1038,6 +1054,7 @@ model BotRunLog {
   createdAt       DateTime @default(now())
 
   @@index([botName])
+  @@index([runType])
   @@index([startedAt])
   @@index([success])
 }
@@ -1285,6 +1302,13 @@ model ScrapedItem {
   notes           String?                  @db.Text
 
   // Metadata
+  // Watch target reference
+  watchTargetId   String?
+  watchTarget     WatchTarget?             @relation(fields: [watchTargetId], references: [id])
+  ownerName       String?
+  estimatedValueCents Int?
+  metadata        Json?
+
   fetchedAt       DateTime                 @default(now())
   createdAt       DateTime                 @default(now())
 
@@ -1294,6 +1318,7 @@ model ScrapedItem {
   @@index([state])
   @@index([reviewStatus])
   @@index([fetchedAt])
+  @@index([watchTargetId])
 }
 
 model WatchAlert {
@@ -1320,6 +1345,8 @@ model WatchAlert {
   relatedUserId   String?
   scrapedItemId   String?
   scrapedItem     ScrapedItem?         @relation(fields: [scrapedItemId], references: [id])
+  watchTargetId   String?
+  watchTarget     WatchTarget?         @relation(fields: [watchTargetId], references: [id])
 
   // Resolution
   isResolved      Boolean              @default(false)
@@ -1328,6 +1355,7 @@ model WatchAlert {
   resolution      String?              @db.Text
 
   // Metadata
+  acknowledgedAt  DateTime?
   createdAt       DateTime             @default(now())
 
   @@index([type])
@@ -1662,6 +1690,8 @@ enum OpsInsightType {
   CASE_RECOMMENDATION
   EMPLOYEE_COACHING
   SYSTEM_HEALTH
+  BOT_PERFORMANCE
+  FEEDBACK_ANALYSIS
 }
 
 enum OpsInsightPriority {
@@ -1710,6 +1740,9 @@ model OpsInsight {
   // Validity
   isStale         Boolean             @default(false)
   expiresAt       DateTime?
+
+  // Resolution
+  resolvedAt      DateTime?
 
   // Founder interaction
   isRead          Boolean             @default(false)
@@ -2200,3 +2233,150 @@ model NotarySessionRecord {
   @@index([caseId])
   @@index([completedAt])
 }
+
+// ============================================
+// WATCH TARGETS (Scraper Monitoring)
+// ============================================
+
+model WatchTarget {
+  id              String   @id @default(cuid())
+  name            String
+  url             String
+  type            String   @default("COUNTY_SURPLUS")
+  state           String?
+  county          String?
+  isActive        Boolean  @default(true)
+  enabled         Boolean  @default(true)
+  watchType       String?
+  lastScrapedAt   DateTime?
+  lastSuccessAt   DateTime?
+  lastCheckedAt   DateTime?
+  lastChangeAt    DateTime?
+  lastErrorAt     DateTime?
+  lastError       String?
+  scrapeCount     Int      @default(0)
+  successCount    Int      @default(0)
+  errorCount      Int      @default(0)
+  config          Json?
+  metadata        Json?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  scrapedItems    ScrapedItem[]
+  watchAlerts     WatchAlert[]
+
+  @@index([state])
+  @@index([isActive])
+  @@index([type])
+}
+
+// ============================================
+// PAYMENTS (Payment Processing)
+// ============================================
+
+model Payment {
+  id              String   @id @default(cuid())
+  caseId          String?
+  userId          String?
+  type            String   @default("PAYMENT")
+  status          String   @default("PENDING")
+  amountCents     Int
+  currency        String   @default("USD")
+  provider        String?  // stripe, plaid, etc.
+  providerPaymentId String?
+  providerCustomerId String?
+  method          String?  // card, ach, wire
+  description     String?
+  metadata        Json?
+  failureReason   String?
+  processedAt     DateTime?
+  refundedAt      DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([caseId])
+  @@index([userId])
+  @@index([status])
+  @@index([provider])
+}
+
+// ============================================
+// SIGNATURE REQUESTS (E-Signature Tracking)
+// ============================================
+
+model SignatureRequest {
+  id              String   @id @default(cuid())
+  documentId      String
+  caseId          String?
+  signerId        String?
+  signerEmail     String?
+  signerName      String?
+  status          String   @default("PENDING")
+  provider        String   @default("opensign")
+  providerRequestId String?
+  signedAt        DateTime?
+  expiresAt       DateTime?
+  metadata        Json?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([documentId])
+  @@index([caseId])
+  @@index([status])
+}
+
+// ============================================
+// PUSH SUBSCRIPTIONS (Web Push Notifications)
+// ============================================
+
+model PushSubscription {
+  id              String   @id @default(cuid())
+  userId          String
+  endpoint        String   @db.Text
+  p256dh          String
+  auth            String
+  userAgent       String?
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([userId, endpoint])
+  @@index([userId])
+  @@index([isActive])
+}
+
+// ============================================
+// SETTINGS (Key-Value App Settings)
+// ============================================
+
+model Setting {
+  id              String   @id @default(cuid())
+  key             String   @unique
+  value           String   @db.Text
+  type            String   @default("string")
+  description     String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([key])
+}
+
+// ============================================
+// TOKEN REWARDS (Blockchain/Gamification)
+// ============================================
+
+model TokenReward {
+  id              String   @id @default(cuid())
+  userId          String
+  amount          Float
+  reason          String
+  type            String   @default("PERFORMANCE")
+  caseId          String?
+  metadata        Json?
+  createdAt       DateTime @default(now())
+
+  @@index([userId])
+  @@index([type])
+  @@index([createdAt])
+}
+

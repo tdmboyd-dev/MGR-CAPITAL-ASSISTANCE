@@ -49,67 +49,67 @@ export function createTenantPrisma(tenantId: string | null): PrismaClient {
     query: {
       // User model
       user: {
-        async findMany({ args, query }) {
+        async findMany({ args, query }: any) {
           args.where = { ...args.where, tenantId };
           return query(args);
         },
-        async findFirst({ args, query }) {
+        async findFirst({ args, query }: any) {
           args.where = { ...args.where, tenantId };
           return query(args);
         },
-        async create({ args, query }) {
+        async create({ args, query }: any) {
           args.data = { ...args.data, tenantId };
           return query(args);
         },
       },
       // Case model
       case: {
-        async findMany({ args, query }) {
+        async findMany({ args, query }: any) {
           args.where = { ...args.where, tenantId };
           return query(args);
         },
-        async findFirst({ args, query }) {
+        async findFirst({ args, query }: any) {
           args.where = { ...args.where, tenantId };
           return query(args);
         },
-        async create({ args, query }) {
+        async create({ args, query }: any) {
           args.data = { ...args.data, tenantId };
           return query(args);
         },
       },
       // LedgerEntry model
       ledgerEntry: {
-        async findMany({ args, query }) {
+        async findMany({ args, query }: any) {
           args.where = { ...args.where, tenantId };
           return query(args);
         },
-        async findFirst({ args, query }) {
+        async findFirst({ args, query }: any) {
           args.where = { ...args.where, tenantId };
           return query(args);
         },
-        async create({ args, query }) {
+        async create({ args, query }: any) {
           args.data = { ...args.data, tenantId };
           return query(args);
         },
       },
       // Document model
       document: {
-        async findMany({ args, query }) {
+        async findMany({ args, query }: any) {
           args.where = { ...args.where, tenantId };
           return query(args);
         },
-        async findFirst({ args, query }) {
+        async findFirst({ args, query }: any) {
           args.where = { ...args.where, tenantId };
           return query(args);
         },
-        async create({ args, query }) {
+        async create({ args, query }: any) {
           args.data = { ...args.data, tenantId };
           return query(args);
         },
       },
       // TrainingModule model
       trainingModule: {
-        async findMany({ args, query }) {
+        async findMany({ args, query }: any) {
           // Training modules can be shared (null tenantId) or tenant-specific
           args.where = {
             ...args.where,
@@ -120,44 +120,44 @@ export function createTenantPrisma(tenantId: string | null): PrismaClient {
       },
       // ChatRoom model
       chatRoom: {
-        async findMany({ args, query }) {
+        async findMany({ args, query }: any) {
           args.where = { ...args.where, tenantId };
           return query(args);
         },
-        async create({ args, query }) {
+        async create({ args, query }: any) {
           args.data = { ...args.data, tenantId };
           return query(args);
         },
       },
       // AuditLog model
       auditLog: {
-        async findMany({ args, query }) {
+        async findMany({ args, query }: any) {
           args.where = { ...args.where, tenantId };
           return query(args);
         },
-        async create({ args, query }) {
+        async create({ args, query }: any) {
           args.data = { ...args.data, tenantId };
           return query(args);
         },
       },
       // OpsInsight model
       opsInsight: {
-        async findMany({ args, query }) {
+        async findMany({ args, query }: any) {
           args.where = { ...args.where, tenantId };
           return query(args);
         },
-        async create({ args, query }) {
+        async create({ args, query }: any) {
           args.data = { ...args.data, tenantId };
           return query(args);
         },
       },
       // WatchAlert model
       watchAlert: {
-        async findMany({ args, query }) {
+        async findMany({ args, query }: any) {
           args.where = { ...args.where, tenantId };
           return query(args);
         },
-        async create({ args, query }) {
+        async create({ args, query }: any) {
           args.data = { ...args.data, tenantId };
           return query(args);
         },

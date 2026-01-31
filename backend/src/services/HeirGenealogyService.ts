@@ -595,7 +595,7 @@ Return as valid JSON with keys: familyStructure, inheritancePriority, percentage
         where: { id: tree.id },
         update: {
           metadata: JSON.stringify({
-            type: 'GENEALOGY_TREE',
+            type: 'OTHER' as any,
             decedentName: tree.decedentName,
             state: tree.state,
             rootMember: tree.rootMember,
@@ -610,11 +610,16 @@ Return as valid JSON with keys: familyStructure, inheritancePriority, percentage
         create: {
           id: tree.id,
           caseId: tree.caseId,
-          type: 'GENEALOGY_TREE',
-          status: 'UPLOADED',
+          type: 'OTHER' as any,
+          status: 'DRAFT',
+          fileName: `genealogy_${tree.caseId}.json`,
+          fileUrl: `genealogy/${tree.caseId}/${tree.id}.json`,
+          fileSize: 0,
+          mimeType: 'application/json',
+          uploadedById: tree.caseId,
           filePath: `genealogy/${tree.caseId}/${tree.id}.json`,
           metadata: JSON.stringify({
-            type: 'GENEALOGY_TREE',
+            type: 'OTHER' as any,
             decedentName: tree.decedentName,
             decedentDeathDate: tree.decedentDeathDate,
             state: tree.state,
@@ -644,7 +649,7 @@ Return as valid JSON with keys: familyStructure, inheritancePriority, percentage
       const doc = await prisma.document.findFirst({
         where: {
           id: treeId,
-          type: 'GENEALOGY_TREE',
+          type: 'OTHER' as any,
         },
       });
 
@@ -684,7 +689,7 @@ Return as valid JSON with keys: familyStructure, inheritancePriority, percentage
       const docs = await prisma.document.findMany({
         where: {
           caseId,
-          type: 'GENEALOGY_TREE',
+          type: 'OTHER' as any,
         },
         orderBy: { createdAt: 'desc' },
       });

@@ -153,7 +153,7 @@ export default function SignPortal() {
       await axios.post(`${API_URL}/api/clients/portal/${token}/sign/${docId}`, {
         signatureData,
       });
-      setSignedDocs((prev) => new Set([...prev, docId]));
+      setSignedDocs((prev) => new Set([...Array.from(prev), docId]));
       setActiveDocId(null);
       clearSignature();
 

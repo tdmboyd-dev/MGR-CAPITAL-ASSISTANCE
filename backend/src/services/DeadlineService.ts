@@ -224,13 +224,13 @@ export class DeadlineService {
    */
   async setReminder(caseId: string, reminderDate: Date, userId: string): Promise<boolean> {
     try {
-      await prisma.caseDeadline.create({
+      await prisma.deadline.create({
         data: {
           caseId,
-          deadlineType: 'CLAIM_DEADLINE',
+          title: 'CLAIM_DEADLINE',
           dueDate: reminderDate,
           reminderSent: false,
-          notes: 'Auto-generated reminder',
+          description: 'Auto-generated reminder',
         },
       });
 

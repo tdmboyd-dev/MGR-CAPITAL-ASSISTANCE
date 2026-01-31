@@ -179,7 +179,7 @@ class TrainingBot {
         const moduleSpec = await trainingIntelligenceService.generateDynamicModule({
           type: TrainingModuleSourceType.OPS_INSIGHT,
           sourceId: insight.id,
-          sourceSummary: insight.summary,
+          sourceSummary: insight.summary || "",
           relevantData: insight.details as any || {},
         });
 

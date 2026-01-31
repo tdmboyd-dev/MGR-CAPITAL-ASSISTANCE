@@ -142,9 +142,9 @@ class CoordinatorBot {
       topPriorities,
       alerts: alertSummary,
       recentInsights: recentInsights.map((i) => ({
-        type: i.type,
-        title: i.title,
-        summary: i.summary,
+        type: i.type ?? "",
+        title: i.title ?? "",
+        summary: i.summary ?? "",
         priority: i.priority,
         generatedAt: i.generatedAt,
       })),

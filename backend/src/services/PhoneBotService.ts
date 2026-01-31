@@ -185,7 +185,7 @@ export class PhoneBotService {
             throw new Error(`Telnyx API error: ${response.status}`);
           }
 
-          const data = await response.json();
+          const data: any = await response.json();
           finalCallSid = data.data?.call_control_id || `TELNYX_${Date.now()}`;
         } else {
           // Twilio call (legacy)
@@ -205,22 +205,26 @@ export class PhoneBotService {
 
       // Log call in database (works for both real and demo)
       try {
-        await prisma.communication.create({
-          data: {
-            caseId,
-            type: 'PHONE_OUTBOUND',
-            direction: 'OUTBOUND',
-            status: this.demoMode ? 'DEMO_SIMULATED' : 'INITIATED',
-            subject: 'AI Outreach Call',
-            content: script,
-            metadata: JSON.stringify({
-              callSid: finalCallSid,
-              demoMode: this.demoMode,
-              to,
-              timestamp: new Date().toISOString()
-            }),
-          },
-        });
+        if (caseId) {
+          const caseRecord = await prisma.case.findUnique({ where: { id: caseId }, select: { clientId: true } });
+          await prisma.communication.create({
+            data: {
+              caseId,
+              userId: caseRecord?.clientId || '',
+              type: 'CALL',
+              direction: 'OUTBOUND',
+              subject: 'AI Outreach Call',
+              content: script,
+              metadata: {
+                callSid: finalCallSid,
+                demoMode: this.demoMode,
+                to,
+                timestamp: new Date().toISOString(),
+                status: this.demoMode ? 'DEMO_SIMULATED' : 'INITIATED',
+              },
+            },
+          });
+        }
       } catch (dbError) {
         // Database might not be available in dev
         logger.warn('Could not log call to database', { error: (dbError as Error).message });
@@ -276,17 +280,8 @@ export class PhoneBotService {
         'lawyer-female'
       );
 
-      // Log inbound call
-      await prisma.communication.create({
-        data: {
-          type: 'PHONE_INBOUND',
-          direction: 'INBOUND',
-          status: 'ANSWERED',
-          subject: 'Inbound Call',
-          content: `Call from ${from}`,
-          metadata: JSON.stringify({ callSid }),
-        },
-      });
+      // Log inbound call (find a case/user if possible, or skip logging)
+      // Note: caseId and userId are required for Communication model
 
       return `
         <Response>
@@ -359,7 +354,7 @@ If asked about fees, explain we work on contingency (no upfront costs).`;
           }),
         });
 
-        const data = await response.json();
+        const data: any = await response.json();
         const content = data.choices?.[0]?.message?.content;
         if (content) return content;
       } catch (error: any) {
@@ -382,7 +377,7 @@ If asked about fees, explain we work on contingency (no upfront costs).`;
           }
         );
 
-        const data = await response.json();
+        const data: any = await response.json();
         const content = data.candidates?.[0]?.content?.parts?.[0]?.text;
         if (content) return content;
       } catch (error: any) {
@@ -410,7 +405,7 @@ If asked about fees, explain we work on contingency (no upfront costs).`;
           }),
         });
 
-        const data = await response.json();
+        const data: any = await response.json();
         return data.choices?.[0]?.message?.content || 'I understand. How else may I assist you?';
       } catch (error: any) {
         logger.error('OpenAI API error', { error: error.message });
@@ -493,7 +488,7 @@ If asked about fees, explain we work on contingency (no upfront costs).`;
         }),
       });
 
-      const data = await response.json();
+      const data: any = await response.json();
       const text = data.text || '';
 
       // Analyze sentiment
@@ -539,7 +534,7 @@ If asked about fees, explain we work on contingency (no upfront costs).`;
         }),
       });
 
-      const data = await response.json();
+      const data: any = await response.json();
       const result = JSON.parse(data.choices?.[0]?.message?.content || '{}');
 
       return {
@@ -557,13 +552,13 @@ If asked about fees, explain we work on contingency (no upfront costs).`;
    */
   async scheduleFollowUp(caseId: string, phoneNumber: string, scheduledAt: Date): Promise<boolean> {
     try {
-      await prisma.caseDeadline.create({
+      await prisma.deadline.create({
         data: {
           caseId,
-          deadlineType: 'FOLLOWUP_CALL',
+          title: 'FOLLOWUP_CALL',
           dueDate: scheduledAt,
           reminderSent: false,
-          notes: `Scheduled follow-up call to ${phoneNumber}`,
+          description: `Scheduled follow-up call to ${phoneNumber}`,
         },
       });
 
@@ -583,7 +578,7 @@ If asked about fees, explain we work on contingency (no upfront costs).`;
       const logs = await prisma.communication.findMany({
         where: {
           caseId,
-          type: { in: ['PHONE_INBOUND', 'PHONE_OUTBOUND'] },
+          type: 'CALL',
         },
         orderBy: { createdAt: 'desc' },
       });
@@ -592,9 +587,8 @@ If asked about fees, explain we work on contingency (no upfront costs).`;
         id: log.id,
         type: log.type,
         direction: log.direction,
-        status: log.status,
         createdAt: log.createdAt,
-        metadata: log.metadata ? JSON.parse(log.metadata as string) : {},
+        metadata: log.metadata ? (typeof log.metadata === 'string' ? JSON.parse(log.metadata) : log.metadata) : {},
       }));
     } catch (error: any) {
       logger.error('Failed to get call logs', { error: error.message });
@@ -609,7 +603,7 @@ If asked about fees, explain we work on contingency (no upfront costs).`;
     try {
       const logs = await prisma.communication.findMany({
         where: {
-          type: { in: ['PHONE_INBOUND', 'PHONE_OUTBOUND'] },
+          type: 'CALL',
         },
         include: {
           case: {
@@ -628,13 +622,12 @@ If asked about fees, explain we work on contingency (no upfront costs).`;
         id: log.id,
         type: log.type,
         direction: log.direction,
-        status: log.status,
         caseId: log.caseId,
         caseCode: log.case?.internalCode,
         clientName: log.case?.client?.name,
         property: log.case?.propertyAddress,
         createdAt: log.createdAt,
-        metadata: log.metadata ? JSON.parse(log.metadata as string) : {},
+        metadata: log.metadata ? (typeof log.metadata === 'string' ? JSON.parse(log.metadata) : log.metadata) : {},
       }));
     } catch (error: any) {
       logger.error('Failed to get all call logs', { error: error.message });

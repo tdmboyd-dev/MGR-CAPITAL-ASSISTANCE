@@ -13,7 +13,9 @@
 
 import { PrismaClient } from "@prisma/client";
 import ExcelJS from "exceljs";
-import PDFDocument from "pdfkit";
+import { createRequire } from "module";
+const require = createRequire(import.meta.url);
+const PDFDocument = require("pdfkit");
 import { logger } from "../utils/logger.js";
 
 const prisma = new PrismaClient();
@@ -192,10 +194,7 @@ class ComplianceExportService {
         case: {
           select: { caseNumber: true },
         },
-        employee: {
-          select: { email: true, name: true },
-        },
-        client: {
+        user: {
           select: { email: true, name: true },
         },
       },
@@ -203,17 +202,17 @@ class ComplianceExportService {
       take: 10000,
     });
 
-    const data = entries.map((e) => ({
+    const data = entries.map((e: any) => ({
       date: e.createdAt.toISOString(),
       type: e.type,
       description: e.description,
       amountCents: e.amountCents,
       amountFormatted: `$${(e.amountCents / 100).toFixed(2)}`,
       caseNumber: e.case?.caseNumber || "-",
-      employee: e.employee?.email || "-",
-      client: e.client?.email || "-",
-      balanceAfterCents: e.balanceAfterCents,
-      balanceFormatted: `$${(e.balanceAfterCents / 100).toFixed(2)}`,
+      employee: e.user?.email || "-",
+      client: "-",
+      balanceAfterCents: e.balanceAfterCents || 0,
+      balanceFormatted: `$${((e.balanceAfterCents || 0) / 100).toFixed(2)}`,
     }));
 
     const columns = [
@@ -240,9 +239,9 @@ class ComplianceExportService {
   ): Promise<{ data: any[]; columns: { header: string; key: string; width?: number }[] }> {
     const where: any = {};
     if (startDate || endDate) {
-      where.updatedAt = {};
-      if (startDate) where.updatedAt.gte = startDate;
-      if (endDate) where.updatedAt.lte = endDate;
+      where.assignedAt = {};
+      if (startDate) where.assignedAt.gte = startDate;
+      if (endDate) where.assignedAt.lte = endDate;
     }
 
     const progress = await prisma.employeeTrainingProgress.findMany({
@@ -252,24 +251,24 @@ class ComplianceExportService {
           select: { email: true, name: true, employeeTier: true },
         },
         module: {
-          select: { name: true, tier: true },
+          select: { title: true, requiredForTier: true },
         },
       },
-      orderBy: { updatedAt: "desc" },
+      orderBy: { assignedAt: "desc" },
       take: 10000,
     });
 
-    const data = progress.map((p) => ({
-      updatedAt: p.updatedAt.toISOString(),
+    const data = progress.map((p: any) => ({
+      updatedAt: p.assignedAt?.toISOString() || "-",
       employee: p.employee?.email || "-",
       employeeName: p.employee?.name || "-",
       employeeTier: p.employee?.employeeTier || "-",
-      module: p.module?.name || "-",
-      moduleTier: p.module?.tier || "-",
+      module: p.module?.title || "-",
+      moduleTier: p.module?.requiredForTier || "-",
       status: p.status,
-      progressPct: p.progressPct,
-      quizScore: p.quizScore ?? "-",
-      quizPassed: p.quizPassed ? "Yes" : "No",
+      progressPct: p.progress || 0,
+      quizScore: p.bestScore ?? "-",
+      quizPassed: p.passedAt ? "Yes" : "No",
       startedAt: p.startedAt?.toISOString() || "-",
       completedAt: p.completedAt?.toISOString() || "-",
     }));
@@ -320,22 +319,22 @@ class ComplianceExportService {
       take: 10000,
     });
 
-    const data = cases.map((c) => ({
-      caseNumber: c.caseNumber,
+    const data = cases.map((c: any) => ({
+      caseNumber: c.caseNumber || c.internalCode,
       createdAt: c.createdAt.toISOString(),
       status: c.status,
-      type: c.type,
+      type: c.source || "-",
       priority: c.priority,
       client: c.client?.email || "-",
       clientName: c.client?.name || "-",
       assignedTo: c.assignedEmployee?.email || "-",
-      parcelId: c.parcelId || "-",
+      parcelId: c.parcelNumber || "-",
       propertyAddress: c.propertyAddress || "-",
       county: c.county || "-",
       state: c.state || "-",
-      estimatedValueCents: c.estimatedValueCents,
-      estimatedValue: `$${(c.estimatedValueCents / 100).toFixed(2)}`,
-      internalNotes: c.internalNotes?.substring(0, 50) || "-",
+      estimatedValueCents: c.estimatedFeeCents || 0,
+      estimatedValue: `$${((c.estimatedFeeCents || 0) / 100).toFixed(2)}`,
+      internalNotes: c.notes?.substring(0, 50) || "-",
     }));
 
     const columns = [
@@ -398,7 +397,7 @@ class ComplianceExportService {
       const doc = new PDFDocument({ margin: 30, size: "LETTER", layout: "landscape" });
       const chunks: Buffer[] = [];
 
-      doc.on("data", (chunk) => chunks.push(chunk));
+      doc.on("data", (chunk: Buffer) => chunks.push(chunk));
       doc.on("end", () => resolve(Buffer.concat(chunks)));
       doc.on("error", reject);
 
@@ -497,7 +496,7 @@ class ComplianceExportService {
         }),
         prisma.case.count({
           where: {
-            status: "COMPLETED",
+            status: "CLOSED",
             updatedAt: { gte: oneWeekAgo },
           },
         }),
@@ -510,7 +509,7 @@ class ComplianceExportService {
         prisma.ledgerEntry.aggregate({
           where: {
             createdAt: { gte: oneWeekAgo },
-            type: { in: ["FEE_COLLECTED", "CLIENT_PAYMENT", "SURPLUS_RECEIVED"] },
+            type: { in: ["FEE", "CLIENT_PAYOUT", "COMMISSION"] },
           },
           _sum: { amountCents: true },
         }),
@@ -525,8 +524,8 @@ class ComplianceExportService {
         newCases,
         completedCases,
         trainingCompletions,
-        revenueCollectedCents: ledgerTotal._sum.amountCents || 0,
-        revenueFormatted: `$${((ledgerTotal._sum.amountCents || 0) / 100).toFixed(2)}`,
+        revenueCollectedCents: ledgerTotal._sum?.amountCents || 0,
+        revenueFormatted: `$${((ledgerTotal._sum?.amountCents || 0) / 100).toFixed(2)}`,
         generatedAt: new Date().toISOString(),
       };
 
@@ -540,11 +539,14 @@ class ComplianceExportService {
       // Save as OpsInsight
       await prisma.opsInsight.create({
         data: {
-          type: "COMPLIANCE_DIGEST",
+          type: "COMPLIANCE_CHECK",
           summary: `Weekly digest: ${newCases} new cases, ${completedCases} completed, ${summary.revenueFormatted} revenue`,
           details: summary as any,
-          priority: "INFO",
+          priority: "NORMAL",
           actionRequired: false,
+          relatedCaseIds: [],
+          relatedUserIds: [],
+          relatedAlertIds: [],
         },
       });
 

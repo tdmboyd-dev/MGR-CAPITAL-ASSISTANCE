@@ -102,7 +102,7 @@ async function deepseekGenerate(prompt: string): Promise<string> {
   });
 
   if (!response.ok) throw new Error(`DeepSeek error: ${response.status}`);
-  const data = await response.json();
+  const data: any = await response.json();
   return data.choices[0]?.message?.content || '';
 }
 
@@ -123,7 +123,7 @@ async function geminiGenerate(prompt: string): Promise<string> {
   );
 
   if (!response.ok) throw new Error(`Gemini error: ${response.status}`);
-  const data = await response.json();
+  const data: any = await response.json();
   return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
 }
 
@@ -146,7 +146,7 @@ async function openaiGenerate(prompt: string): Promise<string> {
   });
 
   if (!response.ok) throw new Error(`OpenAI error: ${response.status}`);
-  const data = await response.json();
+  const data: any = await response.json();
   return data.choices[0]?.message?.content || '';
 }
 
@@ -308,7 +308,7 @@ class AiSearchService {
           { propertyAddress: { contains: query, mode: "insensitive" } },
           { county: { contains: query, mode: "insensitive" } },
           { state: { contains: query, mode: "insensitive" } },
-          { internalNotes: { contains: query, mode: "insensitive" } },
+          { notes: { contains: query, mode: "insensitive" } },
         ],
       },
       include: {
@@ -321,7 +321,7 @@ class AiSearchService {
     const results: SearchResult[] = [];
 
     for (const c of cases) {
-      const text = `${c.caseNumber || ""} ${c.propertyAddress} ${c.county} ${c.state} ${c.internalNotes || ""}`;
+      const text = `${c.caseNumber || ""} ${c.propertyAddress} ${c.county} ${c.state} ${c.notes || ""}`;
       let score = 0;
 
       // Keyword matching score
@@ -347,8 +347,8 @@ class AiSearchService {
         score: Math.min(score, 1),
         metadata: {
           status: c.status,
-          client: c.client?.name,
-          assignedTo: c.assignedEmployee?.name,
+          client: (c as any).client?.name,
+          assignedTo: (c as any).assignedEmployee?.name,
           priority: c.priority,
         },
       });
@@ -404,7 +404,7 @@ class AiSearchService {
       results.push({
         id: doc.id,
         type: "docs",
-        title: doc.filename,
+        title: doc.filename || doc.fileName,
         snippet: `Type: ${doc.type} | Case: ${doc.case?.caseNumber || doc.case?.internalCode || "N/A"}`,
         score: Math.min(score, 1),
         metadata: {
@@ -664,7 +664,7 @@ REASON: [why this matters]`;
         id: `train_${training.id}`,
         type: "training",
         title: `Complete: ${training.module?.title}`,
-        description: `Mandatory training module at ${training.progressPct}% completion`,
+        description: `Mandatory training module at ${training.progress}% completion`,
         confidence: 0.95,
         reasoning: "Mandatory training required for role compliance",
         suggestedAction: `Resume training module: ${training.module?.title}`,

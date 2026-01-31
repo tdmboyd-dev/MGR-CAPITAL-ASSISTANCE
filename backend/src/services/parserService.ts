@@ -356,7 +356,7 @@ export async function parseContent(
   // Detect file type and source type
   const fileType = detectFileType(content, options.filename);
   const sourceType = options.sourceType || detectSourceType(content, {
-    url: options.sourceUrl,
+    url: options.sourceUrl || "",
   });
 
   const county = options.county || "UNKNOWN";
@@ -573,8 +573,9 @@ export async function parseAndStoreContent(
         data: {
           batchId,
           sourceType: record.sourceType,
-          rawPayload: record.rawData,
-          normalizedData: record.normalizedData as unknown as Record<string, unknown>,
+          rawData: record.rawData as any,
+          rawPayload: record.rawData as any,
+          normalizedData: record.normalizedData as any,
           contentHash: record.contentHash,
           status: "PENDING",
         },

@@ -1201,18 +1201,18 @@ export class TrainingService {
       where: { moduleId: dbModule.id },
       create: {
         moduleId: dbModule.id,
-        outline: { sections: blueprint.sections.map(s => s.title) },
-        scripts: { sections: blueprint.sections },
-        keyPoints: this.extractBulletPoints(module.content),
-        sceneBreakdown: blueprint.sections,
-        onScreenText: blueprint.sections.flatMap(s => s.onScreenText),
-        bRollSuggestions: blueprint.sections.flatMap(s => s.bRollSuggestions),
-        assessmentQuestions: module.questions,
+        outline: { sections: blueprint.sections.map((s: any) => s.title) } as any,
+        scripts: { sections: blueprint.sections } as any,
+        keyPoints: this.extractBulletPoints(module.content) as any,
+        sceneBreakdown: blueprint.sections as any,
+        onScreenText: blueprint.sections.flatMap((s: any) => s.onScreenText) as any,
+        bRollSuggestions: blueprint.sections.flatMap((s: any) => s.bRollSuggestions) as any,
+        assessmentQuestions: module.questions as any,
         generatedAt: new Date(),
         generatedBy: "system"
       },
       update: {
-        scripts: { sections: blueprint.sections },
+        scripts: { sections: blueprint.sections } as any,
         generatedAt: new Date()
       }
     });

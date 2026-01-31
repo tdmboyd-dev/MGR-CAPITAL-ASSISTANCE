@@ -601,7 +601,7 @@ class ComplianceBot {
         .map((d) => d.type);
 
       for (const doc of requiredDocs) {
-        if (!existingDocs.includes(doc)) {
+        if (!existingDocs.includes(doc as any)) {
           issues.push(`Missing required document: ${doc}`);
         }
       }

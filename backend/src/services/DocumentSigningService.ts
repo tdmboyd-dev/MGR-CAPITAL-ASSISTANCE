@@ -150,7 +150,7 @@ export class DocumentSigningService {
           return DOCUSIGN_API_KEY || null;
         }
 
-        const data = await response.json();
+        const data: any = await response.json();
 
         // Cache the token
         docusignTokenCache = {
@@ -182,7 +182,7 @@ export class DocumentSigningService {
   /**
    * Get service status
    */
-  getStatus(): { provider: string; configured: boolean; mode: string } {
+  getServiceStatus(): { provider: string; configured: boolean; mode: string } {
     return {
       provider: this.provider,
       configured: !this.demoMode,
@@ -251,7 +251,7 @@ export class DocumentSigningService {
         throw new Error(`OpenSign API error: ${error}`);
       }
 
-      const data = await response.json();
+      const data: any = await response.json();
 
       // Record in database
       await this.recordSignatureRequest(requestId, {
@@ -346,7 +346,7 @@ export class DocumentSigningService {
         throw new Error(`DocuSign API error: ${errorText}`);
       }
 
-      const envelope = await response.json();
+      const envelope: any = await response.json();
 
       // Get signing URL for first signer (embedded signing)
       let signingUrl: string | undefined;
@@ -372,7 +372,7 @@ export class DocumentSigningService {
         );
 
         if (viewResponse.ok) {
-          const viewData = await viewResponse.json();
+          const viewData: any = await viewResponse.json();
           signingUrl = viewData.url;
         }
       }
@@ -492,11 +492,16 @@ export class DocumentSigningService {
       data: {
         id: requestId,
         provider: data.provider,
-        externalId: data.externalId,
-        documentName: data.documentName,
-        signers: JSON.stringify(data.signers),
+        providerRequestId: data.externalId,
+        documentId: requestId,
+        signerEmail: data.signers[0]?.email,
+        signerName: data.signers[0]?.name,
         status: data.status,
         caseId: data.caseId,
+        metadata: {
+          documentName: data.documentName,
+          signers: data.signers,
+        },
       },
     });
   }
@@ -513,9 +518,10 @@ export class DocumentSigningService {
 
       return requests.map(r => ({
         id: r.id,
-        documentName: r.documentName,
+        documentId: r.documentId,
+        documentName: (r.metadata as any)?.documentName,
         status: r.status,
-        signers: JSON.parse(r.signers as string),
+        signers: (r.metadata as any)?.signers || [{ email: r.signerEmail, name: r.signerName }],
         createdAt: r.createdAt,
       }));
     } catch (error: any) {

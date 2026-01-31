@@ -1113,7 +1113,7 @@ class BackupService {
         plainEnglish: result.success
           ? `The monthly backup completed successfully. File: ${result.filename}, Size: ${(result.sizeBytes / 1024 / 1024).toFixed(2)}MB, Encrypted: ${result.encrypted}. Please copy to USB/external drive for air-gapped storage.`
           : `CRITICAL: Monthly backup failed. Error: ${result.error}. Please investigate immediately and run manual backup.`,
-        data: result as unknown as Record<string, unknown>,
+        data: result as any,
         status: "OPEN",
       },
     });

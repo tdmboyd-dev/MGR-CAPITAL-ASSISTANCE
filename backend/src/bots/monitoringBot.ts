@@ -360,7 +360,7 @@ class MonitoringBot {
         priority,
         title: `System Health: ${report.overallStatus.toUpperCase()}`,
         summary: this.generateHealthSummary(report),
-        details: report as unknown as Record<string, unknown>,
+        details: report as unknown as any,
         plainEnglish: this.generatePlainEnglishReport(report),
         recommendations: this.generateRecommendations(report),
         relatedCaseIds: [],

@@ -83,7 +83,7 @@ const jobs: CronJob[] = [
     enabledByDefault: true,
     category: "bot",
     task: async () => {
-      await coordinatorBot.runFullCycle();
+      await coordinatorBot.runFullOpsCycle();
     },
   },
   {
@@ -127,7 +127,7 @@ const jobs: CronJob[] = [
     enabledByDefault: true,
     category: "bot",
     task: async () => {
-      await complianceBot.analyze();
+      await complianceBot.scan();
     },
   },
   {
@@ -138,7 +138,7 @@ const jobs: CronJob[] = [
     enabledByDefault: true,
     category: "bot",
     task: async () => {
-      await trainingBot.runFullAnalysis();
+      await trainingBot.analyze();
     },
   },
   {
@@ -403,13 +403,11 @@ class Scheduler {
       // Log to BotRunLog
       await prisma.botRunLog.create({
         data: {
-          botName: "Scheduler",
-          runType: job.key,
-          status: "SUCCESS",
-          resultSummary: `Scheduled job ${job.name} completed successfully`,
+          botName: `Scheduler:${job.key}`,
+          success: true,
+          summary: `Scheduled job ${job.name} completed successfully`,
           recordsProcessed: 0,
           insightsGenerated: 0,
-          errorsEncountered: 0,
           durationMs,
         },
       });
@@ -429,13 +427,12 @@ class Scheduler {
       // Log to BotRunLog
       await prisma.botRunLog.create({
         data: {
-          botName: "Scheduler",
-          runType: job.key,
-          status: "ERROR",
-          resultSummary: `Job failed: ${errorMessage}`,
+          botName: `Scheduler:${job.key}`,
+          success: false,
+          error: errorMessage,
+          summary: `Job failed: ${errorMessage}`,
           recordsProcessed: 0,
           insightsGenerated: 0,
-          errorsEncountered: 1,
           durationMs,
         },
       });
@@ -510,7 +507,6 @@ class Scheduler {
         },
         {
           timezone: this.config.timezone,
-          scheduled: true,
         }
       );
 

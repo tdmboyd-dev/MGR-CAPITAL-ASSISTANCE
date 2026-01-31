@@ -4,8 +4,8 @@
  */
 
 import { Router, Response } from "express";
-import { authMiddleware, AuthRequest } from "../middleware/authMiddleware";
-import { globalSearchService } from "../services/GlobalSearchService";
+import { authMiddleware, AuthRequest } from "../middleware/authMiddleware.js";
+import { globalSearchService } from "../services/GlobalSearchService.js";
 import { CaseStatus } from "@prisma/client";
 
 const router = Router();
@@ -114,7 +114,7 @@ router.get("/suggestions", authMiddleware, async (req: AuthRequest, res: Respons
     });
 
     // Format as suggestions
-    const suggestions = results.results.map((r) => {
+    const suggestions = results.results.map((r: any) => {
       switch (r.type) {
         case "case":
           return {

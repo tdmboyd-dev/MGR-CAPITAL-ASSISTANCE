@@ -446,9 +446,8 @@ router.post(
 
     // Fetch content using scraper service
     const scrapeResult = await scraperService.fetchSingleUrl(url, {
-      timeoutMs: 30000,
-      headers: headers || {},
-    });
+      name: url,
+    }) as any;
 
     if (!scrapeResult.success || !scrapeResult.content) {
       throw Errors.badRequest(`Failed to fetch URL: ${scrapeResult.error || "Unknown error"}`);

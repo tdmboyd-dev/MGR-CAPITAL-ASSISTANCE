@@ -1,6 +1,6 @@
 import { Router, Response } from "express";
 import { PrismaClient } from "@prisma/client";
-import { authMiddleware, AuthRequest } from "../middleware/authMiddleware";
+import { authMiddleware, AuthRequest } from "../middleware/authMiddleware.js";
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -73,7 +73,7 @@ router.get("/forecast", authMiddleware, async (req: AuthRequest, res: Response) 
       where: {
         createdAt: { gte: startDate },
         status: "COMPLETED",
-        type: { in: ["PAYOUT", "COMMISSION"] },
+        type: { in: ["CLIENT_PAYOUT", "COMMISSION"] as any },
       },
       select: {
         amountCents: true,
@@ -355,7 +355,7 @@ router.get("/reports", authMiddleware, async (req: AuthRequest, res: Response) =
     if (filters.type === "training" || filters.type === "all") {
       const trainingProgress = await prisma.employeeTrainingProgress.findMany({
         where: {
-          updatedAt: { gte: startDate, lte: endDate },
+          assignedAt: { gte: startDate, lte: endDate },
         },
         include: {
           employee: { select: { id: true, name: true, email: true } },
@@ -371,11 +371,11 @@ router.get("/reports", authMiddleware, async (req: AuthRequest, res: Response) =
         completed: completedCount,
         inProgress: inProgressCount,
         completionRate: trainingProgress.length > 0 ? Math.round((completedCount / trainingProgress.length) * 100) : 0,
-        details: trainingProgress.map((p) => ({
+        details: trainingProgress.map((p: any) => ({
           employee: p.employee.name,
           module: p.module.title,
           status: p.status,
-          score: p.quizScore,
+          score: p.bestScore,
           completedAt: p.completedAt,
         })),
       };

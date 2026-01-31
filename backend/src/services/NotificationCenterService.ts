@@ -178,7 +178,7 @@ class NotificationCenterService {
           path: ["isNotification"],
           equals: true,
         },
-        acknowledgedAt: null,
+        isRead: false,
       },
       orderBy: { createdAt: "desc" },
       take: 50,
@@ -205,7 +205,7 @@ class NotificationCenterService {
     };
 
     if (unreadOnly) {
-      where.acknowledgedAt = null;
+      where.isRead = false;
     }
 
     const [notifications, total, unreadCount] = await Promise.all([
@@ -219,7 +219,7 @@ class NotificationCenterService {
       prisma.opsInsight.count({
         where: {
           ...where,
-          acknowledgedAt: null,
+          isRead: false,
         },
       }),
     ]);
@@ -242,7 +242,7 @@ class NotificationCenterService {
           path: ["isNotification"],
           equals: true,
         },
-        acknowledgedAt: null,
+        isRead: false,
       },
     });
   }
@@ -254,8 +254,9 @@ class NotificationCenterService {
     await prisma.opsInsight.update({
       where: { id: notificationId },
       data: {
-        acknowledgedAt: new Date(),
-        acknowledgedBy: userId,
+        isRead: true,
+        readAt: new Date(),
+        actionNotes: userId,
       },
     });
   }
@@ -270,8 +271,9 @@ class NotificationCenterService {
         relatedUserIds: { has: userId },
       },
       data: {
-        acknowledgedAt: new Date(),
-        acknowledgedBy: userId,
+        isRead: true,
+        readAt: new Date(),
+        actionNotes: userId,
       },
     });
 
@@ -289,11 +291,12 @@ class NotificationCenterService {
           path: ["isNotification"],
           equals: true,
         },
-        acknowledgedAt: null,
+        isRead: false,
       },
       data: {
-        acknowledgedAt: new Date(),
-        acknowledgedBy: userId,
+        isRead: true,
+        readAt: new Date(),
+        actionNotes: userId,
       },
     });
 

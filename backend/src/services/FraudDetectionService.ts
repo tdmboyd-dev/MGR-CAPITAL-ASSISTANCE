@@ -365,7 +365,7 @@ export class FraudDetectionService {
     try {
       // Using free ip-api.com (45 requests/minute, no key needed)
       const response = await fetch(`http://ip-api.com/json/${ip}?fields=status,lat,lon,city,country`);
-      const data = await response.json();
+      const data: any = await response.json();
 
       if (data.status === 'success') {
         const location: GeoLocation = {
@@ -414,22 +414,8 @@ export class FraudDetectionService {
     let userLocation = this.userLocationCache.get(userId);
 
     if (!userLocation) {
-      // Try to get from recent successful transactions
-      try {
-        const user = await prisma.user.findUnique({
-          where: { id: userId },
-          select: { lastLoginIp: true },
-        });
-
-        if (user?.lastLoginIp) {
-          userLocation = await this.getIpGeolocation(user.lastLoginIp) || undefined;
-          if (userLocation) {
-            this.userLocationCache.set(userId, userLocation);
-          }
-        }
-      } catch {
-        // User model might not have lastLoginIp
-      }
+      // No stored IP on user model; user location will be set on first transaction
+      // Future: could store lastLoginIp in user metadata
     }
 
     if (!userLocation) {

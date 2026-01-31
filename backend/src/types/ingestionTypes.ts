@@ -466,15 +466,5 @@ export interface IIngestionIntelligenceService {
 }
 
 // =============================================================================
-// EXPORT ALL TYPES
+// ALL TYPES EXPORTED INLINE ABOVE
 // =============================================================================
-
-export type {
-  ParserSuggestion,
-  PredictedValue,
-  JurisdictionMetrics,
-  AutoFileCandidate,
-  BatchIntelligenceResult,
-  FailedRecordAnalysis,
-  IngestionBotAnalysis,
-};

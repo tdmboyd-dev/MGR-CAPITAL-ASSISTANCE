@@ -3,49 +3,22 @@
 // Type definitions for Training Intelligence Layer
 // ============================================
 
-import { EmployeeTier, UserRole } from "@prisma/client";
+import {
+  EmployeeTier,
+  UserRole,
+  TrainingModuleSourceType,
+  TrainingRecommendationPriority,
+  TrainingRecommendationReason,
+  TierProgressionStatus,
+} from "@prisma/client";
 
-// ============================================
-// ENUMS
-// ============================================
-
-export enum TrainingModuleSourceType {
-  STATIC = "STATIC",
-  OPS_INSIGHT = "OPS_INSIGHT",
-  SCRAPED_ITEM = "SCRAPED_ITEM",
-  CLAIM_PATTERN = "CLAIM_PATTERN",
-  COMPLIANCE_UPDATE = "COMPLIANCE_UPDATE",
-  JURISDICTION_CHANGE = "JURISDICTION_CHANGE",
-}
-
-export enum TrainingRecommendationPriority {
-  LOW = "LOW",
-  NORMAL = "NORMAL",
-  HIGH = "HIGH",
-  URGENT = "URGENT",
-  MANDATORY = "MANDATORY",
-}
-
-export enum TrainingRecommendationReason {
-  LOW_CONVERSION = "LOW_CONVERSION",
-  MISSING_SKILLS = "MISSING_SKILLS",
-  TIER_REQUIREMENT = "TIER_REQUIREMENT",
-  COMPLIANCE_GAP = "COMPLIANCE_GAP",
-  JURISDICTION_UPDATE = "JURISDICTION_UPDATE",
-  NEW_HIRE = "NEW_HIRE",
-  PERFORMANCE_DECLINE = "PERFORMANCE_DECLINE",
-  SKILL_REFRESH = "SKILL_REFRESH",
-  PROMOTION_PATH = "PROMOTION_PATH",
-}
-
-export enum TierProgressionStatus {
-  NOT_ELIGIBLE = "NOT_ELIGIBLE",
-  IN_PROGRESS = "IN_PROGRESS",
-  REQUIREMENTS_MET = "REQUIREMENTS_MET",
-  PENDING_REVIEW = "PENDING_REVIEW",
-  APPROVED = "APPROVED",
-  DENIED = "DENIED",
-}
+// Re-export Prisma enums so consumers can import from here
+export {
+  TrainingModuleSourceType,
+  TrainingRecommendationPriority,
+  TrainingRecommendationReason,
+  TierProgressionStatus,
+};
 
 // ============================================
 // CONTRACTOR METRICS

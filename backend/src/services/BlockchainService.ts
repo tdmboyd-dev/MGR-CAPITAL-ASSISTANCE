@@ -63,7 +63,7 @@ interface PayoutOptions {
 }
 
 class BlockchainService {
-  private web3: Web3;
+  private web3: any;
   private isEnabled: boolean;
   private network: string;
   private isMainnet: boolean;
@@ -74,7 +74,7 @@ class BlockchainService {
 
     // Select RPC URL based on network
     const rpcUrl = config.ethereumRpcUrl || RPC_URLS[this.network] || RPC_URLS.sepolia;
-    this.web3 = new Web3(rpcUrl);
+    this.web3 = new (Web3 as any)(rpcUrl);
     this.isEnabled = !!config.ethereumPrivateKey && !!config.ethereumWalletAddress;
 
     if (!this.isEnabled) {
@@ -123,7 +123,7 @@ class BlockchainService {
         throw new Error(`CoinGecko API error: ${response.status}`);
       }
 
-      const data = await response.json();
+      const data: any = await response.json();
       const ethUsdPrice = data.ethereum?.usd;
 
       if (!ethUsdPrice || typeof ethUsdPrice !== 'number') {
@@ -264,7 +264,7 @@ class BlockchainService {
             network: config.ethereumNetwork || "sepolia",
             priceSource: 'coingecko',
           },
-          createdById: userId,
+          userId: userId,
         },
       });
 
@@ -272,9 +272,9 @@ class BlockchainService {
       await prisma.case.update({
         where: { id: caseId },
         data: {
-          lastPayoutAt: new Date(),
           metadata: {
             lastTxHash: txHash,
+            lastPayoutAt: new Date().toISOString(),
           },
         },
       });
@@ -302,7 +302,7 @@ class BlockchainService {
             recipientAddress,
             error: error.message,
           },
-          createdById: userId,
+          userId: userId,
         },
       });
 
@@ -323,8 +323,8 @@ class BlockchainService {
       const balanceWei = await this.web3.eth.getBalance(config.ethereumWalletAddress!);
       const balanceEth = this.web3.utils.fromWei(balanceWei, "ether");
       return { balanceEth, balanceWei: balanceWei.toString() };
-    } catch (error) {
-      logger.error("BlockchainService getBalance error:", error);
+    } catch (error: any) {
+      logger.error("BlockchainService getBalance error:", { error: error?.message });
       return null;
     }
   }
@@ -347,8 +347,8 @@ class BlockchainService {
         blockNumber: Number(receipt.blockNumber),
         status: receipt.status,
       };
-    } catch (error) {
-      logger.error("BlockchainService verifyTransaction error:", error);
+    } catch (error: any) {
+      logger.error("BlockchainService verifyTransaction error:", { error: error?.message });
       return { confirmed: false };
     }
   }

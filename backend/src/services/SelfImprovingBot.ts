@@ -1,3 +1,4 @@
+// @ts-ignore - optional dependency
 import * as tf from '@tensorflow/tfjs-node';
 import { PrismaClient } from '@prisma/client';
 import cron from 'node-cron';
@@ -152,7 +153,7 @@ export class SelfImprovingBot {
         validationSplit: 0.2,
         shuffle: true,
         callbacks: {
-          onEpochEnd: (epoch, logs) => {
+          onEpochEnd: (epoch: any, logs: any) => {
             console.log(`[SelfImprove] Epoch ${epoch + 1}: loss=${logs?.loss?.toFixed(4)}, acc=${logs?.acc?.toFixed(4)}`);
           }
         }

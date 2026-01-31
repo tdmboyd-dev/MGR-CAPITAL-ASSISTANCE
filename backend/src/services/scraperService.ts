@@ -297,7 +297,7 @@ class ScraperService {
    */
   async loadConfigurations(): Promise<ScraperConfig[]> {
     const watchTargets = await prisma.watchTarget.findMany({
-      where: { enabled: true },
+      where: { isActive: true },
       orderBy: { createdAt: "asc" },
     });
 
@@ -305,12 +305,12 @@ class ScraperService {
       this.configs = watchTargets.map((wt) => ({
         id: wt.id,
         name: wt.name,
-        type: this.mapWatchTypeToScrapedItemType(wt.watchType),
+        type: this.mapWatchTypeToScrapedItemType(wt.type),
         state: wt.state || "",
         county: wt.county || undefined,
         url: wt.url,
-        enabled: wt.enabled,
-        fetchIntervalMinutes: wt.checkIntervalMinutes || 360,
+        enabled: wt.isActive,
+        fetchIntervalMinutes: ((wt.config as any)?.checkIntervalMinutes) || 360,
         watchTargetId: wt.id,
       }));
     } else {
@@ -526,7 +526,7 @@ class ScraperService {
       if (config.watchTargetId) {
         await prisma.watchTarget.update({
           where: { id: config.watchTargetId },
-          data: { lastCheckedAt: new Date() },
+          data: { lastScrapedAt: new Date(), lastSuccessAt: new Date() },
         });
       }
       return { success: true, changeDetected: false };
@@ -589,8 +589,8 @@ class ScraperService {
       await prisma.watchTarget.update({
         where: { id: config.watchTargetId },
         data: {
-          lastCheckedAt: new Date(),
-          lastChangeAt: changeDetected ? new Date() : undefined,
+          lastScrapedAt: new Date(),
+          lastSuccessAt: new Date(),
         },
       });
     }
@@ -615,6 +615,8 @@ class ScraperService {
       SURPLUS_RULES: "SURPLUS_FUND",
       STATE_STATUTE: "SURPLUS_FUND",
       COURT_NOTICE: "SURPLUS_FUND",
+      COUNTY_WEBSITE: "SURPLUS_FUND",
+      DOCUMENT_PATTERN: "SURPLUS_FUND",
     };
     return mapping[type] || "UNKNOWN";
   }
@@ -631,7 +633,7 @@ class ScraperService {
       await prisma.opsInsight.create({
         data: {
           category: "SCRAPER_CHANGE",
-          priority: config.type === "STATE_STATUTE" ? "HIGH" : "MEDIUM",
+          priority: config.type === "STATE_STATUTE" ? "HIGH" : "NORMAL",
           title: `Content Change Detected: ${config.name}`,
           summary: `The monitored source "${config.name}" (${config.state}${config.county ? ` - ${config.county}` : ""}) has updated content that may require review.`,
           details: {
@@ -661,8 +663,9 @@ class ScraperService {
         await prisma.watchTarget.update({
           where: { id: config.watchTargetId },
           data: {
-            lastCheckedAt: new Date(),
-            // Increment failure count via raw query if schema supports it
+            lastScrapedAt: new Date(),
+            lastErrorAt: new Date(),
+            lastError: error,
           },
         });
       }
@@ -671,7 +674,7 @@ class ScraperService {
       await prisma.opsInsight.create({
         data: {
           category: "SCRAPER_ERROR",
-          priority: "MEDIUM",
+          priority: "NORMAL",
           title: `Scraper Fetch Failed: ${config.name}`,
           summary: `Failed to fetch content from ${config.url}: ${error}`,
           details: {
@@ -733,10 +736,6 @@ class ScraperService {
   async getScrapedItem(id: string): Promise<unknown> {
     return prisma.scrapedItem.findUnique({
       where: { id },
-      include: {
-        watchAlerts: true,
-        watchTarget: true,
-      },
     });
   }
 
@@ -796,7 +795,7 @@ class ScraperService {
           },
         }),
         prisma.watchTarget.count({
-          where: { enabled: true },
+          where: { isActive: true },
         }),
       ]);
 

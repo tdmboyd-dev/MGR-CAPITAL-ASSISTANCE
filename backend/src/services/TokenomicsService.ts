@@ -142,11 +142,11 @@ export class TokenomicsService {
       // Log reward
       await prisma.tokenReward.create({
         data: {
-          walletAddress: userWalletAddress,
+          userId: userWalletAddress,
           amount,
-          txSignature: signature,
+          reason: `Surplus reward - tx: ${signature}`,
           type: 'SURPLUS_REWARD'
-        }
+        } as any
       });
 
       console.log(`[Tokenomics] Rewarded ${amount} MGR to ${userWalletAddress}`);
@@ -241,16 +241,16 @@ export class TokenomicsService {
 
     const rewards = await prisma.tokenReward.aggregate({
       _sum: { amount: true },
-      _count: { walletAddress: true }
+      _count: { userId: true }
     });
 
     const uniqueHolders = await prisma.tokenReward.groupBy({
-      by: ['walletAddress']
+      by: ['userId']
     });
 
     return {
       totalSupply,
-      totalRewards: rewards._sum.amount || 0,
+      totalRewards: rewards._sum?.amount || 0,
       uniqueHolders: uniqueHolders.length,
       mintAddress: mint.toString()
     };

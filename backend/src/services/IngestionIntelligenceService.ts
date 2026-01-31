@@ -129,12 +129,12 @@ class IngestionIntelligenceService implements IIngestionIntelligenceService {
     await prisma.founderConfig.upsert({
       where: { key: "ingestion_intelligence" },
       update: {
-        value: newConfig as unknown as Record<string, unknown>,
+        value: newConfig as any,
         updatedAt: new Date(),
       },
       create: {
         key: "ingestion_intelligence",
-        value: newConfig as unknown as Record<string, unknown>,
+        value: newConfig as any,
         description: "Ingestion Intelligence configuration",
       },
     });
@@ -223,7 +223,7 @@ class IngestionIntelligenceService implements IIngestionIntelligenceService {
         recordIds,
         recordCount: recordIds.length,
         commonJurisdiction,
-        commonSourceType: records[0]?.sourceType,
+        commonSourceType: records[0]?.sourceType ?? undefined,
         suggestedFix: null, // Will be populated by generateParserSuggestion
         potentialValueCents,
         percentOfFailures: Math.round((recordIds.length / failedRecords.length) * 100),
@@ -390,7 +390,7 @@ class IngestionIntelligenceService implements IIngestionIntelligenceService {
         severity: cluster.recordCount > 100 ? "HIGH" : "MEDIUM",
         title: `Parser suggestion for cluster ${clusterId}`,
         description: `${cluster.recordCount} records affected. Pattern: ${cluster.errorPattern.slice(0, 100)}`,
-        data: suggestion as unknown as Record<string, unknown>,
+        data: suggestion as any,
         status: "OPEN",
       },
     });
@@ -523,7 +523,7 @@ class IngestionIntelligenceService implements IIngestionIntelligenceService {
       where: { id: insight.id },
       data: {
         status: "CLOSED",
-        resolvedAt: new Date(),
+        actionedAt: new Date(),
         data: {
           ...(insight.data as Record<string, unknown>),
           status: "APPLIED",
@@ -993,17 +993,20 @@ class IngestionIntelligenceService implements IIngestionIntelligenceService {
     // Create the case
     try {
       // First, create or find client
-      let client = await prisma.client.findFirst({
+      let client = await prisma.user.findFirst({
         where: {
           name: (normalized?.ownerName as string) || "Unknown Owner",
+          role: "CLIENT",
         },
       });
 
       if (!client) {
-        client = await prisma.client.create({
+        client = await prisma.user.create({
           data: {
             name: (normalized?.ownerName as string) || "Unknown Owner",
-            email: (normalized?.ownerEmail as string) || null,
+            email: (normalized?.ownerEmail as string) || `auto-${Date.now()}@placeholder.local`,
+            passwordHash: "auto-generated-placeholder",
+            role: "CLIENT",
             phone: (normalized?.ownerPhone as string) || null,
             address: (normalized?.ownerMailingAddress as string) || null,
             city: (normalized?.city as string) || null,
@@ -1025,7 +1028,8 @@ class IngestionIntelligenceService implements IIngestionIntelligenceService {
           saleDate: (normalized?.saleDate as Date) || null,
           surplusAmountCents: (normalized?.amountCents as number) || 0,
           status: "NEW",
-          priority: "HIGH",
+          feePercent: 30,
+          priority: 10,
           source: "AUTO_FILED",
         },
       });

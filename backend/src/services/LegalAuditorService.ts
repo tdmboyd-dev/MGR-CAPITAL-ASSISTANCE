@@ -558,7 +558,7 @@ Output JSON only:
    * Get state-specific compliance requirements
    */
   getStateRequirements(state: string): {
-    rules: typeof this.STATE_RULES[string];
+    rules: any;
     exists: boolean;
   } {
     const stateUpper = state.toUpperCase();

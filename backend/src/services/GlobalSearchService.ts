@@ -16,7 +16,7 @@ export interface CaseSearchResult {
   id: string;
   caseCode: string;
   status: CaseStatus;
-  ownerName: string | null;
+  previousOwner: string | null;
   propertyAddress: string | null;
   surplusAmountCents: number | null;
   state: string | null;
@@ -29,8 +29,7 @@ export interface UserSearchResult {
   type: "user";
   id: string;
   email: string;
-  firstName: string | null;
-  lastName: string | null;
+  name: string;
   role: UserRole;
   matchedField: string;
   score: number;
@@ -146,31 +145,33 @@ class GlobalSearchService {
 
     if (types.includes("case")) {
       searchPromises.push(
-        this.searchCases(searchTerm, userId, userRole, options).then((r) =>
-          results.push(...r)
-        )
+        this.searchCases(searchTerm, userId, userRole, options).then((r) => {
+          results.push(...r);
+        })
       );
     }
 
     if (types.includes("user") && this.canSearchUsers(userRole)) {
       searchPromises.push(
-        this.searchUsers(searchTerm, userRole).then((r) => results.push(...r))
+        this.searchUsers(searchTerm, userRole).then((r) => {
+          results.push(...r);
+        })
       );
     }
 
     if (types.includes("document")) {
       searchPromises.push(
-        this.searchDocuments(searchTerm, userId, userRole).then((r) =>
-          results.push(...r)
-        )
+        this.searchDocuments(searchTerm, userId, userRole).then((r) => {
+          results.push(...r);
+        })
       );
     }
 
     if (types.includes("communication")) {
       searchPromises.push(
-        this.searchCommunications(searchTerm, userId, userRole).then((r) =>
-          results.push(...r)
-        )
+        this.searchCommunications(searchTerm, userId, userRole).then((r) => {
+          results.push(...r);
+        })
       );
     }
 
@@ -210,7 +211,7 @@ class GlobalSearchService {
     const whereClause: any = {
       OR: [
         { caseCode: { contains: query, mode: "insensitive" } },
-        { ownerName: { contains: query, mode: "insensitive" } },
+        { previousOwner: { contains: query, mode: "insensitive" } },
         { propertyAddress: { contains: query, mode: "insensitive" } },
         { state: { contains: query, mode: "insensitive" } },
         { county: { contains: query, mode: "insensitive" } },
@@ -220,17 +221,17 @@ class GlobalSearchService {
 
     // Role-based access control
     if (userRole === "EMPLOYEE") {
-      whereClause.assignedToId = userId;
+      whereClause.assignedEmployeeId = userId;
     } else if (userRole === "CLIENT") {
       whereClause.clientId = userId;
     } else if (userRole === "TEAM_LEAD") {
       // Team leads see their team's cases
       const teamMembers = await prisma.user.findMany({
-        where: { teamLeadId: userId },
+        where: { teamLeaderId: userId },
         select: { id: true },
       });
       const teamIds = [userId, ...teamMembers.map((m) => m.id)];
-      whereClause.assignedToId = { in: teamIds };
+      whereClause.assignedEmployeeId = { in: teamIds };
     }
 
     // Optional filters
@@ -249,7 +250,7 @@ class GlobalSearchService {
         id: true,
         caseCode: true,
         status: true,
-        ownerName: true,
+        previousOwner: true,
         propertyAddress: true,
         surplusAmountCents: true,
         state: true,
@@ -261,16 +262,16 @@ class GlobalSearchService {
     return cases.map((c) => ({
       type: "case" as const,
       id: c.id,
-      caseCode: c.caseCode,
+      caseCode: c.caseCode || "",
       status: c.status,
-      ownerName: c.ownerName,
+      previousOwner: c.previousOwner,
       propertyAddress: c.propertyAddress,
       surplusAmountCents: c.surplusAmountCents,
       state: c.state,
       county: c.county,
       matchedField: this.findMatchedField(query, {
         caseCode: c.caseCode,
-        ownerName: c.ownerName,
+        previousOwner: c.previousOwner,
         propertyAddress: c.propertyAddress,
         state: c.state,
         county: c.county,
@@ -278,7 +279,7 @@ class GlobalSearchService {
       }),
       score: this.calculateScore(query, [
         c.caseCode,
-        c.ownerName,
+        c.previousOwner,
         c.propertyAddress,
         c.state,
         c.county,
@@ -297,8 +298,7 @@ class GlobalSearchService {
       where: {
         OR: [
           { email: { contains: query, mode: "insensitive" } },
-          { firstName: { contains: query, mode: "insensitive" } },
-          { lastName: { contains: query, mode: "insensitive" } },
+          { name: { contains: query, mode: "insensitive" } },
         ],
         // Non-founders can only see active users
         ...(userRole !== "FOUNDER" && userRole !== "ADMIN" ? { isActive: true } : {}),
@@ -307,8 +307,7 @@ class GlobalSearchService {
       select: {
         id: true,
         email: true,
-        firstName: true,
-        lastName: true,
+        name: true,
         role: true,
       },
     });
@@ -317,15 +316,13 @@ class GlobalSearchService {
       type: "user" as const,
       id: u.id,
       email: u.email,
-      firstName: u.firstName,
-      lastName: u.lastName,
+      name: u.name,
       role: u.role,
       matchedField: this.findMatchedField(query, {
         email: u.email,
-        firstName: u.firstName,
-        lastName: u.lastName,
+        name: u.name,
       }),
-      score: this.calculateScore(query, [u.email, u.firstName, u.lastName]),
+      score: this.calculateScore(query, [u.email, u.name]),
     }));
   }
 
@@ -340,23 +337,22 @@ class GlobalSearchService {
     // Build case access filter
     let caseFilter: any = {};
     if (userRole === "EMPLOYEE") {
-      caseFilter = { case: { assignedToId: userId } };
+      caseFilter = { case: { assignedEmployeeId: userId } };
     } else if (userRole === "CLIENT") {
       caseFilter = { case: { clientId: userId } };
     } else if (userRole === "TEAM_LEAD") {
       const teamMembers = await prisma.user.findMany({
-        where: { teamLeadId: userId },
+        where: { teamLeaderId: userId },
         select: { id: true },
       });
       const teamIds = [userId, ...teamMembers.map((m) => m.id)];
-      caseFilter = { case: { assignedToId: { in: teamIds } } };
+      caseFilter = { case: { assignedEmployeeId: { in: teamIds } } };
     }
 
     const documents = await prisma.document.findMany({
       where: {
         OR: [
           { fileName: { contains: query, mode: "insensitive" } },
-          { notes: { contains: query, mode: "insensitive" } },
         ],
         ...caseFilter,
       },
@@ -377,12 +373,11 @@ class GlobalSearchService {
       fileName: d.fileName,
       documentType: d.type,
       caseId: d.case.id,
-      caseCode: d.case.caseCode,
+      caseCode: d.case.caseCode || "",
       matchedField: this.findMatchedField(query, {
         fileName: d.fileName,
-        notes: d.notes,
       }),
-      score: this.calculateScore(query, [d.fileName, d.notes]),
+      score: this.calculateScore(query, [d.fileName]),
     }));
   }
 
@@ -397,16 +392,16 @@ class GlobalSearchService {
     // Build case access filter
     let caseFilter: any = {};
     if (userRole === "EMPLOYEE") {
-      caseFilter = { case: { assignedToId: userId } };
+      caseFilter = { case: { assignedEmployeeId: userId } };
     } else if (userRole === "CLIENT") {
       caseFilter = { case: { clientId: userId } };
     } else if (userRole === "TEAM_LEAD") {
       const teamMembers = await prisma.user.findMany({
-        where: { teamLeadId: userId },
+        where: { teamLeaderId: userId },
         select: { id: true },
       });
       const teamIds = [userId, ...teamMembers.map((m) => m.id)];
-      caseFilter = { case: { assignedToId: { in: teamIds } } };
+      caseFilter = { case: { assignedEmployeeId: { in: teamIds } } };
     }
 
     const communications = await prisma.communication.findMany({
@@ -435,7 +430,7 @@ class GlobalSearchService {
       subject: c.subject,
       preview: c.content?.substring(0, 100) || "",
       caseId: c.case.id,
-      caseCode: c.case.caseCode,
+      caseCode: c.case.caseCode || "",
       direction: c.direction,
       createdAt: c.createdAt,
       matchedField: this.findMatchedField(query, {

@@ -76,7 +76,7 @@ class FeedbackService {
         rating: input.rating,
         comment: input.comment,
         pageUrl: input.pageUrl,
-        sessionContext: input.sessionContext as unknown as Record<string, unknown>,
+        sessionContext: (input.sessionContext || {}) as any,
         aiResponseId: input.aiResponseId,
         userAgent: input.userAgent,
         ipAddress: input.ipAddress,
@@ -142,9 +142,6 @@ class FeedbackService {
     const [feedbacks, total, stats] = await Promise.all([
       prisma.feedback.findMany({
         where,
-        include: {
-          // @ts-ignore - User relation not in schema but we add it
-        },
         orderBy: { createdAt: "desc" },
         take: options.limit || 50,
         skip: options.offset || 0,
@@ -448,7 +445,7 @@ class FeedbackService {
         priority,
         title: `User Feedback Report: ${analysis.stats.averageRating}/5 avg rating`,
         summary: `${analysis.stats.totalFeedback} feedbacks, ${analysis.stats.averageRating}/5 avg, trend: ${analysis.stats.recentTrend}`,
-        details: analysis as unknown as Record<string, unknown>,
+        details: analysis as any,
         plainEnglish: this.generatePlainEnglishReport(analysis),
         recommendations: analysis.recommendations,
         relatedCaseIds: [],
@@ -474,7 +471,7 @@ class FeedbackService {
   }): Promise<void> {
     await prisma.opsInsight.create({
       data: {
-        type: "LOW_RATING_ALERT",
+        type: "FEEDBACK_ANALYSIS",
         priority: feedback.rating === 1 ? "URGENT" : "HIGH",
         title: `Low Rating Alert: ${feedback.rating}/5 on ${feedback.feature || feedback.category}`,
         summary: feedback.comment?.slice(0, 200) || "No comment provided",

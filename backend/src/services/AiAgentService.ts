@@ -127,7 +127,7 @@ async function deepseekChat(messages: OllamaMessage[]): Promise<string> {
     throw new Error(`DeepSeek API error: ${response.status}`);
   }
 
-  const data = await response.json();
+  const data: any = await response.json();
   return data.choices[0]?.message?.content || '';
 }
 
@@ -164,7 +164,7 @@ async function geminiChat(messages: OllamaMessage[]): Promise<string> {
     throw new Error(`Gemini API error: ${response.status}`);
   }
 
-  const data = await response.json();
+  const data: any = await response.json();
   return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
 }
 
@@ -190,7 +190,7 @@ async function openaiChat(messages: OllamaMessage[]): Promise<string> {
     throw new Error(`OpenAI API error: ${response.status}`);
   }
 
-  const data = await response.json();
+  const data: any = await response.json();
   return data.choices[0]?.message?.content || '';
 }
 
@@ -423,7 +423,7 @@ class AiAgentService {
 Case Number: ${caseData.caseNumber || caseData.internalCode}
 Status: ${caseData.status}
 Property: ${caseData.propertyAddress}, ${caseData.county}, ${caseData.state}
-Estimated Value: $${((caseData.estimatedValueCents || 0) / 100).toFixed(2)}
+Estimated Value: $${((caseData.estimatedFeeCents || 0) / 100).toFixed(2)}
 Client: ${caseData.client?.name || "Unknown"}
 Client Email: ${caseData.client?.email || "N/A"}
 Assigned To: ${caseData.assignedEmployee?.name || "Unassigned"}
@@ -557,15 +557,14 @@ ${JSON.stringify(context.customData, null, 2)}`);
         data: {
           botName: `ai_agent_${task}`,
           startedAt: new Date(),
-          endedAt: new Date(),
+          completedAt: new Date(),
           recordsProcessed: 1,
-          successCount: success ? 1 : 0,
-          errorCount: success ? 0 : 1,
-          metadata: {
+          success,
+          details: {
             task,
-            context,
+            context: context as any,
             outputPreview: output.substring(0, 500),
-          },
+          } as any,
         },
       });
     } catch (error) {

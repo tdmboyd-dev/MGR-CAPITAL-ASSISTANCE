@@ -10,6 +10,7 @@
  */
 
 import nodemailer from 'nodemailer';
+// @ts-ignore - mjml types may not be installed
 import mjml2html from 'mjml';
 import { config } from '../config/env.js';
 import { logger } from '../utils/logger.js';
@@ -292,7 +293,7 @@ export class EmailService {
         return false;
       }
 
-      const result = await response.json();
+      const result: any = await response.json();
       logger.info('[EmailService] Email sent via Brevo', { to, subject, messageId: result.messageId });
       return true;
     } catch (error: any) {

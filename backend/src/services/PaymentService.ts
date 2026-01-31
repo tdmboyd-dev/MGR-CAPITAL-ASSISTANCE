@@ -59,7 +59,7 @@ export class PaymentService {
   /**
    * Get service status
    */
-  getStatus(): { stripe: boolean; nickel: boolean; mode: string } {
+  getServiceStatus(): { stripe: boolean; nickel: boolean; mode: string } {
     return {
       stripe: !!stripe,
       nickel: !!NICKEL_API_KEY,
@@ -142,7 +142,7 @@ export class PaymentService {
           method: 'stripe',
           amount,
           status: 'succeeded',
-          externalId: demoExternalId,
+          providerPaymentId: demoExternalId,
           caseId: data.caseId,
           userId: data.userId,
         });
@@ -191,7 +191,7 @@ export class PaymentService {
       method: 'stripe',
       amount,
       status: success ? 'succeeded' : 'pending',
-      externalId: paymentIntent.id,
+      providerPaymentId: paymentIntent.id,
       caseId: data.caseId,
       userId: data.userId,
     });
@@ -240,7 +240,7 @@ export class PaymentService {
           throw new Error('PayPal auth failed');
         }
 
-        const authData = await authResponse.json();
+        const authData: any = await authResponse.json();
         const accessToken = authData.access_token;
 
         // If we have an order ID, capture it (user already approved on frontend)
@@ -257,14 +257,14 @@ export class PaymentService {
           );
 
           if (captureResponse.ok) {
-            const captureData = await captureResponse.json();
+            const captureData: any = await captureResponse.json();
             const captured = captureData.status === 'COMPLETED';
 
             await this.recordPayment(paymentId, {
               method: 'paypal',
               amount,
               status: captured ? 'succeeded' : 'pending',
-              externalId: data.paypalOrderId,
+              providerPaymentId: data.paypalOrderId,
               caseId: data.caseId,
               userId: data.userId,
             });
@@ -312,13 +312,13 @@ export class PaymentService {
         });
 
         if (orderResponse.ok) {
-          const orderData = await orderResponse.json();
+          const orderData: any = await orderResponse.json();
 
           await this.recordPayment(paymentId, {
             method: 'paypal',
             amount,
             status: 'pending',
-            externalId: orderData.id,
+            providerPaymentId: orderData.id,
             caseId: data.caseId,
             userId: data.userId,
           });
@@ -359,7 +359,7 @@ export class PaymentService {
       method: 'paypal',
       amount,
       status: 'pending',
-      externalId: demoOrderId,
+      providerPaymentId: demoOrderId,
       caseId: data.caseId,
       userId: data.userId,
     });
@@ -422,7 +422,7 @@ export class PaymentService {
           method: 'ach',
           amount,
           status,
-          externalId: paymentIntent.id,
+          providerPaymentId: paymentIntent.id,
           caseId: data.caseId,
           userId: data.userId,
         });
@@ -457,7 +457,7 @@ export class PaymentService {
       method: 'ach',
       amount,
       status: 'processing',
-      externalId: demoExternalId,
+      providerPaymentId: demoExternalId,
       caseId: data.caseId,
       userId: data.userId,
     });
@@ -516,9 +516,9 @@ export class PaymentService {
         return { success: false, error: 'Payment not found' };
       }
 
-      if (payment.method === 'stripe' && stripe && payment.externalId) {
+      if (payment.method === 'stripe' && stripe && payment.providerPaymentId) {
         const refund = await stripe.refunds.create({
-          payment_intent: payment.externalId,
+          payment_intent: payment.providerPaymentId,
           amount: amount || undefined, // Full refund if not specified
         });
 
@@ -572,7 +572,7 @@ export class PaymentService {
     method: PaymentMethod;
     amount: number;
     status: PaymentStatus;
-    externalId?: string;
+    providerPaymentId?: string;
     caseId?: string;
     userId?: string;
   }): Promise<void> {
@@ -582,7 +582,7 @@ export class PaymentService {
         method: data.method,
         amountCents: data.amount,
         status: data.status,
-        externalId: data.externalId,
+        providerPaymentId: data.providerPaymentId,
         caseId: data.caseId,
         userId: data.userId,
       },
@@ -663,7 +663,7 @@ export class PaymentService {
 
       return {
         clientSecret: session.client_secret!,
-        url: session.url || returnUrl,
+        url: (session as any).url || returnUrl,
       };
     } catch (error: any) {
       logger.error('Failed to create Financial Connections session', {
@@ -841,13 +841,13 @@ export class PaymentService {
         return this.processACH(paymentId, amount, data);
       }
 
-      const result = await response.json();
+      const result: any = await response.json();
 
       await this.recordPayment(paymentId, {
         method: 'ach',
         amount,
         status: 'pending',
-        externalId: result.id,
+        providerPaymentId: result.id,
         caseId: data.caseId,
         userId: data.userId,
       });
@@ -913,8 +913,8 @@ export class PaymentService {
       // By method breakdown
       const methodMap = new Map<string, { count: number; total: number }>();
       payments.filter(p => p.status === 'succeeded').forEach(p => {
-        const existing = methodMap.get(p.method) || { count: 0, total: 0 };
-        methodMap.set(p.method, {
+        const existing = methodMap.get(p.method || 'unknown') || { count: 0, total: 0 };
+        methodMap.set(p.method || 'unknown', {
           count: existing.count + 1,
           total: existing.total + p.amountCents / 100,
         });
@@ -948,7 +948,7 @@ export class PaymentService {
         amount: p.amountCents / 100,
         method: p.method,
         status: p.status,
-        externalId: p.externalId,
+        providerPaymentId: p.providerPaymentId,
         caseId: p.caseId,
         userId: p.userId,
         createdAt: p.createdAt,

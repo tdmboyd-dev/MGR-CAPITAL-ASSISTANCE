@@ -15,7 +15,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Progress } from '@/components/ui/progress'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { toast } from 'sonner'
-import { useWebSocket } from 'react-use-websocket'
+import useWebSocket from 'react-use-websocket'
 import {
   Gavel,
   DollarSign,

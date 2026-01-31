@@ -1,7 +1,7 @@
 import { Router, Request, Response } from "express";
 import multer from "multer";
-import { voiceService } from "../services/VoiceService";
-import { authMiddleware } from "../middleware/authMiddleware";
+import { voiceService } from "../services/VoiceService.js";
+import { authMiddleware } from "../middleware/authMiddleware.js";
 
 const router = Router();
 

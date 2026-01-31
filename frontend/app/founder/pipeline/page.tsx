@@ -1,11 +1,11 @@
 "use client";
 
-import DashboardLayout from "@/components/DashboardLayout";
+import { DashboardLayout } from "@/components/DashboardLayout";
 import LeadPipelineKanban from "@/components/LeadPipelineKanban";
 
 export default function PipelinePage() {
   return (
-    <DashboardLayout>
+    <DashboardLayout allowedRoles={["FOUNDER", "ADMIN"]}>
       <div className="h-[calc(100vh-100px)]">
         <LeadPipelineKanban />
       </div>

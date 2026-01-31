@@ -5,7 +5,7 @@
 // ============================================
 
 import { Router, Response } from "express";
-import { AuthenticatedRequest, authMiddleware, requireRole } from "../middleware/authMiddleware.js";
+import { AuthenticatedRequest, authMiddleware, requireRoles } from "../middleware/authMiddleware.js";
 import { roleGuard, ROLE_GROUPS } from "../middleware/roleGuard.js";
 import { PrismaClient } from "@prisma/client";
 import { complianceExportService, ExportType, ExportFormat } from "../services/ComplianceExportService.js";
@@ -503,7 +503,7 @@ router.post("/flag", async (req: AuthenticatedRequest, res: Response) => {
           reason,
           severity,
           flagged: true,
-          flaggedBy: req.user!.name,
+          flaggedBy: (req.user as any)?.name || req.user!.email,
           flaggedAt: new Date().toISOString()
         }
       }
@@ -549,7 +549,7 @@ router.post("/generate-report", async (req: AuthenticatedRequest, res: Response)
       id: `COMP-${Date.now()}`,
       type: reportType || "FULL",
       generatedAt: new Date().toISOString(),
-      generatedBy: req.user!.name,
+      generatedBy: (req.user as any)?.name || req.user!.email,
       period: {
         start: startDate || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
         end: endDate || new Date().toISOString()
@@ -603,7 +603,7 @@ router.get("/risk-assessment", async (_req: AuthenticatedRequest, res: Response)
           updatedAt: { lt: new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000) }
         }
       }),
-      prisma.trainingProgress.count({
+      prisma.employeeTrainingProgress.count({
         where: {
           completedAt: null,
           deadline: { lt: now }

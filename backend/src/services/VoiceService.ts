@@ -1,4 +1,4 @@
-import { config } from "../config/env";
+import { config } from "../config/env.js";
 import { logger } from "../utils/logger.js";
 
 interface STTResult {
@@ -42,7 +42,7 @@ export class VoiceService {
    */
   async stt(audioBuffer: Buffer): Promise<STTResult> {
     try {
-      logger.info("[VoiceService] STT: Processing audio buffer of size:", audioBuffer.length);
+      logger.info("[VoiceService] STT: Processing audio buffer of size:", { size: audioBuffer.length });
 
       // Try OpenAI Whisper first (best accuracy)
       if (OPENAI_API_KEY && audioBuffer.length > 1000) {
@@ -61,8 +61,8 @@ export class VoiceService {
         transcript: "Hello, how can I help you with your case today?",
         confidence: 0.5, // Lower confidence for demo mode
       };
-    } catch (error) {
-      logger.error("[VoiceService] STT Error:", error);
+    } catch (error: any) {
+      logger.error("[VoiceService] STT Error:", { error: error?.message || error });
       throw new Error("Speech-to-text processing failed");
     }
   }
@@ -89,7 +89,7 @@ export class VoiceService {
       throw new Error(`Whisper API error: ${response.status}`);
     }
 
-    const data = await response.json();
+    const data: any = await response.json();
     return {
       transcript: data.text || '',
       confidence: 0.95,
@@ -102,7 +102,7 @@ export class VoiceService {
    */
   async tts(text: string): Promise<TTSResult> {
     try {
-      logger.info("[VoiceService] TTS: Converting text to speech:", text.substring(0, 50));
+      logger.info("[VoiceService] TTS: Converting text to speech:", { text: text.substring(0, 50) });
 
       // Try ElevenLabs first (best quality)
       if (ELEVENLABS_API_KEY) {
@@ -123,8 +123,8 @@ export class VoiceService {
         audio: Buffer.alloc(0),
         format: "browser", // Signal to use browser TTS
       };
-    } catch (error) {
-      logger.error("[VoiceService] TTS Error:", error);
+    } catch (error: any) {
+      logger.error("[VoiceService] TTS Error:", { error: error?.message || error });
       throw new Error("Text-to-speech processing failed");
     }
   }
@@ -187,7 +187,7 @@ Respond naturally and concisely as if speaking. Keep responses under 100 words f
           }),
         });
 
-        const data = await response.json();
+        const data: any = await response.json();
         const content = data.choices?.[0]?.message?.content;
         if (content) return content;
       } catch (e) {
@@ -210,7 +210,7 @@ Respond naturally and concisely as if speaking. Keep responses under 100 words f
           }
         );
 
-        const data = await response.json();
+        const data: any = await response.json();
         const content = data.candidates?.[0]?.content?.parts?.[0]?.text;
         if (content) return content;
       } catch (e) {
@@ -231,7 +231,7 @@ Respond naturally and concisely as if speaking. Keep responses under 100 words f
       });
 
       if (response.ok) {
-        const data = await response.json();
+        const data: any = await response.json();
         if (data.response) return data.response;
       }
     } catch (e) {

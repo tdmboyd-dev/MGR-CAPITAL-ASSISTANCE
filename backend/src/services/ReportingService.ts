@@ -171,7 +171,7 @@ class ReportingService {
     });
 
     const alerts = alertInsights.map((a) => ({
-      title: a.title,
+      title: a.title || "",
       severity: a.severity || "MEDIUM",
       message: a.plainEnglish || "",
     }));
@@ -192,7 +192,7 @@ class ReportingService {
     const recommendations = await prisma.opsInsight.findMany({
       where: {
         createdAt: { gte: today },
-        recommendations: { isEmpty: false },
+        recommendations: { not: { equals: null as any } },
       },
       select: { recommendations: true },
       take: 5,
@@ -209,7 +209,7 @@ class ReportingService {
       },
       highlights,
       alerts,
-      recommendations: recommendations.flatMap((r) => r.recommendations).slice(0, 10),
+      recommendations: recommendations.flatMap((r) => (r.recommendations as string[]) || []).slice(0, 10),
     };
 
     // Save digest as Excel file
@@ -224,7 +224,7 @@ class ReportingService {
         title: `Daily Digest: ${digest.date}`,
         description: highlights.join(". "),
         plainEnglish: `Daily summary for ${digest.date}: ${newCases} new cases, ${closedCases} closed, ${(revenueEntries._sum.amountCents || 0) / 100} revenue.`,
-        data: digest as unknown as Record<string, unknown>,
+        data: digest as any,
         status: "CLOSED",
       },
     });
@@ -589,7 +589,7 @@ class ReportingService {
     // Calculate average case cycle time (days from creation to closure)
     const closedCases = await prisma.case.findMany({
       where: {
-        status: { in: ['PAID_OUT', 'CLOSED', 'SETTLED'] },
+        status: { in: ['PAID', 'CLOSED'] },
         updatedAt: { gte: firstOfMonth },
       },
       select: {
@@ -649,7 +649,7 @@ class ReportingService {
         title: `Monthly Metrics Report: ${metrics.month} ${metrics.year}`,
         description: `Revenue: $${(metrics.financials.totalRevenueCents / 100).toFixed(2)}, Cases: ${casesOpened} opened / ${casesClosed} closed`,
         plainEnglish: `Monthly report for ${metrics.month} ${metrics.year}. Total revenue: $${(metrics.financials.totalRevenueCents / 100).toFixed(2)}. Cases opened: ${casesOpened}, closed: ${casesClosed}. Revenue growth: ${metrics.growth.revenueGrowthPercent}%.`,
-        data: metrics as unknown as Record<string, unknown>,
+        data: metrics as any,
         status: "CLOSED",
       },
     });
@@ -767,7 +767,7 @@ class ReportingService {
       const sheet = workbook.addWorksheet("Cases");
 
       // Define columns
-      const columns: ExcelJS.Column[] = [
+      const columns: Partial<ExcelJS.Column>[] = [
         { header: "Internal Code", key: "internalCode", width: 15 },
         { header: "Status", key: "status", width: 12 },
         { header: "State", key: "state", width: 10 },
@@ -788,7 +788,7 @@ class ReportingService {
         columns.push({ header: "Assigned Employee", key: "assignedEmployee", width: 20 });
       }
 
-      sheet.columns = columns;
+      sheet.columns = columns as ExcelJS.Column[];
 
       // Add rows
       for (const c of cases) {
