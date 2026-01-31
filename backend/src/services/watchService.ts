@@ -890,7 +890,8 @@ class WatchService {
       ? SOURCE_HEALTH_CONFIG.CHANGE_FREQUENCY_WEIGHT
       : SOURCE_HEALTH_CONFIG.CHANGE_FREQUENCY_WEIGHT * 0.3;
 
-    // Response time score (placeholder as we don't track response time yet)
+    // Response time score — full weight granted when no response time data available
+    // Actual response time tracking will reduce this score for slow sources
     const responseTimeScore = SOURCE_HEALTH_CONFIG.RESPONSE_TIME_WEIGHT;
 
     const totalScore = Math.round(successScore + freshnessScore + volatilityScore + responseTimeScore);

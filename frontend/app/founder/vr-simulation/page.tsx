@@ -1,13 +1,15 @@
 'use client'
 
 import { useState } from 'react'
+import dynamic from 'next/dynamic'
 import { motion } from 'framer-motion'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Eye, Home, DollarSign, MapPin, Loader2, Info } from 'lucide-react'
-import VRClaimSimulation from '@/components/VRClaimSimulation'
+
+const VRClaimSimulation = dynamic(() => import('@/components/VRClaimSimulation'), { ssr: false })
 
 interface Property {
   id: string

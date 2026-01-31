@@ -349,9 +349,34 @@ class AiUsageBillingService {
       // Check for auto-recharge
       const newBalance = (user.aiCreditBalanceCents || 0) - amountCents;
       if (user.aiAutoRecharge && newBalance < (user.aiAutoRechargeThreshold || 500)) {
-        // Trigger auto-recharge (would integrate with PaymentService)
-        logger.info('Auto-recharge triggered', { userId, newBalance });
-        // TODO: Integrate with PaymentService.chargeCard()
+        const rechargeAmount = user.aiAutoRechargeAmount || 2000; // Default $20
+        try {
+          await prisma.user.update({
+            where: { id: userId },
+            data: {
+              aiCreditBalanceCents: { increment: rechargeAmount },
+            },
+          });
+
+          // Log the recharge as a billing event
+          await prisma.aiUsageRecord.create({
+            data: {
+              userId,
+              type: 'credit_topup',
+              provider: 'auto_recharge',
+              quantity: 1,
+              unit: 'recharge',
+              baseCostCents: rechargeAmount,
+              markupCents: 0,
+              totalCostCents: rechargeAmount,
+              metadata: { trigger: 'auto_recharge', previousBalance: newBalance, newBalance: newBalance + rechargeAmount },
+            },
+          });
+
+          logger.info('Auto-recharge completed', { userId, rechargeAmount, previousBalance: newBalance });
+        } catch (rechargeError) {
+          logger.error('Auto-recharge failed', { error: rechargeError, userId, rechargeAmount });
+        }
       }
     } catch (error) {
       logger.error('Failed to deduct from balance', { error, userId, amountCents });

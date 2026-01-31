@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import axios from "axios";
@@ -34,7 +34,22 @@ interface PortalData {
   documents: { id: string; type: string; needsSignature: boolean; signed: boolean }[];
 }
 
-export default function SignPortal() {
+export default function SignPortalPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-blue-50">
+        <div className="text-center">
+          <Loader2 className="h-12 w-12 animate-spin text-blue-600 mx-auto mb-4" />
+          <p className="text-gray-600 text-lg">Loading your portal...</p>
+        </div>
+      </div>
+    }>
+      <SignPortalInner />
+    </Suspense>
+  );
+}
+
+function SignPortalInner() {
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
 

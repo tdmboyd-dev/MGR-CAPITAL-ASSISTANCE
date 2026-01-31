@@ -449,17 +449,82 @@ class ProfessionalEmailService {
    */
   async cancelAccount(accountId: string): Promise<boolean> {
     try {
+      const account = await prisma.professionalEmail.findUnique({
+        where: { id: accountId },
+      });
+
+      if (!account) return false;
+
+      // Delete from provider API
+      await this.deleteFromProvider(account.emailAddress, account.provider);
+
       await prisma.professionalEmail.update({
         where: { id: accountId },
         data: { status: 'cancelled' },
       });
 
-      // TODO: Delete from provider API
-      logger.info('Email account cancelled', { accountId });
+      logger.info('Email account cancelled', { accountId, provider: account.provider });
       return true;
     } catch (error) {
       logger.error('Failed to cancel email account', { error, accountId });
       return false;
+    }
+  }
+
+  /**
+   * Delete email account from provider API
+   */
+  private async deleteFromProvider(emailAddress: string, provider: string): Promise<void> {
+    const username = emailAddress.split('@')[0];
+
+    try {
+      if (provider === 'zoho' && ZOHO_CLIENT_ID) {
+        const tokenResponse = await fetch('https://accounts.zoho.com/oauth/v2/token', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams({
+            refresh_token: ZOHO_REFRESH_TOKEN!,
+            client_id: ZOHO_CLIENT_ID!,
+            client_secret: ZOHO_CLIENT_SECRET!,
+            grant_type: 'refresh_token',
+          }),
+        });
+        const tokenData: any = await tokenResponse.json();
+
+        // Find account ID first
+        const listResp = await fetch(
+          `https://mail.zoho.com/api/organization/${ZOHO_ORG_ID}/accounts?searchString=${username}`,
+          { headers: { 'Authorization': `Zoho-oauthtoken ${tokenData.access_token}` } }
+        );
+        const listData: any = await listResp.json();
+        const acct = listData?.data?.find((a: any) => a.primaryEmailAddress === emailAddress);
+
+        if (acct) {
+          await fetch(
+            `https://mail.zoho.com/api/organization/${ZOHO_ORG_ID}/accounts/${acct.accountId}`,
+            {
+              method: 'DELETE',
+              headers: { 'Authorization': `Zoho-oauthtoken ${tokenData.access_token}` },
+            }
+          );
+          logger.info('Deleted email from Zoho', { emailAddress });
+        }
+      } else if (provider === 'improvmx' && IMPROVMX_API_KEY) {
+        await fetch(
+          `https://api.improvmx.com/v3/domains/${PLATFORM_DOMAIN}/aliases/${username}`,
+          {
+            method: 'DELETE',
+            headers: {
+              'Authorization': `Basic ${Buffer.from(`api:${IMPROVMX_API_KEY}`).toString('base64')}`,
+            },
+          }
+        );
+        logger.info('Deleted email alias from ImprovMX', { emailAddress });
+      } else {
+        logger.info('No provider API to delete from (demo mode)', { emailAddress });
+      }
+    } catch (error) {
+      logger.warn('Provider deletion failed (account still marked cancelled in DB)', { error, emailAddress });
     }
   }
 

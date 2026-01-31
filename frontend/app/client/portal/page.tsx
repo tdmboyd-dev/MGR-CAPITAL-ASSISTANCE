@@ -14,7 +14,11 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { CaseTimeline } from "@/components/CaseTimeline";
-import { DocumentViewer } from "@/components/DocumentViewer";
+import dynamic from "next/dynamic";
+const DocumentViewer = dynamic(
+  () => import("@/components/DocumentViewer").then((mod) => mod.DocumentViewer),
+  { ssr: false }
+);
 import { motion, AnimatePresence } from "framer-motion";
 import {
   FileText,

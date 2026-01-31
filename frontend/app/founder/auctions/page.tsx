@@ -146,13 +146,53 @@ export default function AuctionsPage() {
   const [walletConnected, setWalletConnected] = useState(false)
   const [walletAddress, setWalletAddress] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [newAuction, setNewAuction] = useState({
+    claimId: '',
+    title: '',
+    description: '',
+    surplusAmount: '',
+    minimumBid: '',
+    fractions: '100',
+    durationDays: '7',
+    state: '',
+  })
+
+  // Create auction mutation
+  const createAuctionMutation = useMutation({
+    mutationFn: async (auctionData: typeof newAuction) => {
+      return api.post('/auctions', {
+        claimId: auctionData.claimId,
+        title: auctionData.title,
+        description: auctionData.description,
+        surplusAmount: parseFloat(auctionData.surplusAmount),
+        minimumBid: parseFloat(auctionData.minimumBid),
+        fractions: parseInt(auctionData.fractions),
+        durationDays: parseInt(auctionData.durationDays),
+        state: auctionData.state,
+        creatorAddress: walletAddress,
+      })
+    },
+    onSuccess: () => {
+      toast.success('Auction created successfully!')
+      setShowNewAuctionDialog(false)
+      setNewAuction({ claimId: '', title: '', description: '', surplusAmount: '', minimumBid: '', fractions: '100', durationDays: '7', state: '' })
+      refetch()
+    },
+    onError: (err: any) => {
+      toast.error(err?.response?.data?.error || 'Failed to create auction')
+    }
+  })
 
   // Fetch auctions
-  const { data: auctions = DEMO_AUCTIONS, isLoading, refetch } = useQuery({
+  const { data: auctions = DEMO_AUCTIONS, isLoading, refetch } = useQuery<Auction[]>({
     queryKey: ['auctions', statusFilter],
     queryFn: async () => {
-      // Return demo data
-      return DEMO_AUCTIONS
+      try {
+        const { data } = await api.get('/auctions', { params: { status: statusFilter !== 'all' ? statusFilter : undefined } })
+        return Array.isArray(data) ? data : data?.data || DEMO_AUCTIONS
+      } catch {
+        return DEMO_AUCTIONS
+      }
     }
   })
 
@@ -244,7 +284,7 @@ export default function AuctionsPage() {
 
   const filteredAuctions = statusFilter === 'all'
     ? auctions
-    : auctions.filter(a => a.status === statusFilter)
+    : auctions.filter((a: Auction) => a.status === statusFilter)
 
   return (
     <motion.div
@@ -299,8 +339,46 @@ export default function AuctionsPage() {
                   <p className="text-muted-foreground text-sm">
                     Create an auction to sell fractional ownership of a surplus claim NFT.
                   </p>
-                  <Button className="w-full" disabled>
-                    Coming Soon
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="col-span-2">
+                      <Label>Title</Label>
+                      <Input placeholder="e.g. Texas Property Surplus - Dallas County" value={newAuction.title} onChange={(e) => setNewAuction({ ...newAuction, title: e.target.value })} />
+                    </div>
+                    <div>
+                      <Label>Claim ID</Label>
+                      <Input placeholder="CLAIM-XXX" value={newAuction.claimId} onChange={(e) => setNewAuction({ ...newAuction, claimId: e.target.value })} />
+                    </div>
+                    <div>
+                      <Label>State</Label>
+                      <Input placeholder="TX" value={newAuction.state} onChange={(e) => setNewAuction({ ...newAuction, state: e.target.value })} />
+                    </div>
+                    <div>
+                      <Label>Surplus Amount ($)</Label>
+                      <Input type="number" placeholder="45000" value={newAuction.surplusAmount} onChange={(e) => setNewAuction({ ...newAuction, surplusAmount: e.target.value })} />
+                    </div>
+                    <div>
+                      <Label>Minimum Bid ($)</Label>
+                      <Input type="number" placeholder="5000" value={newAuction.minimumBid} onChange={(e) => setNewAuction({ ...newAuction, minimumBid: e.target.value })} />
+                    </div>
+                    <div>
+                      <Label>Fractions</Label>
+                      <Input type="number" placeholder="100" value={newAuction.fractions} onChange={(e) => setNewAuction({ ...newAuction, fractions: e.target.value })} />
+                    </div>
+                    <div>
+                      <Label>Duration (days)</Label>
+                      <Input type="number" placeholder="7" value={newAuction.durationDays} onChange={(e) => setNewAuction({ ...newAuction, durationDays: e.target.value })} />
+                    </div>
+                    <div className="col-span-2">
+                      <Label>Description</Label>
+                      <Textarea placeholder="Describe the surplus claim..." value={newAuction.description} onChange={(e) => setNewAuction({ ...newAuction, description: e.target.value })} rows={3} />
+                    </div>
+                  </div>
+                  <Button
+                    className="w-full bg-gradient-to-r from-purple-600 to-pink-600"
+                    onClick={() => createAuctionMutation.mutate(newAuction)}
+                    disabled={!newAuction.title || !newAuction.surplusAmount || !newAuction.minimumBid || !walletConnected || createAuctionMutation.isPending}
+                  >
+                    {createAuctionMutation.isPending ? 'Creating...' : !walletConnected ? 'Connect Wallet First' : 'Create Auction'}
                   </Button>
                 </div>
               </DialogContent>
@@ -321,7 +399,7 @@ export default function AuctionsPage() {
                   <div>
                     <p className="text-sm text-muted-foreground">Active Auctions</p>
                     <p className="text-3xl font-bold text-purple-600">
-                      {auctions.filter(a => a.status === 'active').length}
+                      {auctions.filter((a: Auction) => a.status === 'active').length}
                     </p>
                   </div>
                   <Gavel className="h-10 w-10 text-purple-500 opacity-50" />

@@ -944,7 +944,7 @@ class OpsMetricsService {
   }
 
   /**
-   * Update case heatmap (placeholder - actual calculation is done in getCaseHeatmap)
+   * Update case heatmap entries for a specific state/county
    */
   async updateCaseHeatmap(state: string, county?: string): Promise<void> {
     // For individual case heatmap entries, update the CaseHeatmapEntry model
