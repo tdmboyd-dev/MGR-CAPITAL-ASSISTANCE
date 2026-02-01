@@ -15,6 +15,8 @@ import { roleGuard } from "../middleware/roleGuard.js";
 import { asyncHandler, Errors } from "../middleware/errorHandler.js";
 import { ingestionService } from "../services/ingestionService.js";
 import { caseRoutingService } from "../services/CaseRoutingService.js";
+import { skipTraceService } from "../services/SkipTraceService.js";
+import { logger } from "../utils/logger.js";
 import crypto from "crypto";
 
 const router = Router();
@@ -276,6 +278,112 @@ router.get(
     });
 
     res.json({ success: true, count: sources.length, data: sources });
+  })
+);
+
+// =============================================================================
+// TRACERFY WEBHOOK CALLBACK
+// =============================================================================
+
+/**
+ * POST /api/webhooks/tracerfy — Receives completed trace job results from Tracerfy
+ * Tracerfy POSTs to Account.webhook_url when a queue finishes processing.
+ * Response format: { id, created_at, pending, download_url, rows_uploaded, credits_deducted, queue_type, trace_type, credits_per_lead }
+ */
+router.post(
+  "/tracerfy",
+  asyncHandler(async (req: Request, res: Response) => {
+    const payload = req.body;
+
+    logger.info("Tracerfy webhook received", {
+      queueId: payload.id,
+      rows: payload.rows_uploaded,
+      credits: payload.credits_deducted,
+      traceType: payload.trace_type,
+      pending: payload.pending,
+    });
+
+    // Tracerfy sends when queue is complete (pending: false)
+    if (payload.pending) {
+      return res.status(200).json({ received: true, status: "still_pending" });
+    }
+
+    const queueId = payload.id;
+    if (!queueId) {
+      return res.status(400).json({ error: "Missing queue id" });
+    }
+
+    try {
+      // Fetch the actual trace records for this queue
+      const results = await skipTraceService.fetchQueueResults(queueId);
+
+      logger.info("Tracerfy webhook processed", {
+        queueId,
+        resultsCount: results.length,
+        downloadUrl: payload.download_url,
+      });
+
+      // Store results — update any cases that have pending skip traces for this queue
+      for (const result of results) {
+        if (result.status !== "found") continue;
+
+        const lastName = result.person?.lastName || result.input.lastName;
+        if (!lastName) continue;
+
+        // Find cases matching this person by client name or previous owner
+        const matchingCases = await prisma.case.findMany({
+          where: {
+            OR: [
+              {
+                client: {
+                  is: { name: { contains: lastName, mode: "insensitive" } },
+                },
+              },
+              {
+                previousOwner: {
+                  contains: lastName,
+                  mode: "insensitive",
+                },
+              },
+            ],
+          },
+          take: 5,
+        });
+
+        // Log skip trace results as a Communication on matching cases
+        for (const caseRecord of matchingCases) {
+          const phones = result.phones.map((p) => p.number).join(", ");
+          const emails = result.emails.map((e) => e.address).join(", ");
+
+          await prisma.communication.create({
+            data: {
+              caseId: caseRecord.id,
+              userId: caseRecord.clientId,
+              type: "EMAIL",
+              direction: "INBOUND",
+              subject: `Skip Trace — Tracerfy Queue #${queueId}`,
+              content: `[AUTO] Skip trace completed via Tracerfy\n` +
+                `Phones: ${phones || "None"}\n` +
+                `Emails: ${emails || "None"}\n` +
+                `Addresses: ${result.addresses.map((a) => `${a.street}, ${a.city}, ${a.state}`).join("; ") || "None"}\n` +
+                `Confidence: ${result.matchConfidence}%\n` +
+                `Relatives: ${result.relatives.length}`,
+            },
+          });
+        }
+      }
+
+      res.status(200).json({
+        received: true,
+        queueId,
+        processed: results.length,
+        downloadUrl: payload.download_url,
+      });
+    } catch (error: any) {
+      logger.error("Tracerfy webhook processing error", { queueId, error: error.message });
+      // Still return 200 so Tracerfy doesn't retry
+      res.status(200).json({ received: true, error: error.message });
+    }
   })
 );
 

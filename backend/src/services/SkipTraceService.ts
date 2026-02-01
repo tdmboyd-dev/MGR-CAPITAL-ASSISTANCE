@@ -2,17 +2,18 @@
  * Skip Trace Service — MGR CAPITAL ASSISTANCE
  * Owner/Heir Discovery via Tracerfy API
  *
- * Tracerfy pricing: $0.009 - $0.02 per record
- * Features: Phone numbers, emails, addresses, relatives, aliases
+ * Tracerfy pricing: 1 credit/lead (normal), 15 credits/lead (enhanced)
+ * Features: Phone numbers, emails, addresses, relatives, aliases, businesses
  *
- * Documentation: https://www.tracerfy.com/skip-tracing-api
+ * API: Queue-based — POST /trace/ → get queue_id → poll /queue/:id or webhook
+ * Documentation: https://tracerfy.com Developer Docs
  */
 
 import { logger } from "../utils/logger.js";
 
 // Environment variables
 const TRACERFY_API_KEY = process.env.TRACERFY_API_KEY || "";
-const TRACERFY_API_URL = process.env.TRACERFY_API_URL || "https://api.tracerfy.com/v1";
+const TRACERFY_API_URL = process.env.TRACERFY_API_URL || "https://tracerfy.com/v1/api";
 
 export interface PersonInput {
   firstName: string;
@@ -134,7 +135,7 @@ class SkipTraceService {
   }
 
   /**
-   * Skip trace a single person
+   * Skip trace a single person — submits to Tracerfy queue API
    */
   async tracePerson(input: PersonInput, enhanced: boolean = false): Promise<SkipTraceResult> {
     logger.info("Skip tracing person", {
@@ -142,44 +143,106 @@ class SkipTraceService {
       enhanced,
     });
 
-    // Rate limiting check
     this.checkRateLimit();
-
     const startTime = Date.now();
 
-    // In production, call Tracerfy API
     if (this.isConfigured) {
       try {
-        const response = await fetch(`${this.baseUrl}/skip-trace`, {
+        // Tracerfy uses a queue-based API: POST JSON → get queue_id → poll for results
+        const traceType = enhanced ? "enhanced" : "normal";
+        const jsonData = [{
+          first_name: input.firstName,
+          last_name: input.lastName,
+          address: input.address || "",
+          city: input.city || "",
+          state: input.state || "",
+          zip: input.zip || "",
+          mail_address: input.address || "",
+          mail_city: input.city || "",
+          mail_state: input.state || "",
+        }];
+
+        // Step 1: Submit trace job
+        const submitResponse = await fetch(`${this.baseUrl}/trace/`, {
           method: "POST",
           headers: {
             "Authorization": `Bearer ${this.apiKey}`,
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            first_name: input.firstName,
-            last_name: input.lastName,
-            middle_name: input.middleName,
-            address: input.address,
-            city: input.city,
-            state: input.state,
-            zip: input.zip,
-            enhanced,
+            json_data: JSON.stringify(jsonData),
+            address_column: "address",
+            city_column: "city",
+            state_column: "state",
+            zip_column: "zip",
+            first_name_column: "first_name",
+            last_name_column: "last_name",
+            mail_address_column: "mail_address",
+            mail_city_column: "mail_city",
+            mail_state_column: "mail_state",
+            trace_type: traceType,
           }),
         });
 
-        if (!response.ok) {
-          const errorText = await response.text();
-          logger.error("Tracerfy API error", { status: response.status, error: errorText });
-          // Fall back to mock on API error
+        if (!submitResponse.ok) {
+          const errorText = await submitResponse.text();
+          logger.error("Tracerfy submit error", { status: submitResponse.status, error: errorText });
           return this.generateMockResult(input, enhanced);
         }
 
-        const data = await response.json();
-        return this.transformApiResult(data, input, enhanced);
+        const submitData = await submitResponse.json() as any;
+        const queueId = submitData.queue_id;
+        logger.info("Tracerfy queue created", { queueId, traceType });
+
+        // Step 2: Poll for results (max 60 seconds, check every 3 seconds)
+        let attempts = 0;
+        const maxAttempts = 20;
+        while (attempts < maxAttempts) {
+          await new Promise((resolve) => setTimeout(resolve, 3000));
+          attempts++;
+
+          const queueResponse = await fetch(`${this.baseUrl}/queues/`, {
+            headers: { "Authorization": `Bearer ${this.apiKey}` },
+          });
+
+          if (!queueResponse.ok) continue;
+
+          const queues = await queueResponse.json();
+          const queue = Array.isArray(queues)
+            ? queues.find((q: any) => q.id === queueId)
+            : null;
+
+          if (queue && !queue.pending) {
+            // Queue complete — fetch the actual records
+            const recordsResponse = await fetch(`${this.baseUrl}/queue/${queueId}`, {
+              headers: { "Authorization": `Bearer ${this.apiKey}` },
+            });
+
+            if (recordsResponse.ok) {
+              const records = await recordsResponse.json();
+              if (Array.isArray(records) && records.length > 0) {
+                const result = this.transformTracerfyRecord(records[0], input, enhanced);
+                logger.info("Skip trace completed via Tracerfy", {
+                  name: `${input.firstName} ${input.lastName}`,
+                  status: result.status,
+                  phones: result.phones.length,
+                  duration: Date.now() - startTime,
+                });
+                return result;
+              }
+            }
+            break;
+          }
+        }
+
+        logger.warn("Tracerfy queue still pending after polling, returning partial", { queueId });
+        const partialResult = this.generateMockResult(input, enhanced);
+        partialResult.status = "partial";
+        partialResult.id = `tracerfy_pending_${queueId}`;
+        return partialResult;
+
       } catch (error: any) {
         logger.error("Tracerfy API error", { error: error.message });
-        // Fall back to mock on error
         return this.generateMockResult(input, enhanced);
       }
     }
@@ -188,7 +251,7 @@ class SkipTraceService {
     const result = this.generateMockResult(input, enhanced);
     result.cost = enhanced ? 0.15 : 0.02;
 
-    logger.info("Skip trace completed", {
+    logger.info("Skip trace completed (mock)", {
       name: `${input.firstName} ${input.lastName}`,
       status: result.status,
       confidence: result.matchConfidence,
@@ -198,6 +261,118 @@ class SkipTraceService {
     });
 
     return result;
+  }
+
+  /**
+   * Submit a batch trace to Tracerfy and return the queue ID
+   * Results come via webhook to /api/webhooks/tracerfy
+   */
+  async submitBatchTrace(
+    inputs: PersonInput[],
+    enhanced: boolean = false
+  ): Promise<{ queueId: number; rowsUploaded: number; traceType: string }> {
+    if (!this.isConfigured) {
+      throw new Error("Tracerfy API key not configured");
+    }
+
+    this.checkRateLimit();
+
+    const jsonData = inputs.map((input) => ({
+      first_name: input.firstName,
+      last_name: input.lastName,
+      address: input.address || "",
+      city: input.city || "",
+      state: input.state || "",
+      zip: input.zip || "",
+      mail_address: input.address || "",
+      mail_city: input.city || "",
+      mail_state: input.state || "",
+    }));
+
+    const response = await fetch(`${this.baseUrl}/trace/`, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${this.apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        json_data: JSON.stringify(jsonData),
+        address_column: "address",
+        city_column: "city",
+        state_column: "state",
+        zip_column: "zip",
+        first_name_column: "first_name",
+        last_name_column: "last_name",
+        mail_address_column: "mail_address",
+        mail_city_column: "mail_city",
+        mail_state_column: "mail_state",
+        trace_type: enhanced ? "enhanced" : "normal",
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Tracerfy API error: ${response.status} - ${errorText}`);
+    }
+
+    const data = await response.json() as any;
+    logger.info("Tracerfy batch submitted", {
+      queueId: data.queue_id,
+      rows: data.rows_uploaded,
+      traceType: data.trace_type,
+    });
+
+    return {
+      queueId: data.queue_id,
+      rowsUploaded: data.rows_uploaded,
+      traceType: data.trace_type,
+    };
+  }
+
+  /**
+   * Fetch results for a completed Tracerfy queue
+   */
+  async fetchQueueResults(queueId: number): Promise<SkipTraceResult[]> {
+    if (!this.isConfigured) {
+      throw new Error("Tracerfy API key not configured");
+    }
+
+    const response = await fetch(`${this.baseUrl}/queue/${queueId}`, {
+      headers: { "Authorization": `Bearer ${this.apiKey}` },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch queue ${queueId}: ${response.status}`);
+    }
+
+    const records = await response.json();
+    if (!Array.isArray(records)) return [];
+
+    return records.map((record: any) =>
+      this.transformTracerfyRecord(record, {
+        firstName: record.first_name || "",
+        lastName: record.last_name || "",
+        address: record.address,
+        city: record.city,
+        state: record.state,
+      }, record.trace_type === "enhanced")
+    );
+  }
+
+  /**
+   * Get Tracerfy account analytics (balance, queues, etc.)
+   */
+  async getTracerfyAnalytics(): Promise<any> {
+    if (!this.isConfigured) {
+      return { configured: false, mode: "mock" };
+    }
+
+    const response = await fetch(`${this.baseUrl}/analytics/`, {
+      headers: { "Authorization": `Bearer ${this.apiKey}` },
+    });
+
+    if (!response.ok) return null;
+    return response.json();
   }
 
   /**
@@ -428,14 +603,17 @@ class SkipTraceService {
   // Private helpers
 
   /**
-   * Transform Tracerfy API response to our format
+   * Transform a Tracerfy flat-field record to our SkipTraceResult format
+   * Tracerfy returns flat fields like: mobile_1, mobile_2, email_1, relative_1_name, etc.
    */
-  private transformApiResult(data: any, input: PersonInput, enhanced: boolean): SkipTraceResult {
+  private transformTracerfyRecord(record: any, input: PersonInput, enhanced: boolean): SkipTraceResult {
+    const hasData = !!(record.primary_phone || record.email_1 || record.mobile_1);
+
     const result: SkipTraceResult = {
-      id: data.id || `skip_${Date.now()}`,
+      id: `tracerfy_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
       input,
-      matchConfidence: data.match_confidence || data.confidence || 0,
-      status: data.found ? "found" : data.partial_match ? "partial" : "not_found",
+      matchConfidence: hasData ? 85 : 0,
+      status: hasData ? "found" : "not_found",
       phones: [],
       emails: [],
       addresses: [],
@@ -444,72 +622,128 @@ class SkipTraceService {
       cost: enhanced ? 0.15 : 0.02,
     };
 
-    if (data.person || data.result) {
-      const person = data.person || data.result;
+    if (!hasData) return result;
 
-      result.person = {
-        firstName: person.first_name || input.firstName,
-        lastName: person.last_name || input.lastName,
-        middleName: person.middle_name,
-        suffix: person.suffix,
-        age: person.age,
-        dob: person.dob || person.date_of_birth,
-        isDeceased: person.is_deceased || person.deceased || false,
-        deceasedDate: person.deceased_date || person.death_date,
-      };
+    // Person info
+    result.person = {
+      firstName: record.first_name || input.firstName,
+      lastName: record.last_name || input.lastName,
+      age: record.age ? parseInt(record.age) : undefined,
+      isDeceased: false,
+    };
 
-      // Transform phones
-      if (Array.isArray(person.phones || person.phone_numbers)) {
-        result.phones = (person.phones || person.phone_numbers).map((p: any) => ({
-          number: p.number || p.phone,
-          type: p.type || p.line_type || "unknown",
-          carrier: p.carrier,
-          isValid: p.is_valid !== false,
-          doNotCall: p.do_not_call || p.dnc || false,
-          lastSeen: p.last_seen ? new Date(p.last_seen) : undefined,
-        }));
+    // Extract phones — Tracerfy returns: primary_phone, mobile_1..5, landline_1..3
+    const phoneSet = new Set<string>();
+    if (record.primary_phone) {
+      phoneSet.add(record.primary_phone);
+      result.phones.push({
+        number: record.primary_phone,
+        type: (record.primary_phone_type || "mobile").toLowerCase() as any,
+        isValid: true,
+        doNotCall: false,
+      });
+    }
+    for (let i = 1; i <= 5; i++) {
+      const num = record[`mobile_${i}`];
+      if (num && !phoneSet.has(num)) {
+        phoneSet.add(num);
+        result.phones.push({ number: num, type: "mobile", isValid: true, doNotCall: false });
       }
-
-      // Transform emails
-      if (Array.isArray(person.emails || person.email_addresses)) {
-        result.emails = (person.emails || person.email_addresses).map((e: any) => ({
-          address: e.address || e.email,
-          isValid: e.is_valid !== false,
-          type: e.type || "unknown",
-          lastSeen: e.last_seen ? new Date(e.last_seen) : undefined,
-        }));
+    }
+    for (let i = 1; i <= 3; i++) {
+      const num = record[`landline_${i}`];
+      if (num && !phoneSet.has(num)) {
+        phoneSet.add(num);
+        result.phones.push({ number: num, type: "landline", isValid: true, doNotCall: false });
       }
+    }
 
-      // Transform addresses
-      if (Array.isArray(person.addresses)) {
-        result.addresses = person.addresses.map((a: any) => ({
-          street: a.street || a.address_line1,
-          city: a.city,
-          state: a.state,
-          zip: a.zip || a.postal_code,
-          county: a.county,
-          type: a.is_current ? "current" : "previous",
-          moveInDate: a.move_in_date ? new Date(a.move_in_date) : undefined,
-          moveOutDate: a.move_out_date ? new Date(a.move_out_date) : undefined,
-          isVerified: a.is_verified || false,
-        }));
+    // Extract emails — email_1..5
+    for (let i = 1; i <= 5; i++) {
+      const email = record[`email_${i}`];
+      if (email) {
+        result.emails.push({ address: email, isValid: true, type: "personal" });
       }
+    }
 
-      // Transform relatives (enhanced only)
-      if (enhanced && Array.isArray(person.relatives || person.associates)) {
-        result.relatives = (person.relatives || person.associates).map((r: any) => ({
-          firstName: r.first_name,
-          lastName: r.last_name,
-          relationship: r.relationship || r.relation,
-          age: r.age,
-        }));
+    // Addresses — property address + mailing address
+    if (record.address) {
+      result.addresses.push({
+        street: record.address,
+        city: record.city || "",
+        state: record.state || "",
+        zip: record.zip || "",
+        type: "current",
+        isVerified: true,
+      });
+    }
+    if (record.mail_address && record.mail_address !== record.address) {
+      result.addresses.push({
+        street: record.mail_address,
+        city: record.mail_city || "",
+        state: record.mail_state || "",
+        zip: record.mail_zip || "",
+        type: "current",
+        isVerified: true,
+      });
+    }
+
+    // Enhanced: past addresses
+    if (enhanced) {
+      for (let i = 1; i <= 5; i++) {
+        const addr = record[`past_address_${i}`];
+        if (addr) {
+          const parts = addr.split(",").map((s: string) => s.trim());
+          result.addresses.push({
+            street: parts[0] || addr,
+            city: parts[1] || "",
+            state: parts[2] || "",
+            zip: "",
+            type: "previous",
+            isVerified: false,
+          });
+        }
       }
 
       // Aliases
-      if (Array.isArray(person.aliases || person.aka)) {
-        result.aliases = person.aliases || person.aka;
+      result.aliases = [];
+      for (let i = 1; i <= 5; i++) {
+        const alias = record[`alias_${i}`];
+        if (alias) result.aliases.push(alias);
+      }
+
+      // Relatives — relative_1_name..relative_8_name with phones/emails
+      for (let i = 1; i <= 8; i++) {
+        const name = record[`relative_${i}_name`];
+        if (!name) continue;
+
+        const nameParts = name.split(" ");
+        const relative: RelativeResult = {
+          firstName: nameParts[0] || "",
+          lastName: nameParts.slice(1).join(" ") || "",
+          phones: [],
+        };
+
+        // Relative phones
+        for (let j = 1; j <= 3; j++) {
+          const mob = record[`relative_${i}_mobile_${j}`];
+          if (mob) relative.phones!.push({ number: mob, type: "mobile", isValid: true, doNotCall: false });
+          const land = record[`relative_${i}_landline_${j}`];
+          if (land) relative.phones!.push({ number: land, type: "landline", isValid: true, doNotCall: false });
+        }
+
+        result.relatives.push(relative);
       }
     }
+
+    // Confidence boost based on data quality
+    let confidence = 50;
+    if (result.phones.length > 0) confidence += 15;
+    if (result.phones.length > 2) confidence += 5;
+    if (result.emails.length > 0) confidence += 10;
+    if (result.addresses.length > 0) confidence += 10;
+    if (result.relatives.length > 0) confidence += 10;
+    result.matchConfidence = Math.min(100, confidence);
 
     return result;
   }

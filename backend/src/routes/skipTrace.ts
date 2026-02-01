@@ -167,6 +167,53 @@ router.post("/deceased-check", authenticate, async (req, res) => {
 });
 
 /**
+ * POST /api/skip-trace/batch-submit
+ * Submit a batch trace to Tracerfy — results come via webhook
+ */
+router.post("/batch-submit", authenticate, async (req, res) => {
+  try {
+    const { persons, enhanced } = req.body;
+
+    if (!persons || !Array.isArray(persons) || persons.length === 0) {
+      return res.status(400).json({
+        error: "Missing required field: persons (array)",
+      });
+    }
+
+    if (persons.length > 1000) {
+      return res.status(400).json({
+        error: "Batch size limited to 1000 records",
+      });
+    }
+
+    const result = await skipTraceService.submitBatchTrace(persons, enhanced || false);
+
+    res.json({
+      success: true,
+      message: "Batch submitted to Tracerfy. Results will arrive via webhook.",
+      ...result,
+    });
+  } catch (error: any) {
+    logger.error("Batch submit failed", { error: error.message });
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * GET /api/skip-trace/analytics
+ * Get Tracerfy account analytics (balance, queues, etc.)
+ */
+router.get("/analytics", authenticate, async (_req, res) => {
+  try {
+    const analytics = await skipTraceService.getTracerfyAnalytics();
+    res.json({ success: true, analytics });
+  } catch (error: any) {
+    logger.error("Analytics fetch failed", { error: error.message });
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
  * GET /api/skip-trace/status
  * Get service status and rate limits
  */
