@@ -19,6 +19,18 @@ import {
   Send,
   Mail,
   Globe,
+  Bot,
+  Phone,
+  Search,
+  Calendar,
+  CreditCard,
+  ShoppingBag,
+  Blocks,
+  GitBranch,
+  Gavel,
+  Activity,
+  Eye,
+  Network,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -38,17 +50,32 @@ interface NavLink {
 const linksByRole: Record<string, NavLink[]> = {
   founder: [
     { href: "/founder/dashboard", label: "Dashboard", icon: Home },
+    { href: "/founder/pipeline", label: "Pipeline", icon: GitBranch },
     { href: "/founder/cases", label: "All Cases", icon: FileText },
     { href: "/founder/users", label: "User Management", icon: Users },
     { href: "/founder/ledger", label: "Ledger", icon: DollarSign },
+    { href: "/founder/payments", label: "Payments", icon: CreditCard },
     { href: "/founder/payouts", label: "Nickel Payouts", icon: Send },
     { href: "/founder/ingestion", label: "Data Ingestion", icon: Upload },
-    { href: "/founder/insights", label: "Ops Insights", icon: BarChart3 },
+    { href: "/founder/skip-trace", label: "Skip Tracing", icon: Search },
+    { href: "/founder/phone-bot", label: "Phone Bot", icon: Phone },
+    { href: "/founder/ai-bots", label: "AI Bots", icon: Bot },
+    { href: "/founder/analytics", label: "Analytics", icon: BarChart3 },
+    { href: "/founder/insights", label: "Ops Insights", icon: Eye },
+    { href: "/founder/ops", label: "Ops Center", icon: Activity },
+    { href: "/founder/compliance", label: "Compliance", icon: Shield },
+    { href: "/founder/deadlines", label: "Deadlines", icon: Calendar },
     { href: "/founder/training", label: "Training", icon: BookOpen },
     { href: "/founder/comms", label: "Comms Chamber", icon: MessageSquare },
     { href: "/founder/emails", label: "Email Logs", icon: Mail },
-    { href: "/founder/child-companies", label: "Child Companies", icon: Building2 },
     { href: "/founder/email-hosting", label: "Email Hosting", icon: Globe },
+    { href: "/founder/documents/assignment", label: "Doc Assignment", icon: FileText },
+    { href: "/founder/child-companies", label: "Child Companies", icon: Building2 },
+    { href: "/founder/auctions", label: "Auctions", icon: Gavel },
+    { href: "/founder/marketplace", label: "Marketplace", icon: ShoppingBag },
+    { href: "/founder/nft", label: "NFT Claims", icon: Blocks },
+    { href: "/founder/genealogy", label: "Genealogy", icon: Network },
+    { href: "/founder/vr-simulation", label: "VR Simulation", icon: Eye },
     { href: "/founder/config", label: "Configuration", icon: Settings },
   ],
   admin: [
@@ -92,7 +119,7 @@ export function Sidebar({ role, isOpen, onClose }: SidebarProps) {
       {/* Sidebar */}
       <nav
         className={cn(
-          "fixed md:relative inset-y-0 left-0 z-50 w-64 border-r bg-card transition-transform duration-300 ease-in-out md:translate-x-0 md:block flex flex-col",
+          "fixed md:relative inset-y-0 left-0 z-50 w-64 h-screen border-r bg-card transition-transform duration-300 ease-in-out md:translate-x-0 md:block flex flex-col",
           isOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
