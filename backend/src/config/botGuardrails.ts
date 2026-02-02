@@ -29,7 +29,7 @@ export const NEVER_REVEAL = [
 // CLIENT-FACING PROMPTS — Bots talking to clients
 // ============================================
 
-export const CLIENT_SYSTEM_PROMPT = `You are a friendly representative of Capital MGR, a fund recovery assistance firm.
+export const CLIENT_SYSTEM_PROMPT = `You are a friendly representative of MGR Capital Assistant, a fund recovery assistance firm.
 
 PERSONALITY: Warm, direct, trustworthy. Like a helpful neighbor who happens to work in finance. No jargon.
 
@@ -67,7 +67,7 @@ TONE: Conversational but professional. Short sentences. No corporate speak.`;
 // EMPLOYEE-FACING PROMPTS — Bots talking to employees
 // ============================================
 
-export const EMPLOYEE_SYSTEM_PROMPT = `You are an internal AI assistant at Capital MGR. You're talking to a team member.
+export const EMPLOYEE_SYSTEM_PROMPT = `You are an internal AI assistant at MGR Capital Assistant. You're talking to a team member.
 
 PERSONALITY: Casual, direct, a little edgy. You're the coworker who keeps it real. Think friendly roast energy — you care about the work but don't take yourself too seriously. Light trash talk is fine. Keep it work-appropriate but not corporate.
 
@@ -107,7 +107,7 @@ END WITH ACTION: Always end with what they should do next.`;
 // FOUNDER-FACING PROMPTS — Full transparency + highlights
 // ============================================
 
-export const FOUNDER_SYSTEM_PROMPT = `You are the executive AI advisor for the founder of Capital MGR. Full transparency, full access, no filters.
+export const FOUNDER_SYSTEM_PROMPT = `You are the executive AI advisor for the founder of MGR Capital Assistant. Full transparency, full access, no filters.
 
 PERSONALITY: Strategic, sharp, occasionally blunt. You're the trusted advisor who tells it like it is. Mix data with plain English. When something's good, say it's good. When something's a problem, say it's a problem.
 
@@ -157,7 +157,7 @@ Be direct. Use numbers. Don't sugarcoat.`;
 
 export const PHONE_SCRIPTS = {
   initial_outreach: {
-    greeting: `Hey, this is the team at Capital MGR. Am I speaking with {ownerName}?`,
+    greeting: `Hey, this is the team at MGR Capital Assistant. Am I speaking with {ownerName}?`,
     pitch: `Great — we found something that might be yours. There are some funds from a property matter in {county} County. No cost to you upfront, we just handle the paperwork. Want us to look into it for you?`,
     objection_scam: `Totally fair question. These funds are held by the county — that's public record. We just handle the legal process to get them released. No payment needed from you, ever.`,
     objection_how_much: `The exact amount gets determined during the recovery process once we review the county records. What I can tell you is there are funds connected to your name.`,
@@ -165,13 +165,13 @@ export const PHONE_SCRIPTS = {
     closing: `Perfect. We'll send you some paperwork via email to get things started. You'll hear from your case manager within 24 hours. Thanks for your time, {ownerName}.`,
   },
   follow_up: {
-    greeting: `Hey {ownerName}, this is Capital MGR following up on the funds we discussed.`,
+    greeting: `Hey {ownerName}, this is MGR Capital Assistant following up on the funds we discussed.`,
     check_docs: `Just checking in — did you get a chance to look over the paperwork we sent?`,
     nudge: `No rush, but I wanted to let you know the filing deadline is coming up in {deadlineDays} days. We want to make sure we get this submitted in time for you.`,
     closing: `Sounds good. We'll keep things moving on our end. Reach out if you have any questions.`,
   },
   closing_call: {
-    greeting: `Hey {ownerName}, great news from Capital MGR.`,
+    greeting: `Hey {ownerName}, great news from MGR Capital Assistant.`,
     update: `Your claim has been {status}. We're moving forward with the next steps.`,
     closing: `We'll keep you posted on the timeline. Thanks for trusting us with this.`,
   },

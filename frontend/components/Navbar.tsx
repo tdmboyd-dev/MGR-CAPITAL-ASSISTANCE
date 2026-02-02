@@ -69,7 +69,7 @@ export function Navbar({ onMenuToggle, isSidebarOpen }: NavbarProps) {
           <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
             <span className="text-sm font-bold text-primary-foreground">M</span>
           </div>
-          <span className="text-lg md:text-xl font-bold hidden sm:inline">MGR Capital</span>
+          <span className="text-lg md:text-xl font-bold hidden sm:inline">MGR Capital Assistant</span>
           <span className="text-lg font-bold sm:hidden">MGR</span>
         </div>
       </div>

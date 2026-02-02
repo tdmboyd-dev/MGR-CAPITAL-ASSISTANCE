@@ -87,12 +87,12 @@ const VOICE_PRESETS: Record<string, VoiceConfig> = {
 // Client-facing call scripts — NEVER reveal surplus amounts, fees, or business model
 const CALL_SCRIPTS = {
   initial_outreach: `
-Hey, this is the team at Capital MGR. Am I speaking with {ownerName}?
+Hey, this is the team at MGR Capital Assistant. Am I speaking with {ownerName}?
 
 Great — we found something that might be yours. There are some funds from a property matter in {county} County. No cost to you upfront, we just handle the paperwork. Want us to look into it for you?
   `.trim(),
   follow_up: `
-Hey {ownerName}, this is Capital MGR following up on the funds we discussed. Did you get a chance to look over the paperwork we sent? No rush, but I wanted to let you know the filing deadline is coming up so we want to make sure we get this submitted in time for you.
+Hey {ownerName}, this is MGR Capital Assistant following up on the funds we discussed. Did you get a chance to look over the paperwork we sent? No rush, but I wanted to let you know the filing deadline is coming up so we want to make sure we get this submitted in time for you.
   `.trim(),
   closing: `
 Hey {ownerName}, great news. Your claim is moving forward and we're handling the next steps. We'll send you the paperwork via email. You'll hear from your case manager within 24 hours. Thanks for your time.
@@ -331,7 +331,7 @@ export class PhoneBotService {
    * Supports: DeepSeek (95% cheaper), Gemini, or OpenAI
    */
   async generateConversationalResponse(userInput: string): Promise<string> {
-    const systemPrompt = `You are a friendly representative for Capital MGR, a fund recovery assistance firm.
+    const systemPrompt = `You are a friendly representative for MGR Capital Assistant, a fund recovery assistance firm.
 You help property owners recover unclaimed funds from property matters.
 Keep responses short (under 60 words) — this is a phone conversation.
 
