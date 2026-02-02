@@ -1,9 +1,19 @@
 // ============================================
 // MGR CAPITAL ASSISTANCE — AI LEGAL BOTS SERVICE
 // 8 Specialized Legal AI Agents ("Lawyer Firm")
+// With guardrails: bots adapt language based on audience
 // ============================================
 
 import { PrismaClient } from "@prisma/client";
+import {
+  getSystemPrompt,
+  getAudienceFromRole,
+  sanitizeCaseData,
+  generateCaseStory,
+  generateEmployeeBriefing,
+  type AudienceType,
+  type CaseHighlight,
+} from "../config/botGuardrails.js";
 
 const prisma = new PrismaClient();
 
@@ -288,19 +298,22 @@ class AILegalBotsService {
     }
   }
 
-  // Chat with a bot
+  // Chat with a bot — audience-aware responses
   async chat(
     botId: string,
     userId: string,
-    message: string
+    message: string,
+    userRole: string = "FOUNDER"
   ): Promise<{ response: string; suggestions?: string[] }> {
     const bot = LEGAL_BOTS.find((b) => b.id === botId);
     if (!bot) {
       throw new Error(`Bot ${botId} not found`);
     }
 
-    // Generate response based on bot personality
-    const response = this.generateBotResponse(bot, message);
+    const audience = getAudienceFromRole(userRole);
+
+    // Generate response based on bot personality + audience guardrails
+    const response = this.generateBotResponse(bot, message, audience);
 
     // Log conversation
     await prisma.auditLog.create({
@@ -309,11 +322,60 @@ class AILegalBotsService {
         action: "BOT_CHAT",
         entityType: "BOT_CONVERSATION",
         entityId: botId,
-        details: { message, response: response.response },
+        details: { message, response: response.response, audience },
       },
     });
 
     return response;
+  }
+
+  /**
+   * Generate a case briefing ("Story Time") based on audience
+   */
+  async getCaseBriefing(
+    caseId: string,
+    userRole: string
+  ): Promise<string> {
+    const audience = getAudienceFromRole(userRole);
+
+    const caseData = await prisma.case.findUnique({
+      where: { id: caseId },
+      include: {
+        client: { select: { name: true } },
+        assignedEmployee: { select: { name: true } },
+        documents: { select: { type: true } },
+        deadlines: { where: { completedAt: null }, orderBy: { dueDate: "asc" }, take: 1 },
+      },
+    });
+
+    if (!caseData) return "Case not found.";
+
+    const now = new Date();
+    const nextDeadline = caseData.deadlines[0];
+    const deadlineDays = nextDeadline
+      ? Math.ceil((new Date(nextDeadline.dueDate).getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+      : undefined;
+
+    const highlight: CaseHighlight = {
+      caseId: caseData.id,
+      ownerName: caseData.client?.name || caseData.previousOwner || "Unknown",
+      county: caseData.county,
+      state: caseData.state,
+      surplusAmountCents: caseData.surplusAmountCents,
+      feePercent: caseData.feePercent,
+      status: caseData.status,
+      assignedEmployee: caseData.assignedEmployee?.name,
+      deadlineDays,
+      skipTracePhones: 0, // Would come from skip trace results
+      skipTraceEmails: 0,
+      specialNotes: [],
+    };
+
+    if (audience === "FOUNDER") {
+      return generateCaseStory(highlight);
+    } else {
+      return generateEmployeeBriefing(highlight);
+    }
   }
 
   // Bot-specific task implementations
@@ -530,62 +592,140 @@ class AILegalBotsService {
 
   private generateBotResponse(
     bot: LegalBot,
-    message: string
+    message: string,
+    audience: AudienceType = "FOUNDER"
   ): { response: string; suggestions?: string[] } {
     const lowerMessage = message.toLowerCase();
-
-    // Base responses based on bot specialty
     let response = "";
     let suggestions: string[] = [];
 
+    // Check for guardrail triggers first (any audience)
+    if (audience !== "FOUNDER") {
+      if (lowerMessage.includes("how much") || lowerMessage.includes("surplus") || lowerMessage.includes("amount")) {
+        return {
+          response: audience === "EMPLOYEE"
+            ? "That's above my pay grade — check with the boss on dollar amounts."
+            : "The exact amount gets determined during the recovery process. We'll have more details once we review the county records.",
+          suggestions: audience === "EMPLOYEE"
+            ? ["Check case status", "View deadlines", "Get contact info"]
+            : ["Learn about the process", "Check my case status"],
+        };
+      }
+      if (lowerMessage.includes("fee") || lowerMessage.includes("percentage") || lowerMessage.includes("commission")) {
+        return {
+          response: audience === "EMPLOYEE"
+            ? "Fee structure is handled by leadership. Focus on getting the case moving."
+            : "There's zero cost to you upfront. We handle everything and only receive compensation if we successfully recover your funds.",
+          suggestions: audience === "EMPLOYEE"
+            ? ["View my cases", "Get case briefing"]
+            : ["How does the process work?", "What happens next?"],
+        };
+      }
+      if (lowerMessage.includes("how many cases") || lowerMessage.includes("how big") || lowerMessage.includes("revenue")) {
+        return {
+          response: audience === "EMPLOYEE"
+            ? "I can only show you your cases. Need me to pull up your active list?"
+            : "We're a recovery assistance firm focused on helping people like you. What can I help you with today?",
+          suggestions: audience === "EMPLOYEE"
+            ? ["Show my cases", "Today's priorities"]
+            : ["Check my case status", "What documents do I need?"],
+        };
+      }
+    }
+
+    // Audience-specific bot responses
+    const isEmployee = audience === "EMPLOYEE";
+    const isFounder = audience === "FOUNDER";
+
     switch (bot.id) {
       case "compliance-bot":
-        response = "I can help you check compliance for any case. Provide a case ID and I'll run a full audit.";
-        suggestions = ["Check case compliance", "List all violations", "Generate compliance report"];
+        response = isEmployee
+          ? "Yo, let me check if your case is good to go. Drop me the case ID."
+          : isFounder
+            ? "Ready to audit. Give me a case ID or I'll scan the whole pipeline."
+            : "I can help verify your case documentation is complete.";
+        suggestions = isEmployee
+          ? ["Check my case", "What docs am I missing?", "Deadline check"]
+          : isFounder
+            ? ["Full pipeline audit", "Check case compliance", "Violation report"]
+            : ["Check case compliance", "List all violations", "Generate report"];
         break;
       case "docgen-bot":
-        response = "Ready to generate documents. What type do you need? POA, Contract, Filing, or something else?";
-        suggestions = ["Generate POA", "Create contract", "Prepare filing documents"];
+        response = isEmployee
+          ? "What docs you need? I can whip up a POA, contract, or filing in seconds."
+          : isFounder
+            ? "Document generation ready. POA, contract, filing, or bulk generation?"
+            : "I can help prepare your case documents.";
+        suggestions = isEmployee
+          ? ["Generate POA", "Create contract", "Filing docs"]
+          : ["Generate POA", "Create contract", "Prepare filing"];
         break;
       case "mistake-bot":
-        if (bot.personality.profanityEnabled) {
-          response = "Alright, let's find those damn mistakes. Paste the text or give me a case ID.";
-        } else {
-          response = "I'll find any errors. Paste the text or provide a case ID for review.";
-        }
-        suggestions = ["Scan for errors", "Auto-fix issues", "Review case documents"];
+        response = isEmployee
+          ? "Aight let me see what you got. Paste it or give me the case — I'll find every damn mistake."
+          : isFounder
+            ? "Drop it. I'll tear through it and find every error. Case ID or paste the text."
+            : "I'll review your documents for accuracy.";
+        suggestions = ["Scan for errors", "Auto-fix issues", "Review documents"];
         break;
       case "strategy-bot":
-        response = "Let's optimize your approach. Which case would you like me to analyze?";
-        suggestions = ["Analyze case strategy", "Compare approaches", "Calculate success probability"];
+        response = isEmployee
+          ? "Let's figure out the best play for this case. Which one we looking at?"
+          : isFounder
+            ? "Strategy analysis ready. I'll give you success probability, optimal timing, and the best approach."
+            : "I can explain the general process for your case type.";
+        suggestions = isFounder
+          ? ["Analyze case strategy", "Success probability", "Pipeline optimization"]
+          : ["Analyze case", "Best approach", "Timeline"];
         break;
       case "hunter-bot":
-        if (bot.personality.profanityEnabled) {
-          response = "Time to hunt for the big money! Which state should I target?";
-        } else {
-          response = "I'll find high-value opportunities. Which state or region should I focus on?";
-        }
-        suggestions = ["Find high-value cases", "Scan all states", "Show top opportunities"];
+        response = isFounder
+          ? "Let's go hunting. Which state? Or I'll scan everything for the big fish."
+          : isEmployee
+            ? "I can help you find your best leads to work on. Want me to pull your priority list?"
+            : "Let me check on your case status.";
+        suggestions = isFounder
+          ? ["Scan all states", "Top opportunities", "ROI ranking"]
+          : ["My priority cases", "Best leads to call"];
         break;
       case "negotiation-bot":
-        response = "I'll help you close the deal. What's the negotiation scenario?";
-        suggestions = ["Prepare pitch script", "Handle objections", "Counter-offer strategy"];
+        response = isEmployee
+          ? "Let's close this deal. Who we talking to and what's the situation?"
+          : isFounder
+            ? "Negotiation prep ready. Client scenario, county negotiation, or fee discussion?"
+            : "I can help answer any questions about the recovery process.";
+        suggestions = isEmployee
+          ? ["Pitch script", "Handle objections", "Follow-up script"]
+          : ["Prepare pitch", "Handle objections", "Counter-offer"];
         break;
       case "discovery-bot":
-        response = "Let's dig deep. Provide a property address, parcel number, or owner name to research.";
-        suggestions = ["Search property records", "Find ownership chain", "Check for liens"];
+        response = isEmployee
+          ? "Time to dig. Give me an address, parcel number, or name and I'll pull everything."
+          : isFounder
+            ? "Deep research ready. Property records, ownership chains, liens — the works."
+            : "I can look into the details of your property matter.";
+        suggestions = ["Search property", "Ownership chain", "Check liens"];
         break;
       case "court-bot":
-        response = "I'll make sure your filing is perfect. Which case needs court preparation?";
-        suggestions = ["Prepare filing", "Generate brief", "Check court requirements"];
+        response = isEmployee
+          ? "Let's get this filing right the first time. Which case we prepping?"
+          : isFounder
+            ? "Court prep ready. I'll make sure every filing is bulletproof."
+            : "Your case filing is being prepared by our team.";
+        suggestions = ["Prepare filing", "Court requirements", "Filing checklist"];
         break;
       default:
-        response = "How can I assist you today?";
+        response = isEmployee
+          ? "What's good? How can I help?"
+          : "How can I assist you today?";
     }
 
     // Add context based on user message
     if (lowerMessage.includes("help")) {
-      response = `I'm ${bot.name}, your ${bot.role}. My specialties include: ${bot.capabilities.slice(0, 3).join(", ")}. ${response}`;
+      const intro = isEmployee
+        ? `Yo, I'm ${bot.name} — ${bot.role}. I handle ${bot.capabilities.slice(0, 3).join(", ")}. `
+        : `I'm ${bot.name}, your ${bot.role}. My specialties include: ${bot.capabilities.slice(0, 3).join(", ")}. `;
+      response = intro + response;
     }
 
     return { response, suggestions };

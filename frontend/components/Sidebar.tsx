@@ -116,15 +116,22 @@ export function Sidebar({ role, isOpen, onClose }: SidebarProps) {
         />
       )}
 
-      {/* Sidebar */}
+      {/* Sidebar — uses inline styles for guaranteed scroll behavior */}
       <nav
         className={cn(
-          "fixed md:relative inset-y-0 left-0 z-50 w-64 h-full max-h-screen border-r bg-card transition-transform duration-300 ease-in-out md:translate-x-0 md:block flex flex-col overflow-hidden",
+          "fixed md:relative inset-y-0 left-0 z-50 w-64 border-r bg-card transition-transform duration-300 ease-in-out md:translate-x-0 md:block",
           isOpen ? "translate-x-0" : "-translate-x-full"
         )}
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          height: "100%",
+          maxHeight: "100%",
+          overflow: "hidden",
+        }}
       >
         {/* Mobile close button */}
-        <div className="flex items-center justify-between px-4 pt-4 mb-2 md:hidden">
+        <div className="flex items-center justify-between px-4 pt-3 pb-1 md:hidden" style={{ flexShrink: 0 }}>
           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
             Navigation
           </p>
@@ -134,33 +141,45 @@ export function Sidebar({ role, isOpen, onClose }: SidebarProps) {
         </div>
 
         {/* Desktop header */}
-        <div className="px-4 pt-4 mb-2 hidden md:block">
+        <div className="px-4 pt-3 pb-1 hidden md:block" style={{ flexShrink: 0 }}>
           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-3">
             Navigation
           </p>
         </div>
 
-        {/* Scrollable nav links */}
-        <div className="flex-1 min-h-0 overflow-y-auto px-4 pb-4 space-y-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-        {links.map(({ href, label, icon: Icon }) => {
-          const isActive = pathname === href || pathname.startsWith(href + "/");
-          return (
-            <Link
-              key={href}
-              href={href}
-              onClick={onClose}
-              className={cn(
-                "flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors text-sm",
-                isActive
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
-              )}
-            >
-              <Icon className="h-5 w-5 flex-shrink-0" />
-              <span className="font-medium">{label}</span>
-            </Link>
-          );
-        })}
+        {/* Scrollable nav links — inline overflow guarantees scrolling */}
+        <div
+          className="px-3 pb-3"
+          style={{
+            flex: "1 1 0%",
+            minHeight: 0,
+            overflowY: "auto",
+            msOverflowStyle: "none",
+            scrollbarWidth: "none",
+          }}
+        >
+          <style>{`.sidebar-scroll::-webkit-scrollbar { display: none; }`}</style>
+          <div className="sidebar-scroll space-y-0.5">
+            {links.map(({ href, label, icon: Icon }) => {
+              const isActive = pathname === href || pathname.startsWith(href + "/");
+              return (
+                <Link
+                  key={href}
+                  href={href}
+                  onClick={onClose}
+                  className={cn(
+                    "flex items-center space-x-3 px-3 py-1.5 rounded-lg transition-colors text-[13px]",
+                    isActive
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  )}
+                >
+                  <Icon className="h-4 w-4 flex-shrink-0" />
+                  <span className="font-medium">{label}</span>
+                </Link>
+              );
+            })}
+          </div>
         </div>
       </nav>
     </>

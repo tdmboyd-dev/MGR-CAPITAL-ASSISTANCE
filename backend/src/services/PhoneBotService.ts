@@ -84,23 +84,27 @@ const VOICE_PRESETS: Record<string, VoiceConfig> = {
   },
 };
 
+// Client-facing call scripts — NEVER reveal surplus amounts, fees, or business model
 const CALL_SCRIPTS = {
   initial_outreach: `
-Hello, this is a representative from MGR Capital calling regarding an important financial matter.
-Our records show that you may be entitled to unclaimed surplus funds from a recent property tax sale.
-This is not a sales call - we're reaching out because these funds legally belong to you.
-Would you have a few minutes to discuss this?
+Hey, this is the team at Capital MGR. Am I speaking with {ownerName}?
+
+Great — we found something that might be yours. There are some funds from a property matter in {county} County. No cost to you upfront, we just handle the paperwork. Want us to look into it for you?
   `.trim(),
   follow_up: `
-Hello, I'm following up on our previous conversation about your unclaimed surplus funds.
-Have you had a chance to review the documents we sent?
-I'm here to answer any questions you might have.
+Hey {ownerName}, this is Capital MGR following up on the funds we discussed. Did you get a chance to look over the paperwork we sent? No rush, but I wanted to let you know the filing deadline is coming up so we want to make sure we get this submitted in time for you.
   `.trim(),
   closing: `
-Thank you for your time today. We'll send you the necessary paperwork via email.
-Once signed, we'll begin the recovery process on your behalf.
-You can expect to hear from us within 5-7 business days.
-Have a great day!
+Hey {ownerName}, great news. Your claim is moving forward and we're handling the next steps. We'll send you the paperwork via email. You'll hear from your case manager within 24 hours. Thanks for your time.
+  `.trim(),
+  objection_scam: `
+Totally fair question. These funds are held by the county — that's public record you can verify yourself. We just handle the legal process to get them released. No payment needed from you, ever.
+  `.trim(),
+  objection_how_much: `
+The exact amount gets determined during the recovery process once we review the county records. What I can tell you is there are funds connected to your name.
+  `.trim(),
+  objection_not_interested: `
+No problem at all. Just so you know, there is a deadline on these types of claims. If you change your mind, you can reach us at this number. Have a good one.
   `.trim(),
 };
 
@@ -327,12 +331,21 @@ export class PhoneBotService {
    * Supports: DeepSeek (95% cheaper), Gemini, or OpenAI
    */
   async generateConversationalResponse(userInput: string): Promise<string> {
-    const systemPrompt = `You are a professional representative for MGR Capital, a surplus fund recovery company.
-You help property owners recover unclaimed funds from tax sales.
-Be professional, empathetic, and informative.
-Keep responses concise (under 100 words) for phone conversations.
-Never discuss specific amounts over the phone.
-If asked about fees, explain we work on contingency (no upfront costs).`;
+    const systemPrompt = `You are a friendly representative for Capital MGR, a fund recovery assistance firm.
+You help property owners recover unclaimed funds from property matters.
+Keep responses short (under 60 words) — this is a phone conversation.
+
+ABSOLUTE RULES:
+- NEVER say dollar amounts or surplus figures
+- NEVER say "surplus" — say "unclaimed funds" or "funds from a property matter"
+- NEVER reveal fee percentages — say "no upfront cost, we only get paid if we recover your funds"
+- NEVER say "contingency" — say "no cost to you unless we're successful"
+- NEVER discuss other clients or how many cases you handle
+- If asked how much: "The exact amount is determined during the recovery process."
+- If asked about fees: "There's zero cost to you upfront. We handle everything."
+- If they think it's a scam: "These funds are held by the county — public record you can verify."
+
+TONE: Casual, warm, direct. Like a helpful neighbor. Not corporate. Not salesy.`;
 
     // Try DeepSeek first (95% cheaper than OpenAI)
     if (DEEPSEEK_API_KEY) {
