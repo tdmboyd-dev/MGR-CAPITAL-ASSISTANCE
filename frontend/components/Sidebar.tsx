@@ -119,7 +119,7 @@ export function Sidebar({ role, isOpen, onClose }: SidebarProps) {
       {/* Sidebar */}
       <nav
         className={cn(
-          "fixed md:relative inset-y-0 left-0 z-50 w-64 h-screen border-r bg-card transition-transform duration-300 ease-in-out md:translate-x-0 md:block flex flex-col",
+          "fixed md:relative inset-y-0 left-0 z-50 w-64 h-full max-h-screen border-r bg-card transition-transform duration-300 ease-in-out md:translate-x-0 md:block flex flex-col overflow-hidden",
           isOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
@@ -141,7 +141,7 @@ export function Sidebar({ role, isOpen, onClose }: SidebarProps) {
         </div>
 
         {/* Scrollable nav links */}
-        <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-2 scrollbar-none [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+        <div className="flex-1 min-h-0 overflow-y-auto px-4 pb-4 space-y-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
         {links.map(({ href, label, icon: Icon }) => {
           const isActive = pathname === href || pathname.startsWith(href + "/");
           return (
@@ -150,7 +150,7 @@ export function Sidebar({ role, isOpen, onClose }: SidebarProps) {
               href={href}
               onClick={onClose}
               className={cn(
-                "flex items-center space-x-3 px-3 py-2.5 rounded-lg transition-colors",
+                "flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors text-sm",
                 isActive
                   ? "bg-primary text-primary-foreground"
                   : "text-muted-foreground hover:bg-muted hover:text-foreground"
