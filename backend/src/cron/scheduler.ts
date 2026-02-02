@@ -39,6 +39,13 @@ import { complianceExportService } from "../services/ComplianceExportService.js"
 import { runAutoIngestion } from "./autoIngestionCron.js";
 import { emailIngestionService } from "../services/EmailIngestionService.js";
 
+// Cron job imports
+import { transactionalEmailBot } from "../bots/TransactionalEmailBot.js";
+import { runEmailHostingCron } from "../crons/emailHostingCron.js";
+import { runTransferCoolingCron } from "../crons/transferCoolingCron.js";
+import { runChildCompanyBillingCron } from "../crons/childCompanyBillingCron.js";
+import { runEligibilityCheckCron } from "../crons/eligibilityCheckCron.js";
+
 const prisma = new PrismaClient();
 
 // =============================================================================
@@ -224,6 +231,69 @@ const jobs: CronJob[] = [
     category: "bot",
     task: async () => {
       await emailIngestionService.pollInbox();
+    },
+  },
+
+  // ===========================================
+  // EMAIL & HOSTING SCHEDULES
+  // ===========================================
+  {
+    name: "Email Retry Failed",
+    key: "email_retry_failed",
+    cronExpression: "*/30 * * * *", // Every 30 minutes
+    description: "Retry failed transactional emails from last 24 hours",
+    enabledByDefault: true,
+    category: "bot",
+    task: async () => {
+      await transactionalEmailBot.run();
+    },
+  },
+  {
+    name: "Email Hosting Maintenance",
+    key: "email_hosting_maintenance",
+    cronExpression: "0 1 * * *", // 1:00 AM daily
+    description: "Renewal alerts, grace period deletions, DNS checks, billing",
+    enabledByDefault: true,
+    category: "maintenance",
+    task: async () => {
+      await runEmailHostingCron();
+    },
+  },
+
+  // ===========================================
+  // CHILD COMPANY SCHEDULES
+  // ===========================================
+  {
+    name: "Transfer Cooling Alerts",
+    key: "transfer_cooling_alerts",
+    cronExpression: "0 8 * * *", // 8:00 AM daily
+    description: "Send daily cooling period alerts, complete expired transfers",
+    enabledByDefault: true,
+    category: "bot",
+    task: async () => {
+      await runTransferCoolingCron();
+    },
+  },
+  {
+    name: "Child Company Billing",
+    key: "child_company_billing",
+    cronExpression: "0 0 1 * *", // Midnight, 1st of each month
+    description: "Process child company subscription billing and suspend overdue",
+    enabledByDefault: true,
+    category: "maintenance",
+    task: async () => {
+      await runChildCompanyBillingCron();
+    },
+  },
+  {
+    name: "Employee Eligibility Check",
+    key: "employee_eligibility_check",
+    cronExpression: "0 10 * * 3", // 10:00 AM every Wednesday
+    description: "Auto-generate child company offers for newly eligible employees",
+    enabledByDefault: true,
+    category: "bot",
+    task: async () => {
+      await runEligibilityCheckCron();
     },
   },
 
