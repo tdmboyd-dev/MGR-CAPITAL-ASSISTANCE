@@ -88,6 +88,7 @@ export default function FounderAnalyticsPage() {
       });
       return data.data as ReportData;
     },
+    retry: false,
   });
 
   // Fetch employees for dropdown
@@ -97,6 +98,7 @@ export default function FounderAnalyticsPage() {
       const { data } = await api.get("/employees");
       return data.data as { id: string; name: string; email: string }[];
     },
+    retry: false,
   });
 
   // Fetch user performance
@@ -109,6 +111,7 @@ export default function FounderAnalyticsPage() {
       return data.data as UserPerformanceData;
     },
     enabled: true,
+    retry: false,
   });
 
   const handleExportCSV = async (type: string) => {
