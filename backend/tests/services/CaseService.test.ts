@@ -210,7 +210,7 @@ describe("CaseService", () => {
 
   describe("Deadline Calculations", () => {
     it("should calculate deadline based on state law and sale date", () => {
-      const saleDate = new Date("2024-01-26");
+      const saleDate = new Date(2024, 0, 26); // Jan 26, 2024 local time
       const stateDeadlineYears = 3; // Tennessee has 1 year, but testing with 3
 
       const deadlineDate = new Date(saleDate);

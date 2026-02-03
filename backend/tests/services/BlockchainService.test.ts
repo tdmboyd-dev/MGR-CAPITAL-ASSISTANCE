@@ -20,9 +20,9 @@ describe("BlockchainService", () => {
       const isValidEthAddress = (address: string) =>
         /^0x[a-fA-F0-9]{40}$/.test(address);
 
-      expect(isValidEthAddress("0x742d35Cc6634C0532925a3b844Bc9e7595f000000")).toBe(true);
-      expect(isValidEthAddress("0x742d35Cc6634C0532925a3b844Bc9e7595f00000")).toBe(false); // 39 chars
-      expect(isValidEthAddress("742d35Cc6634C0532925a3b844Bc9e7595f000000")).toBe(false); // Missing 0x
+      expect(isValidEthAddress("0x742d35Cc6634C0532925a3b844Bc9e7595f00000")).toBe(true);
+      expect(isValidEthAddress("0x742d35Cc6634C0532925a3b844Bc9e759500000")).toBe(false); // 39 chars
+      expect(isValidEthAddress("742d35Cc6634C0532925a3b844Bc9e7595f00000")).toBe(false); // Missing 0x
       expect(isValidEthAddress("0xGHIJKL")).toBe(false); // Invalid hex
     });
 

@@ -6,8 +6,14 @@
 // ============================================
 
 import { PrismaClient, CaseStatus, OpsInsightType, OpsInsightPriority } from "@prisma/client";
+import { notificationService } from "../services/notificationService.js";
+import { SMSService } from "../services/SMSService.js";
+import { documentAssemblyService } from "../services/DocumentAssemblyService.js";
+import { botSubscriptionService } from "../services/BotSubscriptionService.js";
+import logger from "../utils/logger.js";
 
 const prisma = new PrismaClient();
+const smsService = new SMSService();
 
 const BOT_NAME = "docketBot";
 
@@ -722,6 +728,233 @@ class DocketBot {
         expiresAt: new Date(Date.now() + 12 * 60 * 60 * 1000), // 12 hours
       },
     });
+  }
+
+  // ============================================
+  // ACTION MODE — Respond to docket changes
+  // ============================================
+
+  /**
+   * Auto-respond to docket changes:
+   * - New hearing date: SMS reminder to employee
+   * - Filing deadline: Generate required docs, queue for review
+   * - Case status change: Update case, notify parties via email
+   * - Adverse ruling: Escalate to founder
+   */
+  async respondToDocketChange(
+    caseId: string,
+    changeType: "hearing_date" | "filing_deadline" | "status_change" | "adverse_ruling" | "new_requirement",
+    details: string
+  ): Promise<{ actions: string[]; escalated: boolean }> {
+    const actions: string[] = [];
+    let escalated = false;
+
+    const caseData = await prisma.case.findUnique({
+      where: { id: caseId },
+      include: {
+        client: true,
+        assignedEmployee: { select: { id: true, name: true, email: true, phone: true } },
+      },
+    });
+
+    if (!caseData) return { actions: ["Case not found"], escalated: false };
+
+    try {
+      switch (changeType) {
+        case "hearing_date": {
+          // Send SMS reminder to employee
+          if (caseData.assignedEmployee?.phone) {
+            await smsService.send(
+              caseData.assignedEmployee.phone,
+              `HEARING ALERT: Case ${caseData.internalCode} — ${details}. Check your calendar.`
+            );
+            actions.push(`SMS hearing reminder sent to ${caseData.assignedEmployee.name}`);
+          }
+
+          // Send email with details
+          if (caseData.assignedEmployee?.email) {
+            await notificationService.sendEmployeeEmail({
+              to: caseData.assignedEmployee.email,
+              subject: `Hearing Scheduled: ${caseData.internalCode}`,
+              body: `A hearing has been scheduled for case ${caseData.internalCode} (${caseData.county}, ${caseData.state}).\n\n${details}\n\nPlease prepare accordingly and update the case file.`,
+            });
+            actions.push("Hearing notification email sent");
+          }
+
+          // Create a deadline entry
+          await prisma.deadline.create({
+            data: {
+              caseId,
+              title: `Court Hearing: ${details}`,
+              description: `Auto-created by docket bot: ${details}`,
+              dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // Default 7 days if no specific date
+            },
+          });
+          actions.push("Hearing deadline created");
+          break;
+        }
+
+        case "filing_deadline": {
+          // Generate required document from template
+          if (caseData.assignedEmployeeId) {
+            try {
+              await documentAssemblyService.assembleDocPackage(caseId, caseData.assignedEmployeeId);
+              actions.push("Filing documents auto-generated");
+            } catch (e: any) {
+              actions.push(`Doc generation failed: ${e.message}`);
+            }
+          }
+
+          // Notify employee
+          if (caseData.assignedEmployee?.email) {
+            await notificationService.sendEmployeeEmail({
+              to: caseData.assignedEmployee.email,
+              subject: `Filing Deadline Update: ${caseData.internalCode}`,
+              body: `Filing deadline update for case ${caseData.internalCode}:\n\n${details}\n\nDocuments have been auto-generated and queued for your review.`,
+            });
+            actions.push("Filing deadline notification sent");
+          }
+          break;
+        }
+
+        case "status_change": {
+          // Update case status note
+          const notes = caseData.notes || "";
+          await prisma.case.update({
+            where: { id: caseId },
+            data: { notes: notes + `\n[DOCKET BOT ${new Date().toISOString().split("T")[0]}] Status change: ${details}` },
+          });
+          actions.push("Case notes updated with status change");
+
+          // Notify all parties
+          if (caseData.assignedEmployee?.email) {
+            await notificationService.sendEmployeeEmail({
+              to: caseData.assignedEmployee.email,
+              subject: `Case Status Update: ${caseData.internalCode}`,
+              body: `Docket status change for case ${caseData.internalCode}:\n\n${details}`,
+            });
+            actions.push("Employee notified of status change");
+          }
+
+          if (caseData.client?.email) {
+            await notificationService.sendClientEmail({
+              to: caseData.client.email,
+              subject: `Update on Your Case`,
+              body: `We have an update regarding your case in ${caseData.county}, ${caseData.state}. Our team is reviewing the latest developments and will be in touch with any actions needed from you.`,
+            });
+            actions.push("Client notified of status change");
+          }
+          break;
+        }
+
+        case "adverse_ruling": {
+          escalated = true;
+
+          // Get all founders
+          const founders = await prisma.user.findMany({
+            where: { role: "FOUNDER", isActive: true },
+            select: { id: true, email: true, name: true },
+          });
+
+          // Build case brief
+          const brief = `ADVERSE RULING ESCALATION\n\nCase: ${caseData.internalCode}\nProperty: ${caseData.propertyAddress || "N/A"}\nCounty: ${caseData.county}, ${caseData.state}\nSurplus: $${((caseData.surplusAmountCents || 0) / 100).toLocaleString()}\nAssigned: ${caseData.assignedEmployee?.name || "Unassigned"}\n\nRuling Details:\n${details}\n\nImmediate founder review required.`;
+
+          for (const founder of founders) {
+            if (founder.email) {
+              await notificationService.sendFounderEmail({
+                subject: `ESCALATION: Adverse Ruling — ${caseData.internalCode}`,
+                body: brief,
+                priority: "urgent",
+                caseId,
+              });
+            }
+          }
+          actions.push(`Escalated to ${founders.length} founder(s) with full case brief`);
+
+          // Create urgent WatchAlert
+          await prisma.watchAlert.create({
+            data: {
+              type: "SYSTEM_HEALTH",
+              severity: "CRITICAL",
+              message: `Adverse ruling on case ${caseData.internalCode}: ${details}`,
+              details: { caseId, ruling: details },
+              status: "OPEN",
+            },
+          });
+          actions.push("Critical WatchAlert created");
+          break;
+        }
+
+        case "new_requirement": {
+          // Update case notes
+          const currentNotes = caseData.notes || "";
+          await prisma.case.update({
+            where: { id: caseId },
+            data: { notes: currentNotes + `\n[DOCKET BOT ${new Date().toISOString().split("T")[0]}] New requirement: ${details}` },
+          });
+
+          // Notify employee
+          if (caseData.assignedEmployee?.email) {
+            await notificationService.sendEmployeeEmail({
+              to: caseData.assignedEmployee.email,
+              subject: `New Requirement: ${caseData.internalCode}`,
+              body: `A new requirement has been identified for case ${caseData.internalCode}:\n\n${details}\n\nPlease review and take necessary action.`,
+            });
+          }
+          actions.push("Employee notified of new requirement");
+          break;
+        }
+      }
+
+      // Log to BotRunLog
+      await prisma.botRunLog.create({
+        data: {
+          botName: "docketBot:respondToChange",
+          success: true,
+          summary: `Responded to ${changeType} for case ${caseData.internalCode}: ${actions.length} actions taken`,
+          details: { caseId, changeType, details, actions, escalated },
+        },
+      });
+    } catch (error: any) {
+      logger.error(`Docket response failed for case ${caseId}`, { error: error.message });
+      actions.push(`Error: ${error.message}`);
+    }
+
+    return { actions, escalated };
+  }
+
+  /**
+   * Analyze AND auto-respond to detected changes
+   */
+  async analyzeAndRespond(): Promise<{
+    analysis: DocketAnalysis;
+    responses: { caseId: string; changeType: string; actions: string[] }[];
+  }> {
+    const analysis = await this.analyze();
+    const responses: { caseId: string; changeType: string; actions: string[] }[] = [];
+
+    // Auto-respond to overdue/critical deadlines
+    for (const deadline of analysis.upcomingDeadlines) {
+      if (deadline.severity === "overdue" || deadline.severity === "critical") {
+        const changeType = deadline.deadlineType === "HEARING" ? "hearing_date" : "filing_deadline";
+        const result = await this.respondToDocketChange(
+          deadline.caseId,
+          changeType as any,
+          `${deadline.title}: ${deadline.daysRemaining < 0 ? Math.abs(deadline.daysRemaining) + " days overdue" : deadline.daysRemaining + " days remaining"}`
+        );
+        responses.push({ caseId: deadline.caseId, changeType, actions: result.actions });
+      }
+    }
+
+    // Auto-respond to jurisdiction updates
+    for (const update of analysis.jurisdictionUpdates) {
+      if (update.severity === "critical") {
+        // Would need to map this to specific cases
+        logger.info(`Critical jurisdiction update: ${update.state} — ${update.description}`);
+      }
+    }
+
+    return { analysis, responses };
   }
 
   private generatePlainEnglish(analysis: DocketAnalysis): string {

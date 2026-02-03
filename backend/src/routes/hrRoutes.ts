@@ -8,6 +8,7 @@ import { Router, Response } from "express";
 import { AuthenticatedRequest, authMiddleware } from "../middleware/authMiddleware.js";
 import { roleGuard, ROLE_GROUPS } from "../middleware/roleGuard.js";
 import { PrismaClient } from "@prisma/client";
+import { demoDataService } from "../services/DemoDataService.js";
 
 const prisma = new PrismaClient();
 
@@ -283,6 +284,12 @@ router.post("/onboarding", async (req: AuthenticatedRequest, res: Response) => {
         employeeTier: "TIER_1_ASSOCIATE",
         isActive: false
       }
+    });
+
+    // Trigger demo data cleanup if real user created
+    // This is async and non-blocking
+    demoDataService.onUserCreated(newUser.id).catch((err) => {
+      console.error("[HR] Demo cleanup error (non-fatal):", err);
     });
 
     res.json({

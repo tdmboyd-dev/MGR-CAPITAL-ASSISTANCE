@@ -36,6 +36,9 @@ import complianceRoutes from "./routes/complianceRoutes.js";
 // Internal Communication (Comms Chamber)
 import commsRoutes from "./routes/comms.js";
 
+// Client Portal Messages
+import messagesRoutes from "./routes/messagesRoutes.js";
+
 // Analytics (Forecasting)
 import analyticsRoutes from "./routes/analytics.js";
 
@@ -51,9 +54,13 @@ import feedbackRoutes from "./routes/feedbackRoutes.js";
 // Email Dashboard & Hosting
 import emailDashboardRoutes from "./routes/emailRoutes.js";
 import emailHostingRoutes from "./routes/emailHostingRoutes.js";
+import emailInboxRoutes from "./routes/emailInboxRoutes.js";
 
 // Child Company System
 import childCompanyRoutes from "./routes/childCompanyRoutes.js";
+
+// THE OFFICE TABLE — Contracts, Violations, Bans
+import officeTableRoutes from "./routes/officeTableRoutes.js";
 
 // Global Search (Phase 20)
 import searchRoutes from "./routes/searchRoutes.js";
@@ -103,6 +110,9 @@ import marketplaceRoutes from "./routes/marketplaceRoutes.js";
 // Oracle Service (Phase 29)
 import oracleRoutes from "./routes/oracleRoutes.js";
 
+// Autonomous AI Oracle (Next-gen AI capabilities)
+import autonomousAiRoutes from "./routes/autonomousAiRoutes.js";
+
 // Rate limiting
 import { loginRateLimit, passwordResetRateLimit } from "./middleware/rateLimit.js";
 
@@ -111,6 +121,36 @@ import { notificationService } from "./services/notificationService.js";
 
 // Webhook routes (external partner leads)
 import webhookRoutes from "./routes/webhookRoutes.js";
+
+// Bot Subscriptions (Action Bots)
+import botSubscriptionRoutes from "./routes/botSubscriptionRoutes.js";
+
+// Founder Notary (Self-hosted RON)
+import founderNotaryRoutes from "./routes/founderNotaryRoutes.js";
+
+// Employee Notary (In-house notary work)
+import employeeNotaryRoutes from "./routes/employeeNotaryRoutes.js";
+
+// Trust Automation (Asset Protection)
+import trustRoutes from "./routes/trustRoutes.js";
+
+// County Surplus Requirements
+import surplusRequirementsRoutes from "./routes/surplusRequirementsRoutes.js";
+
+// Client Tipping (Shadow Cut)
+import tippingRoutes from "./routes/tippingRoutes.js";
+
+// Activity Tracking & Violations
+import activityRoutes from "./routes/activityRoutes.js";
+
+// SMS Templates Library (Outreach)
+import smsTemplateRoutes from "./routes/smsTemplateRoutes.js";
+
+// Mobile API (Optimized for mobile apps)
+import mobileRoutes from "./routes/mobileRoutes.js";
+
+// Master Settings (Global Feature Toggles)
+import masterSettingsRoutes from "./routes/masterSettingsRoutes.js";
 
 // Scheduler (autopilot crons)
 import scheduler from "./cron/scheduler.js";
@@ -162,6 +202,9 @@ app.use("/api/ingestion", ingestionRoutes);
 app.use("/api/training", trainingRoutes);
 app.use("/api/settings", settingsRoutes);
 
+// Master Settings (Global Feature Toggles - FOUNDER/ADMIN ONLY)
+app.use("/api/settings/master", masterSettingsRoutes);
+
 // OPS Layer routes (FOUNDER ONLY — Never expose to employees/clients)
 app.use("/api/ops/metrics", opsMetricsRoutes);
 app.use("/api/ops/watch", opsWatchRoutes);
@@ -173,6 +216,9 @@ app.use("/api/compliance", complianceRoutes);
 
 // Internal Communication (Comms Chamber)
 app.use("/api/comms", commsRoutes);
+
+// Client Portal Messages
+app.use("/api/messages", messagesRoutes);
 
 // Analytics (Forecasting)
 app.use("/api/analytics", analyticsRoutes);
@@ -234,17 +280,57 @@ app.use("/api/marketplace", marketplaceRoutes);
 // State Law Oracle
 app.use("/api/oracle", oracleRoutes);
 
+// Autonomous AI Oracle (Next-gen AI capabilities)
+app.use("/api/ai-oracle", autonomousAiRoutes);
+
 // Email Dashboard (Founder)
 app.use("/api/emails", emailDashboardRoutes);
 
 // Email Hosting (Phase 3)
 app.use("/api/email-hosting", emailHostingRoutes);
 
+// Email Inbox (Mailbox access)
+app.use("/api/email", emailInboxRoutes);
+
+// Inbox alias for frontend compatibility (/api/inbox -> simplified email routes)
+app.use("/api/inbox", emailInboxRoutes);
+
 // Child Company System (Phase 2)
 app.use("/api/child-companies", childCompanyRoutes);
 
+// THE OFFICE TABLE — Contracts, Violations, Bans
+app.use("/api/office-table", officeTableRoutes);
+
+// Bot Subscriptions (Action Bots)
+app.use("/api/bot-subscriptions", botSubscriptionRoutes);
+
 // Webhook Lead Receiver (Autopilot)
 app.use("/api/webhooks", webhookRoutes);
+
+// Founder Notary (Self-hosted RON)
+app.use("/api/founder-notary", founderNotaryRoutes);
+
+// Employee Notary (In-house notary work for surplus recovery)
+app.use("/api/employee-notary", employeeNotaryRoutes);
+
+// Trust Automation (Asset Protection)
+app.use("/api/trusts", trustRoutes);
+
+// County Recovery Requirements (notarization, forms, deadlines)
+// NOTE: Using "recovery" not "surplus" in URL for shadow compliance
+app.use("/api/recovery-requirements", surplusRequirementsRoutes);
+
+// Client Tipping (Shadow Cut - employees see full tip, get 50%)
+app.use("/api/tips", tippingRoutes);
+
+// Activity Tracking & Violations (3 days/week, 2-day case inactivity)
+app.use("/api/activity", activityRoutes);
+
+// Mobile API (Optimized endpoints for mobile apps)
+app.use("/api/mobile", mobileRoutes);
+
+// SMS Templates Library (Outreach automation)
+app.use("/api/sms-templates", smsTemplateRoutes);
 
 // ============================================
 // HEALTH CHECK

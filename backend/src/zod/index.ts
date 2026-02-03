@@ -50,6 +50,8 @@ export {
   JwtConfigSchema,
   SecurityConfigSchema,
   PerformanceConfigSchema,
+  NotaryCredentialsSchema,
+  DigitalSealConfigSchema,
   FounderConfigValueSchema,
   // Types
   type TrainingConfig,
@@ -62,6 +64,8 @@ export {
   type JwtConfig,
   type SecurityConfig,
   type PerformanceConfig,
+  type NotaryCredentials,
+  type DigitalSealConfig,
   type FounderConfigValue,
   // Helpers
   validateTrainingConfig,
@@ -72,6 +76,8 @@ export {
   validateSecurityConfig,
   validateJwtConfig,
   validatePerformanceConfig,
+  validateNotaryCredentials,
+  validateDigitalSealConfig,
   safeParseConfig,
   // Defaults
   DEFAULT_TRAINING_CONFIG,
@@ -84,4 +90,6 @@ export {
   DEFAULT_JWT_CONFIG,
   DEFAULT_SECURITY_CONFIG,
   DEFAULT_PERFORMANCE_CONFIG,
+  DEFAULT_NOTARY_CREDENTIALS,
+  DEFAULT_DIGITAL_SEAL_CONFIG,
 } from "./config.js";

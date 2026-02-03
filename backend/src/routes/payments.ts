@@ -236,6 +236,64 @@ router.get("/metrics", authenticate, async (_req, res) => {
   }
 });
 
+/**
+ * POST /api/payments/:paymentId/approve
+ * Approve a payment flagged for review (FOUNDER only)
+ */
+router.post("/:paymentId/approve", authenticate, async (req: any, res) => {
+  try {
+    const { paymentId } = req.params;
+    const { notes } = req.body;
+
+    // Check user role
+    if (!req.user?.role || !['FOUNDER', 'ADMIN'].includes(req.user.role)) {
+      return res.status(403).json({ error: "Only founders can approve payments" });
+    }
+
+    const { paymentService } = await import("../services/PaymentService.js");
+    const result = await paymentService.approvePayment(paymentId, req.user.userId, notes);
+
+    if (!result) {
+      return res.status(404).json({ error: "Payment not found" });
+    }
+
+    logger.info("Payment approved", { paymentId, userId: req.user.userId });
+    res.json({ success: true, payment: result });
+  } catch (error: any) {
+    logger.error("Payment approval failed", { error: error.message });
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * POST /api/payments/:paymentId/block
+ * Block a suspicious payment (FOUNDER only)
+ */
+router.post("/:paymentId/block", authenticate, async (req: any, res) => {
+  try {
+    const { paymentId } = req.params;
+    const { reason, notes } = req.body;
+
+    // Check user role
+    if (!req.user?.role || !['FOUNDER', 'ADMIN'].includes(req.user.role)) {
+      return res.status(403).json({ error: "Only founders can block payments" });
+    }
+
+    const { paymentService } = await import("../services/PaymentService.js");
+    const result = await paymentService.blockPayment(paymentId, req.user.userId, reason || "Flagged by fraud detection", notes);
+
+    if (!result) {
+      return res.status(404).json({ error: "Payment not found" });
+    }
+
+    logger.warn("Payment blocked", { paymentId, userId: req.user.userId, reason });
+    res.json({ success: true, payment: result });
+  } catch (error: any) {
+    logger.error("Payment blocking failed", { error: error.message });
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // ============================================
 // WEBHOOKS (No auth - verified by signatures)
 // ============================================

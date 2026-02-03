@@ -15,6 +15,7 @@ import { scraperService } from "../services/scraperService.js";
 import { ingestionService } from "../services/ingestionService.js";
 import { caseRoutingService } from "../services/CaseRoutingService.js";
 import { parseContent, SourceType } from "../services/parserService.js";
+import { demoDataService } from "../services/DemoDataService.js";
 
 const prisma = new PrismaClient();
 
@@ -206,6 +207,14 @@ export async function runAutoIngestion(): Promise<AutopilotResult> {
             totalCasesCreated: { increment: casesCreated },
           },
         });
+
+        // Trigger demo data cleanup if cases were created from ingestion
+        // This is async and non-blocking
+        if (casesCreated > 0) {
+          demoDataService.onIngestionCompleted(casesCreated, source.id).catch((err) => {
+            logger.error(`[AutoIngestion] Demo cleanup error (non-fatal): ${err}`);
+          });
+        }
 
         logger.info(`[AutoIngestion] Source ${source.name}: ${recordsParsed} records parsed, ${casesCreated} cases created`);
       } catch (error) {

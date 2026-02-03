@@ -14,8 +14,17 @@ import {
   type AudienceType,
   type CaseHighlight,
 } from "../config/botGuardrails.js";
+import { documentAssemblyService } from "./DocumentAssemblyService.js";
+import { propertyResearchService } from "./PropertyResearchService.js";
+import { skipTraceService } from "./SkipTraceService.js";
+import { autoOutreachService } from "./AutoOutreachService.js";
+import { notificationService } from "./notificationService.js";
+import { SMSService } from "./SMSService.js";
+import { botSubscriptionService, ACTION_COSTS } from "./BotSubscriptionService.js";
+import logger from "../utils/logger.js";
 
 const prisma = new PrismaClient();
+const smsService = new SMSService();
 
 // Bot personality types with capabilities
 export interface LegalBot {
@@ -425,15 +434,49 @@ class AILegalBotsService {
   }
 
   private async generateDocument(input: any): Promise<any> {
-    const { documentType, caseId, templateData } = input;
+    const { documentType, caseId, templateData, userId } = input;
+
+    if (caseId) {
+      try {
+        if (documentType) {
+          // Generate single document
+          const doc = await documentAssemblyService.generateSingleDoc(caseId, documentType, userId);
+          return {
+            generated: doc.status === "generated",
+            documentType,
+            caseId,
+            url: doc.url,
+            message: doc.status === "generated"
+              ? `${documentType} document generated successfully`
+              : `Generation issue: ${doc.missingFields?.join(", ")}`,
+            missingFields: doc.missingFields,
+          };
+        } else {
+          // Generate full package
+          const result = await documentAssemblyService.assembleDocPackage(caseId, userId);
+          const successDocs = result.documentsGenerated.filter(d => d.status === "generated");
+          return {
+            generated: successDocs.length > 0,
+            documentsGenerated: result.documentsGenerated,
+            totalCostCents: result.totalCostCents,
+            stateRequirements: result.stateRequirements,
+            message: `Generated ${successDocs.length}/${result.documentsGenerated.length} documents`,
+            missingInfo: result.missingInfo,
+          };
+        }
+      } catch (error: any) {
+        return {
+          generated: false,
+          documentType,
+          caseId,
+          message: `Document generation failed: ${error.message}`,
+        };
+      }
+    }
 
     return {
-      generated: true,
-      documentType,
-      caseId,
-      previewUrl: `/api/documents/preview/${documentType}/${caseId}`,
-      message: `${documentType} document generated successfully`,
-      fields: templateData,
+      generated: false,
+      message: "Provide a caseId to generate documents",
     };
   }
 
@@ -458,8 +501,8 @@ class AILegalBotsService {
       mistakes,
       autoFixAvailable: mistakes.filter((m) => m.severity !== "high").length,
       message: mistakes.length > 0
-        ? `Found ${mistakes.length} issue(s) - let me fix that crap for you!`
-        : "Looks clean. No mistakes detected. Nice work!",
+        ? `Found ${mistakes.length} issue(s) that need attention.`
+        : "No issues detected. All documents pass validation.",
     };
   }
 
@@ -479,7 +522,7 @@ class AILegalBotsService {
           caseId,
           recommendation: isHighValue ? "PRIORITY_FILING" : "STANDARD_PROCESS",
           estimatedRecovery: surplusAmount,
-          successProbability: 0.75 + Math.random() * 0.2,
+          successProbability: isHighValue ? 0.85 : 0.70,
           suggestedActions: [
             "File within 3 business days",
             "Request expedited processing",
@@ -522,8 +565,8 @@ class AILegalBotsService {
       found: bigCases.length,
       cases: bigCases,
       message: bigCases.length > 0
-        ? `Hell yeah! Found ${bigCases.length} high-value targets!`
-        : "No big fish right now. Keep hunting!",
+        ? `Found ${bigCases.length} high-value cases exceeding $10,000 surplus.`
+        : "No high-value cases identified in current pipeline.",
       totalPotential: bigCases.reduce((sum, c) => sum + (c.surplusAmountCents || 0), 0),
     };
   }
@@ -556,37 +599,357 @@ class AILegalBotsService {
   }
 
   private async runDiscovery(input: any): Promise<any> {
-    const { propertyAddress, parcelNumber, ownerName } = input;
+    const { propertyAddress, parcelNumber, ownerName, caseId } = input;
+
+    // If caseId provided, run full property research
+    if (caseId) {
+      try {
+        const research = await propertyResearchService.researchProperty(caseId);
+        return {
+          searched: true,
+          query: { propertyAddress, parcelNumber, ownerName },
+          results: {
+            ownerInfo: research.ownerInfo,
+            propertyDetails: research.propertyDetails,
+            surplusAssessment: research.surplusAssessment,
+          },
+          brief: research.researchBrief,
+          message: `Deep research complete. Confidence: ${research.surplusAssessment.confidenceScore}%`,
+          sources: ["Skip Trace API", "Case Database", "Property Records"],
+          costCents: research.totalCostCents,
+        };
+      } catch (error: any) {
+        logger.error("Discovery research failed", { error: error.message, caseId });
+      }
+    }
+
+    // Fallback: skip trace by name if provided
+    if (ownerName) {
+      try {
+        const [firstName, ...lastParts] = ownerName.split(" ");
+        const lastName = lastParts.join(" ") || firstName;
+        const traceResult = await skipTraceService.tracePerson({
+          firstName, lastName,
+          address: propertyAddress,
+        }, false);
+
+        const score = skipTraceService.scoreResult(traceResult);
+
+        return {
+          searched: true,
+          query: { propertyAddress, parcelNumber, ownerName },
+          results: {
+            phones: traceResult.phones || [],
+            emails: traceResult.emails || [],
+            addresses: traceResult.addresses || [],
+            relatives: traceResult.relatives || [],
+          },
+          leadScore: score,
+          message: `Discovery complete. Found ${(traceResult.phones || []).length} phones, ${(traceResult.emails || []).length} emails. Lead score: ${score}.`,
+          sources: ["Tracerfy API", "Public Records"],
+        };
+      } catch (error: any) {
+        return {
+          searched: true,
+          query: { propertyAddress, parcelNumber, ownerName },
+          results: { error: error.message },
+          message: `Discovery encountered an error: ${error.message}`,
+          sources: [],
+        };
+      }
+    }
 
     return {
-      searched: true,
+      searched: false,
       query: { propertyAddress, parcelNumber, ownerName },
-      results: {
-        propertyRecords: [],
-        ownershipHistory: [],
-        liens: [],
-        taxHistory: [],
-      },
-      message: "Discovery complete. Data compiled for review.",
-      sources: ["County Records", "State Database", "Public Filings"],
+      message: "Provide a caseId or ownerName to run discovery.",
+      sources: [],
     };
   }
 
   private async prepareCourtFiling(input: any): Promise<any> {
-    const { caseId, filingType } = input;
+    const { caseId, filingType, userId } = input;
+
+    if (!caseId) {
+      return { prepared: false, message: "Provide a caseId to prepare filing" };
+    }
+
+    const caseData = await prisma.case.findUnique({
+      where: { id: caseId },
+      include: {
+        documents: { select: { type: true, status: true } },
+        stateRule: true,
+        client: { select: { name: true } },
+      },
+    });
+
+    if (!caseData) {
+      return { prepared: false, message: "Case not found" };
+    }
+
+    // Get state requirements
+    const stateReqs = documentAssemblyService.getStateRequirements(caseData.state);
+
+    // Check existing documents
+    const requiredDocs = ["CLIENT_SERVICE_AGREEMENT", "LIMITED_POA", "FILING_PACKET"];
+    const checklist = requiredDocs.map(docType => {
+      const doc = caseData.documents.find(d => d.type === docType);
+      return {
+        item: docType.replace(/_/g, " "),
+        status: doc ? (doc.status === "SIGNED" || doc.status === "APPROVED" ? "complete" : "pending") : "missing",
+      };
+    });
+
+    // Add state-specific requirements
+    if (stateReqs.notarization) {
+      checklist.push({ item: "Notarized Signatures", status: "pending" });
+    }
+    if (stateReqs.witnesses > 0) {
+      checklist.push({ item: `${stateReqs.witnesses} Witness Signatures`, status: "pending" });
+    }
+    for (const addDoc of stateReqs.additionalDocs) {
+      const exists = caseData.documents.find(d => d.type === addDoc);
+      checklist.push({
+        item: addDoc.replace(/_/g, " "),
+        status: exists ? "complete" : "missing",
+      });
+    }
+
+    // Auto-generate missing documents
+    const missingDocs = checklist.filter(c => c.status === "missing");
+    if (missingDocs.length > 0 && userId) {
+      try {
+        await documentAssemblyService.assembleDocPackage(caseId, userId);
+        missingDocs.forEach(d => d.status = "generated_draft");
+      } catch (e: any) {
+        logger.error("Auto-doc generation in court prep failed", { error: e.message });
+      }
+    }
+
+    const allComplete = checklist.every(c => c.status === "complete");
 
     return {
-      prepared: true,
-      filingType,
+      prepared: allComplete,
+      filingType: filingType || "Surplus Fund Claim",
       caseId,
-      checklist: [
-        { item: "Case summary", status: "complete" },
-        { item: "Supporting documents", status: "pending" },
-        { item: "Fee calculation", status: "complete" },
-        { item: "Signature blocks", status: "pending" },
-      ],
-      estimatedFilingDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
-      courtRequirements: ["Original signatures", "Filing fee", "3 copies"],
+      caseName: `${caseData.client?.name || "Unknown"} — ${caseData.county}, ${caseData.state}`,
+      checklist,
+      stateRequirements: {
+        notarization: stateReqs.notarization,
+        witnesses: stateReqs.witnesses,
+        filingMethod: stateReqs.filingMethod,
+        additionalDocs: stateReqs.additionalDocs,
+      },
+      estimatedFilingDate: allComplete
+        ? new Date(Date.now() + 1 * 24 * 60 * 60 * 1000) // Tomorrow if ready
+        : new Date(Date.now() + 5 * 24 * 60 * 60 * 1000), // 5 days if not
+      courtRequirements: [
+        stateReqs.notarization ? "Notarized signatures required" : "Standard signatures",
+        `Filing method: ${stateReqs.filingMethod}`,
+        stateReqs.witnesses > 0 ? `${stateReqs.witnesses} witnesses required` : null,
+      ].filter(Boolean),
+      message: allComplete
+        ? "All documents ready — filing can proceed."
+        : `${missingDocs.length} items need attention before filing.`,
+    };
+  }
+
+  // ============================================
+  // PUBLIC ACTION METHODS (wired stubs → real logic)
+  // ============================================
+
+  /**
+   * claimDrafter — Generate claim letter using case data + pdf-lib template
+   */
+  async claimDrafter(caseId: string, userId?: string) {
+    return this.generateDocument({ documentType: "CLAIM_LETTER", caseId, userId });
+  }
+
+  /**
+   * propertyAnalyzer — Scrape county records, assess surplus potential
+   */
+  async propertyAnalyzer(caseId: string, userId?: string) {
+    return propertyResearchService.researchProperty(caseId, userId);
+  }
+
+  /**
+   * deadlineTracker — Calculate all filing deadlines per state rules
+   */
+  async deadlineTracker(caseId: string) {
+    const caseData = await prisma.case.findUnique({
+      where: { id: caseId },
+      include: {
+        stateRule: true,
+        deadlines: { where: { completedAt: null }, orderBy: { dueDate: "asc" } },
+      },
+    });
+
+    if (!caseData) return { caseId, deadlines: [], message: "Case not found" };
+
+    const now = new Date();
+    const deadlines = caseData.deadlines.map(d => ({
+      title: d.title,
+      dueDate: d.dueDate,
+      daysRemaining: Math.ceil((d.dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)),
+      isOverdue: d.dueDate < now,
+    }));
+
+    // Add implicit deadlines from state rules
+    if (caseData.stateRule?.claimPeriodDays && caseData.saleDate) {
+      const claimDeadline = new Date(caseData.saleDate);
+      claimDeadline.setDate(claimDeadline.getDate() + caseData.stateRule.claimPeriodDays);
+      deadlines.push({
+        title: `${caseData.state} Claim Period`,
+        dueDate: claimDeadline,
+        daysRemaining: Math.ceil((claimDeadline.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)),
+        isOverdue: claimDeadline < now,
+      });
+    }
+
+    return {
+      caseId,
+      state: caseData.state,
+      deadlines: deadlines.sort((a, b) => a.daysRemaining - b.daysRemaining),
+      message: `${deadlines.length} deadlines tracked. ${deadlines.filter(d => d.isOverdue).length} overdue.`,
+    };
+  }
+
+  /**
+   * documentReviewer — Validate uploaded docs against requirements checklist
+   */
+  async documentReviewer(caseId: string) {
+    const caseData = await prisma.case.findUnique({
+      where: { id: caseId },
+      include: { documents: { select: { type: true, status: true, fileName: true } } },
+    });
+
+    if (!caseData) return { caseId, compliant: false, message: "Case not found" };
+
+    const requiredByStatus: Record<string, string[]> = {
+      DOCS_SIGNED: ["CLIENT_SERVICE_AGREEMENT"],
+      FILED: ["CLIENT_SERVICE_AGREEMENT", "LIMITED_POA", "FILING_PACKET"],
+      AWAITING_FUNDS: ["CLIENT_SERVICE_AGREEMENT", "LIMITED_POA", "FILING_PACKET"],
+    };
+
+    const required = requiredByStatus[caseData.status] || [];
+    const existing = caseData.documents.filter(d => d.status === "SIGNED" || d.status === "APPROVED").map(d => d.type);
+    const missing = required.filter(r => !existing.includes(r as any));
+
+    return {
+      caseId,
+      status: caseData.status,
+      totalDocuments: caseData.documents.length,
+      required,
+      existing,
+      missing,
+      compliant: missing.length === 0,
+      message: missing.length === 0
+        ? "All required documents present and verified."
+        : `Missing ${missing.length} required documents: ${missing.join(", ")}`,
+    };
+  }
+
+  /**
+   * correspondenceWriter — Generate professional letters
+   */
+  async correspondenceWriter(caseId: string, letterType: string = "demand") {
+    return this.generateDocument({ documentType: letterType.toUpperCase(), caseId });
+  }
+
+  /**
+   * researchAssistant — Compile property history, tax records, lien data
+   */
+  async researchAssistant(caseId: string, userId?: string) {
+    return this.runDiscovery({ caseId, userId });
+  }
+
+  /**
+   * complianceChecker — Full state-specific compliance audit
+   */
+  async complianceChecker(caseId: string) {
+    return this.runComplianceCheck({ caseId });
+  }
+
+  /**
+   * clientCommunicator — Send templated updates to client via SMS + email
+   */
+  async clientCommunicator(caseId: string, message: string, userId?: string): Promise<{
+    sent: boolean;
+    channels: string[];
+    details: string;
+  }> {
+    const caseData = await prisma.case.findUnique({
+      where: { id: caseId },
+      include: {
+        client: { select: { name: true, email: true, phone: true } },
+        assignedEmployee: { select: { id: true } },
+      },
+    });
+
+    if (!caseData || !caseData.client) {
+      return { sent: false, channels: [], details: "Case or client not found" };
+    }
+
+    const channels: string[] = [];
+    const actingUserId = userId || caseData.assignedEmployeeId;
+
+    // Send email
+    if (caseData.client.email) {
+      try {
+        await notificationService.sendClientEmail({
+          to: caseData.client.email,
+          subject: `Update on Your Case — ${caseData.county}, ${caseData.state}`,
+          body: `Dear ${caseData.client.name},\n\n${message}\n\nBest regards,\nMGR Capital Assistance`,
+          caseId,
+        });
+        channels.push("email");
+
+        if (actingUserId) {
+          await botSubscriptionService.logUsage(actingUserId, "aiLegal", "email_sent", 0, caseId);
+        }
+      } catch (e: any) {
+        logger.error("Client email failed", { error: e.message });
+      }
+    }
+
+    // Send SMS
+    if (caseData.client.phone) {
+      try {
+        const smsText = message.length > 140
+          ? `${caseData.client.name?.split(" ")[0]}: We have an update on your case. Check your email or call us for details.`
+          : message;
+        await smsService.send(caseData.client.phone, smsText);
+        channels.push("sms");
+
+        if (actingUserId) {
+          await botSubscriptionService.logUsage(actingUserId, "aiLegal", "sms_sent", ACTION_COSTS.sms_sent, caseId);
+        }
+      } catch (e: any) {
+        logger.error("Client SMS failed", { error: e.message });
+      }
+    }
+
+    // Log communication
+    if (channels.length > 0) {
+      await prisma.communication.create({
+        data: {
+          caseId,
+          userId: actingUserId || "",
+          type: channels.includes("email") ? "EMAIL" : "TEXT",
+          direction: "OUTBOUND",
+          subject: "Client Update",
+          content: message,
+          outcome: "SENT",
+        },
+      });
+    }
+
+    return {
+      sent: channels.length > 0,
+      channels,
+      details: channels.length > 0
+        ? `Message sent via ${channels.join(" + ")}`
+        : "No client contact info available",
     };
   }
 

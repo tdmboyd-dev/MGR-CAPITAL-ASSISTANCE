@@ -29,7 +29,7 @@ export class AppError extends Error {
 // Common application errors
 export const Errors = {
   unauthorized: () => new AppError("Unauthorized", 401, "Invalid credentials or session expired."),
-  forbidden: () => new AppError("Forbidden", 403, "You do not have permission to perform this action."),
+  forbidden: (message?: string) => new AppError("Forbidden", 403, message || "You do not have permission to perform this action."),
   notFound: (resource: string) => new AppError(`${resource} not found`, 404, `${resource} not found.`),
   badRequest: (message: string) => new AppError(message, 400, message),
   conflict: (message: string) => new AppError(message, 409, message),

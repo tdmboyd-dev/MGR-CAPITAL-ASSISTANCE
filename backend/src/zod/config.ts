@@ -292,6 +292,74 @@ export type PerformanceConfig = z.infer<typeof PerformanceConfigSchema>;
 export type SystemConfig = z.infer<typeof SystemConfigSchema>;
 
 // =============================================================================
+// NOTARY CREDENTIALS SCHEMA
+// =============================================================================
+
+export const NotaryCredentialsSchema = z.object({
+  notaryName: z.string().min(1, "Notary name is required"),
+  commissionNumber: z.string().min(1, "Commission number is required"),
+  commissionState: z.string().length(2, "State must be 2-letter abbreviation"),
+  commissionCounty: z.string().optional(),
+  commissionExpiration: z.coerce.date(),
+  bondAmount: z.number().optional(),
+  bondNumber: z.string().optional(),
+  eoInsuranceProvider: z.string().optional(),
+  eoInsurancePolicyNumber: z.string().optional(),
+  digitalSealBase64: z.string().optional(),
+  digitalSignatureBase64: z.string().optional(),
+  isActive: z.boolean().default(true),
+});
+
+export type NotaryCredentials = z.infer<typeof NotaryCredentialsSchema>;
+
+export const DEFAULT_NOTARY_CREDENTIALS: Partial<NotaryCredentials> = {
+  isActive: true,
+};
+
+/**
+ * Validate notary credentials
+ */
+export function validateNotaryCredentials(config: unknown): NotaryCredentials {
+  return NotaryCredentialsSchema.parse(config);
+}
+
+// =============================================================================
+// DIGITAL SEAL CONFIG SCHEMA
+// =============================================================================
+
+export const DigitalSealConfigSchema = z.object({
+  notaryName: z.string(),
+  stateName: z.string(),
+  commissionNumber: z.string(),
+  expirationDate: z.coerce.date(),
+  countyName: z.string().optional(),
+  sealType: z.enum(["circular", "rectangular"]).default("circular"),
+  diameter: z.number().int().min(100).max(500).default(200),
+  borderWidth: z.number().int().min(1).max(10).default(3),
+  primaryColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/).default("#1a365d"),
+  backgroundColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/).default("#ffffff"),
+  includeStateSeal: z.boolean().default(false),
+});
+
+export type DigitalSealConfig = z.infer<typeof DigitalSealConfigSchema>;
+
+export const DEFAULT_DIGITAL_SEAL_CONFIG: Partial<DigitalSealConfig> = {
+  sealType: "circular",
+  diameter: 200,
+  borderWidth: 3,
+  primaryColor: "#1a365d",
+  backgroundColor: "#ffffff",
+  includeStateSeal: false,
+};
+
+/**
+ * Validate digital seal config
+ */
+export function validateDigitalSealConfig(config: unknown): DigitalSealConfig {
+  return DigitalSealConfigSchema.parse(config);
+}
+
+// =============================================================================
 // COMBINED FOUNDER CONFIG SCHEMA
 // =============================================================================
 
@@ -303,6 +371,8 @@ export const FounderConfigValueSchema = z.union([
   ComplianceConfigSchema,
   NotificationConfigSchema,
   SystemConfigSchema,
+  NotaryCredentialsSchema,
+  DigitalSealConfigSchema,
   z.record(z.unknown()), // Allow arbitrary config for extensibility
 ]);
 

@@ -239,6 +239,11 @@ export default function LoginPage() {
                 variant="outline"
                 className="h-12 rounded-xl border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
                 disabled={isLoading || authLoading}
+                onClick={() => {
+                  toast.info("Google Sign-In", {
+                    description: "Google authentication is coming soon.",
+                  });
+                }}
               >
                 <Chrome className="mr-2 h-5 w-5 text-red-500" />
                 Google
@@ -248,6 +253,11 @@ export default function LoginPage() {
                 variant="outline"
                 className="h-12 rounded-xl border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
                 disabled={isLoading || authLoading}
+                onClick={() => {
+                  toast.info("GitHub Sign-In", {
+                    description: "GitHub authentication is coming soon.",
+                  });
+                }}
               >
                 <Github className="mr-2 h-5 w-5" />
                 GitHub

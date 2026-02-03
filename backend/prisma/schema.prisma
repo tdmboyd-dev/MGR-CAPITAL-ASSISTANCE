@@ -287,6 +287,8 @@ model User {
   auditLogs           AuditLog[]
   chatMessages        ChatMessage[]
   notaryProfile       NotaryProfile?
+  botSubscriptions    BotSubscription[]
+  botUsageLogs        BotUsageLog[]
 
   @@index([email])
   @@index([role])
@@ -2288,6 +2290,189 @@ model NotarySessionRecord {
 }
 
 // ============================================
+// SELF-HOSTED RON SESSIONS
+// ============================================
+
+model RONSession {
+  id                  String    @id
+  notaryId            String
+  notaryName          String
+  notaryCommission    String
+  notaryState         String
+
+  // Signer info
+  signerName          String
+  signerEmail         String
+  signerPhone         String?
+  signerAddress       String?
+
+  // Documents
+  documentCount       Int
+  documentTypes       String    // Comma-separated
+
+  // Verification
+  idVerified          Boolean   @default(false)
+  idVerificationScore Float?
+  kbaPassed           Boolean   @default(false)
+  kbaScore            Float?
+  kbaAttemptsRemaining Int      @default(2)
+
+  // Status
+  status              String    @default("created")
+
+  // Video
+  videoRecordingUrl   String?
+  videoDuration       Int?
+  videoStartedAt      DateTime?
+
+  // Completion
+  certificateUrl      String?
+  journalEntryId      String?
+  auditTrailUrl       String?
+
+  // Related
+  caseId              String?
+  trustId             String?
+
+  // Timing
+  createdAt           DateTime  @default(now())
+  completedAt         DateTime?
+  expiresAt           DateTime
+
+  @@index([notaryId])
+  @@index([signerEmail])
+  @@index([status])
+  @@index([caseId])
+  @@index([createdAt])
+}
+
+model NotaryJournalEntry {
+  id                    String    @id
+  notaryId              String
+  sessionId             String    @unique
+
+  // Signer
+  signerName            String
+  signerAddress         String
+
+  // Document
+  documentType          String
+  documentCount         Int
+
+  // Identification
+  idType                String
+  idVerificationMethod  String
+
+  // Notarization details
+  notarizationType      String    // acknowledgment, jurat, oath, affirmation
+  notarizedAt           DateTime
+
+  // Recording
+  videoRecordingUrl     String?
+
+  // Export
+  exportedAt            DateTime?
+  exportFormat          String?   // pdf, csv, json
+
+  createdAt             DateTime  @default(now())
+
+  @@index([notaryId])
+  @@index([notarizedAt])
+  @@index([signerName])
+}
+
+// ============================================
+// NOTARY AUTOMATION BOT SUBSCRIPTIONS
+// ============================================
+
+model NotaryBotSubscription {
+  id                      String    @id @default(cuid())
+  notaryId                String    @unique
+  tier                    String    @default("NONE")  // NONE, BASIC, PROFESSIONAL, ENTERPRISE
+  isActive                Boolean   @default(false)
+  monthlyCostCents        Int       @default(0)
+  startDate               DateTime  @default(now())
+  nextBillingDate         DateTime
+  totalChargedCents       Int       @default(0)
+
+  // Usage stats
+  autoSessionsThisMonth   Int       @default(0)
+  manualSessionsThisMonth Int       @default(0)
+  timeSavedMinutes        Int       @default(0)
+
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+
+  @@index([notaryId])
+  @@index([tier])
+  @@index([nextBillingDate])
+}
+
+// ============================================
+// CLIENT TIPPING (Shadow Cut Applied)
+// ============================================
+
+model ClientTip {
+  id                    String    @id
+  caseId                String
+  clientId              String
+  employeeId            String
+
+  // Shadow accounting
+  clientPaidCents       Int       // What client actually paid
+  displayedTipCents     Int       // What employee SEES ("You got a tip!")
+  employeeReceivesCents Int       // What employee GETS (after shadow cut)
+  platformProfitCents   Int       // What platform keeps (hidden)
+
+  status                String    @default("pending")  // pending, processed, paid_out, refunded
+  clientMessage         String?
+  paidOutAt             DateTime?
+
+  createdAt             DateTime  @default(now())
+
+  @@index([caseId])
+  @@index([clientId])
+  @@index([employeeId])
+  @@index([status])
+}
+
+// ============================================
+// ACTIVITY TRACKING & VIOLATIONS
+// ============================================
+
+model ActivityLog {
+  id            String    @id
+  employeeId    String
+  activityType  String    // login, case_view, case_note, case_document, etc.
+  caseId        String?
+  details       String?
+  timestamp     DateTime  @default(now())
+
+  @@index([employeeId])
+  @@index([caseId])
+  @@index([timestamp])
+  @@index([activityType])
+}
+
+model EmployeeViolation {
+  id              String    @id
+  employeeId      String
+  violationType   String    // weekly_inactivity, case_inactivity, extended_absence, etc.
+  caseId          String?
+  description     String
+  tierBefore      Int
+  tierAfter       Int
+  isRecovered     Boolean   @default(false)
+  recoveredAt     DateTime?
+  createdAt       DateTime  @default(now())
+
+  @@index([employeeId])
+  @@index([violationType])
+  @@index([isRecovered])
+  @@index([createdAt])
+}
+
+// ============================================
 // WATCH TARGETS (Scraper Monitoring)
 // ============================================
 
@@ -2453,6 +2638,12 @@ enum ChildCompanyStatus {
   DEACTIVATED       // Permanently closed
 }
 
+enum EmailDomainType {
+  MAIN_COMPANY      // @capitalmgr.com (regular employees, not child company owners)
+  SUBDOMAIN         // @sarahsrecovery.capitalmgr.com ($12 setup, $8/mo)
+  CUSTOM            // @sarahsrecovery.com ($24 setup, $10/mo)
+}
+
 enum TransferStatus {
   PENDING           // Transfer initiated
   COOLING_PERIOD    // 5-day cooling period
@@ -2476,10 +2667,46 @@ model ChildCompany {
   secondaryColor      String              @default("#2d3748")
   accentColor         String              @default("#3182ce")
 
-  // Domain
+  // Domain & Portal Access
   subdomain           String?             // sarahsrecovery.capitalmgr.com
   customDomain        String?             @unique  // app.sarahsrecovery.com (white-label only)
   domainVerified      Boolean             @default(false)
+
+  // Email Domain Choice (CANNOT CHANGE AFTER FIRST CASE - year by year basis)
+  // SUBDOMAIN: @sarahsrecovery.capitalmgr.com ($12 setup, $8/mo, $300/year build)
+  // CUSTOM: @sarahsrecovery.com ($30 setup, $15/mo, $600/year build)
+  emailDomainType       EmailDomainType   @default(SUBDOMAIN)
+  emailDomainLocked     Boolean           @default(false)  // Locks when case started
+  emailDomainLockedAt   DateTime?         // When domain was locked
+  emailSetupFeeCents    Int               @default(1200)   // $12 subdomain, $30 custom
+  emailMonthlyFeeCents  Int               @default(800)    // $8 subdomain, $15 custom
+
+  // Child company employee email pricing (customizable by owner)
+  // Must be at least MGR Capital base ($8 setup, $6/mo)
+  // Child company gets 50% of anything over base
+  employeeEmailSetupCents   Int           @default(1200)   // Default $12, min $8
+  employeeEmailMonthlyCents Int           @default(600)    // Default $6, min $6
+
+  // ============================================
+  // CONTRACTOR FEES (50/50 Split with MGR Capital)
+  // Child company can customize all fees, but ALWAYS gives 50% to MGR Capital
+  // These are fees charged to contractors/employees under this child company
+  // ============================================
+  // Platform access fee (monthly)
+  contractorPlatformFeeCents   Int        @default(5000)   // Default $50/mo (min $25)
+  // Lead assignment fee (per lead)
+  contractorLeadFeeCents       Int        @default(2500)   // Default $25/lead (min $10)
+  // Training fee (per course/module)
+  contractorTrainingFeeCents   Int        @default(1500)   // Default $15/course (min $5)
+  // Marketing materials fee (per item)
+  contractorMarketingFeeCents  Int        @default(500)    // Default $5/item (min $2)
+  // Tools & software fee (monthly)
+  contractorToolsFeeCents      Int        @default(2000)   // Default $20/mo (min $10)
+  // Support services fee (monthly)
+  contractorSupportFeeCents    Int        @default(1000)   // Default $10/mo (min $5)
+  // Custom fee (per use, for anything else)
+  contractorCustomFeeCents     Int        @default(500)    // Default $5 (min $1)
+  contractorCustomFeeLabel     String?                     // "Application Fee", "Background Check", etc.
 
   // Shadow Accounting — Founder's cut of company profit by employee tier
   // Tier 1 employee: Founder gets 40% of company profit
@@ -2489,8 +2716,10 @@ model ChildCompany {
   parentCutTier2      Int                 @default(30)
   parentCutTier3Plus  Int                 @default(0)
 
-  // Billing
-  annualFeeCents      Int                 @default(30000)  // $300 for branded
+  // Billing - Annual Brand Build Fee
+  // SUBDOMAIN (@company.capitalmgr.com): $300/year
+  // CUSTOM (@company.com): $600/year
+  annualFeeCents      Int                 @default(30000)  // $300 subdomain, $600 custom
   nextBillingDate     DateTime?
   billingActive       Boolean             @default(false)
 
@@ -2589,6 +2818,162 @@ model EmployeeTransfer {
 }
 
 // ============================================
+// THE OFFICE TABLE — Contracts, Violations, Bans
+// ============================================
+
+enum ContractType {
+  EMPLOYEE_AGREEMENT
+  CONTRACTOR_AGREEMENT
+  NDA
+  NON_COMPETE
+  CODE_OF_CONDUCT
+  DATA_PROTECTION
+  CHILD_COMPANY_AGREEMENT
+}
+
+enum ContractStatus {
+  PENDING           // Awaiting signature
+  SIGNED            // Signed and active
+  EXPIRED           // Past expiration date
+  TERMINATED        // Ended early
+}
+
+enum ViolationType {
+  MISCONDUCT
+  POLICY_BREACH
+  DATA_BREACH
+  CLIENT_COMPLAINT
+  NO_SHOW
+  FRAUD
+  INSUBORDINATION
+  UNAUTHORIZED_ACCESS
+}
+
+enum BanSeverity {
+  WARNING           // No pay reduction
+  MINOR             // 10% pay reduction
+  MODERATE          // 25% pay reduction
+  SEVERE            // 50% pay reduction
+  TERMINATION       // 100% forfeiture + ban
+}
+
+enum BanStatus {
+  ACTIVE            // Currently enforced
+  APPEALED          // Under review
+  LIFTED            // Removed early
+  EXPIRED           // Duration ended
+  COMPLETED         // Pay reduction applied
+}
+
+model EmployeeContract {
+  id              String          @id @default(cuid())
+  userId          String
+  contractType    ContractType
+  status          ContractStatus  @default(PENDING)
+  version         Int             @default(1)
+
+  // Content
+  title           String
+  content         String          @db.Text    // Full contract text
+
+  // Signature
+  signedAt        DateTime?
+  signatureIp     String?
+  signatureData   String?         // Base64 signature image
+
+  // Validity
+  effectiveDate   DateTime        @default(now())
+  expirationDate  DateTime?
+
+  // Audit
+  createdBy       String
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@index([userId])
+  @@index([contractType])
+  @@index([status])
+}
+
+model Violation {
+  id              String          @id @default(cuid())
+  userId          String
+  violationType   ViolationType
+  severity        BanSeverity
+
+  // Details
+  description     String          @db.Text
+  evidence        String?         @db.Text    // Links, screenshots, notes
+
+  // Case reference (if applicable)
+  relatedCaseId   String?
+
+  // Reported by
+  reportedBy      String
+  reportedAt      DateTime        @default(now())
+
+  // Review
+  reviewedBy      String?
+  reviewedAt      DateTime?
+  reviewNotes     String?         @db.Text
+
+  // Outcome
+  banId           String?         // Link to resulting ban
+  isConfirmed     Boolean         @default(false)
+
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@index([userId])
+  @@index([violationType])
+  @@index([severity])
+  @@index([isConfirmed])
+}
+
+model Ban {
+  id              String          @id @default(cuid())
+  userId          String
+  severity        BanSeverity
+  status          BanStatus       @default(ACTIVE)
+
+  // Reason
+  reason          String          @db.Text
+  violationId     String?         // Link to violation
+
+  // Pay Impact
+  payReductionPercent Int         @default(0)    // 0, 10, 25, 50, 100
+  pendingPayAtBan     Int         @default(0)    // Cents at time of ban
+  amountForfeited     Int         @default(0)    // Cents actually forfeited
+
+  // Duration
+  startDate       DateTime        @default(now())
+  endDate         DateTime?       // Null = permanent (termination)
+  durationDays    Int?            // For temporary bans
+
+  // Appeal
+  appealedAt      DateTime?
+  appealReason    String?         @db.Text
+  appealReviewedBy String?
+  appealDecision  String?         // APPROVED, DENIED
+
+  // Resolution
+  liftedAt        DateTime?
+  liftedBy        String?
+  liftReason      String?
+
+  // Issued by
+  issuedBy        String
+  issuedAt        DateTime        @default(now())
+
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@index([userId])
+  @@index([status])
+  @@index([severity])
+}
+
+// ============================================
 // EMAIL HOSTING SYSTEM (Phase 3)
 // Modoboa integration — custom email for companies/employees
 // $12 setup + $6/mo employees, $8/mo companies
@@ -2684,5 +3069,54 @@ model EmailAccount {
   @@index([domainId])
   @@index([status])
   @@index([emailAddress])
+}
+
+// ============================================
+// BOT SUBSCRIPTIONS — Per-employee bot access
+// ============================================
+
+enum BotTier {
+  STARTER       // $50/mo — outreach + compliance bots
+  PROFESSIONAL  // $150/mo — + docket + docs + skip trace
+  ENTERPRISE    // $300/mo — + phone + AI legal bots
+  UNLIMITED     // $500/mo — everything, priority execution
+  FOUNDER       // $0 — everything, always enabled
+}
+
+model BotSubscription {
+  id                String   @id @default(cuid())
+  userId            String
+  user              User     @relation(fields: [userId], references: [id])
+  tier              BotTier  @default(STARTER)
+  isActive          Boolean  @default(true)
+  enabledBots       Json     // ["outreach", "compliance", "docket", ...]
+  monthlyCostCents  Int
+  startDate         DateTime @default(now())
+  nextBillingDate   DateTime
+  totalChargedCents Int      @default(0)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([userId])
+  @@index([tier])
+  @@index([isActive])
+  @@index([nextBillingDate])
+}
+
+model BotUsageLog {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  botName   String
+  action    String   // "sms_sent", "call_made", "doc_generated", "skip_trace"
+  costCents Int      @default(0)
+  caseId    String?
+  details   Json?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([botName])
+  @@index([createdAt])
+  @@index([caseId])
 }
 

@@ -2,10 +2,12 @@
 // NOTIFICATION SERVICE — MGR CAPITAL ASSISTANCE
 // Sovereign email notification engine using SMTP
 // No SaaS lock-in (no Twilio, SendGrid, etc.)
+// Bot personas with real names instead of noreply@
 // ============================================
 
 import { PrismaClient, NotificationType, NotificationStatus } from "@prisma/client";
 import * as nodemailer from "nodemailer";
+import { BOT_PERSONAS, getBotPersona, getBotIdForEmailType, type BotPersona } from "../config/botPersonas.js";
 
 const prisma = new PrismaClient();
 
@@ -20,13 +22,58 @@ const SMTP_CONFIG = {
   },
 };
 
-// Company email configuration
-const FROM_EMAIL = process.env.FROM_EMAIL || "noreply@mgrcapital.com";
-const FROM_NAME = process.env.FROM_NAME || "MGR Capital Assistance";
-const FOUNDER_EMAIL = process.env.FOUNDER_EMAIL || "founder@mgrcapital.com";
+// Company email configuration — Purpose-specific mailboxes
+// admin@capitalmgr.com    — Founder inbox, domain admin, platform management
+// support@capitalmgr.com  — Client communications, case updates, support tickets
+// noreply@capitalmgr.com  — Bot alerts, system notifications, automated emails
+
+const MAILBOXES = {
+  admin: {
+    email: process.env.MODOBOA_ADMIN_EMAIL || "admin@capitalmgr.com",
+    name: "MGR Capital Admin",
+    password: process.env.MODOBOA_ADMIN_PASS,
+  },
+  support: {
+    email: process.env.MODOBOA_SUPPORT_EMAIL || "support@capitalmgr.com",
+    name: "MGR Capital Support",
+    password: process.env.MODOBOA_SUPPORT_PASS,
+  },
+  noreply: {
+    email: process.env.MODOBOA_NOREPLY_EMAIL || "noreply@capitalmgr.com",
+    name: "MGR Capital",
+    password: process.env.MODOBOA_NOREPLY_PASS,
+  },
+};
+
+// Default FROM for different email types
+const FROM_EMAIL = MAILBOXES.noreply.email;
+const FROM_NAME = MAILBOXES.noreply.name;
+const SUPPORT_EMAIL = MAILBOXES.support.email;
+const ADMIN_EMAIL = MAILBOXES.admin.email;
+const FOUNDER_EMAIL = process.env.FOUNDER_EMAIL || MAILBOXES.admin.email;
+
+// ============================================
+// BOT PERSONA FORMATTING
+// ============================================
+
+/**
+ * Format bot sender with real name and title
+ * Example: "Marcus Reed, Outreach Coordinator <noreply@capitalmgr.com>"
+ */
+function formatBotSender(botId: string, mailboxKey: EmailSender = "noreply"): { name: string; email: string } {
+  const bot = getBotPersona(botId);
+  const mailbox = MAILBOXES[mailboxKey];
+  return {
+    name: `${bot.name}, ${bot.title}`,
+    email: mailbox.email,
+  };
+}
 
 // Create transporter
 let transporter: nodemailer.Transporter | null = null;
+
+// Email sender type for routing to correct mailbox
+type EmailSender = "admin" | "support" | "noreply";
 
 interface EmailParams {
   to: string;
@@ -36,6 +83,9 @@ interface EmailParams {
   html?: string;
   caseId?: string;
   userId?: string;
+  sender?: EmailSender; // Which mailbox to send from
+  botId?: string;       // Which bot persona to use (e.g., "outreach", "compliance")
+  emailType?: string;   // Email type for auto-selecting bot (e.g., "welcome", "case_assigned")
 }
 
 interface NotificationResult {
@@ -125,9 +175,29 @@ class NotificationService {
     }
 
     try {
+      // Determine sender mailbox based on type
+      const senderKey = params.sender || "noreply";
+
+      // Determine bot persona - priority: explicit botId > emailType > default
+      let fromName: string;
+      let fromEmail: string;
+
+      if (params.botId || params.emailType) {
+        // Use bot persona with real name
+        const botId = params.botId || getBotIdForEmailType(params.emailType || "");
+        const botSender = formatBotSender(botId, senderKey);
+        fromName = botSender.name;
+        fromEmail = botSender.email;
+      } else {
+        // Fallback to mailbox defaults
+        const senderMailbox = MAILBOXES[senderKey];
+        fromEmail = senderMailbox.email;
+        fromName = senderMailbox.name;
+      }
+
       // Send the email
       const info = await transporter.sendMail({
-        from: `"${FROM_NAME}" <${FROM_EMAIL}>`,
+        from: `"${fromName}" <${fromEmail}>`,
         to: params.toName ? `"${params.toName}" <${params.to}>` : params.to,
         subject: params.subject,
         text: params.body,
@@ -175,6 +245,7 @@ class NotificationService {
 
   /**
    * Send email to a client
+   * Uses: support@capitalmgr.com (client communications)
    */
   async sendClientEmail(params: {
     to: string;
@@ -186,11 +257,13 @@ class NotificationService {
     return this.sendEmail({
       ...params,
       subject: `[MGR Capital] ${params.subject}`,
+      sender: "support", // Client emails come from support@
     });
   }
 
   /**
    * Send email to an employee
+   * Uses: admin@capitalmgr.com (internal communications)
    */
   async sendEmployeeEmail(params: {
     to: string;
@@ -205,11 +278,13 @@ class NotificationService {
       subject: `[MGR Internal] ${params.subject}`,
       body: params.body,
       userId: params.employeeId,
+      sender: "admin", // Internal emails come from admin@
     });
   }
 
   /**
    * Send email to the Founder
+   * Uses: noreply@capitalmgr.com (system alerts)
    */
   async sendFounderEmail(params: {
     subject: string;
@@ -230,6 +305,7 @@ class NotificationService {
       body: params.body,
       caseId: params.caseId,
       userId: params.userId,
+      sender: "noreply", // System alerts from noreply@
     });
   }
 
@@ -239,6 +315,7 @@ class NotificationService {
 
   /**
    * Notify client: Documents ready to sign
+   * Bot: Taylor Quinn, Document Specialist
    */
   async notifyDocumentsReady(params: {
     clientEmail: string;
@@ -247,6 +324,7 @@ class NotificationService {
     caseCode: string;
     documentCount: number;
   }): Promise<NotificationResult> {
+    const bot = getBotPersona("documents");
     const body = `
 Dear ${params.clientName},
 
@@ -260,20 +338,25 @@ Please log in to your client portal to review and sign the required documents.
 If you have any questions, please don't hesitate to contact us.
 
 Best regards,
-MGR Capital Assistance Team
+${bot.name}
+${bot.title}
+MGR Capital Assistance
     `.trim();
 
-    return this.sendClientEmail({
+    return this.sendEmail({
       to: params.clientEmail,
       toName: params.clientName,
-      subject: "Documents Ready for Signature",
+      subject: `[MGR Capital] Documents Ready for Signature`,
       body,
       caseId: params.caseId,
+      sender: "support",
+      botId: "documents",
     });
   }
 
   /**
    * Notify client: Case status update
+   * Bot: Jordan Blake, Case Manager
    */
   async notifyCaseStatusChange(params: {
     clientEmail: string;
@@ -284,6 +367,7 @@ MGR Capital Assistance Team
     newStatus: string;
     message?: string;
   }): Promise<NotificationResult> {
+    const bot = getBotPersona("caseManager");
     const body = `
 Dear ${params.clientName},
 
@@ -297,20 +381,25 @@ ${params.message ? `\n${params.message}\n` : ""}
 You can view your case details by logging into your client portal.
 
 Best regards,
-MGR Capital Assistance Team
+${bot.name}
+${bot.title}
+MGR Capital Assistance
     `.trim();
 
-    return this.sendClientEmail({
+    return this.sendEmail({
       to: params.clientEmail,
       toName: params.clientName,
-      subject: `Case Update: ${this.formatStatus(params.newStatus)}`,
+      subject: `[MGR Capital] Case Update: ${this.formatStatus(params.newStatus)}`,
       body,
       caseId: params.caseId,
+      sender: "support",
+      botId: "caseManager",
     });
   }
 
   /**
    * Notify client: Payout completed
+   * Bot: Morgan Price, Payment Coordinator
    */
   async notifyPayoutCompleted(params: {
     clientEmail: string;
@@ -325,6 +414,7 @@ MGR Capital Assistance Team
       currency: "USD",
     });
 
+    const bot = getBotPersona("payments");
     const body = `
 Dear ${params.clientName},
 
@@ -341,20 +431,25 @@ If you have any questions about your payment, please contact us.
 Thank you for trusting MGR Capital Assistance with your surplus recovery.
 
 Best regards,
-MGR Capital Assistance Team
+${bot.name}
+${bot.title}
+MGR Capital Assistance
     `.trim();
 
-    return this.sendClientEmail({
+    return this.sendEmail({
       to: params.clientEmail,
       toName: params.clientName,
-      subject: "Payout Processed Successfully",
+      subject: `[MGR Capital] Payout Processed Successfully`,
       body,
       caseId: params.caseId,
+      sender: "support",
+      botId: "payments",
     });
   }
 
   /**
    * Notify Founder: High-value case flagged
+   * Bot: Jordan Blake, Case Manager
    */
   async notifyHighValueCase(params: {
     caseId: string;
@@ -369,6 +464,7 @@ MGR Capital Assistance Team
       currency: "USD",
     });
 
+    const bot = getBotPersona("caseManager");
     const body = `
 HIGH-VALUE CASE DETECTED
 
@@ -386,18 +482,25 @@ Recommended Actions:
 4. Monitor jurisdiction requirements
 
 View case in admin dashboard for full details.
+
+—
+${bot.name}
+${bot.title}
     `.trim();
 
-    return this.sendFounderEmail({
-      subject: `High-Value Case: ${params.caseCode} (${amount})`,
+    return this.sendEmail({
+      to: FOUNDER_EMAIL,
+      subject: `[HIGH] [MGR OPS] High-Value Case: ${params.caseCode} (${amount})`,
       body,
-      priority: "high",
       caseId: params.caseId,
+      sender: "noreply",
+      botId: "caseManager",
     });
   }
 
   /**
    * Notify Founder: Critical system error
+   * Bot: Sam Mitchell, System Administrator
    */
   async notifyCriticalError(params: {
     errorId: string;
@@ -405,6 +508,7 @@ View case in admin dashboard for full details.
     source: string;
     stack?: string;
   }): Promise<NotificationResult> {
+    const bot = getBotPersona("system");
     const body = `
 CRITICAL SYSTEM ERROR
 
@@ -415,17 +519,24 @@ Message: ${params.message}
 ${params.stack ? `\nStack Trace:\n${params.stack}` : ""}
 
 Immediate action may be required.
+
+—
+${bot.name}
+${bot.title}
     `.trim();
 
-    return this.sendFounderEmail({
-      subject: `Critical Error in ${params.source}`,
+    return this.sendEmail({
+      to: FOUNDER_EMAIL,
+      subject: `[URGENT] [MGR OPS] Critical Error in ${params.source}`,
       body,
-      priority: "urgent",
+      sender: "noreply",
+      botId: "system",
     });
   }
 
   /**
    * Notify employee: Training module assigned
+   * Bot: Alex Rivera, Training Manager
    */
   async notifyTrainingAssigned(params: {
     employeeEmail: string;
@@ -434,6 +545,7 @@ Immediate action may be required.
     moduleName: string;
     dueDate?: Date;
   }): Promise<NotificationResult> {
+    const bot = getBotPersona("training");
     const body = `
 Hi ${params.employeeName},
 
@@ -445,15 +557,19 @@ ${params.dueDate ? `Due Date: ${params.dueDate.toLocaleDateString()}` : ""}
 Please log in to complete this training at your earliest convenience.
 
 Best regards,
-MGR Capital Training Team
+${bot.name}
+${bot.title}
+MGR Capital Assistance
     `.trim();
 
-    return this.sendEmployeeEmail({
+    return this.sendEmail({
       to: params.employeeEmail,
       toName: params.employeeName,
-      subject: `New Training Assigned: ${params.moduleName}`,
+      subject: `[MGR Internal] New Training Assigned: ${params.moduleName}`,
       body,
-      employeeId: params.employeeId,
+      userId: params.employeeId,
+      sender: "admin",
+      botId: "training",
     });
   }
 
@@ -463,6 +579,7 @@ MGR Capital Training Team
 
   /**
    * Send password reset email
+   * Bot: Casey Sterling, Security Analyst
    */
   async sendPasswordResetEmail(params: {
     to: string;
@@ -471,9 +588,10 @@ MGR Capital Training Team
     resetToken: string;
     expiresAt: Date;
   }): Promise<NotificationResult> {
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3011';
+    const frontendUrl = process.env.FRONTEND_URL || 'https://capitalmgr.com';
     const resetLink = `${frontendUrl}/auth/reset-password?userId=${params.userId}&token=${params.resetToken}`;
     const expiresIn = Math.round((params.expiresAt.getTime() - Date.now()) / (1000 * 60)); // minutes
+    const bot = getBotPersona("security");
 
     const body = `
 Hello${params.toName ? ` ${params.toName}` : ''},
@@ -490,7 +608,9 @@ If you did not request this password reset, please ignore this email. Your passw
 For security reasons, do not share this link with anyone.
 
 Best regards,
-MGR Capital Assistance Team
+${bot.name}
+${bot.title}
+MGR Capital Assistance
     `.trim();
 
     const html = `
@@ -540,11 +660,14 @@ MGR Capital Assistance Team
       body,
       html,
       userId: params.userId,
+      sender: "noreply",
+      botId: "security",
     });
   }
 
   /**
    * Send welcome email after registration
+   * Bot: Jamie Chen, Client Success Manager
    */
   async sendWelcomeEmail(params: {
     to: string;
@@ -552,8 +675,9 @@ MGR Capital Assistance Team
     userId: string;
     role: string;
   }): Promise<NotificationResult> {
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3011';
+    const frontendUrl = process.env.FRONTEND_URL || 'https://capitalmgr.com';
     const loginLink = `${frontendUrl}/auth/login`;
+    const bot = getBotPersona("support");
 
     const body = `
 Welcome to MGR Capital Assistance, ${params.toName}!
@@ -566,7 +690,9 @@ Login: ${loginLink}
 If you have any questions, please don't hesitate to contact our support team.
 
 Best regards,
-MGR Capital Assistance Team
+${bot.name}
+${bot.title}
+MGR Capital Assistance
     `.trim();
 
     return this.sendEmail({
@@ -575,6 +701,8 @@ MGR Capital Assistance Team
       subject: '[MGR Capital] Welcome to MGR Capital Assistance',
       body,
       userId: params.userId,
+      sender: "support",
+      botId: "support",
     });
   }
 

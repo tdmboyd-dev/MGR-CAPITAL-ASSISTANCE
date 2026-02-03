@@ -8,7 +8,10 @@
  * Documentation: https://www.getnickel.com/products/free-ach-payments
  */
 
+import { PrismaClient, Prisma } from "@prisma/client";
 import { logger } from "../utils/logger.js";
+
+const prisma = new PrismaClient();
 
 // Environment variables (configure in .env)
 const NICKEL_API_KEY = process.env.NICKEL_API_KEY || "";
@@ -52,14 +55,58 @@ export interface PaymentResult {
   estimatedArrival?: Date;
 }
 
+// Helper to convert a Payment DB row (authorization type) to ACHAuthorization
+function toACHAuthorization(row: {
+  id: string;
+  userId: string | null;
+  status: string;
+  metadata: unknown;
+  createdAt: Date;
+}): ACHAuthorization {
+  const meta = (row.metadata ?? {}) as Record<string, unknown>;
+  const bankAccount = (meta.bankAccount ?? {}) as BankAccount;
+  return {
+    id: row.id,
+    clientId: row.userId ?? "",
+    bankAccount,
+    authorizedAmount: meta.authorizedAmount as number | undefined,
+    authorizedAt: row.createdAt,
+    status: row.status as ACHAuthorization["status"],
+    ipAddress: meta.ipAddress as string | undefined,
+    userAgent: meta.userAgent as string | undefined,
+  };
+}
+
+// Helper to convert a Payment DB row (payment type) to ACHPayment
+function toACHPayment(row: {
+  id: string;
+  status: string;
+  amountCents: number;
+  description: string | null;
+  createdAt: Date;
+  processedAt: Date | null;
+  failureReason: string | null;
+  caseId: string | null;
+  metadata: unknown;
+}): ACHPayment {
+  const meta = (row.metadata ?? {}) as Record<string, unknown>;
+  return {
+    id: row.id,
+    authorizationId: (meta.authorizationId as string) ?? "",
+    amount: row.amountCents / 100,
+    description: row.description ?? "",
+    status: row.status as ACHPayment["status"],
+    createdAt: row.createdAt,
+    completedAt: row.processedAt ?? undefined,
+    failureReason: row.failureReason ?? undefined,
+    caseId: row.caseId ?? undefined,
+  };
+}
+
 class NickelPaymentService {
   private apiKey: string;
   private baseUrl: string;
   private isConfigured: boolean;
-
-  // In-memory storage for demo (replace with database in production)
-  private authorizations: Map<string, ACHAuthorization> = new Map();
-  private payments: Map<string, ACHPayment> = new Map();
 
   constructor() {
     this.apiKey = NICKEL_API_KEY;
@@ -92,22 +139,25 @@ class NickelPaymentService {
       throw new Error("Invalid account number");
     }
 
-    const authorization: ACHAuthorization = {
-      id: `auth_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      clientId,
-      bankAccount: {
-        ...bankAccount,
-        // Mask account number for storage (keep last 4)
-        accountNumber: bankAccount.accountNumber,
+    // Store authorization as a Payment record with type ACH_AUTHORIZATION
+    const row = await prisma.payment.create({
+      data: {
+        userId: clientId,
+        type: "ACH_AUTHORIZATION",
+        status: "active",
+        amountCents: 0,
+        provider: "nickel",
+        method: "ach",
+        description: "ACH Authorization",
+        metadata: {
+          bankAccount: bankAccount as unknown as Prisma.InputJsonValue,
+          ipAddress: ipAddress ?? null,
+          userAgent: userAgent ?? null,
+        } as Prisma.InputJsonValue,
       },
-      authorizedAt: new Date(),
-      status: "active",
-      ipAddress,
-      userAgent,
-    };
+    });
 
-    // Store authorization
-    this.authorizations.set(authorization.id, authorization);
+    const authorization = toACHAuthorization(row);
 
     // In production, this would call Nickel API to tokenize the bank account
     if (this.isConfigured) {
@@ -149,10 +199,15 @@ class NickelPaymentService {
   ): Promise<PaymentResult> {
     logger.info("Initiating ACH payment", { authorizationId, amount, caseId });
 
-    const authorization = this.authorizations.get(authorizationId);
-    if (!authorization) {
+    const authRow = await prisma.payment.findFirst({
+      where: { id: authorizationId, type: "ACH_AUTHORIZATION" },
+    });
+
+    if (!authRow) {
       return { success: false, error: "Authorization not found" };
     }
+
+    const authorization = toACHAuthorization(authRow);
 
     if (authorization.status !== "active") {
       return { success: false, error: `Authorization is ${authorization.status}` };
@@ -163,18 +218,24 @@ class NickelPaymentService {
       return { success: false, error: "Invalid amount (must be $0.01 - $1,000,000)" };
     }
 
-    const payment: ACHPayment = {
-      id: `pmt_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      authorizationId,
-      amount,
-      description,
-      status: "pending",
-      createdAt: new Date(),
-      caseId,
-    };
+    // Store payment as a Payment record with type ACH_PAYMENT
+    const row = await prisma.payment.create({
+      data: {
+        userId: authorization.clientId || undefined,
+        caseId: caseId ?? undefined,
+        type: "ACH_PAYMENT",
+        status: "pending",
+        amountCents: Math.round(amount * 100),
+        provider: "nickel",
+        method: "ach",
+        description,
+        metadata: {
+          authorizationId,
+        } as Prisma.InputJsonValue,
+      },
+    });
 
-    // Store payment
-    this.payments.set(payment.id, payment);
+    const payment = toACHPayment(row);
 
     // In production, call Nickel API
     if (this.isConfigured) {
@@ -197,23 +258,29 @@ class NickelPaymentService {
         // payment.status = "processing";
       } catch (error: any) {
         logger.error("Nickel payment error", { error: error.message });
-        payment.status = "failed";
-        payment.failureReason = error.message;
+        await prisma.payment.update({
+          where: { id: row.id },
+          data: { status: "failed", failureReason: error.message },
+        });
         return { success: false, error: error.message };
       }
     }
 
     // Simulate processing (ACH typically takes 1-2 business days)
-    payment.status = "processing";
+    await prisma.payment.update({
+      where: { id: row.id },
+      data: { status: "processing" },
+    });
+
     const estimatedArrival = new Date();
     estimatedArrival.setDate(estimatedArrival.getDate() + 2);
 
-    logger.info("ACH payment initiated", { paymentId: payment.id, status: payment.status });
+    logger.info("ACH payment initiated", { paymentId: row.id, status: "processing" });
 
     return {
       success: true,
-      paymentId: payment.id,
-      status: payment.status,
+      paymentId: row.id,
+      status: "processing",
       estimatedArrival,
     };
   }
@@ -222,59 +289,59 @@ class NickelPaymentService {
    * Check payment status
    */
   async getPaymentStatus(paymentId: string): Promise<ACHPayment | null> {
-    const payment = this.payments.get(paymentId);
+    const row = await prisma.payment.findFirst({
+      where: { id: paymentId, type: "ACH_PAYMENT" },
+    });
 
-    if (!payment) {
+    if (!row) {
       return null;
     }
 
     // In production, fetch latest status from Nickel
-    if (this.isConfigured && payment.status === "processing") {
+    if (this.isConfigured && row.status === "processing") {
       // Simulate status check
       // const response = await fetch(`${this.baseUrl}/payments/${paymentId}`, {
       //   headers: { "Authorization": `Bearer ${this.apiKey}` },
       // });
       // const data = await response.json();
-      // payment.status = data.status;
+      // update status in DB
     }
 
-    return payment;
+    return toACHPayment(row);
   }
 
   /**
    * Get all payments for a client
    */
   async getClientPayments(clientId: string): Promise<ACHPayment[]> {
-    const payments: ACHPayment[] = [];
-
-    // Get all authorizations for client
-    const clientAuthIds = new Set<string>();
-    this.authorizations.forEach((auth) => {
-      if (auth.clientId === clientId) {
-        clientAuthIds.add(auth.id);
-      }
+    const rows = await prisma.payment.findMany({
+      where: {
+        userId: clientId,
+        type: "ACH_PAYMENT",
+      },
+      orderBy: { createdAt: "desc" },
     });
 
-    // Get payments for those authorizations
-    this.payments.forEach((payment) => {
-      if (clientAuthIds.has(payment.authorizationId)) {
-        payments.push(payment);
-      }
-    });
-
-    return payments.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    return rows.map(toACHPayment);
   }
 
   /**
    * Revoke an authorization (client wants to cancel)
    */
   async revokeAuthorization(authorizationId: string): Promise<boolean> {
-    const authorization = this.authorizations.get(authorizationId);
-    if (!authorization) {
+    const row = await prisma.payment.findFirst({
+      where: { id: authorizationId, type: "ACH_AUTHORIZATION" },
+    });
+
+    if (!row) {
       return false;
     }
 
-    authorization.status = "revoked";
+    await prisma.payment.update({
+      where: { id: authorizationId },
+      data: { status: "revoked" },
+    });
+
     logger.info("ACH authorization revoked", { authId: authorizationId });
     return true;
   }
@@ -305,14 +372,15 @@ class NickelPaymentService {
     logger.info("Triggering auto-collection", { caseId, clientId, surplusAmount });
 
     // Find active authorization for client
-    let authorization: ACHAuthorization | undefined;
-    this.authorizations.forEach((auth) => {
-      if (auth.clientId === clientId && auth.status === "active") {
-        authorization = auth;
-      }
+    const authRow = await prisma.payment.findFirst({
+      where: {
+        userId: clientId,
+        type: "ACH_AUTHORIZATION",
+        status: "active",
+      },
     });
 
-    if (!authorization) {
+    if (!authRow) {
       return { success: false, error: "No active ACH authorization for client" };
     }
 
@@ -321,7 +389,7 @@ class NickelPaymentService {
 
     // Initiate payment
     return this.initiatePayment(
-      authorization.id,
+      authRow.id,
       feeAmount,
       `MGR Capital Fee - Case ${caseId}`,
       caseId

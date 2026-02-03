@@ -960,6 +960,78 @@ export class PaymentService {
   }
 
   /**
+   * Approve a payment flagged for review
+   */
+  async approvePayment(paymentId: string, approvedBy: string, notes?: string): Promise<any | null> {
+    try {
+      const payment = await prisma.payment.findUnique({
+        where: { id: paymentId },
+      });
+
+      if (!payment) {
+        return null;
+      }
+
+      // Update payment status to approved/succeeded
+      const updated = await prisma.payment.update({
+        where: { id: paymentId },
+        data: {
+          status: 'succeeded',
+          metadata: {
+            ...(payment.metadata as object || {}),
+            approvedBy,
+            approvedAt: new Date().toISOString(),
+            approvalNotes: notes,
+          },
+        },
+      });
+
+      logger.info('Payment approved', { paymentId, approvedBy });
+      return updated;
+    } catch (error: any) {
+      logger.error('Failed to approve payment', { paymentId, error: error.message });
+      throw error;
+    }
+  }
+
+  /**
+   * Block a suspicious payment
+   */
+  async blockPayment(paymentId: string, blockedBy: string, reason: string, notes?: string): Promise<any | null> {
+    try {
+      const payment = await prisma.payment.findUnique({
+        where: { id: paymentId },
+      });
+
+      if (!payment) {
+        return null;
+      }
+
+      // Update payment status to blocked/failed
+      const updated = await prisma.payment.update({
+        where: { id: paymentId },
+        data: {
+          status: 'failed',
+          metadata: {
+            ...(payment.metadata as object || {}),
+            blocked: true,
+            blockedBy,
+            blockedAt: new Date().toISOString(),
+            blockReason: reason,
+            blockNotes: notes,
+          },
+        },
+      });
+
+      logger.warn('Payment blocked', { paymentId, blockedBy, reason });
+      return updated;
+    } catch (error: any) {
+      logger.error('Failed to block payment', { paymentId, error: error.message });
+      throw error;
+    }
+  }
+
+  /**
    * Handle Nickel webhook
    */
   async handleNickelWebhook(payload: any, signature: string): Promise<void> {

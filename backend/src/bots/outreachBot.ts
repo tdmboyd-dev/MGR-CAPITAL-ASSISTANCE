@@ -6,6 +6,9 @@
 // ============================================
 
 import { PrismaClient, CaseStatus, OpsInsightType, OpsInsightPriority } from "@prisma/client";
+import { autoOutreachService } from "../services/AutoOutreachService.js";
+import { botSubscriptionService } from "../services/BotSubscriptionService.js";
+import logger from "../utils/logger.js";
 
 const prisma = new PrismaClient();
 
@@ -796,6 +799,110 @@ class OutreachBot {
     });
 
     return this.prioritizeCases(cases).slice(0, 10);
+  }
+
+  // ============================================
+  // ACTION MODE — Execute outreach (not just analyze)
+  // ============================================
+
+  /**
+   * Execute actual outreach for a case: skip trace + SMS + email + call scheduling
+   * This is the ACTION mode upgrade — bots now DO, not just analyze
+   */
+  async executeOutreach(caseId: string, employeeId: string): Promise<{
+    success: boolean;
+    actions: string[];
+    costCents: number;
+    details: string;
+  }> {
+    // Check bot subscription access
+    const canUse = await botSubscriptionService.canUseBot(employeeId, "outreach");
+    if (!canUse) {
+      return {
+        success: false,
+        actions: [],
+        costCents: 0,
+        details: "Outreach bot not enabled for this user. Subscribe to STARTER tier or above.",
+      };
+    }
+
+    // First, score the case
+    const caseData = await prisma.case.findUnique({
+      where: { id: caseId },
+      include: {
+        client: { select: { id: true, name: true, email: true, phone: true } },
+        communications: { orderBy: { createdAt: "desc" }, take: 5 },
+        deadlines: { where: { completedAt: null }, orderBy: { dueDate: "asc" }, take: 1 },
+      },
+    });
+
+    if (!caseData) {
+      return { success: false, actions: [], costCents: 0, details: "Case not found" };
+    }
+
+    // Score readiness
+    const prioritized = this.prioritizeCases([caseData]);
+    const score = prioritized[0]?.priorityScore || 0;
+
+    // Only auto-outreach if score >= 70 OR explicitly triggered
+    if (score < 70) {
+      logger.info(`Outreach score ${score} below threshold for case ${caseId} — executing anyway (manual trigger)`);
+    }
+
+    try {
+      // Delegate to AutoOutreachService for the full pipeline
+      const result = await autoOutreachService.initiateOutreach(caseId, employeeId);
+
+      const successActions = result.actions.filter(a => a.success).map(a => a.type);
+
+      return {
+        success: successActions.length > 0,
+        actions: successActions,
+        costCents: result.totalCostCents,
+        details: result.actions.map(a => `${a.type}: ${a.success ? "OK" : "FAILED"} ${a.details || ""}`).join("; "),
+      };
+    } catch (error: any) {
+      logger.error(`executeOutreach failed for case ${caseId}`, { error: error.message });
+      return {
+        success: false,
+        actions: [],
+        costCents: 0,
+        details: `Error: ${error.message}`,
+      };
+    }
+  }
+
+  /**
+   * Auto-execute outreach for all high-priority cases after analysis
+   */
+  async analyzeAndExecute(): Promise<{
+    analysis: OutreachAnalysis;
+    executedCases: number;
+    totalCostCents: number;
+  }> {
+    const analysis = await this.analyze();
+
+    let executedCases = 0;
+    let totalCostCents = 0;
+
+    // Execute outreach for top priority cases with score >= 70
+    const eligibleCases = analysis.prioritizedCases.filter(
+      c => c.priorityScore >= 70 && c.assignedEmployeeId
+    );
+
+    for (const priorityCase of eligibleCases.slice(0, 10)) {
+      try {
+        const result = await this.executeOutreach(priorityCase.caseId, priorityCase.assignedEmployeeId!);
+        if (result.success) {
+          executedCases++;
+          totalCostCents += result.costCents;
+        }
+      } catch (error: any) {
+        logger.error(`Auto-outreach failed for ${priorityCase.caseCode}`, { error: error.message });
+      }
+    }
+
+    return { analysis, executedCases, totalCostCents };
   }
 
   /**

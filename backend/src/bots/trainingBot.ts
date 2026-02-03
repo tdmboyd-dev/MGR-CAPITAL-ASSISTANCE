@@ -7,6 +7,9 @@
 
 import { PrismaClient, OpsInsightType, OpsInsightPriority, EmployeeTier } from "@prisma/client";
 import { trainingIntelligenceService } from "../services/TrainingIntelligenceService.js";
+import { notificationService } from "../services/notificationService.js";
+import { botSubscriptionService } from "../services/BotSubscriptionService.js";
+import logger from "../utils/logger.js";
 import {
   TrainingBotAnalysis,
   ContractorTrainingNeeds,
@@ -575,6 +578,169 @@ class TrainingBot {
         },
       },
     });
+  }
+
+  // ============================================
+  // ACTION MODE — Auto-assign training & create plans
+  // ============================================
+
+  /**
+   * Create a personalized training plan based on identified gaps
+   * - Auto-assign training modules
+   * - Send study plan via email
+   * - Track completion
+   * - Generate progress reports
+   */
+  async createTrainingPlan(employeeId: string, gaps: { skill: string; severity: string }[]): Promise<{
+    success: boolean;
+    modulesAssigned: number;
+    planSent: boolean;
+    details: string;
+  }> {
+    const employee = await prisma.user.findUnique({
+      where: { id: employeeId },
+      select: { id: true, name: true, email: true, employeeTier: true },
+    });
+
+    if (!employee) {
+      return { success: false, modulesAssigned: 0, planSent: false, details: "Employee not found" };
+    }
+
+    let modulesAssigned = 0;
+    const assignedModules: string[] = [];
+
+    // Find matching training modules for each gap
+    for (const gap of gaps) {
+      const modules = await prisma.trainingModule.findMany({
+        where: {
+          isActive: true,
+          OR: [
+            { title: { contains: gap.skill.replace(/-/g, " "), mode: "insensitive" } },
+            { description: { contains: gap.skill.replace(/-/g, " "), mode: "insensitive" } },
+          ],
+        },
+        take: 2,
+      });
+
+      for (const module of modules) {
+        // Check if already assigned
+        const existing = await prisma.employeeTrainingProgress.findFirst({
+          where: { employeeId: employeeId, moduleId: module.id },
+        });
+
+        if (!existing) {
+          await prisma.employeeTrainingProgress.create({
+            data: {
+              employeeId: employeeId,
+              moduleId: module.id,
+            },
+          });
+          modulesAssigned++;
+          assignedModules.push(module.title);
+        }
+      }
+    }
+
+    // Send personalized study plan via email
+    let planSent = false;
+    if (employee.email && assignedModules.length > 0) {
+      try {
+        const studyPlan = this.buildStudyPlanEmail(employee, assignedModules, gaps);
+        await notificationService.sendEmployeeEmail({
+          to: employee.email,
+          subject: `Your Personalized Training Plan — ${assignedModules.length} Modules Assigned`,
+          body: studyPlan,
+          employeeId,
+        });
+        planSent = true;
+      } catch (error: any) {
+        logger.error(`Failed to send training plan email`, { error: error.message, employeeId });
+      }
+    }
+
+    // Log to BotRunLog
+    await prisma.botRunLog.create({
+      data: {
+        botName: "trainingBot:createPlan",
+        success: modulesAssigned > 0,
+        summary: `Training plan created for ${employee.name}: ${modulesAssigned} modules assigned`,
+        details: { employeeId, gaps, assignedModules, planSent },
+        recordsProcessed: gaps.length,
+      },
+    });
+
+    return {
+      success: modulesAssigned > 0 || planSent,
+      modulesAssigned,
+      planSent,
+      details: modulesAssigned > 0
+        ? `Assigned ${modulesAssigned} modules: ${assignedModules.join(", ")}`
+        : "No matching modules found for identified gaps",
+    };
+  }
+
+  /**
+   * Analyze AND auto-assign training for all employees needing it
+   */
+  async analyzeAndAssign(): Promise<{
+    analysis: TrainingBotAnalysis;
+    plansCreated: number;
+    totalModulesAssigned: number;
+  }> {
+    const analysis = await this.analyze();
+    let plansCreated = 0;
+    let totalModulesAssigned = 0;
+
+    for (const needs of analysis.needsCoaching) {
+      if (needs.overallPriority === "URGENT" || needs.overallPriority === "MANDATORY") {
+        try {
+          const gaps = needs.skillGaps.map(g => ({ skill: g.skill, severity: g.gap >= 3 ? "high" : g.gap >= 2 ? "medium" : "low" }));
+          const result = await this.createTrainingPlan(needs.employeeId, gaps);
+          if (result.success) {
+            plansCreated++;
+            totalModulesAssigned += result.modulesAssigned;
+          }
+        } catch (error: any) {
+          logger.error(`Auto-assign training failed for ${needs.employeeName}`, { error: error.message });
+        }
+      }
+    }
+
+    return { analysis, plansCreated, totalModulesAssigned };
+  }
+
+  private buildStudyPlanEmail(
+    employee: { name: string; employeeTier: string | null },
+    modules: string[],
+    gaps: { skill: string; severity: string }[]
+  ): string {
+    return `
+Hi ${employee.name},
+
+Based on your performance analysis, we've created a personalized training plan to help you grow.
+
+YOUR TRAINING PLAN
+==================
+
+Current Tier: ${employee.employeeTier || "Tier 1"}
+
+Areas for Improvement:
+${gaps.map(g => `  - ${g.skill.replace(/-/g, " ")} (${g.severity} priority)`).join("\n")}
+
+Assigned Modules:
+${modules.map((m, i) => `  ${i + 1}. ${m}`).join("\n")}
+
+NEXT STEPS:
+1. Log into the training portal
+2. Complete each module in order
+3. Pass the quiz at the end of each module
+4. Your progress is tracked automatically
+
+Completing these modules will improve your performance metrics and may qualify you for tier advancement.
+
+Best regards,
+MGR Capital Training Bot
+    `.trim();
   }
 
   // ============================================

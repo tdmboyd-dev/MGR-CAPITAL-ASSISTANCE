@@ -50,7 +50,9 @@ export default function PaymentsDashboard() {
 
     const connect = () => {
       try {
-        ws = new WebSocket('ws://localhost:4001/payments')
+        const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+        const wsHost = process.env.NEXT_PUBLIC_WS_HOST || window.location.host
+        ws = new WebSocket(`${wsProtocol}//${wsHost}/payments`)
 
         ws.onopen = () => {
           setWsConnected(true)
@@ -165,6 +167,32 @@ export default function PaymentsDashboard() {
     await Promise.all([refetchPayments(), refetchMetrics()])
     setRefreshing(false)
     toast.success('Data refreshed')
+  }
+
+  // Handle payment approval/blocking
+  const handlePaymentAction = async (paymentId: string, action: 'approve' | 'block') => {
+    try {
+      const endpoint = action === 'approve'
+        ? `/api/payments/${paymentId}/approve`
+        : `/api/payments/${paymentId}/block`
+
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include'
+      })
+
+      if (!response.ok) {
+        throw new Error(`Failed to ${action} payment`)
+      }
+
+      toast.success(`Payment ${action === 'approve' ? 'approved' : 'blocked'} successfully`)
+      setSelectedPayment(null)
+      refetchPayments()
+    } catch (error) {
+      toast.error(`Failed to ${action} payment. Please try again.`)
+      console.error(`Payment ${action} error:`, error)
+    }
   }
 
   const getRiskBadge = (risk: string) => {
@@ -598,11 +626,18 @@ export default function PaymentsDashboard() {
                 )}
 
                 <div className="flex gap-3 pt-4">
-                  <Button className="flex-1 bg-green-600 hover:bg-green-700">
+                  <Button
+                    className="flex-1 bg-green-600 hover:bg-green-700"
+                    onClick={() => handlePaymentAction(selectedPayment.id, 'approve')}
+                  >
                     <CheckCircle className="h-4 w-4 mr-2" />
                     Approve
                   </Button>
-                  <Button variant="destructive" className="flex-1">
+                  <Button
+                    variant="destructive"
+                    className="flex-1"
+                    onClick={() => handlePaymentAction(selectedPayment.id, 'block')}
+                  >
                     <XCircle className="h-4 w-4 mr-2" />
                     Block
                   </Button>

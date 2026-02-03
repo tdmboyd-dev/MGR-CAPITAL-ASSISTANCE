@@ -9,8 +9,14 @@
 import { PrismaClient, CaseStatus, OpsInsightType, OpsInsightPriority } from "@prisma/client";
 import { aiAgentService } from "../services/AiAgentService.js";
 import { notificationCenterService } from "../services/NotificationCenterService.js";
+import { documentAssemblyService } from "../services/DocumentAssemblyService.js";
+import { notificationService } from "../services/notificationService.js";
+import { SMSService } from "../services/SMSService.js";
+import { botSubscriptionService } from "../services/BotSubscriptionService.js";
+import logger from "../utils/logger.js";
 
 const prisma = new PrismaClient();
+const smsService = new SMSService();
 
 const BOT_NAME = "complianceBot";
 
@@ -613,6 +619,205 @@ class ComplianceBot {
         riskLevel: issues.length > 2 ? "high" : issues.length > 0 ? "medium" : "low",
       };
     }
+  }
+
+  // ============================================
+  // ACTION MODE — Auto-remediate compliance issues
+  // ============================================
+
+  /**
+   * Auto-fix detected compliance issues
+   * - Missing docs: Auto-generate from templates
+   * - Expired deadlines: Send urgent SMS + email
+   * - Filing errors: Create corrected document draft
+   * - State rule changes: Auto-update case notes
+   */
+  async autoRemediate(caseId: string, issues: { type: string; details: string }[]): Promise<{
+    fixed: number;
+    actions: string[];
+    escalated: string[];
+  }> {
+    const actions: string[] = [];
+    const escalated: string[] = [];
+    let fixed = 0;
+
+    const caseData = await prisma.case.findUnique({
+      where: { id: caseId },
+      include: {
+        client: true,
+        assignedEmployee: { select: { id: true, name: true, email: true, phone: true } },
+      },
+    });
+
+    if (!caseData) {
+      return { fixed: 0, actions: ["Case not found"], escalated: [] };
+    }
+
+    const employeeId = caseData.assignedEmployeeId;
+
+    for (const issue of issues) {
+      try {
+        switch (issue.type) {
+          case "missing_docs": {
+            // Auto-generate missing documents
+            if (employeeId) {
+              const canUse = await botSubscriptionService.canUseBot(employeeId, "compliance");
+              if (canUse) {
+                try {
+                  await documentAssemblyService.assembleDocPackage(caseId, employeeId);
+                  actions.push(`Auto-generated missing documents for case ${caseData.internalCode}`);
+                  fixed++;
+                } catch (e: any) {
+                  actions.push(`Doc generation failed: ${e.message}`);
+                  escalated.push(`Cannot auto-generate docs: ${e.message}`);
+                }
+              }
+            }
+            break;
+          }
+
+          case "expired_deadline":
+          case "critical_deadline": {
+            // Send urgent notifications
+            if (caseData.assignedEmployee?.email) {
+              try {
+                await notificationService.sendEmployeeEmail({
+                  to: caseData.assignedEmployee.email,
+                  subject: `URGENT: Deadline Alert — ${caseData.internalCode}`,
+                  body: `A deadline for case ${caseData.internalCode} (${caseData.county}, ${caseData.state}) requires immediate attention.\n\nIssue: ${issue.details}\n\nPlease take action immediately.`,
+                });
+                actions.push(`Urgent email sent to ${caseData.assignedEmployee.name}`);
+                fixed++;
+              } catch (e: any) {
+                actions.push(`Email notification failed: ${e.message}`);
+              }
+            }
+
+            // Send SMS to employee
+            if (caseData.assignedEmployee?.phone) {
+              try {
+                await smsService.send(
+                  caseData.assignedEmployee.phone,
+                  `URGENT: Case ${caseData.internalCode} deadline alert — ${issue.details}. Take action ASAP.`
+                );
+                actions.push(`Urgent SMS sent to ${caseData.assignedEmployee.name}`);
+              } catch (e: any) {
+                actions.push(`SMS notification failed: ${e.message}`);
+              }
+            }
+
+            // Also notify client if they have contact info
+            if (caseData.client?.email) {
+              try {
+                await notificationService.sendClientEmail({
+                  to: caseData.client.email,
+                  subject: `Action Required: Your Case Update`,
+                  body: `We need your attention regarding your case in ${caseData.county}, ${caseData.state}. A filing deadline is approaching and we may need additional information from you. Please contact us at your earliest convenience.`,
+                });
+                actions.push("Client notification email sent");
+              } catch (e: any) {
+                actions.push(`Client email failed: ${e.message}`);
+              }
+            }
+            break;
+          }
+
+          case "filing_error": {
+            // Create corrected document draft
+            if (employeeId) {
+              try {
+                await documentAssemblyService.generateSingleDoc(caseId, "FILING_PACKET", employeeId);
+                actions.push("Corrected filing packet draft generated");
+                fixed++;
+              } catch (e: any) {
+                escalated.push(`Filing correction failed: ${e.message}`);
+              }
+            }
+            break;
+          }
+
+          case "state_rule_change": {
+            // Auto-update case notes
+            const notes = caseData.notes || "";
+            const ruleNote = `\n[COMPLIANCE BOT ${new Date().toISOString().split("T")[0]}] State rule change detected: ${issue.details}`;
+            await prisma.case.update({
+              where: { id: caseId },
+              data: { notes: notes + ruleNote },
+            });
+            actions.push(`Case notes updated with state rule change info`);
+            fixed++;
+            break;
+          }
+
+          default: {
+            // Can't auto-fix — create WatchAlert for manual review
+            await prisma.watchAlert.create({
+              data: {
+                type: "SYSTEM_HEALTH",
+                severity: "HIGH",
+                message: `Compliance issue: ${issue.type} — ${issue.details}`,
+                details: { caseId, issue },
+                status: "OPEN",
+              },
+            });
+            escalated.push(`${issue.type}: ${issue.details} — escalated to WatchAlert`);
+          }
+        }
+      } catch (error: any) {
+        logger.error(`Auto-remediate failed for issue ${issue.type}`, { error: error.message, caseId });
+        escalated.push(`${issue.type}: Auto-fix failed — ${error.message}`);
+      }
+    }
+
+    // Log remediation results
+    if (actions.length > 0) {
+      await prisma.botRunLog.create({
+        data: {
+          botName: "complianceBot:autoRemediate",
+          success: fixed > 0,
+          summary: `Auto-remediated ${fixed}/${issues.length} issues for case ${caseData.internalCode}`,
+          details: { caseId, actions, escalated },
+          recordsProcessed: issues.length,
+          insightsGenerated: 0,
+        },
+      });
+    }
+
+    return { fixed, actions, escalated };
+  }
+
+  /**
+   * Run scan AND auto-remediate issues
+   */
+  async scanAndRemediate(): Promise<{
+    analysis: ComplianceAnalysis;
+    remediationResults: { fixed: number; actions: string[]; escalated: string[] }[];
+  }> {
+    const analysis = await this.scan();
+    const remediationResults: { fixed: number; actions: string[]; escalated: string[] }[] = [];
+
+    // Auto-remediate document issues
+    for (const docIssue of analysis.documentIssues) {
+      const result = await this.autoRemediate(docIssue.caseId, [{
+        type: "missing_docs",
+        details: `Missing: ${docIssue.missingDocs.join(", ")}`,
+      }]);
+      remediationResults.push(result);
+    }
+
+    // Auto-remediate critical/overdue deadlines
+    const criticalDeadlines = analysis.deadlineRisks.filter(
+      d => d.severity === "critical" || d.severity === "overdue"
+    );
+    for (const deadline of criticalDeadlines) {
+      const result = await this.autoRemediate(deadline.caseId, [{
+        type: deadline.severity === "overdue" ? "expired_deadline" : "critical_deadline",
+        details: `${deadline.deadlineType} — ${deadline.daysRemaining < 0 ? Math.abs(deadline.daysRemaining) + " days overdue" : deadline.daysRemaining + " days remaining"}`,
+      }]);
+      remediationResults.push(result);
+    }
+
+    return { analysis, remediationResults };
   }
 
   private generatePlainEnglish(analysis: ComplianceAnalysis): string {

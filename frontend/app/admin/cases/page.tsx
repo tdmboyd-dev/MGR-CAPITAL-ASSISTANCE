@@ -2,7 +2,9 @@
 
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
+import Link from "next/link";
 import {
   Card,
   CardContent,
@@ -47,6 +49,7 @@ const statuses = [
 ];
 
 export default function AdminCasesPage() {
+  const router = useRouter();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
@@ -210,12 +213,17 @@ export default function AdminCasesPage() {
                   {cases.map((caseItem: any) => (
                     <tr
                       key={caseItem.id}
-                      className="border-b hover:bg-muted/50 transition-colors"
+                      className="border-b hover:bg-muted/50 transition-colors cursor-pointer"
+                      onClick={() => router.push(`/admin/cases/${caseItem.id}`)}
                     >
                       <td className="p-3">
-                        <span className="font-medium">
+                        <Link
+                          href={`/admin/cases/${caseItem.id}`}
+                          className="font-medium text-primary hover:underline"
+                          onClick={(e) => e.stopPropagation()}
+                        >
                           {caseItem.internalCode || caseItem.id}
-                        </span>
+                        </Link>
                       </td>
                       <td className="p-3">
                         {caseItem.client?.name || "-"}

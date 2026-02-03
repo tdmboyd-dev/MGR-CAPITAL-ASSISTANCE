@@ -1,11 +1,21 @@
 // ============================================
 // CHILD COMPANY SERVICE — MGR CAPITAL ASSISTANCE
 // Automatic offer system, shadow accounting, transfer rules
+// Email domain pricing integrated
 // ============================================
 
 import { PrismaClient, EmployeeTier } from "@prisma/client";
+
+// Email domain type (matches schema enum)
+type EmailDomainType = "MAIN_COMPANY" | "SUBDOMAIN" | "CUSTOM";
 import { notificationService } from "./notificationService.js";
 import { logger } from "../utils/logger.js";
+import {
+  EMAIL_PRICING,
+  MGR_CAPITAL_BASE_FEES,
+  calculateEmailRevenueSplit,
+  validateChildCompanyEmailPricing,
+} from "../config/emailPricing.js";
 
 const prisma = new PrismaClient();
 
@@ -200,6 +210,8 @@ MGR Capital Assistance Team
       companyName: string;
       slug: string;
       plan: "BRANDED" | "WHITE_LABEL";
+      emailDomainType: "SUBDOMAIN" | "CUSTOM";  // Email domain choice
+      customDomain?: string;                     // Required if CUSTOM
       logoUrl?: string;
       primaryColor?: string;
       secondaryColor?: string;
@@ -228,11 +240,26 @@ MGR Capital Assistance Team
 
     if (!founder) return { success: false, error: "System error: No founder found" };
 
-    const annualFee = params.plan === "WHITE_LABEL" ? 60000 : 30000; // $600 or $300
+    // Calculate fees based on email domain type
+    const isCustomDomain = params.emailDomainType === "CUSTOM";
+    const annualFee = isCustomDomain ? 60000 : 30000; // $600 custom, $300 subdomain
+    const emailSetupFee = isCustomDomain
+      ? EMAIL_PRICING.childCustom.setupFeeCents       // $30
+      : EMAIL_PRICING.childSubdomain.setupFeeCents;   // $12
+    const emailMonthlyFee = isCustomDomain
+      ? EMAIL_PRICING.childCustom.monthlyFeeCents     // $15
+      : EMAIL_PRICING.childSubdomain.monthlyFeeCents; // $8
+
     const activationDeadline = new Date();
     activationDeadline.setDate(activationDeadline.getDate() + ACTIVATION_WINDOW_DAYS);
 
-    // Create child company
+    // Validate custom domain if provided
+    if (isCustomDomain && !params.customDomain) {
+      return { success: false, error: "Custom domain required for CUSTOM email domain type" };
+    }
+
+    // Create child company with email domain settings
+    // Note: emailDomain* fields are new - run `npx prisma db push` to add them
     const childCompany = await prisma.childCompany.create({
       data: {
         founderId: founder.id,
@@ -241,14 +268,22 @@ MGR Capital Assistance Team
         slug: params.slug,
         status: "OFFER_ACCEPTED",
         plan: params.plan,
-        subdomain: params.plan === "BRANDED" ? `${params.slug}.capitalmgr.com` : null,
+        subdomain: `${params.slug}.capitalmgr.com`,  // Portal subdomain always set
+        customDomain: isCustomDomain ? params.customDomain : null,
         logoUrl: params.logoUrl,
         primaryColor: params.primaryColor || "#1a365d",
         secondaryColor: params.secondaryColor || "#2d3748",
         accentColor: params.accentColor || "#3182ce",
         annualFeeCents: annualFee,
         activationDeadline,
-      },
+        // Email domain settings (new fields - run prisma db push)
+        emailDomainType: isCustomDomain ? "CUSTOM" : "SUBDOMAIN",
+        emailDomainLocked: false,
+        emailSetupFeeCents: emailSetupFee,
+        emailMonthlyFeeCents: emailMonthlyFee,
+        employeeEmailSetupCents: 1200,
+        employeeEmailMonthlyCents: 600,
+      } as any, // Type cast needed until prisma client regenerated
     });
 
     // Update offer
@@ -497,6 +532,326 @@ MGR Capital Assistance Team
         createdAt: true,
       },
     });
+  }
+
+  // ============================================
+  // EMAIL DOMAIN & PRICING MANAGEMENT
+  // ============================================
+
+  /**
+   * Update employee email pricing for child company
+   * Owner can customize fees but cannot go below MGR Capital base
+   * Child company gets 50% of anything over base
+   */
+  async updateEmployeeEmailPricing(
+    childCompanyId: string,
+    setupFeeCents: number,
+    monthlyFeeCents: number
+  ): Promise<{ success: boolean; error?: string }> {
+    const validation = validateChildCompanyEmailPricing(setupFeeCents, monthlyFeeCents);
+    if (!validation.valid) {
+      return { success: false, error: validation.error };
+    }
+
+    await prisma.childCompany.update({
+      where: { id: childCompanyId },
+      data: {
+        employeeEmailSetupCents: setupFeeCents,
+        employeeEmailMonthlyCents: monthlyFeeCents,
+      },
+    });
+
+    logger.info("Employee email pricing updated", {
+      childCompanyId,
+      setupFeeCents,
+      monthlyFeeCents,
+    });
+
+    return { success: true };
+  }
+
+  /**
+   * Get email revenue breakdown for child company employee
+   */
+  getEmployeeEmailRevenueSplit(childCompany: {
+    employeeEmailSetupCents: number;
+    employeeEmailMonthlyCents: number;
+  }): {
+    mgrCapitalSetupCents: number;
+    childCompanySetupCents: number;
+    mgrCapitalMonthlyCents: number;
+    childCompanyMonthlyCents: number;
+  } {
+    return calculateEmailRevenueSplit(
+      childCompany.employeeEmailSetupCents,
+      childCompany.employeeEmailMonthlyCents
+    );
+  }
+
+  /**
+   * Lock email domain after first case is started
+   * CRITICAL: Cannot change domain type after this
+   */
+  async lockEmailDomain(childCompanyId: string): Promise<void> {
+    await prisma.childCompany.update({
+      where: { id: childCompanyId },
+      data: {
+        emailDomainLocked: true,
+        emailDomainLockedAt: new Date(),
+      },
+    });
+
+    logger.info("Email domain locked for child company", { childCompanyId });
+  }
+
+  /**
+   * Check if domain change is allowed
+   * Year-by-year basis, requires 0 active cases
+   */
+  async canChangeDomain(childCompanyId: string): Promise<{
+    allowed: boolean;
+    reason?: string;
+    activeCases: number;
+    pendingCases: number;
+  }> {
+    const childCompany = await prisma.childCompany.findUnique({
+      where: { id: childCompanyId },
+      select: {
+        emailDomainLocked: true,
+        nextBillingDate: true,
+      },
+    });
+
+    if (!childCompany) {
+      return { allowed: false, reason: "Child company not found", activeCases: 0, pendingCases: 0 };
+    }
+
+    // Count active and pending cases
+    // TODO: Implement actual case counting logic based on schema
+    const activeCases = 0; // Placeholder
+    const pendingCases = 0; // Placeholder
+
+    if (activeCases > 0) {
+      return {
+        allowed: false,
+        reason: `Cannot change domain with ${activeCases} active case(s). All cases must be completed first.`,
+        activeCases,
+        pendingCases,
+      };
+    }
+
+    if (pendingCases > 0) {
+      return {
+        allowed: false,
+        reason: `Cannot change domain with ${pendingCases} pending case(s).`,
+        activeCases,
+        pendingCases,
+      };
+    }
+
+    // Check if within 30 days of billing year end
+    if (childCompany.nextBillingDate) {
+      const now = new Date();
+      const thirtyDaysBeforeBilling = new Date(childCompany.nextBillingDate);
+      thirtyDaysBeforeBilling.setDate(thirtyDaysBeforeBilling.getDate() - 30);
+
+      if (now < thirtyDaysBeforeBilling) {
+        return {
+          allowed: false,
+          reason: `Domain changes can only be made within 30 days of billing year end (${childCompany.nextBillingDate.toLocaleDateString()}).`,
+          activeCases,
+          pendingCases,
+        };
+      }
+    }
+
+    return { allowed: true, activeCases, pendingCases };
+  }
+
+  /**
+   * Get email pricing info for display
+   */
+  getEmailPricingInfo() {
+    return {
+      mainCompany: {
+        setup: EMAIL_PRICING.mainCompany.setupFeeCents / 100,
+        monthly: EMAIL_PRICING.mainCompany.monthlyFeeCents / 100,
+      },
+      childSubdomain: {
+        setup: EMAIL_PRICING.childSubdomain.setupFeeCents / 100,
+        monthly: EMAIL_PRICING.childSubdomain.monthlyFeeCents / 100,
+        annualBuildFee: 300,
+      },
+      childCustom: {
+        setup: EMAIL_PRICING.childCustom.setupFeeCents / 100,
+        monthly: EMAIL_PRICING.childCustom.monthlyFeeCents / 100,
+        annualBuildFee: 600,
+      },
+      childEmployee: {
+        minSetup: MGR_CAPITAL_BASE_FEES.emailSetupCents / 100,
+        minMonthly: MGR_CAPITAL_BASE_FEES.emailMonthlyCents / 100,
+        revenueShare: 50, // Child company gets 50% over base
+      },
+    };
+  }
+
+  // ============================================
+  // CONTRACTOR FEE MANAGEMENT
+  // Child company sets fees, but MGR Capital always takes 50%
+  // ============================================
+
+  /**
+   * Get contractor fee configuration for child company
+   */
+  async getContractorFees(childCompanyId: string): Promise<{
+    fees: Record<string, number | string | null>;
+    minimums: Record<string, number>;
+    mgrCapitalSharePercent: number;
+  } | null> {
+    // Fetch company - new fields require prisma generate after schema update
+    const company = await prisma.childCompany.findUnique({
+      where: { id: childCompanyId },
+    }) as any; // Type cast until prisma client regenerated
+
+    if (!company) return null;
+
+    return {
+      fees: {
+        platform: company.contractorPlatformFeeCents || 5000,
+        leads: company.contractorLeadFeeCents || 2500,
+        training: company.contractorTrainingFeeCents || 1500,
+        marketing: company.contractorMarketingFeeCents || 500,
+        tools: company.contractorToolsFeeCents || 2000,
+        support: company.contractorSupportFeeCents || 1000,
+        custom: company.contractorCustomFeeCents || 500,
+        customLabel: company.contractorCustomFeeLabel || null,
+      },
+      minimums: {
+        platform: 2500,    // $25 minimum
+        leads: 1000,       // $10 minimum
+        training: 500,     // $5 minimum
+        marketing: 200,    // $2 minimum
+        tools: 1000,       // $10 minimum
+        support: 500,      // $5 minimum
+        custom: 100,       // $1 minimum
+      },
+      mgrCapitalSharePercent: 50, // MGR Capital always takes 50%
+    };
+  }
+
+  /**
+   * Update contractor fees for child company
+   * Validates minimums and calculates revenue split
+   */
+  async updateContractorFees(
+    childCompanyId: string,
+    fees: {
+      platformFeeCents?: number;
+      leadFeeCents?: number;
+      trainingFeeCents?: number;
+      marketingFeeCents?: number;
+      toolsFeeCents?: number;
+      supportFeeCents?: number;
+      customFeeCents?: number;
+      customFeeLabel?: string;
+    }
+  ): Promise<{ success: boolean; error?: string }> {
+    // Validate minimums
+    const minimums = {
+      platformFeeCents: 2500,
+      leadFeeCents: 1000,
+      trainingFeeCents: 500,
+      marketingFeeCents: 200,
+      toolsFeeCents: 1000,
+      supportFeeCents: 500,
+      customFeeCents: 100,
+    };
+
+    const errors: string[] = [];
+
+    if (fees.platformFeeCents !== undefined && fees.platformFeeCents < minimums.platformFeeCents) {
+      errors.push(`Platform fee must be at least $${(minimums.platformFeeCents / 100).toFixed(2)}`);
+    }
+    if (fees.leadFeeCents !== undefined && fees.leadFeeCents < minimums.leadFeeCents) {
+      errors.push(`Lead fee must be at least $${(minimums.leadFeeCents / 100).toFixed(2)}`);
+    }
+    if (fees.trainingFeeCents !== undefined && fees.trainingFeeCents < minimums.trainingFeeCents) {
+      errors.push(`Training fee must be at least $${(minimums.trainingFeeCents / 100).toFixed(2)}`);
+    }
+    if (fees.marketingFeeCents !== undefined && fees.marketingFeeCents < minimums.marketingFeeCents) {
+      errors.push(`Marketing fee must be at least $${(minimums.marketingFeeCents / 100).toFixed(2)}`);
+    }
+    if (fees.toolsFeeCents !== undefined && fees.toolsFeeCents < minimums.toolsFeeCents) {
+      errors.push(`Tools fee must be at least $${(minimums.toolsFeeCents / 100).toFixed(2)}`);
+    }
+    if (fees.supportFeeCents !== undefined && fees.supportFeeCents < minimums.supportFeeCents) {
+      errors.push(`Support fee must be at least $${(minimums.supportFeeCents / 100).toFixed(2)}`);
+    }
+    if (fees.customFeeCents !== undefined && fees.customFeeCents < minimums.customFeeCents) {
+      errors.push(`Custom fee must be at least $${(minimums.customFeeCents / 100).toFixed(2)}`);
+    }
+
+    if (errors.length > 0) {
+      return { success: false, error: errors.join("; ") };
+    }
+
+    const updateData: any = {};
+    if (fees.platformFeeCents !== undefined) updateData.contractorPlatformFeeCents = fees.platformFeeCents;
+    if (fees.leadFeeCents !== undefined) updateData.contractorLeadFeeCents = fees.leadFeeCents;
+    if (fees.trainingFeeCents !== undefined) updateData.contractorTrainingFeeCents = fees.trainingFeeCents;
+    if (fees.marketingFeeCents !== undefined) updateData.contractorMarketingFeeCents = fees.marketingFeeCents;
+    if (fees.toolsFeeCents !== undefined) updateData.contractorToolsFeeCents = fees.toolsFeeCents;
+    if (fees.supportFeeCents !== undefined) updateData.contractorSupportFeeCents = fees.supportFeeCents;
+    if (fees.customFeeCents !== undefined) updateData.contractorCustomFeeCents = fees.customFeeCents;
+    if (fees.customFeeLabel !== undefined) updateData.contractorCustomFeeLabel = fees.customFeeLabel;
+
+    await prisma.childCompany.update({
+      where: { id: childCompanyId },
+      data: updateData,
+    });
+
+    logger.info("Contractor fees updated", { childCompanyId, fees });
+
+    return { success: true };
+  }
+
+  /**
+   * Calculate 50/50 split for any contractor fee
+   */
+  calculateContractorFeeSplit(amountCents: number): {
+    total: number;
+    mgrCapitalShare: number;
+    childCompanyShare: number;
+  } {
+    const mgrCapitalShare = Math.floor(amountCents * 0.5);
+    return {
+      total: amountCents,
+      mgrCapitalShare,
+      childCompanyShare: amountCents - mgrCapitalShare,
+    };
+  }
+
+  /**
+   * Get all fee info for display (combined email + contractor)
+   */
+  getAllFeeInfo() {
+    return {
+      revenueShare: {
+        description: "50/50 split on ALL contractor fees",
+        mgrCapitalShare: 50,
+        childCompanyShare: 50,
+      },
+      email: this.getEmailPricingInfo(),
+      contractor: {
+        platform: { default: 50, min: 25, unit: "monthly" },
+        leads: { default: 25, min: 10, unit: "per lead" },
+        training: { default: 15, min: 5, unit: "per course" },
+        marketing: { default: 5, min: 2, unit: "per item" },
+        tools: { default: 20, min: 10, unit: "monthly" },
+        support: { default: 10, min: 5, unit: "monthly" },
+        custom: { default: 5, min: 1, unit: "per use" },
+      },
+    };
   }
 }
 

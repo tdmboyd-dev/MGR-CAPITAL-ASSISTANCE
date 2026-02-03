@@ -29,6 +29,7 @@ import { outreachBot } from "../bots/outreachBot.js";
 import { docketBot } from "../bots/docketBot.js";
 import { monitoringBot } from "../bots/monitoringBot.js";
 import { metaBot } from "../bots/metaBot.js";
+import { omniscientBot } from "../bots/omniscientBot.js";
 
 // Service imports
 import { backupService } from "../services/BackupService.js";
@@ -45,6 +46,11 @@ import { runEmailHostingCron } from "../crons/emailHostingCron.js";
 import { runTransferCoolingCron } from "../crons/transferCoolingCron.js";
 import { runChildCompanyBillingCron } from "../crons/childCompanyBillingCron.js";
 import { runEligibilityCheckCron } from "../crons/eligibilityCheckCron.js";
+
+// Action Bots cron imports
+import { runAutoOutreachCron } from "../crons/autoOutreachCron.js";
+import { runCaseAutopilotCron } from "../crons/caseAutopilotCron.js";
+import { runBotBillingCron } from "../crons/botBillingCron.js";
 
 const prisma = new PrismaClient();
 
@@ -197,6 +203,17 @@ const jobs: CronJob[] = [
     },
   },
   {
+    name: "Omniscient AI Full Cycle",
+    key: "omniscient_full_cycle",
+    cronExpression: "0 5 * * *", // 5:00 AM daily
+    description: "All-seeing AI: case prediction, employee analysis, revenue optimization, market intelligence, self-healing",
+    enabledByDefault: false, // FOUNDER must enable - powerful and comprehensive
+    category: "bot",
+    task: async () => {
+      await omniscientBot.runFullCycle();
+    },
+  },
+  {
     name: "Weekly Compliance Digest",
     key: "compliance_weekly_digest",
     cronExpression: "0 8 * * 1", // 8:00 AM every Monday
@@ -209,14 +226,14 @@ const jobs: CronJob[] = [
   },
 
   // ===========================================
-  // AUTOPILOT INGESTION SCHEDULES
+  // AUTOPILOT INGESTION SCHEDULES (24/7 AUTO-ENABLED)
   // ===========================================
   {
     name: "Auto-Ingestion Fetch",
     key: "auto_ingestion_fetch",
-    cronExpression: "*/30 * * * *", // Every 30 minutes
+    cronExpression: "*/10 * * * *", // Every 10 minutes - 24/7 automatic
     description: "Fetch due ingestion sources, parse content, create cases, auto-assign",
-    enabledByDefault: false, // FOUNDER must enable via ENABLE_SCHEDULER
+    enabledByDefault: true, // ENABLED BY DEFAULT - runs 24/7
     category: "bot",
     task: async () => {
       await runAutoIngestion();
@@ -227,7 +244,7 @@ const jobs: CronJob[] = [
     key: "email_inbox_poll",
     cronExpression: "*/5 * * * *", // Every 5 minutes
     description: "Poll email inbox for leads (attachments + body parsing)",
-    enabledByDefault: false,
+    enabledByDefault: true, // ENABLED BY DEFAULT
     category: "bot",
     task: async () => {
       await emailIngestionService.pollInbox();
@@ -294,6 +311,83 @@ const jobs: CronJob[] = [
     category: "bot",
     task: async () => {
       await runEligibilityCheckCron();
+    },
+  },
+
+  // ===========================================
+  // ACTION BOTS SCHEDULES
+  // ===========================================
+  {
+    name: "Auto-Outreach Processing",
+    key: "auto_outreach_processing",
+    cronExpression: "0 8,10,12,14,16,18 * * 1-5", // Every 2 hours during business hours, weekdays
+    description: "Process pending outreach: skip trace, SMS, email, call scheduling",
+    enabledByDefault: false, // FOUNDER must enable
+    category: "bot",
+    task: async () => {
+      await runAutoOutreachCron();
+    },
+  },
+  {
+    name: "Case Autopilot",
+    key: "case_autopilot",
+    cronExpression: "0 * * * *", // Every hour
+    description: "Advance autopilot-enabled cases through pipeline stages",
+    enabledByDefault: false, // FOUNDER must enable
+    category: "bot",
+    task: async () => {
+      await runCaseAutopilotCron();
+    },
+  },
+  {
+    name: "Bot Subscription Billing",
+    key: "bot_subscription_billing",
+    cronExpression: "0 0 1 * *", // Midnight, 1st of each month
+    description: "Charge monthly bot subscription fees, suspend overdue accounts",
+    enabledByDefault: true,
+    category: "maintenance",
+    task: async () => {
+      await runBotBillingCron();
+    },
+  },
+
+  // ===========================================
+  // ACTIVITY TRACKING & VIOLATIONS
+  // ===========================================
+  {
+    name: "Case Inactivity Check",
+    key: "case_inactivity_check",
+    cronExpression: "0 8 * * *", // 8:00 AM daily
+    description: "Check for cases inactive >2 days, create violations",
+    enabledByDefault: true,
+    category: "maintenance",
+    task: async () => {
+      const { activityTrackingService } = await import("../services/ActivityTrackingService.js");
+      await activityTrackingService.checkCaseInactivityViolations();
+    },
+  },
+  {
+    name: "Weekly Activity Check",
+    key: "weekly_activity_check",
+    cronExpression: "0 6 * * 1", // 6:00 AM every Monday
+    description: "Check employee activity (3 days/week required), create violations",
+    enabledByDefault: true,
+    category: "maintenance",
+    task: async () => {
+      const { activityTrackingService } = await import("../services/ActivityTrackingService.js");
+      await activityTrackingService.checkWeeklyViolations();
+    },
+  },
+  {
+    name: "Notary Bot Billing",
+    key: "notary_bot_billing",
+    cronExpression: "0 0 1 * *", // Midnight, 1st of each month
+    description: "Charge monthly notary automation bot subscriptions",
+    enabledByDefault: true,
+    category: "maintenance",
+    task: async () => {
+      const { notaryAutomationBotService } = await import("../services/NotaryAutomationBotService.js");
+      await notaryAutomationBotService.processMonthlyBilling();
     },
   },
 

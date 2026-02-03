@@ -12,6 +12,7 @@ import { legalService } from "../services/legalService.js";
 import { enforceStateFeeCap } from "../data/stateRules.js";
 import { notificationCenterService } from "../services/NotificationCenterService.js";
 import { notificationService } from "../services/notificationService.js";
+import { demoDataService } from "../services/DemoDataService.js";
 import {
   isValidTransition,
   validateTransition,
@@ -194,33 +195,107 @@ router.post("/my/:id/status", authMiddleware, roleGuard(["EMPLOYEE"]), asyncHand
   });
 }));
 
+// ============================================
+// CLIENT ROUTES — Authenticated Client Portal
+// IMPORTANT: These must come BEFORE /:id routes
+// ============================================
+
 /**
- * GET /api/cases/my/:id - Employee view of single case
+ * GET /api/cases/my-cases - Authenticated client view of their cases
+ * Used by the client portal dashboard
  */
-router.get("/my/:id", authMiddleware, roleGuard(["EMPLOYEE"]), async (req: AuthRequest, res: Response) => {
+router.get("/my-cases", authMiddleware, roleGuard(["CLIENT"]), async (req: AuthRequest, res: Response) => {
   try {
-    const caseData = await prisma.case.findFirst({
+    const cases = await prisma.case.findMany({
       where: {
-        id: req.params.id,
-        assignedEmployeeId: req.user!.id
+        clientId: req.user!.id
       },
       select: {
         id: true,
+        caseCode: true,
         internalCode: true,
         status: true,
         propertyAddress: true,
         county: true,
         state: true,
+        estimatedFeeCents: true,
+        actualFeeCents: true,
+        recoveryAmountCents: true,
         createdAt: true,
+        updatedAt: true,
+        saleDate: true,
+        documents: {
+          select: {
+            id: true,
+            type: true,
+            status: true,
+            signedAt: true,
+            signatureRequired: true,
+            fileName: true,
+            createdAt: true
+          }
+        }
+      },
+      orderBy: { createdAt: "desc" }
+    });
+
+    // Add client-friendly case code if not exists
+    const casesWithCode = cases.map(c => ({
+      ...c,
+      caseCode: c.caseCode || c.internalCode || c.id.slice(0, 8).toUpperCase()
+    }));
+
+    res.json({
+      success: true,
+      count: cases.length,
+      data: casesWithCode
+    });
+  } catch (error: any) {
+    console.error("Client cases error:", error);
+    res.status(500).json({ success: false, error: "Failed to load your cases" });
+  }
+});
+
+/**
+ * GET /api/cases/my/:id - Authenticated client view of a single case
+ * Used by the client portal case detail page
+ */
+router.get("/my/:id", authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const user = req.user!;
+
+    // Build where clause based on role
+    const where: any = { id: req.params.id };
+
+    if (user.role === "CLIENT") {
+      where.clientId = user.id;
+    } else if (user.role === "EMPLOYEE") {
+      where.assignedEmployeeId = user.id;
+    } else if (user.role !== "ADMIN" && user.role !== "FOUNDER") {
+      return res.status(403).json({ success: false, error: "Access denied" });
+    }
+
+    const caseData = await prisma.case.findFirst({
+      where,
+      select: {
+        id: true,
+        caseCode: true,
+        internalCode: true,
+        status: true,
+        propertyAddress: true,
+        county: true,
+        state: true,
+        estimatedFeeCents: true,
+        actualFeeCents: true,
+        recoveryAmountCents: true,
+        saleDate: true,
+        createdAt: true,
+        updatedAt: true,
         client: {
           select: {
             name: true,
             phone: true,
             email: true,
-            address: true,
-            city: true,
-            state: true,
-            zipCode: true
           }
         },
         documents: {
@@ -228,25 +303,42 @@ router.get("/my/:id", authMiddleware, roleGuard(["EMPLOYEE"]), async (req: AuthR
             id: true,
             type: true,
             status: true,
-            signedAt: true
+            fileName: true,
+            filePath: true,
+            signedAt: true,
+            signatureRequired: true,
+            createdAt: true
           }
         }
       }
     });
 
     if (!caseData) {
-      return res.status(404).json({ success: false, error: "Case not found or not assigned to you" });
+      return res.status(404).json({ success: false, error: "Case not found" });
+    }
+
+    // Transform for client-friendly response
+    const responseData = {
+      ...caseData,
+      caseCode: caseData.caseCode || caseData.internalCode || caseData.id.slice(0, 8).toUpperCase(),
+      documents: caseData.documents.map((d: any) => ({
+        ...d,
+        needsSignature: d.signatureRequired && !d.signedAt,
+        signed: !!d.signedAt
+      }))
+    };
+
+    // Hide internal code for clients
+    if (user.role === "CLIENT") {
+      delete (responseData as any).internalCode;
     }
 
     res.json({
       success: true,
-      data: {
-        ...caseData,
-        nextAction: legalService.getNextAction(caseData.status as CaseStatus)
-      }
+      data: responseData
     });
   } catch (error: any) {
-    console.error("Employee case detail error:", error);
+    console.error("Case detail error:", error);
     res.status(500).json({ success: false, error: "Failed to load case" });
   }
 });
@@ -628,6 +720,12 @@ router.post("/", authMiddleware, roleGuard(["ADMIN"]), async (req: AuthRequest, 
         entityId: newCase.id,
         details: { internalCode, state, county }
       }
+    });
+
+    // Trigger demo data cleanup if real case created
+    // This is async and non-blocking
+    demoDataService.onCaseCreated(newCase.id).catch((err) => {
+      console.error("[Cases] Demo cleanup error (non-fatal):", err);
     });
 
     res.status(201).json({

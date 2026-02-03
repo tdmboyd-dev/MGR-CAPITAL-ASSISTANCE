@@ -26,6 +26,67 @@ const upload = multer({
 router.use(authMiddleware);
 
 // ============================================
+// CLIENT PORTAL ENDPOINTS
+// IMPORTANT: These must come BEFORE /:id routes
+// ============================================
+
+/**
+ * GET /api/documents/my-documents
+ * Get all documents for the authenticated client's cases
+ * Used by client portal
+ */
+router.get("/my-documents", roleGuard(["CLIENT"]), async (req: AuthRequest, res: Response) => {
+  try {
+    const documents = await prisma.document.findMany({
+      where: {
+        case: {
+          clientId: req.user!.id
+        }
+      },
+      select: {
+        id: true,
+        type: true,
+        status: true,
+        fileName: true,
+        filePath: true,
+        fileSize: true,
+        mimeType: true,
+        signedAt: true,
+        signatureRequired: true,
+        createdAt: true,
+        case: {
+          select: {
+            id: true,
+            caseCode: true,
+            propertyAddress: true,
+            county: true,
+            state: true
+          }
+        }
+      },
+      orderBy: { createdAt: "desc" }
+    });
+
+    // Transform for client-friendly response
+    const clientDocs = documents.map(d => ({
+      ...d,
+      needsSignature: d.signatureRequired && !d.signedAt,
+      signed: !!d.signedAt,
+      caseId: d.case?.id
+    }));
+
+    res.json({
+      success: true,
+      count: documents.length,
+      data: clientDocs
+    });
+  } catch (error: any) {
+    console.error("Client documents error:", error);
+    res.status(500).json({ success: false, error: "Failed to load your documents" });
+  }
+});
+
+// ============================================
 // LIST ALL DOCUMENTS
 // ============================================
 

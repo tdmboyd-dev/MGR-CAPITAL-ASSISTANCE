@@ -8,12 +8,16 @@
     "start": "node dist/server.js",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
+    "prisma:seed": "tsx prisma/seed.ts",
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
     "test:coverage": "node --experimental-vm-modules node_modules/jest/bin/jest.js --coverage",
     "test:watch": "node --experimental-vm-modules node_modules/jest/bin/jest.js --watch",
     "cypress:open": "cypress open",
     "cypress:run": "cypress run",
     "deploy:prod": "docker compose -f docker-compose.prod.yml up -d --build"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
     "@prisma/client": "5.22.0",

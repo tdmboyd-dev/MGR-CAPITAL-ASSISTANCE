@@ -775,6 +775,168 @@ class EmployeeNotaryService {
       feedback: session.feedback,
     };
   }
+
+  // =============================================================================
+  // SELF-HOSTED RON SESSION METHODS
+  // =============================================================================
+
+  /**
+   * Start a RON session for an employee notary
+   * Uses SelfHostedRONService - no external providers needed
+   */
+  async startRONSession(notaryId: string, sessionId: string): Promise<{
+    success: boolean;
+    ronSessionId: string;
+    signerJoinUrl: string;
+    notaryJoinUrl: string;
+  }> {
+    const { selfHostedRONService } = await import('./SelfHostedRONService.js');
+
+    // Get notary profile
+    const profile = await prisma.notaryProfile.findFirst({
+      where: { userId: notaryId, isActive: true },
+      include: { user: { select: { name: true } } },
+    });
+
+    if (!profile) {
+      throw new Error('Notary profile not found');
+    }
+
+    // Get the scheduled session
+    const scheduledSession = await prisma.notarySessionRecord.findUnique({
+      where: { id: sessionId },
+    });
+
+    if (!scheduledSession) {
+      throw new Error('Session not found');
+    }
+
+    // Create RON session using self-hosted service
+    const ronSession = await selfHostedRONService.createSession(
+      {
+        notaryId: profile.userId,
+        notaryName: profile.user.name,
+        notaryCommission: profile.commissionNumber,
+        notaryState: profile.state,
+        notaryExpiration: profile.commissionExpiration,
+      },
+      {
+        name: scheduledSession.clientName,
+        email: scheduledSession.clientEmail,
+        phone: scheduledSession.clientPhone || undefined,
+      },
+      [{ id: sessionId, name: scheduledSession.documentType, type: scheduledSession.documentType }],
+      scheduledSession.caseId || undefined
+    );
+
+    // Update session with RON session ID
+    await prisma.notarySessionRecord.update({
+      where: { id: sessionId },
+      data: { status: 'in_progress' },
+    });
+
+    // Generate join URLs
+    const baseUrl = process.env.APP_URL || 'http://localhost:3000';
+    const signerJoinUrl = `${baseUrl}/notary/session/${ronSession.id}/signer`;
+    const notaryJoinUrl = `${baseUrl}/notary/session/${ronSession.id}/notary`;
+
+    logger.info('Employee RON session started', {
+      notaryId,
+      sessionId,
+      ronSessionId: ronSession.id,
+    });
+
+    return {
+      success: true,
+      ronSessionId: ronSession.id,
+      signerJoinUrl,
+      notaryJoinUrl,
+    };
+  }
+
+  /**
+   * Verify signer ID during RON session
+   */
+  async verifySignerID(ronSessionId: string, idData: {
+    idType: 'drivers_license' | 'passport' | 'state_id' | 'military_id';
+    idNumber: string;
+    idState?: string;
+    idExpiration: Date;
+    frontImageBase64: string;
+    backImageBase64?: string;
+    selfieImageBase64: string;
+  }): Promise<{
+    verified: boolean;
+    score: number;
+    errors: string[];
+  }> {
+    const { selfHostedRONService } = await import('./SelfHostedRONService.js');
+    return selfHostedRONService.verifyID(ronSessionId, idData);
+  }
+
+  /**
+   * Get KBA questions for signer
+   */
+  async getKBAQuestions(ronSessionId: string): Promise<any[]> {
+    const { selfHostedRONService } = await import('./SelfHostedRONService.js');
+    return selfHostedRONService.generateKBAQuestions(ronSessionId);
+  }
+
+  /**
+   * Verify KBA answers
+   */
+  async verifyKBAAnswers(ronSessionId: string, answers: { questionId: string; selectedIndex: number }[]): Promise<{
+    passed: boolean;
+    score: number;
+    attemptsRemaining: number;
+  }> {
+    const { selfHostedRONService } = await import('./SelfHostedRONService.js');
+    return selfHostedRONService.verifyKBAAnswers(ronSessionId, answers);
+  }
+
+  /**
+   * Start video session
+   */
+  async startVideoSession(ronSessionId: string): Promise<{
+    roomId: string;
+    signerJoinUrl: string;
+    notaryJoinUrl: string;
+    recordingStarted: boolean;
+  }> {
+    const { selfHostedRONService } = await import('./SelfHostedRONService.js');
+    return selfHostedRONService.startVideoSession(ronSessionId);
+  }
+
+  /**
+   * Complete RON session and finalize notarization
+   */
+  async completeRONSession(
+    ronSessionId: string,
+    scheduledSessionId: string,
+    data: {
+      signerSignatureBase64: string;
+      videoRecordingUrl: string;
+      videoDuration: number;
+    }
+  ): Promise<{
+    success: boolean;
+    notarizedDocumentUrls: string[];
+    certificateUrl: string;
+  }> {
+    const { selfHostedRONService } = await import('./SelfHostedRONService.js');
+
+    // Complete the RON session
+    const result = await selfHostedRONService.completeNotarization(ronSessionId, data);
+
+    // Mark the scheduled session as completed
+    await this.completeSession(scheduledSessionId, data.videoRecordingUrl, result.auditTrailUrl);
+
+    return {
+      success: result.success,
+      notarizedDocumentUrls: result.notarizedDocumentUrls,
+      certificateUrl: result.certificateUrl,
+    };
+  }
 }
 
 // =============================================================================
