@@ -89,6 +89,30 @@ router.post(
       steps.push(`   - userId: ${result.user.id}`);
       steps.push(`   - role: ${result.user.role}`);
 
+      // Test: Clear login attempts
+      steps.push("8. Clearing login attempts...");
+      clearLoginAttempts(identifier);
+      steps.push("   Done");
+
+      // Test: AuditActions
+      steps.push("9. Logging to audit...");
+      await AuditActions.login(result.user.id, true, req);
+      steps.push("   Done");
+
+      // Test: Cookie options
+      steps.push("10. Getting cookie options...");
+      const cookieOptions = authService.getRefreshTokenCookieOptions();
+      steps.push(`    Options: ${JSON.stringify(cookieOptions)}`);
+
+      // Test: Set cookie
+      steps.push("11. Setting cookie...");
+      res.cookie(
+        REFRESH_COOKIE_NAME,
+        result.tokens.refreshToken,
+        cookieOptions
+      );
+      steps.push("    Done");
+
       res.json({
         success: true,
         steps,
