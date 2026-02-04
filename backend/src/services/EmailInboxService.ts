@@ -301,8 +301,9 @@ class EmailInboxService {
   private smtpTransporter: nodemailer.Transporter | null = null;
 
   constructor() {
+    // Modoboa uses "Token" prefix, not "Bearer"
     this.headers = {
-      Authorization: `Bearer ${MODOBOA_API_TOKEN}`,
+      Authorization: `Token ${MODOBOA_API_TOKEN}`,
       "Content-Type": "application/json",
     };
 
@@ -446,6 +447,7 @@ class EmailInboxService {
       };
     }
 
+    // Modoboa v2 API: mailboxes are IMAP folders
     const result = await this.apiRequest<any>("/webmail/mailboxes/");
     if (!result.success || !result.data) {
       logger.warn("[EmailInboxService] Failed to list mailboxes, returning demo data");
@@ -496,7 +498,8 @@ class EmailInboxService {
       return DEMO_FOLDERS;
     }
 
-    const result = await this.apiRequest<any>(`/webmail/mailboxes/${mailboxId}/folders/`);
+    // Modoboa v2: mailboxes endpoint returns IMAP folders
+    const result = await this.apiRequest<any>(`/webmail/mailboxes/`);
     if (!result.success || !result.data) {
       logger.warn("[EmailInboxService] Failed to list folders, returning demo data");
       return DEMO_FOLDERS;
@@ -563,8 +566,9 @@ class EmailInboxService {
     }
 
     const offset = (page - 1) * limit;
+    // Modoboa v2 API: /webmail/emails/ with mbox query param for folder
     const result = await this.apiRequest<any>(
-      `/webmail/mailboxes/${mailboxId}/folders/${folder}/messages/?limit=${limit}&offset=${offset}`
+      `/webmail/emails/?mbox=${encodeURIComponent(folder)}&limit=${limit}&offset=${offset}`
     );
 
     if (!result.success || !result.data) {
@@ -600,13 +604,14 @@ class EmailInboxService {
       return email || null;
     }
 
-    const result = await this.apiRequest<any>(`/webmail/messages/${emailId}/`);
+    // Modoboa v2: /webmail/emails/content/ with uid query param
+    const result = await this.apiRequest<any>(`/webmail/emails/content/?uid=${emailId}`);
     if (!result.success || !result.data) {
       logger.warn("[EmailInboxService] Failed to get email", { emailId });
       return DEMO_EMAILS.find((e) => e.id === emailId) || null;
     }
 
-    return this.transformEmail(result.data, mailboxId, result.data.folder || "inbox", true);
+    return this.transformEmail(result.data, mailboxId, result.data.mbox || "INBOX", true);
   }
 
   private transformEmail(
@@ -689,8 +694,10 @@ class EmailInboxService {
       return true;
     }
 
-    const result = await this.apiRequest(`/webmail/messages/${emailId}/mark_read/`, {
+    // Modoboa v2: /webmail/emails/flag/ with POST body
+    const result = await this.apiRequest(`/webmail/emails/flag/`, {
       method: "POST",
+      body: JSON.stringify({ uids: [emailId], flag: "\\Seen" }),
     });
 
     if (result.success) {
@@ -709,8 +716,10 @@ class EmailInboxService {
       return true;
     }
 
-    const result = await this.apiRequest(`/webmail/messages/${emailId}/mark_unread/`, {
+    // Modoboa v2: unflag to mark as unread
+    const result = await this.apiRequest(`/webmail/emails/flag/`, {
       method: "POST",
+      body: JSON.stringify({ uids: [emailId], flag: "\\Seen", status: false }),
     });
 
     if (result.success) {
@@ -729,9 +738,10 @@ class EmailInboxService {
       return true;
     }
 
-    const result = await this.apiRequest(`/webmail/messages/${emailId}/move/`, {
+    // Modoboa v2: /webmail/emails/move/
+    const result = await this.apiRequest(`/webmail/emails/move/`, {
       method: "POST",
-      body: JSON.stringify({ folder: targetFolder }),
+      body: JSON.stringify({ uids: [emailId], to_mailbox: targetFolder }),
     });
 
     if (result.success) {
@@ -755,8 +765,10 @@ class EmailInboxService {
       return true;
     }
 
-    const result = await this.apiRequest(`/webmail/messages/${emailId}/`, {
-      method: "DELETE",
+    // Modoboa v2: /webmail/emails/delete/
+    const result = await this.apiRequest(`/webmail/emails/delete/`, {
+      method: "POST",
+      body: JSON.stringify({ uids: [emailId] }),
     });
 
     if (result.success) {
@@ -1105,8 +1117,9 @@ class EmailInboxService {
       return { success: false, error: "Attachment not found" };
     }
 
+    // Modoboa v2: /webmail/emails/attachment/ with uid and partid
     const result = await this.apiRequest<any>(
-      `/webmail/messages/${emailId}/attachments/${attachmentId}/`
+      `/webmail/emails/attachment/?uid=${emailId}&partid=${attachmentId}`
     );
 
     if (!result.success || !result.data) {
