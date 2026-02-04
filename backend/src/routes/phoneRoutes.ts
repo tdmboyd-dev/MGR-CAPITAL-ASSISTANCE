@@ -1,6 +1,6 @@
 /**
  * Phone Bot Routes — MGR CAPITAL ASSISTANCE
- * AI Phone Bot with Twilio + ElevenLabs + OpenAI
+ * AI Phone Bot with Telnyx + DeepSeek/Google AI
  */
 
 import { Router } from 'express';
@@ -16,7 +16,7 @@ const router = Router();
  */
 router.post('/start', authenticate, async (req, res) => {
   try {
-    const { to, script, voice, caseId } = req.body;
+    const { to, script, caseId } = req.body;
 
     if (!to) {
       return res.status(400).json({ error: 'Missing phone number' });
@@ -37,13 +37,15 @@ router.post('/start', authenticate, async (req, res) => {
 
 /**
  * POST /api/phone/webhook
- * Twilio webhook for call handling
+ * Telnyx webhook for call handling
  */
 router.post('/webhook', async (req, res) => {
   try {
-    const { CallSid, From, CallStatus } = req.body;
+    const { call_control_id, from } = req.body?.data?.payload || {};
+    const callSid = call_control_id || req.body?.CallSid;
+    const fromNumber = from || req.body?.From;
 
-    const twiml = await phoneBotService.handleInboundCall(CallSid, From);
+    const twiml = await phoneBotService.handleInboundCall(callSid, fromNumber);
 
     res.type('text/xml').send(twiml);
   } catch (error: any) {
@@ -54,7 +56,7 @@ router.post('/webhook', async (req, res) => {
 
 /**
  * POST /api/phone/process-speech
- * Process speech input from Twilio Gather
+ * Process speech input from call
  */
 router.post('/process-speech', async (req, res) => {
   try {
@@ -71,7 +73,7 @@ router.post('/process-speech', async (req, res) => {
 
 /**
  * POST /api/phone/status
- * Twilio status callback
+ * Call status callback
  */
 router.post('/status', async (req, res) => {
   try {
@@ -88,7 +90,7 @@ router.post('/status', async (req, res) => {
 
 /**
  * POST /api/phone/recording
- * Twilio recording callback
+ * Recording callback
  */
 router.post('/recording', async (req, res) => {
   try {
@@ -104,23 +106,6 @@ router.post('/recording', async (req, res) => {
 });
 
 /**
- * GET /api/phone/transcript/:callSid
- * Get call transcript
- */
-router.get('/transcript/:callSid', authenticate, async (req, res) => {
-  try {
-    const { callSid } = req.params;
-
-    const result = await phoneBotService.transcribeCall(callSid);
-
-    res.json({ success: true, data: result });
-  } catch (error: any) {
-    logger.error('Transcript fetch failed', { error: error.message });
-    res.status(500).json({ error: error.message });
-  }
-});
-
-/**
  * POST /api/phone/end/:callSid
  * End an active call
  */
@@ -128,7 +113,6 @@ router.post('/end/:callSid', authenticate, async (req, res) => {
   try {
     const { callSid } = req.params;
 
-    // In production: use Twilio API to end call
     logger.info('Call end requested', { callSid });
 
     res.json({ success: true, message: 'Call ended' });
@@ -171,12 +155,12 @@ router.get('/scripts', authenticate, async (_req, res) => {
 });
 
 /**
- * GET /api/phone/voices
- * Get available AI voices
+ * GET /api/phone/status
+ * Get service status (demo mode, providers)
  */
-router.get('/voices', authenticate, async (_req, res) => {
-  const voices = phoneBotService.getVoices();
-  res.json({ success: true, data: voices });
+router.get('/service-status', authenticate, async (_req, res) => {
+  const status = phoneBotService.getStatus();
+  res.json({ success: true, data: status });
 });
 
 /**

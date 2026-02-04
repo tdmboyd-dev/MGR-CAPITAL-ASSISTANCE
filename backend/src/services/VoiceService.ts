@@ -1,4 +1,3 @@
-import { config } from "../config/env.js";
 import { logger } from "../utils/logger.js";
 
 interface STTResult {
@@ -11,17 +10,17 @@ interface TTSResult {
   format: string;
 }
 
-// API Keys
+// API Keys - Cloud AI providers only (no ElevenLabs)
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY;
 const GOOGLE_AI_KEY = process.env.GOOGLE_AI_KEY;
-const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY;
+const DEEPGRAM_API_KEY = process.env.DEEPGRAM_API_KEY;
 
 /**
  * VoiceService - Handles Speech-to-Text (STT) and Text-to-Speech (TTS)
  * Supports multiple providers with automatic fallback:
- * - STT: OpenAI Whisper, Deepgram, or browser-based
- * - TTS: ElevenLabs, browser-based, or silent fallback
+ * - STT: Deepgram (best value), OpenAI Whisper, or browser-based
+ * - TTS: Browser-based Web Speech API (FREE)
  * - AI: DeepSeek (95% cheaper), Gemini, OpenAI, or Ollama
  */
 export class VoiceService {
@@ -30,21 +29,31 @@ export class VoiceService {
   constructor() {
     this.ollamaUrl = process.env.OLLAMA_URL || "http://localhost:11434";
     logger.info('[VoiceService] Initialized with providers:', {
-      stt: OPENAI_API_KEY ? 'OpenAI Whisper' : 'Demo mode',
-      tts: ELEVENLABS_API_KEY ? 'ElevenLabs' : 'Browser-based',
+      stt: DEEPGRAM_API_KEY ? 'Deepgram' : (OPENAI_API_KEY ? 'OpenAI Whisper' : 'Demo mode'),
+      tts: 'Browser Web Speech API (FREE)',
       ai: DEEPSEEK_API_KEY ? 'DeepSeek' : (GOOGLE_AI_KEY ? 'Gemini' : 'Ollama'),
     });
   }
 
   /**
    * Speech-to-Text: Convert audio buffer to text
-   * Uses OpenAI Whisper API if available, else demo mode
+   * Uses Deepgram (best value) or OpenAI Whisper if available
    */
   async stt(audioBuffer: Buffer): Promise<STTResult> {
     try {
       logger.info("[VoiceService] STT: Processing audio buffer of size:", { size: audioBuffer.length });
 
-      // Try OpenAI Whisper first (best accuracy)
+      // Try Deepgram first (best value - $0.0043/min)
+      if (DEEPGRAM_API_KEY && audioBuffer.length > 1000) {
+        try {
+          const result = await this.deepgramSTT(audioBuffer);
+          if (result.transcript) return result;
+        } catch (e) {
+          logger.warn('[VoiceService] Deepgram STT failed, trying Whisper');
+        }
+      }
+
+      // Try OpenAI Whisper as backup
       if (OPENAI_API_KEY && audioBuffer.length > 1000) {
         try {
           const result = await this.whisperSTT(audioBuffer);
@@ -65,6 +74,30 @@ export class VoiceService {
       logger.error("[VoiceService] STT Error:", { error: error?.message || error });
       throw new Error("Speech-to-text processing failed");
     }
+  }
+
+  /**
+   * Deepgram STT implementation (best value - $0.0043/min)
+   */
+  private async deepgramSTT(audioBuffer: Buffer): Promise<STTResult> {
+    const response = await fetch('https://api.deepgram.com/v1/listen?model=nova-2&smart_format=true', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Token ${DEEPGRAM_API_KEY}`,
+        'Content-Type': 'audio/webm',
+      },
+      body: audioBuffer,
+    });
+
+    if (!response.ok) {
+      throw new Error(`Deepgram API error: ${response.status}`);
+    }
+
+    const data: any = await response.json();
+    return {
+      transcript: data.results?.channels?.[0]?.alternatives?.[0]?.transcript || '',
+      confidence: data.results?.channels?.[0]?.alternatives?.[0]?.confidence || 0.9,
+    };
   }
 
   /**
@@ -98,23 +131,11 @@ export class VoiceService {
 
   /**
    * Text-to-Speech: Convert text to audio
-   * Uses ElevenLabs if available, else returns empty for browser TTS
+   * Returns empty buffer - frontend uses Web Speech API (FREE)
    */
   async tts(text: string): Promise<TTSResult> {
     try {
-      logger.info("[VoiceService] TTS: Converting text to speech:", { text: text.substring(0, 50) });
-
-      // Try ElevenLabs first (best quality)
-      if (ELEVENLABS_API_KEY) {
-        try {
-          const audio = await this.elevenLabsTTS(text);
-          if (audio.length > 100) {
-            return { audio, format: 'audio/mpeg' };
-          }
-        } catch (e) {
-          logger.warn('[VoiceService] ElevenLabs TTS failed, using browser fallback');
-        }
-      }
+      logger.info("[VoiceService] TTS: Using browser Web Speech API (FREE)", { text: text.substring(0, 50) });
 
       // Return empty - frontend will use Web Speech API
       await new Promise((resolve) => setTimeout(resolve, 100));
@@ -130,44 +151,11 @@ export class VoiceService {
   }
 
   /**
-   * ElevenLabs TTS implementation
-   */
-  private async elevenLabsTTS(text: string): Promise<Buffer> {
-    const voiceId = '21m00Tcm4TlvDq8ikWAM'; // Rachel voice
-
-    const response = await fetch(
-      `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`,
-      {
-        method: 'POST',
-        headers: {
-          'xi-api-key': ELEVENLABS_API_KEY!,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          text,
-          model_id: 'eleven_multilingual_v2',
-          voice_settings: {
-            stability: 0.5,
-            similarity_boost: 0.75,
-          },
-        }),
-      }
-    );
-
-    if (!response.ok) {
-      throw new Error(`ElevenLabs API error: ${response.status}`);
-    }
-
-    const audioBuffer = await response.arrayBuffer();
-    return Buffer.from(audioBuffer);
-  }
-
-  /**
    * Process voice query through AI agent
    * Uses DeepSeek (cheapest), Gemini, OpenAI, or Ollama
    */
   async processVoiceQuery(transcript: string, userId?: string): Promise<string> {
-    const systemPrompt = `You are a helpful voice assistant for MGR Capital Assistance, a sovereign surplus and tax sale recovery platform.
+    const systemPrompt = `You are a helpful voice assistant for MGR Capital Assistant, a sovereign surplus and tax sale recovery platform.
 User query: "${transcript}"
 Respond naturally and concisely as if speaking. Keep responses under 100 words for voice output.`;
 
@@ -260,8 +248,8 @@ Respond naturally and concisely as if speaking. Keep responses under 100 words f
     }
 
     return {
-      stt: OPENAI_API_KEY ? 'whisper' : 'demo',
-      tts: ELEVENLABS_API_KEY ? 'elevenlabs' : 'browser',
+      stt: DEEPGRAM_API_KEY ? 'deepgram' : (OPENAI_API_KEY ? 'whisper' : 'demo'),
+      tts: 'browser', // Always browser-based (FREE)
       ai: aiProvider,
     };
   }
