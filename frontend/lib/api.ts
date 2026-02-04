@@ -1,8 +1,14 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
 
+// Use environment variable or fallback to relative path (for Next.js rewrites)
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL
+  ? `${process.env.NEXT_PUBLIC_API_URL}/api`
+  : "/api";
+
 const api = axios.create({
-  baseURL: "/api",
+  baseURL: API_BASE_URL,
   timeout: 30000,
+  withCredentials: true, // Important for cross-origin cookies
   headers: {
     "Content-Type": "application/json",
   },
