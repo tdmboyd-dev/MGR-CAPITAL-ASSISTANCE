@@ -161,9 +161,13 @@ const app = express();
 // MIDDLEWARE
 // ============================================
 
+// Trust proxy for accurate IP detection (Render uses reverse proxy)
+app.set("trust proxy", 1);
+
 app.use(cors({
   origin: config.corsOrigins,
-  credentials: true
+  credentials: true,
+  exposedHeaders: ["set-cookie"],
 }));
 app.use(cookieParser());
 app.use(express.json({ limit: "10mb" }));

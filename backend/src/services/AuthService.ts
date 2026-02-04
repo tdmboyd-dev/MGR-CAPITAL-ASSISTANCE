@@ -504,6 +504,8 @@ class AuthService {
 
   /**
    * Get cookie options for refresh token
+   * NOTE: For cross-origin setups (frontend on Vercel, backend on Render),
+   * sameSite must be "none" with secure: true for cookies to work
    */
   getRefreshTokenCookieOptions(): {
     httpOnly: boolean;
@@ -513,10 +515,15 @@ class AuthService {
     path: string;
     domain?: string;
   } {
+    // Cross-origin requires sameSite=none + secure=true
+    const isProduction = config.nodeEnv === "production";
+    const sameSite = (process.env.COOKIE_SAME_SITE as "strict" | "lax" | "none") ||
+      (isProduction ? "none" : "strict");
+
     return {
       httpOnly: true,
-      secure: config.cookieSecure,
-      sameSite: "strict",
+      secure: isProduction ? true : config.cookieSecure, // Always secure in production for sameSite=none
+      sameSite,
       maxAge: config.jwtRefreshExpiryDays * 24 * 60 * 60 * 1000,
       path: "/api/auth",
       domain: config.cookieDomain,

@@ -132,8 +132,12 @@ router.post(
     );
 
     if (!result.success || !result.tokens) {
-      // Clear invalid cookie
-      res.clearCookie(REFRESH_COOKIE_NAME, { path: "/api/auth" });
+      // Clear invalid cookie (must match sameSite/secure settings)
+      res.clearCookie(REFRESH_COOKIE_NAME, {
+        path: "/api/auth",
+        sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
+        secure: process.env.NODE_ENV === "production",
+      });
       throw new AppError(
         "Invalid refresh token",
         401,
@@ -180,8 +184,12 @@ router.post(
       }
     }
 
-    // Clear refresh cookie
-    res.clearCookie(REFRESH_COOKIE_NAME, { path: "/api/auth" });
+    // Clear refresh cookie (must match sameSite/secure settings)
+    res.clearCookie(REFRESH_COOKIE_NAME, {
+      path: "/api/auth",
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
+      secure: process.env.NODE_ENV === "production",
+    });
 
     res.json({
       success: true,
@@ -220,8 +228,12 @@ router.post(
       },
     });
 
-    // Clear refresh cookie
-    res.clearCookie(REFRESH_COOKIE_NAME, { path: "/api/auth" });
+    // Clear refresh cookie (must match sameSite/secure settings)
+    res.clearCookie(REFRESH_COOKIE_NAME, {
+      path: "/api/auth",
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
+      secure: process.env.NODE_ENV === "production",
+    });
 
     res.json({
       success: true,
