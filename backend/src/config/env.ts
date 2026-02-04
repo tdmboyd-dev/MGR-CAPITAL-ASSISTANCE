@@ -18,7 +18,14 @@ export const config = {
 
   // Cookie settings
   cookieSecure: process.env.COOKIE_SECURE !== "false", // Default true
-  cookieDomain: process.env.COOKIE_DOMAIN || undefined,
+  // Clean up cookie domain - empty strings, quotes, etc. should be undefined
+  cookieDomain: (() => {
+    const domain = process.env.COOKIE_DOMAIN;
+    if (!domain || domain === "''" || domain === '""' || domain.trim() === "") {
+      return undefined;
+    }
+    return domain;
+  })(),
 
   // CORS settings
   corsOrigins: process.env.CORS_ORIGINS?.split(",").map(s => s.trim()) || [

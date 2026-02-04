@@ -520,13 +520,19 @@ class AuthService {
     const sameSite = (process.env.COOKIE_SAME_SITE as "strict" | "lax" | "none") ||
       (isProduction ? "none" : "strict");
 
+    // Clean up domain - undefined, empty, or "''" should all be undefined
+    let domain = config.cookieDomain;
+    if (!domain || domain === "''" || domain === '""' || domain.trim() === "") {
+      domain = undefined;
+    }
+
     return {
       httpOnly: true,
       secure: isProduction ? true : config.cookieSecure, // Always secure in production for sameSite=none
       sameSite,
       maxAge: config.jwtRefreshExpiryDays * 24 * 60 * 60 * 1000,
       path: "/api/auth",
-      domain: config.cookieDomain,
+      domain,
     };
   }
 }
