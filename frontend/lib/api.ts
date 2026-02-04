@@ -1,9 +1,30 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
 
-// Use environment variable or fallback to relative path (for Next.js rewrites)
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL
-  ? `${process.env.NEXT_PUBLIC_API_URL}/api`
-  : "/api";
+// Determine API base URL
+// In production (browser on capitalmgr.com), use the backend directly
+// In development or SSR, use relative path for Next.js rewrites
+function getApiBaseUrl(): string {
+  // Check for explicit env var first
+  if (process.env.NEXT_PUBLIC_API_URL) {
+    return `${process.env.NEXT_PUBLIC_API_URL}/api`;
+  }
+
+  // In browser, detect production by hostname
+  if (typeof window !== "undefined") {
+    const hostname = window.location.hostname;
+    if (hostname === "capitalmgr.com" || hostname === "www.capitalmgr.com") {
+      return "https://api.capitalmgr.com/api";
+    }
+    if (hostname.includes("vercel.app")) {
+      return "https://api.capitalmgr.com/api";
+    }
+  }
+
+  // Default to relative path (for local dev with Next.js rewrites)
+  return "/api";
+}
+
+const API_BASE_URL = getApiBaseUrl();
 
 const api = axios.create({
   baseURL: API_BASE_URL,
