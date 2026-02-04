@@ -162,7 +162,7 @@ const app = express();
 // ============================================
 
 app.use(cors({
-  origin: ["http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:3011", "http://127.0.0.1:3011"],
+  origin: config.corsOrigins,
   credentials: true
 }));
 app.use(cookieParser());

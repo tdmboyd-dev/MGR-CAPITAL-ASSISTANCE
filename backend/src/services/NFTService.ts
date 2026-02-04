@@ -139,7 +139,11 @@ export class NFTService {
       try {
         // Dynamic import to avoid loading if not needed
         const { Connection, Keypair, PublicKey, clusterApiUrl } = await import('@solana/web3.js');
-        const { createMint, getOrCreateAssociatedTokenAccount, mintTo } = await import('@solana/spl-token');
+        // @ts-ignore - SPL Token version compatibility
+        const splToken = await import('@solana/spl-token') as any;
+        const createMint = splToken.createMint || splToken.default?.createMint;
+        const getOrCreateAssociatedTokenAccount = splToken.getOrCreateAssociatedTokenAccount || splToken.default?.getOrCreateAssociatedTokenAccount;
+        const mintTo = splToken.mintTo || splToken.default?.mintTo;
 
         // Parse private key
         const privateKeyArray = JSON.parse(SOLANA_PRIVATE_KEY);

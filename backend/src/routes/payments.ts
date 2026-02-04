@@ -1,6 +1,15 @@
 /**
  * Payment Routes — MGR CAPITAL ASSISTANCE
- * Nickel ACH integration for automatic fee collection
+ * Complete Nickel Payment Platform Integration
+ *
+ * FEATURES:
+ * - ACH Payments (FREE) - Collect fees from clients
+ * - Card Payments (2.9%) - Accept card payments via payment links
+ * - Bill Pay - Pay vendors/contractors/clients via ACH or check
+ * - Invoicing - Create invoices with payment links
+ * - Auto-Collection - Automatic fee collection when cases settle
+ *
+ * Sign up at: https://getnickel.com
  */
 
 import { Router } from "express";
@@ -295,8 +304,231 @@ router.post("/:paymentId/block", authenticate, async (req: any, res) => {
 });
 
 // ============================================
+// NICKEL PAYMENT LINKS (Card + ACH)
+// ============================================
+
+/**
+ * POST /api/payments/payment-link
+ * Create a payment link (client can pay via card or ACH)
+ */
+router.post("/payment-link", authenticate, async (req, res) => {
+  try {
+    const { amount, description, clientEmail, clientName, caseId, redirectUrl } = req.body;
+
+    if (!amount || !clientEmail || !clientName) {
+      return res.status(400).json({
+        error: "Missing required fields: amount, clientEmail, clientName",
+      });
+    }
+
+    const result = await nickelPaymentService.createPaymentLink({
+      amount,
+      description: description || "MGR Capital Payment",
+      clientEmail,
+      clientName,
+      caseId,
+      redirectUrl,
+    });
+
+    res.json(result);
+  } catch (error: any) {
+    logger.error("Payment link creation failed", { error: error.message });
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============================================
+// NICKEL BILL PAY (Outbound Payments)
+// ============================================
+
+/**
+ * POST /api/payments/recipients
+ * Create a bill pay recipient (vendor, contractor, client)
+ */
+router.post("/recipients", authenticate, async (req, res) => {
+  try {
+    const { name, email, phone, bankAccount, address, preferredMethod } = req.body;
+
+    if (!name) {
+      return res.status(400).json({ error: "Missing required field: name" });
+    }
+
+    const recipient = await nickelPaymentService.createBillPayRecipient({
+      name,
+      email,
+      phone,
+      bankAccount,
+      address,
+      preferredMethod: preferredMethod || "ach",
+    });
+
+    res.status(201).json({ success: true, recipient });
+  } catch (error: any) {
+    logger.error("Recipient creation failed", { error: error.message });
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * POST /api/payments/bill-pay
+ * Send payment to a vendor/contractor (ACH or check)
+ */
+router.post("/bill-pay", authenticate, async (req: any, res) => {
+  try {
+    const { recipientId, amount, method, description, memo, caseId, scheduledDate } = req.body;
+
+    if (!recipientId || !amount) {
+      return res.status(400).json({
+        error: "Missing required fields: recipientId, amount",
+      });
+    }
+
+    // Only FOUNDER/ADMIN can send payments
+    if (!req.user?.role || !['FOUNDER', 'ADMIN'].includes(req.user.role)) {
+      return res.status(403).json({ error: "Insufficient permissions to send payments" });
+    }
+
+    const result = await nickelPaymentService.sendBillPayment(
+      recipientId,
+      amount,
+      method || "ach",
+      description || "Payment from MGR Capital",
+      {
+        memo,
+        caseId,
+        scheduledDate: scheduledDate ? new Date(scheduledDate) : undefined,
+      }
+    );
+
+    res.json(result);
+  } catch (error: any) {
+    logger.error("Bill payment failed", { error: error.message });
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * POST /api/payments/client-payout
+ * Pay out to a client after case recovery
+ */
+router.post("/client-payout", authenticate, async (req: any, res) => {
+  try {
+    const { clientId, amount, caseId, method } = req.body;
+
+    if (!clientId || !amount || !caseId) {
+      return res.status(400).json({
+        error: "Missing required fields: clientId, amount, caseId",
+      });
+    }
+
+    // Only FOUNDER/ADMIN can process payouts
+    if (!req.user?.role || !['FOUNDER', 'ADMIN'].includes(req.user.role)) {
+      return res.status(403).json({ error: "Insufficient permissions to process payouts" });
+    }
+
+    const result = await nickelPaymentService.payoutToClient(
+      clientId,
+      amount,
+      caseId,
+      method || "ach"
+    );
+
+    logger.info("Client payout initiated", { clientId, amount, caseId });
+    res.json(result);
+  } catch (error: any) {
+    logger.error("Client payout failed", { error: error.message });
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============================================
+// NICKEL INVOICING
+// ============================================
+
+/**
+ * POST /api/payments/invoices
+ * Create and send an invoice
+ */
+router.post("/invoices", authenticate, async (req, res) => {
+  try {
+    const { clientId, amount, description, caseId, dueDate, lineItems, allowedMethods, sendEmail } = req.body;
+
+    if (!clientId || !amount) {
+      return res.status(400).json({
+        error: "Missing required fields: clientId, amount",
+      });
+    }
+
+    const result = await nickelPaymentService.createInvoice(clientId, amount, description || "MGR Capital Invoice", {
+      caseId,
+      dueDate: dueDate ? new Date(dueDate) : undefined,
+      lineItems,
+      allowedMethods,
+      sendEmail: sendEmail ?? true,
+    });
+
+    res.status(201).json(result);
+  } catch (error: any) {
+    logger.error("Invoice creation failed", { error: error.message });
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============================================
+// NICKEL REPORTING
+// ============================================
+
+/**
+ * GET /api/payments/summary
+ * Get payment summary for dashboard
+ */
+router.get("/summary", authenticate, async (req, res) => {
+  try {
+    const { startDate, endDate, caseId } = req.query;
+
+    const summary = await nickelPaymentService.getPaymentSummary({
+      startDate: startDate ? new Date(startDate as string) : undefined,
+      endDate: endDate ? new Date(endDate as string) : undefined,
+      caseId: caseId as string | undefined,
+    });
+
+    res.json({ success: true, data: summary });
+  } catch (error: any) {
+    logger.error("Payment summary failed", { error: error.message });
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============================================
 // WEBHOOKS (No auth - verified by signatures)
 // ============================================
+
+/**
+ * POST /api/payments/webhook/nickel
+ * Handle Nickel webhook events
+ */
+router.post("/webhook/nickel", async (req, res) => {
+  try {
+    const signature = req.headers["x-nickel-signature"] as string;
+    const payload = JSON.stringify(req.body);
+
+    // Verify signature
+    if (!nickelPaymentService.verifyWebhookSignature(payload, signature)) {
+      logger.warn("Nickel webhook signature verification failed");
+      return res.status(401).json({ error: "Invalid signature" });
+    }
+
+    const { event, data } = req.body;
+    logger.info("Nickel webhook received", { event });
+
+    await nickelPaymentService.handleWebhook(event, data);
+
+    res.json({ received: true });
+  } catch (error: any) {
+    logger.error("Nickel webhook error", { error: error.message });
+    res.status(500).json({ error: error.message });
+  }
+});
 
 /**
  * POST /api/payments/webhook/stripe
@@ -403,21 +635,21 @@ router.post("/webhook/paypal", async (req, res) => {
 });
 
 /**
- * POST /api/payments/webhook/docusign
- * Handle DocuSign webhook events
+ * POST /api/payments/webhook/opensign
+ * Handle OpenSign webhook events (FREE e-signatures)
  */
-router.post("/webhook/docusign", async (req, res) => {
+router.post("/webhook/opensign", async (req, res) => {
   try {
     const { documentSigningService } = await import("../services/DocumentSigningService.js");
     const event = req.body;
 
-    logger.info("DocuSign webhook received", { event: event.event });
+    logger.info("OpenSign webhook received", { event: event.event });
 
-    await documentSigningService.handleWebhook("docusign", event);
+    await documentSigningService.handleWebhook("opensign", event);
 
     res.json({ received: true });
   } catch (error: any) {
-    logger.error("DocuSign webhook error", { error: error.message });
+    logger.error("OpenSign webhook error", { error: error.message });
     res.status(500).json({ error: error.message });
   }
 });

@@ -4,15 +4,17 @@ import {
   PublicKey,
   clusterApiUrl
 } from '@solana/web3.js';
-import {
-  createMint,
-  getOrCreateAssociatedTokenAccount,
-  mintTo,
-  transfer,
-  getAccount,
-  TOKEN_PROGRAM_ID
-} from '@solana/spl-token';
 import { PrismaClient } from '@prisma/client';
+
+// SPL Token - dynamically handle different versions
+// @ts-ignore - Version compatibility
+const splToken = require('@solana/spl-token') as any;
+const createMint = splToken.createMint || splToken.default?.createMint;
+const getOrCreateAssociatedTokenAccount = splToken.getOrCreateAssociatedTokenAccount || splToken.default?.getOrCreateAssociatedTokenAccount;
+const mintTo = splToken.mintTo || splToken.default?.mintTo;
+const transfer = splToken.transfer || splToken.default?.transfer;
+const getAccount = splToken.getAccount || splToken.default?.getAccount;
+const TOKEN_PROGRAM_ID = splToken.TOKEN_PROGRAM_ID;
 
 const prisma = new PrismaClient();
 

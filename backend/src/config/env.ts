@@ -20,6 +20,12 @@ export const config = {
   cookieSecure: process.env.COOKIE_SECURE !== "false", // Default true
   cookieDomain: process.env.COOKIE_DOMAIN || undefined,
 
+  // CORS settings
+  corsOrigins: process.env.CORS_ORIGINS?.split(",").map(s => s.trim()) || [
+    "http://localhost:3000",
+    "http://localhost:3011",
+  ],
+
   // Rate limiting (very lenient in development for debugging)
   rateLimitWindowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || "900000", 10), // 15 min
   rateLimitMaxRequests: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || "1000", 10),
