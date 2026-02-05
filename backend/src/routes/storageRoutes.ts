@@ -57,14 +57,23 @@ const PROVIDER_TEMPLATES: Record<string, any> = {
     setupGuide:
       "IDrive e2 Dashboard → Create Bucket → Access Keys → Create Access Key → Paste here. Endpoint from your e2 region dashboard.",
   },
-  "tebi-io": {
-    displayName: "Tebi.io (Free 25GB)",
+  "scaleway-os": {
+    displayName: "Scaleway (Free 75GB)",
     type: "S3",
-    config: { region: "global", endpoint: "https://s3.tebi.io" },
-    capacityBytes: 25 * 1024 * 1024 * 1024, // 25GB free (2 copies, 250GB egress/mo)
+    config: { region: "nl-ams" },
+    capacityBytes: 75 * 1024 * 1024 * 1024, // 75GB free (ONEZONE_IA class)
+    credentialFields: ["endpoint", "accessKeyId", "secretAccessKey", "bucket"],
+    setupGuide:
+      "1) Sign up at scaleway.com (ID verification required)\n2) Go to Object Storage → Create Bucket in Amsterdam (nl-ams) or Warsaw (pl-waw) — NOT Paris\n3) IMPORTANT: Use ONEZONE_IA storage class (Amsterdam/Warsaw default to this = free)\n4) Go to IAM → API Keys → Generate new key\n5) Endpoint: https://s3.nl-ams.scw.cloud (Amsterdam) or https://s3.pl-waw.scw.cloud (Warsaw)\n6) 75GB free — largest free S3 tier available",
+  },
+  "tigris-storage": {
+    displayName: "Tigris (Free 5GB)",
+    type: "S3",
+    config: { region: "auto", endpoint: "https://fly.storage.tigris.dev" },
+    capacityBytes: 5 * 1024 * 1024 * 1024, // 5GB free, zero egress
     credentialFields: ["accessKeyId", "secretAccessKey", "bucket"],
     setupGuide:
-      "1) Sign up FREE at tebi.io\n2) Go to client.tebi.io/buckets → Create Bucket (e.g. 'mgr-capital-docs')\n3) Go to client.tebi.io/keys → Create key → click SHOW SECRET\n4) Paste Access Key + Secret below\n5) Endpoint (s3.tebi.io) and region (global) are auto-configured",
+      "1) Sign up at tigrisdata.com or via Fly.io dashboard\n2) Create a storage bucket\n3) Go to API Keys → Generate credentials\n4) Endpoint (fly.storage.tigris.dev) is auto-configured\n5) 5GB free, zero egress fees, globally distributed, S3-compatible",
   },
   "supabase-storage": {
     displayName: "Supabase Storage (Free 1GB)",
