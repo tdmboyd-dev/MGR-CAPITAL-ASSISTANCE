@@ -42,6 +42,7 @@
     "express": "^4.18.2",
     "express-rate-limit": "^8.2.1",
     "helmet": "^8.1.0",
+    "imapflow": "^1.2.8",
     "jsonwebtoken": "^9.0.2",
     "mjml": "^4.18.0",
     "multer": "^2.0.2",
@@ -61,6 +62,7 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@types/imapflow": "^1.0.23",
     "@types/jest": "^30.0.0",
     "@types/supertest": "^6.0.3",
     "cypress": "^14.0.0",
