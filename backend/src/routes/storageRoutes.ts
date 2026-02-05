@@ -57,14 +57,32 @@ const PROVIDER_TEMPLATES: Record<string, any> = {
     setupGuide:
       "IDrive e2 Dashboard → Create Bucket → Access Keys → Create Access Key → Paste here. Endpoint from your e2 region dashboard.",
   },
+  "filebase-ipfs": {
+    displayName: "Filebase (IPFS — Free 5GB)",
+    type: "S3",
+    config: { region: "us-east-1" },
+    capacityBytes: 5 * 1024 * 1024 * 1024, // 5GB free (+ up to 100GB via referrals)
+    credentialFields: ["accessKeyId", "secretAccessKey", "bucket"],
+    setupGuide:
+      "Sign up FREE at filebase.com (5GB free, no credit card). Create IPFS bucket → Access Keys → Copy Access Key & Secret. Endpoint: https://s3.filebase.com. S3-compatible, auto-pins to IPFS with 3x global redundancy.",
+  },
+  "pcloud-free": {
+    displayName: "pCloud (Free 10GB)",
+    type: "PCLOUD",
+    config: {},
+    capacityBytes: 10 * 1024 * 1024 * 1024, // 10GB free
+    credentialFields: ["accessToken", "locationId"],
+    setupGuide:
+      'Sign up FREE at pcloud.com (10GB free — verify email + upload a file to unlock full 10GB). Then: my.pcloud.com → Settings → App → Create new app → Generate access token → Paste here. Location: "us" for US, "eu" for EU. Full API access, zero cost.',
+  },
   pcloud: {
-    displayName: "pCloud (Lifetime)",
+    displayName: "pCloud (Lifetime 2TB)",
     type: "PCLOUD",
     config: {},
     capacityBytes: 2 * 1024 * 1024 * 1024 * 1024, // 2TB
     credentialFields: ["accessToken", "locationId"],
     setupGuide:
-      'Buy pCloud 2TB Lifetime → Go to my.pcloud.com → Settings → App → Create new app → Generate access token → Paste here. Location: "us" for US datacenter, "eu" for EU.',
+      'Buy pCloud 2TB Lifetime ($279-$399) → my.pcloud.com → Settings → App → Create new app → Generate access token → Paste here. Location: "us" for US, "eu" for EU.',
   },
 };
 
