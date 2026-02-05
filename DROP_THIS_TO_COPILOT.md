@@ -3,13 +3,62 @@
 ## COMPLETE SYSTEM DOCUMENTATION
 
 **Last Updated:** 2026-02-05
-**Status:** ALL TYPESCRIPT ERRORS FIXED — 0 backend errors, frontend build passes — 100% Production Ready
+**Status:** SECURITY AUDIT COMPLETE — Helmet.js, rate limiting, XSS protection, shadow accounting leaks fixed
 **All mock data removed, all pages connected to real API**
 **Login:** admin@capitalmgr.com / Dorothy1956!
 
 ---
 
-## LATEST SESSION (2026-02-05) — Smart Storage Router + MinIO on Contabo
+## LATEST SESSION (2026-02-05) — Comprehensive Security Audit + Leaderboard + Alerts Chamber
+
+### What Was Done
+1. **Comprehensive 5-agent parallel audit** of entire codebase (91 frontend pages, 55 route files, all services, all bots/crons, schema+middleware)
+2. **13 critical security fixes applied** — XSS, shadow accounting leaks, role escalation, missing security headers
+3. **Enhanced Leaderboard System** — Company-wide + tier-by-tier rankings with EmployeeIncentive model
+4. **Alerts Chamber + BotBuddy** — FOUNDER chat for plain English alert dispatch (single user, role blast, platform-wide)
+5. **KidBuddy** — Child company owner scoped version, auto-provisioned by bots upon payment
+6. **Child company features hidden** from employees below TIER_3 (growth surprise)
+
+### Critical Security Fixes Applied
+| Issue | File | Fix |
+|-------|------|-----|
+| No Helmet.js | server.ts | Added security headers (CSP, HSTS, X-Frame-Options) |
+| No rate limiting | server.ts | Added generalRateLimiter |
+| XSS training | training/[id]/page.tsx | sanitizeHtml() |
+| XSS email | inbox/page.tsx | sanitizeHtml() |
+| Admin creates FOUNDER | admin/users/page.tsx | Removed FOUNDER from role list |
+| surplusAmountCents exposed | child-company/cases/page.tsx | Changed to estimatedValueCents |
+| "Shadow Revenue" term | child-company/page.tsx | "Revenue Share Partnership" |
+| parentRevenueSharePercent | child-company/payouts/page.tsx | "Platform Fee: Included" |
+| MetaBot 0% success | metaBot.ts | Fixed filter for both status/success fields |
+| Tenant isolation partial | tenantMiddleware.ts | Added update/delete/count/aggregate |
+| Billing rounding | childCompanyBillingCron.ts | Math.floor instead of round |
+| Billing date bug | botBillingCron.ts | Advance from subscription date |
+| analytics surplus leak | analytics.ts | FOUNDER-only filtering |
+
+### New Features
+- **Leaderboard:** `/founder/leaderboard`, `/employee/leaderboard` — rank by tier, company, team
+- **Alerts Chamber:** `/founder/alerts-chamber` — BotBuddy chat with quick commands
+- **KidBuddy:** `/employee/alerts-chamber` — scoped to child company (TIER_3+ only)
+- **Incentives:** POST /api/employees/incentive — FOUNDER sends awards/bonuses with company-wide alerts
+
+### New Files
+- `backend/src/services/AlertsChamberService.ts`
+- `backend/src/routes/alertsChamberRoutes.ts`
+- `frontend/app/founder/alerts-chamber/page.tsx`
+- `frontend/app/employee/alerts-chamber/page.tsx`
+- `frontend/app/employee/leaderboard/page.tsx`
+- `frontend/app/founder/leaderboard/page.tsx`
+
+### Remaining Issues Documented (Future Sprint)
+- 30+ backend routes still need role guards (documented in audit)
+- 30+ schema relations missing onDelete CASCADE
+- Several services expose shadow accounting data (routes must filter)
+- WebSocket collaboration has no auth (needs token validation)
+
+---
+
+## PREVIOUS SESSION (2026-02-05) — Smart Storage Router + MinIO on Contabo
 
 ### What Was Done
 1. **Smart Storage Router** — Multi-provider storage engine with intelligent file routing
