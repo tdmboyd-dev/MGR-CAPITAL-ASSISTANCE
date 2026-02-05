@@ -158,6 +158,9 @@ import masterSettingsRoutes from "./routes/masterSettingsRoutes.js";
 // Autonomous Worker Bots (Phase 30 — 10 AI workers that work entire cases)
 import workerBotRoutes from "./routes/workerBotRoutes.js";
 
+// Smart Storage Router (Multi-Provider Storage Engine)
+import storageRoutes from "./routes/storageRoutes.js";
+
 // Scheduler (autopilot crons)
 import scheduler from "./cron/scheduler.js";
 
@@ -347,6 +350,9 @@ app.use("/api/sms-templates", smsTemplateRoutes);
 
 // Autonomous Worker Bots (10 AI workers — FOUNDER ONLY)
 app.use("/api/worker-bots", workerBotRoutes);
+
+// Smart Storage Router (Multi-Provider Storage — FOUNDER ONLY)
+app.use("/api/storage", storageRoutes);
 
 // ============================================
 // HEALTH CHECK

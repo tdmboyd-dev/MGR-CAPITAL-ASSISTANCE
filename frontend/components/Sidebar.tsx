@@ -34,6 +34,7 @@ import {
   Network,
   UserCog,
   Zap,
+  HardDrive,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -84,6 +85,7 @@ const linksByRole: Record<string, NavLink[]> = {
     { href: "/founder/nft", label: "NFT Claims", icon: Blocks },
     { href: "/founder/genealogy", label: "Genealogy", icon: Network },
     { href: "/founder/vr-simulation", label: "VR Simulation", icon: Eye },
+    { href: "/founder/storage", label: "Storage Engine", icon: HardDrive },
     { href: "/founder/config", label: "Configuration", icon: Settings },
   ],
   admin: [

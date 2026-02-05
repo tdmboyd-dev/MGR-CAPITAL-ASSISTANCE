@@ -487,6 +487,9 @@ model Document {
   contentLength   Int?
   filename        String?
 
+  // Storage Router — file registry links
+  fileRegistries  FileRegistry[]
+
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
 
@@ -3239,5 +3242,57 @@ model WorkerBotLearning {
   @@index([workerBotId])
   @@index([category])
   @@index([confidence])
+}
+
+// ============================================
+// SMART STORAGE ROUTER — Multi-Provider Storage Engine
+// Intelligent file storage across multiple free-tier S3 providers + pCloud
+// ============================================
+
+enum StorageProviderType {
+  LOCAL        // Current filesystem
+  S3           // Any S3-compatible (R2, Oracle, B2, IDrive)
+  PCLOUD       // pCloud proprietary REST API
+}
+
+model StorageProvider {
+  id              String              @id @default(cuid())
+  name            String              @unique  // "cloudflare-r2", "oracle-cloud", "backblaze-b2", "pcloud", "local"
+  displayName     String                       // "Cloudflare R2"
+  type            StorageProviderType
+  isEnabled       Boolean             @default(false)
+  priority        Int                 @default(50)  // Lower = preferred (10=primary, 50=default, 90=cold)
+  credentials     Json?                        // Encrypted: { accessKeyId, secretAccessKey, endpoint, bucket } or { pcloudToken }
+  config          Json?                        // { region, maxSizeBytes, allowedMimeTypes, etc. }
+  capacityBytes   BigInt              @default(0)   // Provider capacity (e.g., 10GB for R2)
+  usedBytes       BigInt              @default(0)   // Current usage
+  lastHealthCheck DateTime?
+  isHealthy       Boolean             @default(true)
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  files           FileRegistry[]
+}
+
+model FileRegistry {
+  id              String           @id @default(cuid())
+  documentId      String?                    // Links to existing Document model
+  document        Document?        @relation(fields: [documentId], references: [id], onDelete: SetNull)
+  providerId      String
+  provider        StorageProvider  @relation(fields: [providerId], references: [id])
+  providerPath    String                     // Path within the provider (bucket key or pCloud path)
+  fileName        String
+  fileSize        BigInt
+  mimeType        String?
+  sha256Hash      String                     // For integrity verification
+  isReplicated    Boolean          @default(false)  // Exists in 2+ providers
+  replicaOf       String?                    // ID of primary FileRegistry entry
+  accessCount     Int              @default(0)
+  lastAccessedAt  DateTime?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  @@index([documentId])
+  @@index([providerId])
+  @@index([sha256Hash])
 }
 

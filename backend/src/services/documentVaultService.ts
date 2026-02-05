@@ -9,6 +9,7 @@ import * as fs from "fs/promises";
 import * as path from "path";
 import * as crypto from "crypto";
 import prisma from "../lib/prisma.js";
+import { storageRouter } from "./storage/StorageRouter.js";
 
 // Base storage path - configurable via environment
 const STORAGE_BASE_PATH = process.env.DOCUMENT_STORAGE_PATH ||
@@ -118,25 +119,14 @@ class DocumentVaultService {
         };
       }
 
-      // Ensure case directory exists
-      const casePath = await this.ensureCaseDirectory(params.caseId);
-
       // Generate secure filename
       const timestamp = Date.now();
       const hash = crypto.randomBytes(8).toString("hex");
       const ext = path.extname(params.fileName) || this.getExtensionFromMime(params.mimeType);
       const secureFileName = `${params.type}_${timestamp}_${hash}${ext}`;
-
-      // Full file path
-      const fullPath = path.join(casePath, secureFileName);
-
-      // Relative path (for database storage)
       const relativePath = path.join(params.caseId, secureFileName);
 
-      // Write file to disk
-      await fs.writeFile(fullPath, params.buffer);
-
-      // Create document record
+      // Create document record first (need the ID for FileRegistry linking)
       const document = await prisma.document.create({
         data: {
           caseId: params.caseId,
@@ -152,6 +142,23 @@ class DocumentVaultService {
           generatedContent: params.generatedContent,
         },
       });
+
+      // Upload via StorageRouter (smart multi-provider routing)
+      const routerResult = await storageRouter.upload({
+        caseId: params.caseId,
+        fileName: secureFileName,
+        data: params.buffer,
+        mimeType: params.mimeType,
+        documentId: document.id,
+      });
+
+      if (!routerResult.success) {
+        // Fallback: write directly to local filesystem
+        console.warn("[DocumentVault] StorageRouter failed, falling back to local fs:", routerResult.error);
+        const casePath = await this.ensureCaseDirectory(params.caseId);
+        const fullPath = path.join(casePath, secureFileName);
+        await fs.writeFile(fullPath, params.buffer);
+      }
 
       return {
         success: true,
@@ -211,13 +218,24 @@ class DocumentVaultService {
         return { success: false, error: "Document not found" };
       }
 
+      // Try StorageRouter first (checks FileRegistry for multi-provider files)
+      const routerResult = await storageRouter.download({ documentId });
+      if (routerResult.success && routerResult.data) {
+        return {
+          success: true,
+          buffer: routerResult.data,
+          fileName: routerResult.fileName || document.fileName,
+          mimeType: routerResult.mimeType || document.mimeType,
+        };
+      }
+
+      // Fallback: read directly from local filesystem (legacy files)
       if (!document.filePath) {
         return { success: false, error: "Document file path not set" };
       }
 
       const fullPath = path.join(STORAGE_BASE_PATH, document.filePath);
 
-      // Check if file exists
       try {
         await fs.access(fullPath);
       } catch {
@@ -366,14 +384,16 @@ class DocumentVaultService {
         return { success: false, error: "Document not found" };
       }
 
-      // Delete file from disk if it exists
+      // Delete from all storage providers via StorageRouter
+      await storageRouter.deleteByDocumentId(documentId);
+
+      // Also try to delete from local filesystem (legacy files)
       if (document.filePath) {
         const fullPath = path.join(STORAGE_BASE_PATH, document.filePath);
         try {
           await fs.unlink(fullPath);
         } catch (err) {
           // File may not exist, continue with record deletion
-          console.warn(`[DocumentVault] File not found for deletion: ${fullPath}`);
         }
       }
 
