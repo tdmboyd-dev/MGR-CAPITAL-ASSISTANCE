@@ -318,8 +318,8 @@ router.get("/my/:id", authMiddleware, async (req: AuthRequest, res: Response) =>
       return res.status(404).json({ success: false, error: "Case not found" });
     }
 
-    // Transform for client-friendly response
-    const responseData = {
+    // Transform for role-appropriate response
+    const responseData: any = {
       ...caseData,
       caseCode: caseData.caseCode || caseData.internalCode || caseData.id.slice(0, 8).toUpperCase(),
       documents: caseData.documents.map((d: any) => ({
@@ -329,9 +329,16 @@ router.get("/my/:id", authMiddleware, async (req: AuthRequest, res: Response) =>
       }))
     };
 
-    // Hide internal code for clients
+    // Redact for non-FOUNDER roles
+    if (user.role !== "FOUNDER") {
+      delete responseData.estimatedFeeCents;
+      delete responseData.actualFeeCents;
+      delete responseData.recoveryAmountCents;
+    }
+
+    // Hide internal code and employee info for clients
     if (user.role === "CLIENT") {
-      delete (responseData as any).internalCode;
+      delete responseData.internalCode;
     }
 
     res.json({
@@ -498,9 +505,23 @@ router.get("/", authMiddleware, async (req: AuthRequest, res: Response) => {
       prisma.case.count({ where }),
     ]);
 
+    // Redact sensitive financial data for non-FOUNDER roles
+    const isFounder = user.role === "FOUNDER";
+    const redactedCases = cases.map((c: any) => {
+      if (isFounder) return c;
+      // Employees and clients should NOT see surplus amounts or fee details
+      const { surplusAmountCents, estimatedFeeCents, actualFeeCents, clientPayoutCents, feePercent, notes, ...safe } = c;
+      // Clients also shouldn't see employee details or internal notes
+      if (user.role === "CLIENT") {
+        const { assignedEmployee, ...clientSafe } = safe;
+        return clientSafe;
+      }
+      return safe;
+    });
+
     res.json({
       success: true,
-      data: cases,
+      data: redactedCases,
       total,
       page: pageNum,
       pageSize: pageSizeNum,

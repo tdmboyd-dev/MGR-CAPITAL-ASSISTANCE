@@ -14,6 +14,7 @@
 
 import { Router } from "express";
 import { authenticate } from "../middleware/authMiddleware.js";
+import { roleGuard } from "../middleware/roleGuard.js";
 import { nickelPaymentService } from "../services/NickelPaymentService.js";
 import { logger } from "../utils/logger.js";
 
@@ -185,7 +186,7 @@ router.delete("/authorize/:authorizationId", authenticate, async (req, res) => {
  * POST /api/payments/calculate-fee
  * Calculate fee based on surplus and contingency
  */
-router.post("/calculate-fee", async (req, res) => {
+router.post("/calculate-fee", authenticate, async (req, res) => {
   const { surplusAmount, contingencyPercent } = req.body;
 
   if (!surplusAmount) {
@@ -204,7 +205,7 @@ router.post("/calculate-fee", async (req, res) => {
  * GET /api/payments/status
  * Get payment service status
  */
-router.get("/service/status", authenticate, async (_req, res) => {
+router.get("/service/status", authenticate, roleGuard(["FOUNDER"]), async (_req, res) => {
   const status = nickelPaymentService.getStatus();
   res.json(status);
 });
@@ -219,7 +220,13 @@ router.get("/", authenticate, async (req, res) => {
     const offset = parseInt(req.query.offset as string) || 0;
 
     // Import PaymentService for list functionality
-    const { paymentService } = await import("../services/PaymentService.js");
+    let paymentService;
+    try {
+      ({ paymentService } = await import("../services/PaymentService.js"));
+    } catch (importErr: any) {
+      logger.error("Failed to load PaymentService", { error: importErr.message });
+      return res.status(503).json({ error: "Payment service unavailable" });
+    }
     const payments = await paymentService.listPayments(limit, offset);
 
     res.json({ success: true, data: payments });
@@ -235,7 +242,13 @@ router.get("/", authenticate, async (req, res) => {
  */
 router.get("/metrics", authenticate, async (_req, res) => {
   try {
-    const { paymentService } = await import("../services/PaymentService.js");
+    let paymentService;
+    try {
+      ({ paymentService } = await import("../services/PaymentService.js"));
+    } catch (importErr: any) {
+      logger.error("Failed to load PaymentService", { error: importErr.message });
+      return res.status(503).json({ error: "Payment service unavailable" });
+    }
     const metrics = await paymentService.getMetrics();
 
     res.json({ success: true, data: metrics });
@@ -259,7 +272,13 @@ router.post("/:paymentId/approve", authenticate, async (req: any, res) => {
       return res.status(403).json({ error: "Only founders can approve payments" });
     }
 
-    const { paymentService } = await import("../services/PaymentService.js");
+    let paymentService;
+    try {
+      ({ paymentService } = await import("../services/PaymentService.js"));
+    } catch (importErr: any) {
+      logger.error("Failed to load PaymentService", { error: importErr.message });
+      return res.status(503).json({ error: "Payment service unavailable" });
+    }
     const result = await paymentService.approvePayment(paymentId, req.user.userId, notes);
 
     if (!result) {
@@ -288,7 +307,13 @@ router.post("/:paymentId/block", authenticate, async (req: any, res) => {
       return res.status(403).json({ error: "Only founders can block payments" });
     }
 
-    const { paymentService } = await import("../services/PaymentService.js");
+    let paymentService;
+    try {
+      ({ paymentService } = await import("../services/PaymentService.js"));
+    } catch (importErr: any) {
+      logger.error("Failed to load PaymentService", { error: importErr.message });
+      return res.status(503).json({ error: "Payment service unavailable" });
+    }
     const result = await paymentService.blockPayment(paymentId, req.user.userId, reason || "Flagged by fraud detection", notes);
 
     if (!result) {

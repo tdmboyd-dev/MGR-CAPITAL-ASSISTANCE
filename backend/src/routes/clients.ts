@@ -92,11 +92,25 @@ router.get("/:id", authMiddleware, roleGuard(["ADMIN"]), async (req: Request, re
       return res.status(404).json({ success: false, error: "Client not found" });
     }
 
+    // Redact sensitive data — only FOUNDER sees full financial + PII
+    const { passwordHash, ssn4, dateOfBirth, ...safeClient } = client as any;
+    const isFounder = (req as any).user?.role === "FOUNDER";
+
+    // Redact surplusAmountCents from associated cases for non-founders
+    const redactedCases = isFounder
+      ? safeClient.clientCases
+      : safeClient.clientCases?.map((c: any) => {
+          const { surplusAmountCents, ...safeCase } = c;
+          return safeCase;
+        });
+
     res.json({
       success: true,
       data: {
-        ...client,
-        passwordHash: undefined
+        ...safeClient,
+        clientCases: redactedCases,
+        // Only FOUNDER sees SSN4 and DOB
+        ...(isFounder ? { ssn4, dateOfBirth } : {}),
       }
     });
   } catch (error: any) {
@@ -571,7 +585,9 @@ router.get("/portal/:token", async (req: Request, res: Response) => {
       }
     });
   } catch (error: any) {
-    res.status(500).json({ success: false, error: "Something went wrong. Please try again." });
+    if (!res.headersSent) {
+      res.status(500).json({ success: false, error: "Something went wrong. Please try again." });
+    }
   }
 });
 
@@ -619,7 +635,9 @@ router.patch("/portal/:token/info", async (req: Request, res: Response) => {
       message: "Your information has been updated. Thank you!"
     });
   } catch (error: any) {
-    res.status(500).json({ success: false, error: "Something went wrong. Please try again." });
+    if (!res.headersSent) {
+      res.status(500).json({ success: false, error: "Something went wrong. Please try again." });
+    }
   }
 });
 
@@ -677,7 +695,9 @@ router.post("/portal/:token/id-upload", async (req: Request, res: Response) => {
       message: "Your ID has been uploaded successfully. Thank you!"
     });
   } catch (error: any) {
-    res.status(500).json({ success: false, error: "Something went wrong. Please try again." });
+    if (!res.headersSent) {
+      res.status(500).json({ success: false, error: "Something went wrong. Please try again." });
+    }
   }
 });
 
@@ -795,7 +815,9 @@ router.post("/portal/:token/sign/:documentId", async (req: Request, res: Respons
       message: "Document signed successfully. Thank you!"
     });
   } catch (error: any) {
-    res.status(500).json({ success: false, error: "Something went wrong. Please try again." });
+    if (!res.headersSent) {
+      res.status(500).json({ success: false, error: "Something went wrong. Please try again." });
+    }
   }
 });
 
@@ -881,7 +903,9 @@ router.post("/portal/:token/contact", async (req: Request, res: Response) => {
       message: "Your message has been sent. We'll get back to you soon!"
     });
   } catch (error: any) {
-    res.status(500).json({ success: false, error: "Something went wrong. Please try again." });
+    if (!res.headersSent) {
+      res.status(500).json({ success: false, error: "Something went wrong. Please try again." });
+    }
   }
 });
 
