@@ -57,6 +57,24 @@ const PROVIDER_TEMPLATES: Record<string, any> = {
     setupGuide:
       "IDrive e2 Dashboard → Create Bucket → Access Keys → Create Access Key → Paste here. Endpoint from your e2 region dashboard.",
   },
+  "tebi-io": {
+    displayName: "Tebi.io (Free 25GB)",
+    type: "S3",
+    config: { region: "us-east-1" },
+    capacityBytes: 25 * 1024 * 1024 * 1024, // 25GB free (2 copies, 250GB egress/mo)
+    credentialFields: ["accessKeyId", "secretAccessKey", "bucket"],
+    setupGuide:
+      "Sign up FREE at tebi.io (25GB free, 250GB egress/mo, no credit card for trial). Create bucket → Keys section → SHOW SECRET → Copy Access Key & Secret. Endpoint: https://s3.tebi.io. Full S3 API, geo-distributed, free API calls.",
+  },
+  "supabase-storage": {
+    displayName: "Supabase Storage (Free 1GB)",
+    type: "S3",
+    config: { region: "us-east-1" },
+    capacityBytes: 1 * 1024 * 1024 * 1024, // 1GB free
+    credentialFields: ["endpoint", "accessKeyId", "secretAccessKey", "bucket"],
+    setupGuide:
+      "Sign up FREE at supabase.com → New Project → Storage → S3 Connection → Copy endpoint, access key, secret. 1GB free storage, 2GB egress. Note: free projects pause after 7 days inactivity.",
+  },
   "filebase-ipfs": {
     displayName: "Filebase (IPFS — Free 5GB)",
     type: "S3",
