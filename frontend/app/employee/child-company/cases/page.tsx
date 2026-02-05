@@ -56,7 +56,7 @@ interface Case {
   county: string;
   state: string;
   status: string;
-  surplusAmountCents: number;
+  estimatedValueCents: number; // Show estimated value, NOT surplus (founder-only)
   assignedAt: string;
   createdAt: string;
   client?: {
@@ -381,7 +381,7 @@ export default function ChildCompanyCasesPage() {
                     <th className="text-left p-3 font-medium">Property Address</th>
                     <th className="text-left p-3 font-medium">Client Name</th>
                     <th className="text-left p-3 font-medium">Status</th>
-                    <th className="text-left p-3 font-medium">Surplus Amount</th>
+                    <th className="text-left p-3 font-medium">Est. Value</th>
                     <th className="text-left p-3 font-medium">Assigned Date</th>
                   </tr>
                 </thead>
@@ -420,9 +420,9 @@ export default function ChildCompanyCasesPage() {
                         </Badge>
                       </td>
                       <td className="p-3">
-                        {caseItem.surplusAmountCents ? (
+                        {caseItem.estimatedValueCents ? (
                           <span className="font-medium text-green-600">
-                            {formatCurrency(caseItem.surplusAmountCents)}
+                            {formatCurrency(caseItem.estimatedValueCents)}
                           </span>
                         ) : (
                           "-"

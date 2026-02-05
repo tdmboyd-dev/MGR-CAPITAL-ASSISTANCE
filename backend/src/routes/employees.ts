@@ -12,6 +12,7 @@ import { employeeService } from "../services/employeeService.js";
 import { trainingService } from "../services/trainingService.js";
 import { bankingService } from "../services/bankingService.js";
 import { notificationService } from "../services/notificationService.js";
+import { notificationCenterService } from "../services/NotificationCenterService.js";
 
 import prisma from "../lib/prisma.js";
 
@@ -323,8 +324,9 @@ router.get("/", authMiddleware, roleGuard(["ADMIN"]), async (_req: Request, res:
 /**
  * GET /api/employees/stats - Employee performance stats (FOUNDER ONLY)
  */
-router.get("/stats", authMiddleware, roleGuard(["ADMIN"]), async (_req: Request, res: Response) => {
+router.get("/stats", authMiddleware, roleGuard(["ADMIN"]), async (req: Request, res: Response) => {
   try {
+    const isFounder = (req as any).user?.role === "FOUNDER";
     const employees = await prisma.user.findMany({
       where: { role: "EMPLOYEE" },
       select: {
@@ -354,7 +356,8 @@ router.get("/stats", authMiddleware, roleGuard(["ADMIN"]), async (_req: Request,
         totalCases,
         paidCases,
         conversionRate: totalCases > 0 ? ((paidCases / totalCases) * 100).toFixed(1) : "0",
-        totalSurplusRecoveredCents: totalSurplus
+        // surplusAmountCents is FOUNDER ONLY — never expose to employees/admins
+        totalSurplusRecoveredCents: isFounder ? totalSurplus : undefined,
       };
     });
 
@@ -369,52 +372,159 @@ router.get("/stats", authMiddleware, roleGuard(["ADMIN"]), async (_req: Request,
 });
 
 /**
- * GET /api/employees/leaderboard - Employee leaderboard (FOUNDER ONLY)
+ * GET /api/employees/leaderboard - Enhanced employee leaderboard
+ * Accessible to all authenticated users (motivation board)
+ *
+ * Query params:
+ *   ?scope=company    — Company-wide (all tenants, default for FOUNDER)
+ *   ?scope=team       — My child company / tenant employees only
+ *   ?scope=tier       — Tier-by-tier breakdown
+ *
+ * Everyone can see BOTH company-wide and team boards.
+ * FOUNDER sees revenue, employees see ranking by cases only.
+ * Shadow accounting: all displayed values use DISPLAYED rates, never actual.
  */
-router.get("/leaderboard", authMiddleware, roleGuard(["ADMIN"]), async (_req: Request, res: Response) => {
+router.get("/leaderboard", authMiddleware, async (req: Request, res: Response) => {
   try {
-    const employees = await prisma.user.findMany({
+    const user = (req as any).user;
+    const isFounder = user?.role === "FOUNDER";
+    const scope = (req.query.scope as string) || "company";
+
+    // Look up user's tenantId from DB (not in JWT)
+    const dbUser = await prisma.user.findUnique({
+      where: { id: user?.userId || user?.id },
+      select: { tenantId: true, employeeTier: true },
+    });
+
+    // Fetch ALL active employees for both boards
+    const allEmployees = await prisma.user.findMany({
       where: { role: "EMPLOYEE", isActive: true },
       select: {
         id: true,
         name: true,
         employeeTier: true,
+        tenantId: true,
         assignedCases: {
           where: { status: "PAID" },
-          select: {
-            surplusAmountCents: true,
-            actualFeeCents: true
-          }
+          select: { actualFeeCents: true },
         },
-        ledgerEntries: {
-          where: { type: "COMMISSION" },
-          select: { amountCents: true }
-        }
-      }
+        tenant: {
+          select: { name: true },
+        },
+      },
     });
 
-    const leaderboard = employees.map(emp => {
+    // Map employee data — shadow accounting: use DISPLAYED commission rates, not actual
+    const mapEmployee = (emp: typeof allEmployees[0]) => {
       const casesCompleted = emp.assignedCases.length;
-      const revenueCents = emp.assignedCases.reduce(
-        (sum, c) => sum + (c.actualFeeCents || 0),
-        0
+      const tierKey = emp.employeeTier || "TIER_1_ASSOCIATE";
+      const tierData = bankingService.getTier(tierKey);
+
+      // Shadow accounting: calculate DISPLAYED earnings (what employees believe they earn)
+      const actualRevenueCents = emp.assignedCases.reduce(
+        (sum, c) => sum + (c.actualFeeCents || 0), 0
       );
+      // DISPLAYED amount = (actual revenue / actual rate) * displayed rate
+      const actualRate = tierData?.actualRatePercent || 10;
+      const displayedRate = tierData?.displayedRatePercent || 20;
+      const displayedEarningsCents = actualRate > 0
+        ? Math.round((actualRevenueCents / actualRate) * displayedRate)
+        : 0;
 
       return {
         id: emp.id,
         name: emp.name,
-        tier: getTierDisplayName(emp.employeeTier || "TIER_1_ASSOCIATE"),
+        tier: getTierDisplayName(tierKey),
+        tierKey,
+        tenantId: emp.tenantId,
+        tenantName: emp.tenant?.name || "MGR Capital",
         casesCompleted,
-        revenueCents
+        // Only FOUNDER sees real revenue — employees see displayed (shadow) earnings
+        ...(isFounder
+          ? { revenueCents: actualRevenueCents }
+          : { displayedEarningsCents }),
       };
+    };
+
+    const allMapped = allEmployees.map(mapEmployee);
+
+    // ── Company-wide board (ALL employees) ──
+    const companyBoard = [...allMapped]
+      .sort((a, b) => {
+        if (isFounder) return ((b as any).revenueCents || 0) - ((a as any).revenueCents || 0);
+        return b.casesCompleted - a.casesCompleted;
+      })
+      .map((emp, idx) => ({ ...emp, rank: idx + 1 }));
+
+    // ── Team board (employees in same tenant) ──
+    const myTenantId = dbUser?.tenantId || null;
+    const teamFiltered = myTenantId
+      ? allMapped.filter((e) => e.tenantId === myTenantId)
+      : allMapped; // FOUNDER or no-tenant sees all
+    const teamBoard = [...teamFiltered]
+      .sort((a, b) => {
+        if (isFounder) return ((b as any).revenueCents || 0) - ((a as any).revenueCents || 0);
+        return b.casesCompleted - a.casesCompleted;
+      })
+      .map((emp, idx) => ({ ...emp, rank: idx + 1 }));
+
+    // ── Tier-by-tier leaders (top performer per tier) ──
+    const tierOrder: EmployeeTier[] = [
+      "TIER_5_EXECUTIVE_PARTNER",
+      "TIER_4_TEAM_LEADER",
+      "TIER_3_SENIOR_SPECIALIST",
+      "TIER_2_SPECIALIST",
+      "TIER_1_ASSOCIATE",
+    ];
+    const tierLeaders = tierOrder.map((tier) => {
+      const inTier = allMapped.filter((e) => e.tierKey === tier);
+      const sorted = [...inTier].sort((a, b) => b.casesCompleted - a.casesCompleted);
+      return {
+        tier: getTierDisplayName(tier),
+        tierKey: tier,
+        count: inTier.length,
+        leader: sorted[0] || null,
+        topThree: sorted.slice(0, 3).map((e, i) => ({ ...e, rank: i + 1 })),
+      };
+    }).filter((t) => t.count > 0);
+
+    // ── Child company leaders (top performer from each tenant) ──
+    const tenantMap = new Map<string, typeof allMapped>();
+    for (const emp of allMapped) {
+      const tid = emp.tenantId || "__main__";
+      if (!tenantMap.has(tid)) tenantMap.set(tid, []);
+      tenantMap.get(tid)!.push(emp);
+    }
+    const childCompanyLeaders = Array.from(tenantMap.entries()).map(([tid, emps]) => {
+      const sorted = [...emps].sort((a, b) => b.casesCompleted - a.casesCompleted);
+      return {
+        tenantId: tid === "__main__" ? null : tid,
+        tenantName: sorted[0]?.tenantName || "MGR Capital",
+        employeeCount: emps.length,
+        leader: sorted[0] || null,
+      };
+    }).sort((a, b) => b.employeeCount - a.employeeCount);
+
+    // ── Recent incentives (last 10) ──
+    const recentIncentives = await prisma.employeeIncentive.findMany({
+      orderBy: { createdAt: "desc" },
+      take: 10,
+      where: { isCompanyWide: true },
     });
 
-    // Sort by revenue
-    leaderboard.sort((a, b) => b.revenueCents - a.revenueCents);
-
+    // Return the requested scope or all at once
     res.json({
       success: true,
-      data: leaderboard
+      scope,
+      companyBoard: scope === "company" || scope === "all" ? companyBoard : undefined,
+      teamBoard: scope === "team" || scope === "all" ? teamBoard : undefined,
+      tierLeaders: scope === "tier" || scope === "all" ? tierLeaders : undefined,
+      childCompanyLeaders: scope === "all" || isFounder ? childCompanyLeaders : undefined,
+      recentIncentives,
+      // Always return both boards in default company scope for dual-board UI
+      ...(scope === "company" ? { teamBoard } : {}),
+      ...(scope === "team" ? { companyBoard } : {}),
+      myTenantId,
     });
   } catch (error: any) {
     console.error("Error:", error);
@@ -423,10 +533,146 @@ router.get("/leaderboard", authMiddleware, roleGuard(["ADMIN"]), async (_req: Re
 });
 
 /**
+ * POST /api/employees/incentive - Send recognition/incentive to an employee
+ * FOUNDER ONLY — triggers company-wide alert
+ */
+router.post("/incentive", authMiddleware, roleGuard(["ADMIN"]), async (req: AuthRequest, res: Response) => {
+  try {
+    const founderId = req.user!.id;
+    const isFounder = req.user!.role === "FOUNDER";
+    if (!isFounder) {
+      return res.status(403).json({ success: false, error: "Only the FOUNDER can award incentives" });
+    }
+
+    const { employeeId, type, title, message, bonusCents, isCompanyWide } = req.body;
+
+    if (!employeeId || !type || !title) {
+      return res.status(400).json({
+        success: false,
+        error: "Missing required fields: employeeId, type, title",
+      });
+    }
+
+    const validTypes = ["SHOUTOUT", "BONUS", "TIER_BOOST", "TROPHY", "TOP_PERFORMER"];
+    if (!validTypes.includes(type)) {
+      return res.status(400).json({ success: false, error: `Invalid type. Must be one of: ${validTypes.join(", ")}` });
+    }
+
+    // Verify employee exists
+    const employee = await prisma.user.findFirst({
+      where: { id: employeeId, role: "EMPLOYEE" },
+      select: { id: true, name: true, tenantId: true },
+    });
+    if (!employee) {
+      return res.status(404).json({ success: false, error: "Employee not found" });
+    }
+
+    // Create the incentive record
+    const incentive = await prisma.employeeIncentive.create({
+      data: {
+        employeeId,
+        awardedById: founderId,
+        type,
+        title,
+        message: message || null,
+        bonusCents: bonusCents || 0,
+        isCompanyWide: isCompanyWide !== false,
+        tenantId: employee.tenantId,
+      },
+    });
+
+    // Send company-wide alert if enabled
+    if (isCompanyWide !== false) {
+      await notificationCenterService.sendToRole("EMPLOYEE", {
+        category: "alert",
+        priority: "high",
+        title: `${employee.name} — ${title}`,
+        message: message || `${employee.name} just received a ${type.toLowerCase().replace(/_/g, " ")} award!`,
+        link: "/employee/leaderboard",
+        metadata: { incentiveId: incentive.id, type },
+      });
+    }
+
+    // Also notify the specific employee directly
+    await notificationCenterService.sendNotification({
+      userId: employeeId,
+      category: "alert",
+      priority: "urgent",
+      title: `You received an award: ${title}`,
+      message: message || "The founder recognized your outstanding work!",
+      link: "/employee/leaderboard",
+      metadata: { incentiveId: incentive.id, type, bonusCents },
+    });
+
+    // Audit log
+    await prisma.auditLog.create({
+      data: {
+        userId: founderId,
+        action: "INCENTIVE_AWARDED",
+        entityType: "USER",
+        entityId: employeeId,
+        details: { type, title, bonusCents, isCompanyWide },
+      },
+    });
+
+    res.status(201).json({
+      success: true,
+      data: incentive,
+    });
+  } catch (error: any) {
+    console.error("Incentive error:", error);
+    res.status(500).json({ success: false, error: "Failed to award incentive" });
+  }
+});
+
+/**
+ * GET /api/employees/incentives - Get recent incentives
+ * All authenticated users can see company-wide incentives
+ */
+router.get("/incentives", authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const limit = parseInt(req.query.limit as string) || 20;
+    const employeeId = req.query.employeeId as string;
+
+    const where: any = { isCompanyWide: true };
+    if (employeeId) {
+      where.employeeId = employeeId;
+      delete where.isCompanyWide; // Show all incentives for a specific employee
+    }
+
+    const incentives = await prisma.employeeIncentive.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      take: Math.min(limit, 50),
+    });
+
+    // Enrich with employee names
+    const employeeIds = [...new Set(incentives.map((i) => i.employeeId))];
+    const employees = await prisma.user.findMany({
+      where: { id: { in: employeeIds } },
+      select: { id: true, name: true, employeeTier: true },
+    });
+    const empMap = new Map(employees.map((e) => [e.id, e]));
+
+    const enriched = incentives.map((inc) => ({
+      ...inc,
+      employeeName: empMap.get(inc.employeeId)?.name || "Unknown",
+      employeeTier: getTierDisplayName(empMap.get(inc.employeeId)?.employeeTier || "TIER_1_ASSOCIATE"),
+    }));
+
+    res.json({ success: true, data: enriched });
+  } catch (error: any) {
+    console.error("Incentives fetch error:", error);
+    res.status(500).json({ success: false, error: "Failed to fetch incentives" });
+  }
+});
+
+/**
  * GET /api/employees/:id - Get employee details (FOUNDER ONLY)
  */
 router.get("/:id", authMiddleware, roleGuard(["ADMIN"]), async (req: Request, res: Response) => {
   try {
+    const isFounder = (req as any).user?.role === "FOUNDER";
     const employee = await prisma.user.findFirst({
       where: {
         id: req.params.id,
@@ -461,15 +707,25 @@ router.get("/:id", authMiddleware, roleGuard(["ADMIN"]), async (req: Request, re
       return res.status(404).json({ success: false, error: "Employee not found" });
     }
 
-    // Get actual commission info (FOUNDER ONLY)
+    // Redact surplus from assigned cases for non-founders
+    const redactedCases = isFounder
+      ? (employee as any).assignedCases
+      : (employee as any).assignedCases?.map((c: any) => {
+          const { surplusAmountCents, ...safeCase } = c;
+          return safeCase;
+        });
+
+    // Commission info — FOUNDER ONLY (shadow cut mechanism)
     const tierData = bankingService.getTier(employee.employeeTier || "TIER_1_ASSOCIATE");
 
     res.json({
       success: true,
       data: {
         ...employee,
-        passwordHash: undefined, // Don't expose
-        commissionInfo: tierData ? {
+        passwordHash: undefined,
+        assignedCases: redactedCases,
+        // Only FOUNDER sees the actual vs displayed rate + override
+        commissionInfo: isFounder && tierData ? {
           displayedRate: tierData.displayedRatePercent,
           actualRate: tierData.actualRatePercent,
           overrideRate: tierData.overridePercent

@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { sanitizeHtml } from "@/lib/utils";
 import { useParams, useRouter } from "next/navigation";
 import {
   Card,
@@ -182,7 +183,7 @@ export default function TrainingModulePage() {
             <CardContent>
               <div className="prose prose-sm dark:prose-invert max-w-none">
                 {module.content ? (
-                  <div dangerouslySetInnerHTML={{ __html: module.content }} />
+                  <div dangerouslySetInnerHTML={{ __html: sanitizeHtml(module.content) }} />
                 ) : (
                   <p className="text-muted-foreground">
                     This module covers important concepts for surplus recovery

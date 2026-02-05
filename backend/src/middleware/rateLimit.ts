@@ -224,8 +224,9 @@ function createRateLimiter(config: RateLimitConfig | keyof typeof RATE_LIMIT_PRE
 
       next();
     } catch (error) {
-      // Don't block requests if rate limiting fails
-      console.error("[RateLimit] Error:", error);
+      // Rate limiting failed — log for investigation but allow request with warning
+      console.error("[RateLimit] Error — applying fallback mode:", error);
+      res.setHeader("X-RateLimit-Warning", "fallback-mode");
       next();
     }
   };

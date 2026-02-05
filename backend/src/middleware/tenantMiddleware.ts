@@ -45,69 +45,65 @@ export function createTenantPrisma(tenantId: string | null): PrismaClient {
     return basePrisma;
   }
 
+  // Helper to add full tenant isolation (findMany, findFirst, findUnique, update, delete, count, aggregate)
+  const createTenantFilter = (modelName: string) => ({
+    async findMany({ args, query }: any) {
+      args.where = { AND: [args.where || {}, { tenantId }] };
+      return query(args);
+    },
+    async findFirst({ args, query }: any) {
+      args.where = { AND: [args.where || {}, { tenantId }] };
+      return query(args);
+    },
+    async findUnique({ args, query }: any) {
+      // For findUnique, we verify after fetch (can't add AND to unique constraint)
+      const result = await query(args);
+      if (result && result.tenantId !== tenantId) {
+        return null; // Hide cross-tenant data
+      }
+      return result;
+    },
+    async create({ args, query }: any) {
+      args.data = { ...args.data, tenantId };
+      return query(args);
+    },
+    async update({ args, query }: any) {
+      args.where = { AND: [args.where || {}, { tenantId }] };
+      return query(args);
+    },
+    async updateMany({ args, query }: any) {
+      args.where = { AND: [args.where || {}, { tenantId }] };
+      return query(args);
+    },
+    async delete({ args, query }: any) {
+      args.where = { AND: [args.where || {}, { tenantId }] };
+      return query(args);
+    },
+    async deleteMany({ args, query }: any) {
+      args.where = { AND: [args.where || {}, { tenantId }] };
+      return query(args);
+    },
+    async count({ args, query }: any) {
+      args.where = { AND: [args.where || {}, { tenantId }] };
+      return query(args);
+    },
+    async aggregate({ args, query }: any) {
+      args.where = { AND: [args.where || {}, { tenantId }] };
+      return query(args);
+    },
+  });
+
   // Create extended client with tenant filtering
   return basePrisma.$extends({
     query: {
       // User model
-      user: {
-        async findMany({ args, query }: any) {
-          args.where = { ...args.where, tenantId };
-          return query(args);
-        },
-        async findFirst({ args, query }: any) {
-          args.where = { ...args.where, tenantId };
-          return query(args);
-        },
-        async create({ args, query }: any) {
-          args.data = { ...args.data, tenantId };
-          return query(args);
-        },
-      },
+      user: createTenantFilter("user"),
       // Case model
-      case: {
-        async findMany({ args, query }: any) {
-          args.where = { ...args.where, tenantId };
-          return query(args);
-        },
-        async findFirst({ args, query }: any) {
-          args.where = { ...args.where, tenantId };
-          return query(args);
-        },
-        async create({ args, query }: any) {
-          args.data = { ...args.data, tenantId };
-          return query(args);
-        },
-      },
+      case: createTenantFilter("case"),
       // LedgerEntry model
-      ledgerEntry: {
-        async findMany({ args, query }: any) {
-          args.where = { ...args.where, tenantId };
-          return query(args);
-        },
-        async findFirst({ args, query }: any) {
-          args.where = { ...args.where, tenantId };
-          return query(args);
-        },
-        async create({ args, query }: any) {
-          args.data = { ...args.data, tenantId };
-          return query(args);
-        },
-      },
+      ledgerEntry: createTenantFilter("ledgerEntry"),
       // Document model
-      document: {
-        async findMany({ args, query }: any) {
-          args.where = { ...args.where, tenantId };
-          return query(args);
-        },
-        async findFirst({ args, query }: any) {
-          args.where = { ...args.where, tenantId };
-          return query(args);
-        },
-        async create({ args, query }: any) {
-          args.data = { ...args.data, tenantId };
-          return query(args);
-        },
-      },
+      document: createTenantFilter("document"),
       // TrainingModule model
       trainingModule: {
         async findMany({ args, query }: any) {
@@ -120,49 +116,17 @@ export function createTenantPrisma(tenantId: string | null): PrismaClient {
         },
       },
       // ChatRoom model
-      chatRoom: {
-        async findMany({ args, query }: any) {
-          args.where = { ...args.where, tenantId };
-          return query(args);
-        },
-        async create({ args, query }: any) {
-          args.data = { ...args.data, tenantId };
-          return query(args);
-        },
-      },
+      chatRoom: createTenantFilter("chatRoom"),
       // AuditLog model
-      auditLog: {
-        async findMany({ args, query }: any) {
-          args.where = { ...args.where, tenantId };
-          return query(args);
-        },
-        async create({ args, query }: any) {
-          args.data = { ...args.data, tenantId };
-          return query(args);
-        },
-      },
+      auditLog: createTenantFilter("auditLog"),
       // OpsInsight model
-      opsInsight: {
-        async findMany({ args, query }: any) {
-          args.where = { ...args.where, tenantId };
-          return query(args);
-        },
-        async create({ args, query }: any) {
-          args.data = { ...args.data, tenantId };
-          return query(args);
-        },
-      },
+      opsInsight: createTenantFilter("opsInsight"),
       // WatchAlert model
-      watchAlert: {
-        async findMany({ args, query }: any) {
-          args.where = { ...args.where, tenantId };
-          return query(args);
-        },
-        async create({ args, query }: any) {
-          args.data = { ...args.data, tenantId };
-          return query(args);
-        },
-      },
+      watchAlert: createTenantFilter("watchAlert"),
+      // Communication model
+      communication: createTenantFilter("communication"),
+      // Payment model
+      payment: createTenantFilter("payment"),
     },
   }) as unknown as PrismaClient;
 }

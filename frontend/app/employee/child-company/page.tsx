@@ -269,9 +269,9 @@ export default function ChildCompanyPage() {
             <div className="flex items-start gap-3 p-3 rounded-lg bg-background">
               <CheckCircle className="h-5 w-5 text-green-500 mt-0.5" />
               <div>
-                <p className="font-medium">Shadow Revenue Model</p>
+                <p className="font-medium">Revenue Share Partnership</p>
                 <p className="text-sm text-muted-foreground">
-                  MGR founder takes a small tiered cut; you keep the majority of revenue
+                  Small platform fee supports infrastructure; you keep the majority of revenue
                 </p>
               </div>
             </div>

@@ -11,6 +11,7 @@ import { config } from "./config/env.js";
 // Middleware imports
 import { globalErrorHandler, notFoundHandler } from "./middleware/errorHandler.js";
 import { auditLogMiddleware } from "./middleware/auditLogger.js";
+import { helmetMiddleware, generalRateLimiter, requestLogger } from "./middleware/securityMiddleware.js";
 
 // Route imports
 import authRoutes from "./routes/auth.js";
@@ -161,6 +162,12 @@ import workerBotRoutes from "./routes/workerBotRoutes.js";
 // Smart Storage Router (Multi-Provider Storage Engine)
 import storageRoutes from "./routes/storageRoutes.js";
 
+// Document Retention & Auto-Deletion (State-based retention policies)
+import retentionRoutes from "./routes/retentionRoutes.js";
+
+// Alerts Chamber — Founder BotBuddy chat for dispatching alerts
+import alertsChamberRoutes from "./routes/alertsChamberRoutes.js";
+
 // Scheduler (autopilot crons)
 import scheduler from "./cron/scheduler.js";
 
@@ -173,6 +180,12 @@ const app = express();
 // Trust proxy for accurate IP detection (Render uses reverse proxy)
 app.set("trust proxy", 1);
 
+// Security headers (Helmet.js) — MUST BE FIRST
+app.use(helmetMiddleware);
+
+// Global rate limiting — prevent API abuse
+app.use(generalRateLimiter);
+
 app.use(cors({
   origin: config.corsOrigins,
   credentials: true,
@@ -183,10 +196,7 @@ app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
 // Request logging (production-ready)
-app.use((req, _res, next) => {
-  console.log(`${new Date().toISOString()} ${req.method} ${req.path}`);
-  next();
-});
+app.use(requestLogger);
 
 // Audit logging middleware (after auth routes)
 app.use(auditLogMiddleware);
@@ -353,6 +363,12 @@ app.use("/api/worker-bots", workerBotRoutes);
 
 // Smart Storage Router (Multi-Provider Storage — FOUNDER ONLY)
 app.use("/api/storage", storageRoutes);
+
+// Document Retention & Auto-Deletion (FOUNDER ONLY)
+app.use("/api/retention", retentionRoutes);
+
+// Alerts Chamber — Founder BotBuddy (FOUNDER ONLY)
+app.use("/api/alerts-chamber", alertsChamberRoutes);
 
 // ============================================
 // HEALTH CHECK

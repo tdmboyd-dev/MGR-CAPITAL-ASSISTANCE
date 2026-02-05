@@ -35,12 +35,16 @@ import {
   UserCog,
   Zap,
   HardDrive,
+  Clock,
+  Trophy,
+  AlertTriangle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
 interface SidebarProps {
   role: string;
+  tier?: string | null;
   isOpen?: boolean;
   onClose?: () => void;
 }
@@ -86,6 +90,9 @@ const linksByRole: Record<string, NavLink[]> = {
     { href: "/founder/genealogy", label: "Genealogy", icon: Network },
     { href: "/founder/vr-simulation", label: "VR Simulation", icon: Eye },
     { href: "/founder/storage", label: "Storage Engine", icon: HardDrive },
+    { href: "/founder/retention", label: "File Retention", icon: Clock },
+    { href: "/founder/leaderboard", label: "Leaderboard", icon: Trophy },
+    { href: "/founder/alerts-chamber", label: "Alerts Chamber", icon: AlertTriangle },
     { href: "/founder/config", label: "Configuration", icon: Settings },
   ],
   admin: [
@@ -100,12 +107,13 @@ const linksByRole: Record<string, NavLink[]> = {
   employee: [
     { href: "/employee/dashboard", label: "Dashboard", icon: Home },
     { href: "/employee/cases", label: "My Cases", icon: FileText },
+    { href: "/employee/leaderboard", label: "Leaderboard", icon: Trophy },
     { href: "/employee/training", label: "Training", icon: BookOpen },
     { href: "/employee/compliance", label: "My Compliance", icon: Shield },
     { href: "/employee/comms", label: "Comms Chamber", icon: MessageSquare },
-    { href: "/employee/child-company", label: "My Company", icon: Building2 },
     { href: "/employee/bots", label: "Action Bots", icon: Bot },
     { href: "/employee/email", label: "Email", icon: Mail },
+    // "My Company" link added dynamically based on tier eligibility (Tier 3+)
   ],
   client: [
     { href: "/client/dashboard", label: "Dashboard", icon: Home },
@@ -116,9 +124,26 @@ const linksByRole: Record<string, NavLink[]> = {
   ],
 };
 
-export function Sidebar({ role, isOpen, onClose }: SidebarProps) {
+// Tiers eligible for child company (Tier 3+) — growth surprise for lower tiers
+const CHILD_COMPANY_ELIGIBLE_TIERS = [
+  "TIER_3_SENIOR_SPECIALIST",
+  "TIER_4_TEAM_LEADER",
+  "TIER_5_EXECUTIVE_PARTNER",
+];
+
+export function Sidebar({ role, tier, isOpen, onClose }: SidebarProps) {
   const pathname = usePathname();
-  const links = linksByRole[role.toLowerCase()] || [];
+  let links = linksByRole[role.toLowerCase()] || [];
+
+  // Dynamically add child company features for eligible employees (Tier 3+)
+  // These are hidden from lower tiers as a "growth surprise"
+  if (role.toLowerCase() === "employee" && tier && CHILD_COMPANY_ELIGIBLE_TIERS.includes(tier)) {
+    links = [
+      ...links,
+      { href: "/employee/child-company", label: "My Company", icon: Building2 },
+      { href: "/employee/alerts-chamber", label: "KidBuddy", icon: AlertTriangle },
+    ];
+  }
 
   return (
     <>

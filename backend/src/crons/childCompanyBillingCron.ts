@@ -71,7 +71,9 @@ async function processDueBilling(result: CronResult) {
 
   for (const company of companiesDue) {
     try {
-      const monthlyFeeCents = Math.round(company.annualFeeCents / 12);
+      // Use floor to avoid charging more than annual fee over 12 months
+      // (e.g., $100/year = 833 cents/month * 12 = $99.96, but never more than $100)
+      const monthlyFeeCents = Math.floor(company.annualFeeCents / 12);
 
       // Create OpsInsight as billing record (no caseId required)
       await prisma.opsInsight.create({

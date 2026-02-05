@@ -45,7 +45,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { cn } from "@/lib/utils";
+import { cn, sanitizeHtml } from "@/lib/utils";
 
 interface Email {
   id: string;
@@ -626,7 +626,7 @@ export default function EmployeeInboxPage() {
                       {emailDetails.bodyHtml ? (
                         <div
                           className="prose prose-sm dark:prose-invert max-w-none"
-                          dangerouslySetInnerHTML={{ __html: emailDetails.bodyHtml }}
+                          dangerouslySetInnerHTML={{ __html: sanitizeHtml(emailDetails.bodyHtml) }}
                         />
                       ) : (
                         <div className="whitespace-pre-wrap text-sm">

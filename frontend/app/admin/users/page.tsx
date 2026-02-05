@@ -58,7 +58,8 @@ interface User {
   lastLoginAt?: string;
 }
 
-const ROLES = ["FOUNDER", "ADMIN", "EMPLOYEE", "CLIENT"];
+// Admin can only create these roles - FOUNDER is restricted (prevent privilege escalation)
+const ROLES = ["ADMIN", "EMPLOYEE", "CLIENT"];
 
 const roleColors: Record<string, string> = {
   FOUNDER: "bg-purple-500",

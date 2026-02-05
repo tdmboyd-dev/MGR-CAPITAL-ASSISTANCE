@@ -263,6 +263,7 @@ router.get("/reports", authMiddleware, async (req: AuthRequest, res: Response) =
         _count: true,
       });
 
+      const isFounder = user.role === "FOUNDER";
       reportData.cases = {
         total: cases.length,
         byStatus: casesByStatus.map((s) => ({ status: s.status, count: s._count })),
@@ -272,7 +273,8 @@ router.get("/reports", authMiddleware, async (req: AuthRequest, res: Response) =
           status: c.status,
           state: c.state,
           county: c.county,
-          surplusAmountCents: c.surplusAmountCents,
+          // surplusAmountCents is FOUNDER ONLY — never expose to ADMIN
+          ...(isFounder ? { surplusAmountCents: c.surplusAmountCents } : {}),
           createdAt: c.createdAt,
           employee: c.assignedEmployee?.name || "Unassigned",
           client: c.client?.name || "Unknown",

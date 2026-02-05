@@ -71,6 +71,7 @@ export function DashboardLayout({ children, allowedRoles }: DashboardLayoutProps
         <div className="flex flex-1 overflow-hidden">
           <Sidebar
             role={user.role}
+            tier={user.tier}
             isOpen={sidebarOpen}
             onClose={() => setSidebarOpen(false)}
           />

@@ -72,6 +72,14 @@ enum DocumentStatus {
   REJECTED
 }
 
+enum DeletionStatus {
+  ACTIVE              // Normal — file is live
+  RETENTION_HOLD      // Case closed, retention clock ticking
+  MARKED_FOR_DELETION // Bot or FOUNDER flagged for deletion
+  APPROVED_DELETION   // FOUNDER approved the deletion
+  DELETED             // Permanently deleted from storage
+}
+
 enum LedgerEntryType {
   COMMISSION
   EMPLOYEE_COMMISSION
@@ -490,6 +498,14 @@ model Document {
   // Storage Router — file registry links
   fileRegistries  FileRegistry[]
 
+  // Retention & Auto-Deletion
+  deletionStatus        DeletionStatus @default(ACTIVE)
+  retentionExpiresAt    DateTime?      // When retention period ends (auto-calculated from case state + closedAt)
+  markedForDeletionAt   DateTime?      // When bot or FOUNDER marked for deletion
+  markedForDeletionBy   String?        // "RETENTION_BOT" or founder userId
+  deletedAt             DateTime?      // When actually purged from storage
+  deletedBy             String?        // "RETENTION_BOT" or founder userId
+
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
 
@@ -497,6 +513,8 @@ model Document {
   @@index([type])
   @@index([status])
   @@index([tenantId])
+  @@index([deletionStatus])
+  @@index([retentionExpiresAt])
 }
 
 model DocumentTemplate {
@@ -3294,5 +3312,38 @@ model FileRegistry {
   @@index([documentId])
   @@index([providerId])
   @@index([sha256Hash])
+}
+
+// ============================================
+// EMPLOYEE INCENTIVES & RECOGNITION
+// Founder awards recognition, triggers company-wide alerts
+// ============================================
+
+enum IncentiveType {
+  SHOUTOUT            // Public recognition, no monetary value
+  BONUS               // Cash bonus in cents
+  TIER_BOOST          // Accelerated tier upgrade points
+  TROPHY              // Virtual trophy / badge
+  TOP_PERFORMER       // Monthly/weekly top performer award
+}
+
+model EmployeeIncentive {
+  id              String          @id @default(cuid())
+  employeeId      String
+  awardedById     String          // FOUNDER who gave it
+  type            IncentiveType
+  title           String          // "Outstanding Recovery!" or "Top Closer This Week"
+  message         String?         @db.Text  // Personal message from founder
+  bonusCents      Int             @default(0)  // Monetary bonus (if type=BONUS)
+  isCompanyWide   Boolean         @default(true)  // Broadcast to all employees
+  tenantId        String?         // null = MGR Capital main, otherwise child company scope
+
+  createdAt       DateTime        @default(now())
+
+  @@index([employeeId])
+  @@index([awardedById])
+  @@index([type])
+  @@index([createdAt])
+  @@index([tenantId])
 }
 

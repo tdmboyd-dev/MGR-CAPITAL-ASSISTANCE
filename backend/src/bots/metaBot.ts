@@ -124,8 +124,9 @@ class MetaBot {
   }
 
   private calculateBotMetrics(botName: string, runs: any[]): BotPerformanceMetrics {
-    const successRuns = runs.filter((r) => r.status === "SUCCESS");
-    const errorRuns = runs.filter((r) => r.status === "ERROR");
+    // Handle both status string ("SUCCESS") and success boolean (true) formats
+    const successRuns = runs.filter((r) => r.status === "SUCCESS" || r.success === true);
+    const errorRuns = runs.filter((r) => r.status === "ERROR" || r.success === false);
 
     const durations = runs.map((r) => r.durationMs || 0).filter((d) => d > 0);
     const avgDuration = durations.length > 0

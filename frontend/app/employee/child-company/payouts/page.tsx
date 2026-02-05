@@ -288,7 +288,8 @@ export default function ChildCompanyPayoutsPage() {
     );
   }
 
-  const yourSharePercent = 100 - (financials?.parentRevenueSharePercent || 15);
+  // Show only your share - platform fee is abstracted away
+  const yourSharePercent = 100 - (financials?.platformFeePercent || 15);
 
   return (
     <div className="space-y-6">
@@ -402,21 +403,19 @@ export default function ChildCompanyPayoutsPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex items-center justify-between p-3 rounded-lg bg-white border">
+            <div className="flex items-center justify-between p-3 rounded-lg bg-emerald-50 border border-emerald-200">
               <div className="flex items-center gap-2">
-                <Building2 className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm">Your Share</span>
+                <Building2 className="h-4 w-4 text-emerald-600" />
+                <span className="text-sm font-medium">Your Revenue Share</span>
               </div>
-              <span className="font-bold text-emerald-600">{yourSharePercent}%</span>
+              <span className="font-bold text-emerald-600 text-lg">{yourSharePercent}%</span>
             </div>
             <div className="flex items-center justify-between p-3 rounded-lg bg-white border">
               <div className="flex items-center gap-2">
                 <PiggyBank className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm">MGR Capital Share</span>
+                <span className="text-sm">Platform Fee</span>
               </div>
-              <span className="font-bold text-amber-600">
-                {financials?.parentRevenueSharePercent || 15}%
-              </span>
+              <span className="font-medium text-muted-foreground">Included</span>
             </div>
             <div className="pt-2 border-t">
               <p className="text-xs text-muted-foreground">
@@ -426,8 +425,8 @@ export default function ChildCompanyPayoutsPage() {
               </p>
               <p className="text-xs text-muted-foreground mt-1">
                 {financials?.companyPlan === "WHITE_LABEL"
-                  ? "White-label plan keeps 85% of revenue after founder share"
-                  : "Branded plan keeps 70% of revenue after founder share"}
+                  ? "White-label plan offers the highest revenue share"
+                  : "Branded plan includes MGR Capital branding and support"}
               </p>
             </div>
           </CardContent>

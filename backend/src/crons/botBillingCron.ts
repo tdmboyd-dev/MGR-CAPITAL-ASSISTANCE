@@ -42,10 +42,9 @@ export async function runBotBillingCron(): Promise<void> {
         // Skip founders — they don't pay
         if (subscription.tier === "FOUNDER" || subscription.user.role === "FOUNDER") {
           founderSkipped++;
-          // Still advance billing date
-          const nextBillingDate = new Date();
+          // Still advance billing date — from subscription's current nextBillingDate, not today
+          const nextBillingDate = new Date(subscription.nextBillingDate);
           nextBillingDate.setMonth(nextBillingDate.getMonth() + 1);
-          nextBillingDate.setDate(1);
           await prisma.botSubscription.update({
             where: { id: subscription.id },
             data: { nextBillingDate },
