@@ -21,6 +21,15 @@ router.use(roleGuard(["FOUNDER"]));
 // ============================================
 
 const PROVIDER_TEMPLATES: Record<string, any> = {
+  "contabo-minio": {
+    displayName: "Contabo MinIO (Self-Hosted 60GB)",
+    type: "S3",
+    config: { region: "us-east-1", endpoint: "http://217.77.14.51:9000" },
+    capacityBytes: 60 * 1024 * 1024 * 1024, // ~60GB free on VPS
+    credentialFields: ["accessKeyId", "secretAccessKey", "bucket"],
+    setupGuide:
+      "ALREADY INSTALLED on your Contabo VPS (217.77.14.51:9000).\nDefault credentials: accessKeyId=mgrcapital, secretAccessKey=MgrStorage2026Secure!, bucket=mgr-documents\nMinIO Console: http://217.77.14.51:9001\nThis is YOUR server — no third-party, no limits, no fees.",
+  },
   "cloudflare-r2": {
     displayName: "Cloudflare R2",
     type: "S3",

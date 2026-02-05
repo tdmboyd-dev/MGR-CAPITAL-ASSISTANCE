@@ -1,8 +1,72 @@
 # TIMEBEUNUS — MGR CAPITAL ASSISTANCE
 
-## CURRENT SESSION STATUS: 2026-02-05 (Session 40 - Comprehensive Industry Intelligence Update)
+## CURRENT SESSION STATUS: 2026-02-05 (Session 41 - Smart Storage Router + MinIO on Contabo)
 
-### STATUS: INDUSTRY RESEARCH MASSIVELY EXPANDED — 2025-2026 INTELLIGENCE FOR 10 WORKER BOTS
+### STATUS: MULTI-PROVIDER STORAGE ENGINE LIVE — MinIO INSTALLED ON CONTABO VPS
+
+Session 41: Smart Storage Router — Multi-Provider Storage Engine + MinIO self-hosted.
+
+**STORAGE ENGINE IMPLEMENTED (Full Stack):**
+- **Schema:** StorageProvider + FileRegistry + StorageProviderType enum (pushed to prod DB)
+- **4 Adapters:** S3GenericAdapter (R2/Oracle/B2/IDrive/Scaleway/Tigris/Filebase/Supabase/MinIO), PCloudAdapter, LocalFilesystemAdapter
+- **StorageRouter:** Smart routing engine — picks best provider per upload, migration, replication, health monitoring
+- **documentVaultService:** Wired to StorageRouter with local filesystem fallback
+- **Admin API:** 12 FOUNDER-only endpoints at /api/storage (CRUD, toggle, test, sync, browse files)
+- **Frontend:** /founder/storage admin dashboard with provider cards, usage bars, file browser, sync modal, add provider wizard
+- **Sidebar:** "Storage Engine" added to founder navigation
+
+**MinIO INSTALLED ON CONTABO VPS (217.77.14.51):**
+- Docker container: `minio/minio:latest` running on ports 9000 (S3 API) + 9001 (Console)
+- Bucket: `mgr-documents` (created and ready)
+- Credentials: accessKeyId=`mgrcapital`, secretAccessKey=`MgrStorage2026Secure!`
+- S3 Endpoint: `http://217.77.14.51:9000`
+- Console UI: `http://217.77.14.51:9001`
+- ~60GB available disk (73GB total, 4.6GB used by Modoboa + OS)
+- Auto-restarts on reboot (`--restart always`)
+- **This is primary storage — priority 10, your own server, zero third-party dependency**
+
+**10 PROVIDER TEMPLATES BUILT IN (141GB+ free total):**
+| Provider | Free Storage | Type | Status |
+|----------|-------------|------|--------|
+| Contabo MinIO | ~60 GB | S3 (self-hosted) | INSTALLED & RUNNING |
+| Scaleway | 75 GB | S3 | Template ready |
+| Oracle Cloud | 20 GB | S3 | Template ready |
+| Cloudflare R2 | 10 GB | S3 | Template ready |
+| Backblaze B2 | 10 GB | S3 | Template ready |
+| IDrive e2 | 10 GB | S3 | Template ready |
+| pCloud Free | 10 GB | REST API | Template ready |
+| Tigris | 5 GB | S3 | Template ready |
+| Filebase | 5 GB | S3 (IPFS) | Template ready |
+| Supabase | 1 GB | S3 | Template ready |
+| pCloud Lifetime | 2 TB | REST API | Template ready (paid) |
+
+**FILES CREATED:**
+- `backend/src/services/storage/IStorageProvider.ts` — Interface
+- `backend/src/services/storage/S3GenericAdapter.ts` — Universal S3 adapter
+- `backend/src/services/storage/PCloudAdapter.ts` — pCloud REST adapter
+- `backend/src/services/storage/LocalFilesystemAdapter.ts` — Local filesystem adapter
+- `backend/src/services/storage/StorageRouter.ts` — Smart routing engine
+- `backend/src/routes/storageRoutes.ts` — Admin API routes
+- `frontend/app/founder/storage/page.tsx` — Storage admin dashboard
+
+**FILES MODIFIED:**
+- `backend/prisma/schema.prisma` — StorageProvider + FileRegistry models
+- `backend/src/services/documentVaultService.ts` — Wired to StorageRouter
+- `backend/src/server.ts` — Registered /api/storage routes
+- `frontend/components/Sidebar.tsx` — Added Storage Engine link
+
+**CONTABO VPS DETAILS (217.77.14.51):**
+- Plan: Cloud VPS S (4 vCPU, 8GB RAM, 73GB NVMe SSD)
+- OS: Ubuntu 22.04 (5.15.0-168-generic)
+- Location: St. Louis, US-central
+- Services: Modoboa (email), Nginx, PostgreSQL, Redis, Dovecot, Postfix, MinIO (NEW)
+- SSH: root / MgrServer2026Growth (port 22)
+- VNC: 144.126.136.49:63214
+- Customer ID: 14594723
+
+---
+
+### STATUS (PREVIOUS): INDUSTRY RESEARCH MASSIVELY EXPANDED — 2025-2026 INTELLIGENCE FOR 10 WORKER BOTS
 
 Session 40: Comprehensive 2025-2026 industry intelligence research update.
 - **INDUSTRY_RESEARCH.md expanded with 7 new sections** totaling ~800+ lines of new intelligence
