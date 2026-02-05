@@ -23,10 +23,13 @@ import { logger } from "../utils/logger.js";
 // CONFIGURATION
 // =============================================================================
 
+// IMAP credentials — founder's inbox (admin@capitalmgr.com)
 const IMAP_HOST = process.env.MAIL_SERVER_HOSTNAME || "mail.capitalmgr.com";
 const IMAP_PORT = parseInt(process.env.IMAP_PORT || "993", 10);
-const IMAP_USER = process.env.MODOBOA_SMTP_USER || "";
-const IMAP_PASS = process.env.MODOBOA_SMTP_PASS || "";
+const IMAP_USER = process.env.IMAP_USER || "";
+const IMAP_PASS = process.env.IMAP_PASS || "";
+
+// SMTP credentials — system sender (noreply@capitalmgr.com)
 const MODOBOA_SMTP_HOST = process.env.MODOBOA_SMTP_HOST || "";
 const MODOBOA_SMTP_PORT = parseInt(process.env.MODOBOA_SMTP_PORT || "587", 10);
 const MODOBOA_SMTP_USER = process.env.MODOBOA_SMTP_USER || "";
