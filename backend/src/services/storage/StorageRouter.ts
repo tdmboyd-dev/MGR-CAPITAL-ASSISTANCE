@@ -122,9 +122,12 @@ class StorageRouter {
         });
 
       case "S3": {
-        const creds = provider.credentials as S3AdapterConfig | null;
+        // Merge config defaults (endpoint, region) into credentials
+        const rawCreds = provider.credentials || {};
+        const configDefaults = provider.config || {};
+        const creds = { ...configDefaults, ...rawCreds } as S3AdapterConfig;
         if (!creds?.endpoint || !creds?.accessKeyId || !creds?.secretAccessKey || !creds?.bucket) {
-          console.warn(`[StorageRouter] S3 provider ${provider.name} missing credentials`);
+          console.warn(`[StorageRouter] S3 provider ${provider.name} missing credentials — need endpoint, accessKeyId, secretAccessKey, bucket`);
           return null;
         }
         return new S3GenericAdapter(provider.name, {

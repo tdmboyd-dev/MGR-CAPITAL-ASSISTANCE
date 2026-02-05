@@ -60,11 +60,11 @@ const PROVIDER_TEMPLATES: Record<string, any> = {
   "tebi-io": {
     displayName: "Tebi.io (Free 25GB)",
     type: "S3",
-    config: { region: "us-east-1" },
+    config: { region: "global", endpoint: "https://s3.tebi.io" },
     capacityBytes: 25 * 1024 * 1024 * 1024, // 25GB free (2 copies, 250GB egress/mo)
     credentialFields: ["accessKeyId", "secretAccessKey", "bucket"],
     setupGuide:
-      "Sign up FREE at tebi.io (25GB free, 250GB egress/mo, no credit card for trial). Create bucket → Keys section → SHOW SECRET → Copy Access Key & Secret. Endpoint: https://s3.tebi.io. Full S3 API, geo-distributed, free API calls.",
+      "1) Sign up FREE at tebi.io\n2) Go to client.tebi.io/buckets → Create Bucket (e.g. 'mgr-capital-docs')\n3) Go to client.tebi.io/keys → Create key → click SHOW SECRET\n4) Paste Access Key + Secret below\n5) Endpoint (s3.tebi.io) and region (global) are auto-configured",
   },
   "supabase-storage": {
     displayName: "Supabase Storage (Free 1GB)",
@@ -73,16 +73,16 @@ const PROVIDER_TEMPLATES: Record<string, any> = {
     capacityBytes: 1 * 1024 * 1024 * 1024, // 1GB free
     credentialFields: ["endpoint", "accessKeyId", "secretAccessKey", "bucket"],
     setupGuide:
-      "Sign up FREE at supabase.com → New Project → Storage → S3 Connection → Copy endpoint, access key, secret. 1GB free storage, 2GB egress. Note: free projects pause after 7 days inactivity.",
+      "1) Sign up FREE at supabase.com → Create New Project\n2) Go to Storage → S3 Connection tab\n3) Copy endpoint URL, access key, and secret key\n4) Create a bucket (e.g. 'mgr-documents')\n5) 1GB free storage, 2GB egress. Note: free projects pause after 7 days inactivity",
   },
   "filebase-ipfs": {
     displayName: "Filebase (IPFS — Free 5GB)",
     type: "S3",
-    config: { region: "us-east-1" },
+    config: { region: "us-east-1", endpoint: "https://s3.filebase.com" },
     capacityBytes: 5 * 1024 * 1024 * 1024, // 5GB free (+ up to 100GB via referrals)
     credentialFields: ["accessKeyId", "secretAccessKey", "bucket"],
     setupGuide:
-      "Sign up FREE at filebase.com (5GB free, no credit card). Create IPFS bucket → Access Keys → Copy Access Key & Secret. Endpoint: https://s3.filebase.com. S3-compatible, auto-pins to IPFS with 3x global redundancy.",
+      "1) Sign up FREE at filebase.com (no credit card)\n2) Create an IPFS bucket (e.g. 'mgr-capital-files')\n3) Go to Access Keys → Copy Access Key + Secret\n4) Endpoint (s3.filebase.com) is auto-configured\n5) Files auto-pin to IPFS with 3x global redundancy",
   },
   "pcloud-free": {
     displayName: "pCloud (Free 10GB)",
