@@ -3,9 +3,8 @@
 // Production-ready employee management and coaching
 // ============================================
 
-import { PrismaClient, CaseStatus, EmployeeTier, CommunicationType } from "@prisma/client";
-
-const prisma = new PrismaClient();
+import { CaseStatus, EmployeeTier, CommunicationType } from "@prisma/client";
+import prisma from "../lib/prisma.js";
 
 // ============================================
 // CALL SCRIPTS — Human, Simple, Compliant

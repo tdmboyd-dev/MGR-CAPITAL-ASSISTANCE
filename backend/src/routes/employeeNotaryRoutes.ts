@@ -470,8 +470,7 @@ router.get(
   authMiddleware,
   roleGuard(["FOUNDER"]),
   asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-    const { PrismaClient } = await import("@prisma/client");
-    const prisma = new PrismaClient();
+    const { default: prisma } = await import("../lib/prisma.js");
 
     // Get all notary profiles with full stats
     const profiles = await prisma.notaryProfile.findMany({
@@ -536,8 +535,7 @@ router.get(
   authMiddleware,
   roleGuard(["ADMIN", "FOUNDER"]),
   asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-    const { PrismaClient } = await import("@prisma/client");
-    const prisma = new PrismaClient();
+    const { default: prisma } = await import("../lib/prisma.js");
 
     const applications = await prisma.notaryApplication.findMany({
       orderBy: { submittedAt: "desc" },

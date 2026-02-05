@@ -4,9 +4,7 @@
 // ============================================
 
 import crypto from "crypto";
-import { PrismaClient } from "@prisma/client";
-
-const prisma = new PrismaClient();
+import prisma from "../lib/prisma.js";
 
 // ============================================
 // RATE LIMITING / BRUTE FORCE PROTECTION
@@ -22,9 +20,9 @@ interface LoginAttempt {
 const loginAttempts = new Map<string, LoginAttempt>();
 
 // Configuration
-const MAX_LOGIN_ATTEMPTS = 5;
-const LOCKOUT_DURATION_MS = 15 * 60 * 1000; // 15 minutes
-const ATTEMPT_WINDOW_MS = 60 * 60 * 1000; // 1 hour
+const MAX_LOGIN_ATTEMPTS = 10;
+const LOCKOUT_DURATION_MS = 5 * 60 * 1000; // 5 minutes
+const ATTEMPT_WINDOW_MS = 30 * 60 * 1000; // 30 minutes
 
 /**
  * Check if IP/email is currently locked out

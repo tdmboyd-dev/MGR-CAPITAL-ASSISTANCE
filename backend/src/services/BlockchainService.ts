@@ -13,11 +13,11 @@
  */
 
 import Web3 from "web3";
-import { PrismaClient, LedgerEntryType, LedgerEntryStatus } from "@prisma/client";
+import { LedgerEntryType, LedgerEntryStatus } from "@prisma/client";
 import { config } from "../config/env.js";
 import { logger } from "../utils/logger.js";
 
-const prisma = new PrismaClient();
+import prisma from "../lib/prisma.js";
 
 // Network configuration
 const NETWORK = process.env.ETHEREUM_NETWORK || 'sepolia';

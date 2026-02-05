@@ -5,15 +5,14 @@
 // ============================================
 
 import { Router, Response } from "express";
-import { PrismaClient } from "@prisma/client";
 import { authMiddleware, AuthenticatedRequest } from "../middleware/authMiddleware.js";
+import prisma from "../lib/prisma.js";
 import { roleGuard } from "../middleware/roleGuard.js";
 import { asyncHandler, Errors } from "../middleware/errorHandler.js";
 import { emailProvisioningBot } from "../services/EmailProvisioningBot.js";
 import { modoboaService } from "../services/ModoboaService.js";
 
 const router = Router();
-const prisma = new PrismaClient();
 
 // ============================================
 // USER ROUTES

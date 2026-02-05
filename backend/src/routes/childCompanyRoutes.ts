@@ -5,14 +5,13 @@
 // ============================================
 
 import { Router, Response } from "express";
-import { PrismaClient } from "@prisma/client";
 import { authMiddleware, AuthenticatedRequest } from "../middleware/authMiddleware.js";
+import prisma from "../lib/prisma.js";
 import { roleGuard } from "../middleware/roleGuard.js";
 import { asyncHandler, Errors } from "../middleware/errorHandler.js";
 import { childCompanyService } from "../services/ChildCompanyService.js";
 
 const router = Router();
-const prisma = new PrismaClient();
 
 // ============================================
 // EMPLOYEE ROUTES

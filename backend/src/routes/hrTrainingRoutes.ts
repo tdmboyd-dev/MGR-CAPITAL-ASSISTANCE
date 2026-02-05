@@ -7,11 +7,9 @@
 import { Router, Response } from "express";
 import { AuthenticatedRequest, authMiddleware } from "../middleware/authMiddleware.js";
 import { roleGuard, ROLE_GROUPS } from "../middleware/roleGuard.js";
-import { PrismaClient } from "@prisma/client";
 import { trainingBot } from "../bots/trainingBot.js";
 import { trainingIntelligenceService } from "../services/TrainingIntelligenceService.js";
-
-const prisma = new PrismaClient();
+import prisma from "../lib/prisma.js";
 const router = Router();
 
 // All HR training routes require authentication and HR_ACCESS role

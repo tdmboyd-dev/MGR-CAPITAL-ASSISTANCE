@@ -6,10 +6,8 @@
 
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import { createHash } from 'crypto';
-import { PrismaClient } from '@prisma/client';
 import { logger } from '../utils/logger.js';
-
-const prisma = new PrismaClient();
+import prisma from "../lib/prisma.js";
 
 interface AssignmentData {
   assignor: string;

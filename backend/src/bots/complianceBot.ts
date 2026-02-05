@@ -6,7 +6,7 @@
 // Phase 15: AI Agent integration for enhanced analysis
 // ============================================
 
-import { PrismaClient, CaseStatus, OpsInsightType, OpsInsightPriority } from "@prisma/client";
+import { CaseStatus, OpsInsightType, OpsInsightPriority } from "@prisma/client";
 import { aiAgentService } from "../services/AiAgentService.js";
 import { notificationCenterService } from "../services/NotificationCenterService.js";
 import { documentAssemblyService } from "../services/DocumentAssemblyService.js";
@@ -15,7 +15,7 @@ import { SMSService } from "../services/SMSService.js";
 import { botSubscriptionService } from "../services/BotSubscriptionService.js";
 import logger from "../utils/logger.js";
 
-const prisma = new PrismaClient();
+import prisma from "../lib/prisma.js";
 const smsService = new SMSService();
 
 const BOT_NAME = "complianceBot";

@@ -12,11 +12,9 @@ import {
   SystemProgram,
   LAMPORTS_PER_SOL,
 } from '@solana/web3.js';
-import { PrismaClient } from '@prisma/client';
 import { logger } from '../utils/logger.js';
 import { EventEmitter } from 'events';
-
-const prisma = new PrismaClient();
+import prisma from "../lib/prisma.js";
 
 // Solana connection
 const SOLANA_RPC = process.env.SOLANA_RPC_URL || 'https://api.devnet.solana.com';

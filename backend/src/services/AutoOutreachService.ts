@@ -4,14 +4,12 @@
 // TCPA-compliant, with follow-up scheduling
 // ============================================
 
-import { PrismaClient } from "@prisma/client";
 import { skipTraceService } from "./SkipTraceService.js";
 import { SMSService } from "./SMSService.js";
 import { notificationService } from "./notificationService.js";
 import { botSubscriptionService, ACTION_COSTS } from "./BotSubscriptionService.js";
 import logger from "../utils/logger.js";
-
-const prisma = new PrismaClient();
+import prisma from "../lib/prisma.js";
 const smsService = new SMSService();
 
 // TCPA-compliant contact hours (local time)

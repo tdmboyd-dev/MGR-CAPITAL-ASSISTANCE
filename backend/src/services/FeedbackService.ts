@@ -6,9 +6,8 @@
  * Integrates with MetaBot for automated insights generation.
  */
 
-import { PrismaClient, FeedbackCategory, OpsInsightPriority } from "@prisma/client";
-
-const prisma = new PrismaClient();
+import { FeedbackCategory, OpsInsightPriority } from "@prisma/client";
+import prisma from "../lib/prisma.js";
 
 // =============================================================================
 // TYPES

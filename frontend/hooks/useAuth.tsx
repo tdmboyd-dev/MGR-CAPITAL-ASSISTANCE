@@ -136,21 +136,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     document.documentElement.setAttribute("data-theme", theme);
   }, []);
 
-  // Hydrate from localStorage on mount
+  // Background validation — don't block UI if user is already cached
   useEffect(() => {
     const token = localStorage.getItem("accessToken");
-    if (token && !store.user) {
-      api
-        .get("/auth/me")
-        .then(({ data }) => {
-          if (data.success) {
-            useAuthStore.setState({ user: data.user });
-          }
-        })
-        .catch(() => {
+    if (!token) return;
+
+    // If user is already hydrated from Zustand persist, validate in background
+    // If user is null (first visit or cleared), fetch and set user
+    const validate = async () => {
+      try {
+        const { data } = await api.get("/auth/me");
+        if (data.success) {
+          useAuthStore.setState({ user: data.user });
+        } else {
           localStorage.removeItem("accessToken");
           useAuthStore.setState({ user: null, accessToken: null });
-        });
+        }
+      } catch {
+        // Only clear auth if we don't have a cached user (avoid logout on network blip)
+        if (!useAuthStore.getState().user) {
+          localStorage.removeItem("accessToken");
+          useAuthStore.setState({ user: null, accessToken: null });
+        }
+      }
+    };
+
+    // If no cached user, fetch immediately
+    // If cached user exists, validate after a short delay (non-blocking)
+    if (!store.user) {
+      validate();
+    } else {
+      const timer = setTimeout(validate, 2000);
+      return () => clearTimeout(timer);
     }
   }, []);
 

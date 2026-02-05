@@ -4,14 +4,15 @@
 // ============================================
 
 import { Router, Response } from "express";
-import { PrismaClient, CaseStatus } from "@prisma/client";
+import { CaseStatus } from "@prisma/client";
 import { authMiddleware, AuthenticatedRequest } from "../middleware/authMiddleware.js";
 import { asyncHandler, Errors } from "../middleware/errorHandler.js";
 import { activityTrackingService, ActivityType } from "../services/ActivityTrackingService.js";
 import { notificationCenterService } from "../services/NotificationCenterService.js";
 
+import prisma from "../lib/prisma.js";
+
 const router = Router();
-const prisma = new PrismaClient();
 
 // ============================================
 // RESPONSE HELPERS

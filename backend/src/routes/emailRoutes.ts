@@ -4,15 +4,14 @@
 // ============================================
 
 import { Router, Response } from "express";
-import { PrismaClient } from "@prisma/client";
 import { authMiddleware, AuthenticatedRequest } from "../middleware/authMiddleware.js";
+import prisma from "../lib/prisma.js";
 import { roleGuard } from "../middleware/roleGuard.js";
 import { asyncHandler, Errors } from "../middleware/errorHandler.js";
 import { notificationService } from "../services/notificationService.js";
 import { emailService } from "../services/EmailService.js";
 
 const router = Router();
-const prisma = new PrismaClient();
 
 // ============================================
 // GET /api/emails/status — Email system status

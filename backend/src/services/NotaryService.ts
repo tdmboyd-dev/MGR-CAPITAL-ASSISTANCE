@@ -21,10 +21,9 @@
  * - Journal entries
  */
 
-import { PrismaClient, DocumentStatus } from "@prisma/client";
+import { DocumentStatus } from "@prisma/client";
 import { logger } from "../utils/logger.js";
-
-const prisma = new PrismaClient();
+import prisma from "../lib/prisma.js";
 
 // =============================================================================
 // CONFIGURATION

@@ -3,11 +3,11 @@
 // Production-ready legal automation engine
 // ============================================
 
-import { PrismaClient, DocumentType, CaseStatus, DocumentStatus } from "@prisma/client";
+import { DocumentType, CaseStatus, DocumentStatus } from "@prisma/client";
 import { getStateRule, calculateDeadline, calculateRedemptionDeadline, StateRuleData } from "../data/stateRules.js";
 import { generateDocument, validateTemplateVariables, getTemplate } from "../data/documentTemplates.js";
 
-const prisma = new PrismaClient();
+import prisma from "../lib/prisma.js";
 
 // ============================================
 // TYPES

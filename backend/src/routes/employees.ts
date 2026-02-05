@@ -4,7 +4,7 @@
 // ============================================
 
 import { Router, Request, Response } from "express";
-import { PrismaClient, EmployeeTier } from "@prisma/client";
+import { EmployeeTier } from "@prisma/client";
 import bcrypt from "bcrypt";
 import { authMiddleware, AuthRequest } from "../middleware/authMiddleware.js";
 import { roleGuard } from "../middleware/roleGuard.js";
@@ -13,8 +13,9 @@ import { trainingService } from "../services/trainingService.js";
 import { bankingService } from "../services/bankingService.js";
 import { notificationService } from "../services/notificationService.js";
 
+import prisma from "../lib/prisma.js";
+
 const router = Router();
-const prisma = new PrismaClient();
 
 // ============================================
 // EMPLOYEE SELF-SERVICE ROUTES

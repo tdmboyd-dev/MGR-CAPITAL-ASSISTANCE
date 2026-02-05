@@ -4,9 +4,8 @@
 // FOUNDER ONLY — Never expose to employees/clients
 // ============================================
 
-import { PrismaClient, WatchAlertType, WatchAlertSeverity, CaseStatus } from "@prisma/client";
-
-const prisma = new PrismaClient();
+import { WatchAlertType, WatchAlertSeverity, CaseStatus } from "@prisma/client";
+import prisma from "../lib/prisma.js";
 
 // ============================================
 // THRESHOLDS AND CONFIGURATION

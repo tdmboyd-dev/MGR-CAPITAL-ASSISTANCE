@@ -3,12 +3,10 @@
 // Daily: Send cooling period alerts, complete expired transfers
 // ============================================
 
-import { PrismaClient } from "@prisma/client";
 import { transactionalEmailBot } from "../bots/TransactionalEmailBot.js";
 import { childCompanyService } from "../services/ChildCompanyService.js";
 import { logger } from "../utils/logger.js";
-
-const prisma = new PrismaClient();
+import prisma from "../lib/prisma.js";
 const CRON_NAME = "transferCoolingCron";
 
 interface CronResult {

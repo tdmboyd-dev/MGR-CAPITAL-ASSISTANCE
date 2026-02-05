@@ -5,10 +5,8 @@
  * OpenSign: FREE unlimited signatures - no paid alternatives needed
  */
 
-import { PrismaClient } from '@prisma/client';
 import { logger } from '../utils/logger.js';
-
-const prisma = new PrismaClient();
+import prisma from "../lib/prisma.js";
 
 // API configuration - OpenSign only
 const OPENSIGN_API_KEY = process.env.OPENSIGN_API_KEY;

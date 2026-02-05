@@ -5,14 +5,14 @@
 // Ensures no deadline is missed
 // ============================================
 
-import { PrismaClient, CaseStatus, OpsInsightType, OpsInsightPriority } from "@prisma/client";
+import { CaseStatus, OpsInsightType, OpsInsightPriority } from "@prisma/client";
 import { notificationService } from "../services/notificationService.js";
 import { SMSService } from "../services/SMSService.js";
 import { documentAssemblyService } from "../services/DocumentAssemblyService.js";
 import { botSubscriptionService } from "../services/BotSubscriptionService.js";
 import logger from "../utils/logger.js";
 
-const prisma = new PrismaClient();
+import prisma from "../lib/prisma.js";
 const smsService = new SMSService();
 
 const BOT_NAME = "docketBot";

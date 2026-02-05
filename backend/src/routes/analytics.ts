@@ -1,9 +1,8 @@
 import { Router, Response } from "express";
-import { PrismaClient } from "@prisma/client";
 import { authMiddleware, AuthRequest } from "../middleware/authMiddleware.js";
+import prisma from "../lib/prisma.js";
 
 const router = Router();
-const prisma = new PrismaClient();
 
 interface ForecastPoint {
   date: string;

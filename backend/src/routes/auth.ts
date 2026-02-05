@@ -15,7 +15,7 @@
 
 import { Router, Request, Response } from "express";
 import bcrypt from "bcrypt";
-import { PrismaClient } from "@prisma/client";
+import prisma from "../lib/prisma.js";
 import { authService } from "../services/AuthService.js";
 import { asyncHandler, AppError, Errors } from "../middleware/errorHandler.js";
 import { AuditActions } from "../middleware/auditLogger.js";
@@ -34,7 +34,6 @@ import {
 import { notificationService } from "../services/notificationService.js";
 
 const router = Router();
-const prisma = new PrismaClient();
 
 // Cookie name for refresh token
 const REFRESH_COOKIE_NAME = "mgr_refresh";

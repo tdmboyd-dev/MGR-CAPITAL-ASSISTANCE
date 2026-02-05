@@ -12,10 +12,8 @@
  * This is CRITICAL for surplus recovery - every county is different.
  */
 
-import { PrismaClient } from "@prisma/client";
 import { logger } from "../utils/logger.js";
-
-const prisma = new PrismaClient();
+import prisma from "../lib/prisma.js";
 
 // =============================================================================
 // TYPES

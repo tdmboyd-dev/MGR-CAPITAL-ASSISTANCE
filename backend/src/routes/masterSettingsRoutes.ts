@@ -11,8 +11,8 @@
  */
 
 import { Router, Request, Response } from "express";
-import { PrismaClient } from "@prisma/client";
 import { authMiddleware, AuthRequest } from "../middleware/authMiddleware.js";
+import prisma from "../lib/prisma.js";
 import { roleGuard } from "../middleware/roleGuard.js";
 import { asyncHandler, Errors } from "../middleware/errorHandler.js";
 import {
@@ -23,7 +23,6 @@ import {
 } from "../services/MasterSettingsService.js";
 
 const router = Router();
-const prisma = new PrismaClient();
 
 // Valid feature keys for validation
 const validFeatureKeys = Object.values(FeatureKeys);

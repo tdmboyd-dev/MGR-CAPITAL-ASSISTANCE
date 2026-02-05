@@ -8,14 +8,13 @@
 // ============================================
 
 import { Router, Response } from "express";
-import { PrismaClient } from "@prisma/client";
 import { authMiddleware, AuthRequest } from "../middleware/authMiddleware.js";
+import prisma from "../lib/prisma.js";
 import { roleGuard, ROLE_GROUPS } from "../middleware/roleGuard.js";
 import { asyncHandler, Errors } from "../middleware/errorHandler.js";
 import { emailInboxService } from "../services/EmailInboxService.js";
 
 const router = Router();
-const prisma = new PrismaClient();
 
 // System mailbox IDs mapped to actual email addresses
 const SYSTEM_MAILBOXES = {

@@ -125,6 +125,9 @@ import webhookRoutes from "./routes/webhookRoutes.js";
 // Bot Subscriptions (Action Bots)
 import botSubscriptionRoutes from "./routes/botSubscriptionRoutes.js";
 
+// Bot Orchestration (Advanced Automation: pipelines, batch ops, intelligence, forecasting)
+import botOrchestrationRoutes from "./routes/botOrchestrationRoutes.js";
+
 // Founder Notary (Self-hosted RON)
 import founderNotaryRoutes from "./routes/founderNotaryRoutes.js";
 
@@ -151,6 +154,9 @@ import mobileRoutes from "./routes/mobileRoutes.js";
 
 // Master Settings (Global Feature Toggles)
 import masterSettingsRoutes from "./routes/masterSettingsRoutes.js";
+
+// Autonomous Worker Bots (Phase 30 — 10 AI workers that work entire cases)
+import workerBotRoutes from "./routes/workerBotRoutes.js";
 
 // Scheduler (autopilot crons)
 import scheduler from "./cron/scheduler.js";
@@ -308,6 +314,9 @@ app.use("/api/office-table", officeTableRoutes);
 // Bot Subscriptions (Action Bots)
 app.use("/api/bot-subscriptions", botSubscriptionRoutes);
 
+// Bot Orchestration (Pipelines, Batch Ops, Intelligence, Forecasting, Command AI)
+app.use("/api/bot-orchestration", botOrchestrationRoutes);
+
 // Webhook Lead Receiver (Autopilot)
 app.use("/api/webhooks", webhookRoutes);
 
@@ -335,6 +344,9 @@ app.use("/api/mobile", mobileRoutes);
 
 // SMS Templates Library (Outreach automation)
 app.use("/api/sms-templates", smsTemplateRoutes);
+
+// Autonomous Worker Bots (10 AI workers — FOUNDER ONLY)
+app.use("/api/worker-bots", workerBotRoutes);
 
 // ============================================
 // HEALTH CHECK

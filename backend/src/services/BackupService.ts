@@ -22,16 +22,15 @@
  * - Monthly: Archive to air-gapped storage (12 months)
  */
 
-import { PrismaClient } from "@prisma/client";
 import { exec } from "child_process";
 import { promisify } from "util";
 import { createHash } from "crypto";
 import * as fs from "fs";
 import * as path from "path";
 import logger from "../utils/logger.js";
+import prisma from "../lib/prisma.js";
 
 const execAsync = promisify(exec);
-const prisma = new PrismaClient();
 
 // =============================================================================
 // TYPES

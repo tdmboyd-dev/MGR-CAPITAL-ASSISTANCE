@@ -3,10 +3,8 @@
 // Monthly: Process child company subscription billing
 // ============================================
 
-import { PrismaClient } from "@prisma/client";
 import { logger } from "../utils/logger.js";
-
-const prisma = new PrismaClient();
+import prisma from "../lib/prisma.js";
 const CRON_NAME = "childCompanyBillingCron";
 
 interface CronResult {

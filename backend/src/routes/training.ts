@@ -4,13 +4,12 @@
 // ============================================
 
 import { Router, Request, Response } from "express";
-import { PrismaClient } from "@prisma/client";
 import { authMiddleware, AuthRequest } from "../middleware/authMiddleware.js";
+import prisma from "../lib/prisma.js";
 import { roleGuard } from "../middleware/roleGuard.js";
 import { trainingService } from "../services/trainingService.js";
 
 const router = Router();
-const prisma = new PrismaClient();
 
 // ============================================
 // FOUNDER/ADMIN ROUTES — Full Access

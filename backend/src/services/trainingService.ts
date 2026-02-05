@@ -5,9 +5,8 @@
 // Video blueprint generation
 // ============================================
 
-import { PrismaClient, EmployeeTier, TrainingModuleStatus, UserRole } from "@prisma/client";
-
-const prisma = new PrismaClient();
+import { EmployeeTier, TrainingModuleStatus, UserRole } from "@prisma/client";
+import prisma from "../lib/prisma.js";
 
 // ============================================
 // TRAINING MODULES — Full Content

@@ -3,8 +3,8 @@
 // Contracts, Violations, and Bans Management
 // ============================================
 
-import { PrismaClient } from "@prisma/client";
 import { logger } from "../utils/logger.js";
+import prisma from "../lib/prisma.js";
 import {
   ContractType,
   ViolationType,
@@ -13,8 +13,6 @@ import {
   VIOLATION_DETAILS,
   PAY_REDUCTION,
 } from "../config/contracts.js";
-
-const prisma = new PrismaClient();
 
 // Type aliases (until Prisma client regenerated)
 type ContractStatus = "PENDING" | "SIGNED" | "EXPIRED" | "TERMINATED";

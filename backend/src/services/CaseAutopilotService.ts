@@ -4,13 +4,13 @@
 // NEW → RESEARCH → OUTREACH → DOCS → FILE → PAID
 // ============================================
 
-import { PrismaClient, CaseStatus } from "@prisma/client";
+import { CaseStatus } from "@prisma/client";
 import { autoOutreachService } from "./AutoOutreachService.js";
 import { documentAssemblyService } from "./DocumentAssemblyService.js";
 import { propertyResearchService } from "./PropertyResearchService.js";
 import logger from "../utils/logger.js";
 
-const prisma = new PrismaClient();
+import prisma from "../lib/prisma.js";
 
 // Autopilot pipeline stages and their triggers
 const AUTOPILOT_TRANSITIONS: Record<string, {

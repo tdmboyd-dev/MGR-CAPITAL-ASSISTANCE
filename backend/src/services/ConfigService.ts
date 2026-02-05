@@ -13,7 +13,6 @@
  * FOUNDER-ONLY OPS LAYER COMPONENT
  */
 
-import { PrismaClient } from "@prisma/client";
 import { cacheService, CacheKeys, CacheTTL } from "./CacheService.js";
 import { logger } from "../utils/logger.js";
 import {
@@ -47,7 +46,7 @@ import {
   PerformanceConfigSchema,
 } from "../zod/index.js";
 
-const prisma = new PrismaClient();
+import prisma from "../lib/prisma.js";
 
 // =============================================================================
 // CONFIG KEYS (match FounderConfig.key in DB)

@@ -3,11 +3,9 @@
 // Weekly: Auto-generate child company offers for eligible employees
 // ============================================
 
-import { PrismaClient } from "@prisma/client";
 import { childCompanyService } from "../services/ChildCompanyService.js";
 import { logger } from "../utils/logger.js";
-
-const prisma = new PrismaClient();
+import prisma from "../lib/prisma.js";
 const CRON_NAME = "eligibilityCheckCron";
 
 interface CronResult {

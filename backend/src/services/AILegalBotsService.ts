@@ -4,7 +4,6 @@
 // With guardrails: bots adapt language based on audience
 // ============================================
 
-import { PrismaClient } from "@prisma/client";
 import {
   getSystemPrompt,
   getAudienceFromRole,
@@ -23,7 +22,7 @@ import { SMSService } from "./SMSService.js";
 import { botSubscriptionService, ACTION_COSTS } from "./BotSubscriptionService.js";
 import logger from "../utils/logger.js";
 
-const prisma = new PrismaClient();
+import prisma from "../lib/prisma.js";
 const smsService = new SMSService();
 
 // Bot personality types with capabilities

@@ -8,14 +8,14 @@
  * All money in cents, all timestamps in UTC.
  */
 
-import { PrismaClient, ScrapedItemType, ScrapedItemReviewStatus, Prisma } from "@prisma/client";
+import { ScrapedItemType, ScrapedItemReviewStatus, Prisma } from "@prisma/client";
 import * as https from "https";
 import * as http from "http";
 import { URL } from "url";
 import crypto from "crypto";
 import { parseContent as parseWithService, SourceType } from "./parserService.js";
 
-const prisma = new PrismaClient();
+import prisma from "../lib/prisma.js";
 
 // =============================================================================
 // TYPES

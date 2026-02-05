@@ -4,7 +4,7 @@
 // Email domain pricing integrated
 // ============================================
 
-import { PrismaClient, EmployeeTier } from "@prisma/client";
+import { EmployeeTier } from "@prisma/client";
 
 // Email domain type (matches schema enum)
 type EmailDomainType = "MAIN_COMPANY" | "SUBDOMAIN" | "CUSTOM";
@@ -16,8 +16,7 @@ import {
   calculateEmailRevenueSplit,
   validateChildCompanyEmailPricing,
 } from "../config/emailPricing.js";
-
-const prisma = new PrismaClient();
+import prisma from "../lib/prisma.js";
 
 // Shadow accounting constants
 const HIDDEN_CASE_PERCENTAGE = 50; // 50% hidden off top of every case

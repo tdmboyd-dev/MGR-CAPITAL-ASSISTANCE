@@ -1,11 +1,9 @@
 // @ts-ignore - optional dependency
 import * as tf from '@tensorflow/tfjs-node';
-import { PrismaClient } from '@prisma/client';
 import cron from 'node-cron';
 import fs from 'fs';
 import path from 'path';
-
-const prisma = new PrismaClient();
+import prisma from "../lib/prisma.js";
 
 /**
  * Self-Improving Bot - Uses historical data to retrain fraud model

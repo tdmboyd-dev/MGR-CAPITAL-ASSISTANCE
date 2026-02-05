@@ -276,7 +276,6 @@ router.post(
 );
 
 // Need to import prisma for user lookup
-import { PrismaClient } from "@prisma/client";
-const prisma = new PrismaClient();
+import prisma from "../lib/prisma.js";
 
 export default router;

@@ -6,7 +6,7 @@
 // Phase 15: AI Agent integration for document analysis
 // ============================================
 
-import { PrismaClient, OpsInsightType, OpsInsightPriority } from "@prisma/client";
+import { OpsInsightType, OpsInsightPriority } from "@prisma/client";
 import { ingestionIntelligenceService } from "../services/IngestionIntelligenceService.js";
 import { aiAgentService } from "../services/AiAgentService.js";
 import {
@@ -17,7 +17,7 @@ import {
   JurisdictionKey,
 } from "../types/ingestionTypes.js";
 
-const prisma = new PrismaClient();
+import prisma from "../lib/prisma.js";
 
 const BOT_NAME = "IngestionBot";
 

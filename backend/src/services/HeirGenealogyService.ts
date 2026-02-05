@@ -4,12 +4,10 @@
  * D3.js visualization data, skip trace integration, PDF export
  */
 
-import { PrismaClient } from '@prisma/client';
 import { logger } from '../utils/logger.js';
 import OpenAI from 'openai';
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
-
-const prisma = new PrismaClient();
+import prisma from "../lib/prisma.js";
 
 const openai = process.env.OPENAI_API_KEY
   ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })

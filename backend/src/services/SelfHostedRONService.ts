@@ -22,12 +22,10 @@
  * - Generates state-compliant certificates
  */
 
-import { PrismaClient } from "@prisma/client";
 import { logger } from "../utils/logger.js";
 import crypto from "crypto";
 import { digitalSealService, NotaryCredentials } from "./DigitalSealService.js";
-
-const prisma = new PrismaClient();
+import prisma from "../lib/prisma.js";
 
 // =============================================================================
 // KBA QUESTION GENERATOR

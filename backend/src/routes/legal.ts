@@ -5,14 +5,13 @@
 // ============================================
 
 import { Router, Request, Response } from "express";
-import { PrismaClient } from "@prisma/client";
 import { authMiddleware, AuthRequest } from "../middleware/authMiddleware.js";
+import prisma from "../lib/prisma.js";
 import { roleGuard } from "../middleware/roleGuard.js";
 import { legalService } from "../services/legalService.js";
 import { getStateRule, STATE_RULES, getStatesWithFeeCaps, enforceStateFeeCap } from "../data/stateRules.js";
 
 const router = Router();
-const prisma = new PrismaClient();
 
 // ============================================
 // ALL ROUTES ARE FOUNDER ONLY

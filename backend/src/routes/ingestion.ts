@@ -5,7 +5,7 @@
 // ============================================
 
 import { Router, Request, Response } from "express";
-import { PrismaClient, IngestionSourceType } from "@prisma/client";
+import { IngestionSourceType } from "@prisma/client";
 import { authMiddleware, AuthRequest } from "../middleware/authMiddleware.js";
 import { roleGuard } from "../middleware/roleGuard.js";
 import { asyncHandler, Errors } from "../middleware/errorHandler.js";
@@ -24,8 +24,9 @@ import { caseRoutingService } from "../services/CaseRoutingService.js";
 import { runAutoIngestion, fetchSingleSource } from "../cron/autoIngestionCron.js";
 import multer from "multer";
 
+import prisma from "../lib/prisma.js";
+
 const router = Router();
-const prisma = new PrismaClient();
 
 // Configuration limits
 const MAX_BATCH_SIZE = 10000; // Maximum records per batch

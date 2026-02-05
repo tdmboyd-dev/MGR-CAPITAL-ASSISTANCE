@@ -7,12 +7,10 @@
 import { Router, Response } from "express";
 import { AuthenticatedRequest, authMiddleware, requireRoles } from "../middleware/authMiddleware.js";
 import { roleGuard, ROLE_GROUPS } from "../middleware/roleGuard.js";
-import { PrismaClient } from "@prisma/client";
 import { complianceExportService, ExportType, ExportFormat } from "../services/ComplianceExportService.js";
 import { asyncHandler, Errors } from "../middleware/errorHandler.js";
 import { logger } from "../utils/logger.js";
-
-const prisma = new PrismaClient();
+import prisma from "../lib/prisma.js";
 
 const router = Router();
 

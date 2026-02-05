@@ -6,9 +6,8 @@
  * with optional AI embedding for semantic relevance.
  */
 
-import { PrismaClient, UserRole, CaseStatus, DocumentType } from "@prisma/client";
-
-const prisma = new PrismaClient();
+import { UserRole, CaseStatus, DocumentType } from "@prisma/client";
+import prisma from "../lib/prisma.js";
 
 // Result types for each searchable entity
 export interface CaseSearchResult {

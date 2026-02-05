@@ -3,10 +3,11 @@
  * Production Email System with nodemailer + MJML templates + drip sequences
  *
  * PROVIDER CHAIN (automatic failover):
- * 1. Brevo API (FREE 300 emails/day) — PRIMARY
- * 2. Amazon SES via SMTP ($0.10/1000) — FALLBACK
- * 3. Generic SMTP — FALLBACK
- * 4. Console log — LAST RESORT (dev only)
+ * 1. Modoboa SMTP (mail.capitalmgr.com) — PRIMARY (self-hosted, unlimited, $0)
+ * 2. Brevo API (300 emails/day) — FALLBACK ONLY
+ * 3. Console log — LAST RESORT (dev only)
+ *
+ * NO PAID EMAIL DEPENDENCY — Modoboa handles all production email
  */
 
 import nodemailer from 'nodemailer';
@@ -41,9 +42,9 @@ if (process.env.SMTP_HOST) {
   }
 }
 
-// Determine primary provider
-const PRIMARY_PROVIDER = BREVO_API_KEY ? 'brevo' : (smtpTransporter ? 'smtp' : 'log');
-logger.info(`[EmailService] Primary provider: ${PRIMARY_PROVIDER.toUpperCase()}, Brevo: ${BREVO_API_KEY ? 'YES' : 'NO'}, SMTP: ${smtpTransporter ? 'YES' : 'NO'}`);
+// Determine primary provider — SMTP (Modoboa) is ALWAYS primary, Brevo is fallback only
+const PRIMARY_PROVIDER = smtpTransporter ? 'smtp' : (BREVO_API_KEY ? 'brevo' : 'log');
+logger.info(`[EmailService] Primary provider: ${PRIMARY_PROVIDER.toUpperCase()} (Modoboa SMTP), Brevo fallback: ${BREVO_API_KEY ? 'YES' : 'NO'}, SMTP: ${smtpTransporter ? 'YES' : 'NO'}`);
 
 // Email templates stored in memory
 const TEMPLATES: Record<string, (data: any) => string> = {
@@ -239,18 +240,18 @@ export class EmailService {
     const subject = data.subject || 'MGR Capital Notification';
     const plainText = data.plainText || this.stripHtml(html);
 
-    // Try Brevo first (most reliable, FREE)
-    if (BREVO_API_KEY) {
-      const brevoResult = await this.sendViaBrevo(to, subject, html, plainText);
-      if (brevoResult) return true;
-      logger.warn('[EmailService] Brevo failed, trying SMTP fallback...');
-    }
-
-    // Try SMTP second (only if not known-failed)
+    // Try Modoboa SMTP first (self-hosted, unlimited, $0 cost)
     if (smtpTransporter && !this.smtpFailed) {
       const smtpResult = await this.sendViaSMTP(to, subject, html, plainText);
       if (smtpResult) return true;
-      logger.warn('[EmailService] SMTP failed, falling back to log mode');
+      logger.warn('[EmailService] Modoboa SMTP failed, trying Brevo fallback...');
+    }
+
+    // Try Brevo as fallback only (external API, rate limited)
+    if (BREVO_API_KEY) {
+      const brevoResult = await this.sendViaBrevo(to, subject, html, plainText);
+      if (brevoResult) return true;
+      logger.warn('[EmailService] Brevo fallback also failed');
     }
 
     // Last resort: log the email

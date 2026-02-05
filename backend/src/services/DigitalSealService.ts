@@ -23,14 +23,12 @@
  * - SelfHostedRONService
  */
 
-import { PrismaClient } from "@prisma/client";
 import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
 // @ts-ignore - pdfkit doesn't have types
 import PDFKit from "pdfkit";
 import { logger } from "../utils/logger.js";
 import crypto from "crypto";
-
-const prisma = new PrismaClient();
+import prisma from "../lib/prisma.js";
 
 // =============================================================================
 // TYPES

@@ -4,9 +4,8 @@
 // Shadow accounting for employee commission display
 // ============================================
 
-import { PrismaClient, EmployeeTier, LedgerEntryType } from "@prisma/client";
-
-const prisma = new PrismaClient();
+import { EmployeeTier, LedgerEntryType } from "@prisma/client";
+import prisma from "../lib/prisma.js";
 
 // ============================================
 // COMMISSION TIERS — Shadow Accounting

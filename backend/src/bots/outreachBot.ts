@@ -5,12 +5,12 @@
 // Optimizes outreach timing
 // ============================================
 
-import { PrismaClient, CaseStatus, OpsInsightType, OpsInsightPriority } from "@prisma/client";
+import { CaseStatus, OpsInsightType, OpsInsightPriority } from "@prisma/client";
 import { autoOutreachService } from "../services/AutoOutreachService.js";
 import { botSubscriptionService } from "../services/BotSubscriptionService.js";
 import logger from "../utils/logger.js";
 
-const prisma = new PrismaClient();
+import prisma from "../lib/prisma.js";
 
 const BOT_NAME = "outreachBot";
 

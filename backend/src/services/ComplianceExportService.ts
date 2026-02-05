@@ -11,14 +11,12 @@
  * FOUNDER-ONLY OPS LAYER COMPONENT
  */
 
-import { PrismaClient } from "@prisma/client";
 import ExcelJS from "exceljs";
 import { createRequire } from "module";
 const require = createRequire(import.meta.url);
 const PDFDocument = require("pdfkit");
 import { logger } from "../utils/logger.js";
-
-const prisma = new PrismaClient();
+import prisma from "../lib/prisma.js";
 
 // =============================================================================
 // TYPES

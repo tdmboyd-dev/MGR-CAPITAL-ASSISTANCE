@@ -4,7 +4,7 @@ import {
   PublicKey,
   clusterApiUrl
 } from '@solana/web3.js';
-import { PrismaClient } from '@prisma/client';
+import prisma from "../lib/prisma.js";
 
 // SPL Token - dynamically handle different versions
 // @ts-ignore - Version compatibility
@@ -15,8 +15,6 @@ const mintTo = splToken.mintTo || splToken.default?.mintTo;
 const transfer = splToken.transfer || splToken.default?.transfer;
 const getAccount = splToken.getAccount || splToken.default?.getAccount;
 const TOKEN_PROGRAM_ID = splToken.TOKEN_PROGRAM_ID;
-
-const prisma = new PrismaClient();
 
 // Solana connection
 const connection = new Connection(

@@ -4,15 +4,14 @@
 // ============================================
 
 import { Router, Request, Response } from "express";
-import { PrismaClient } from "@prisma/client";
 import { authMiddleware, AuthRequest } from "../middleware/authMiddleware.js";
+import prisma from "../lib/prisma.js";
 import { roleGuard } from "../middleware/roleGuard.js";
 import { asyncHandler, Errors } from "../middleware/errorHandler.js";
 import { bankingService } from "../services/bankingService.js";
 import { employeeService } from "../services/employeeService.js";
 
 const router = Router();
-const prisma = new PrismaClient();
 
 // ============================================
 // VALIDATION HELPERS

@@ -5,14 +5,13 @@
 // Real PDF generation via pdf-lib
 // ============================================
 
-import { PrismaClient } from "@prisma/client";
 import { PDFDocument, rgb, StandardFonts, PDFFont, PDFPage } from "pdf-lib";
 import { botSubscriptionService, ACTION_COSTS } from "./BotSubscriptionService.js";
 import logger from "../utils/logger.js";
 import fs from "fs/promises";
 import path from "path";
 
-const prisma = new PrismaClient();
+import prisma from "../lib/prisma.js";
 
 // Generated docs output directory
 const GENERATED_DIR = path.resolve("generated-documents");

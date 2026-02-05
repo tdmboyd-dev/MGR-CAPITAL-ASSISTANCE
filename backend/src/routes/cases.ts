@@ -4,7 +4,7 @@
 // ============================================
 
 import { Router, Request, Response } from "express";
-import { PrismaClient, CaseStatus, DocumentType } from "@prisma/client";
+import { CaseStatus, DocumentType } from "@prisma/client";
 import { authMiddleware, AuthRequest } from "../middleware/authMiddleware.js";
 import { roleGuard } from "../middleware/roleGuard.js";
 import { asyncHandler, AppError, Errors } from "../middleware/errorHandler.js";
@@ -20,8 +20,9 @@ import {
   getValidNextStatuses
 } from "../utils/caseLifecycle.js";
 
+import prisma from "../lib/prisma.js";
+
 const router = Router();
-const prisma = new PrismaClient();
 
 // ============================================
 // EMPLOYEE ROUTES — Limited Access

@@ -4,7 +4,7 @@
 // Evaluates tier progression with shadow accounting
 // ============================================
 
-import { PrismaClient, EmployeeTier, UserRole, CaseStatus } from "@prisma/client";
+import { EmployeeTier, UserRole, CaseStatus } from "@prisma/client";
 import {
   ContractorMetrics,
   ContractorTrainingNeeds,
@@ -30,7 +30,7 @@ import {
   TrainingModuleSourceType,
 } from "../types/trainingTypes.js";
 
-const prisma = new PrismaClient();
+import prisma from "../lib/prisma.js";
 
 // ============================================
 // TIER PROGRESSION REQUIREMENTS

@@ -8,7 +8,6 @@
  * All money in cents, all timestamps in UTC.
  */
 
-import { PrismaClient } from "@prisma/client";
 import { createHash } from "crypto";
 import {
   IngestionIntelligenceConfig,
@@ -26,7 +25,7 @@ import {
   IIngestionIntelligenceService,
 } from "../types/ingestionTypes.js";
 
-const prisma = new PrismaClient();
+import prisma from "../lib/prisma.js";
 
 // =============================================================================
 // HELPER FUNCTIONS

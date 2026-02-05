@@ -4,13 +4,14 @@
 // ============================================
 
 import { Router, Response } from "express";
-import { PrismaClient, CommunicationType, CommunicationDirection } from "@prisma/client";
+import { CommunicationType, CommunicationDirection } from "@prisma/client";
 import { authMiddleware, AuthRequest } from "../middleware/authMiddleware.js";
 import { roleGuard } from "../middleware/roleGuard.js";
 import { asyncHandler, Errors } from "../middleware/errorHandler.js";
 
+import prisma from "../lib/prisma.js";
+
 const router = Router();
-const prisma = new PrismaClient();
 
 // All routes require authentication
 router.use(authMiddleware);

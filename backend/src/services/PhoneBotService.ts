@@ -8,10 +8,8 @@
  * - LLM: DeepSeek V3 (95% cheaper than OpenAI) or Google Gemini
  */
 
-import { PrismaClient } from '@prisma/client';
 import { logger } from '../utils/logger.js';
-
-const prisma = new PrismaClient();
+import prisma from "../lib/prisma.js";
 
 // API configurations - Telnyx only for phone
 const TELNYX_API_KEY = process.env.TELNYX_API_KEY;

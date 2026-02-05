@@ -17,10 +17,9 @@
  * Documentation: https://www.getnickel.com
  */
 
-import { PrismaClient, Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { logger } from "../utils/logger.js";
-
-const prisma = new PrismaClient();
+import prisma from "../lib/prisma.js";
 
 // Environment variables (configure in .env)
 const NICKEL_API_KEY = process.env.NICKEL_API_KEY || "";

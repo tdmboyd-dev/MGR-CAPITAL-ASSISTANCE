@@ -33,6 +33,7 @@ import {
   Eye,
   Network,
   UserCog,
+  Zap,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -52,6 +53,7 @@ interface NavLink {
 const linksByRole: Record<string, NavLink[]> = {
   founder: [
     { href: "/founder/dashboard", label: "Dashboard", icon: Home },
+    { href: "/founder/command-center", label: "Command Center", icon: Zap },
     { href: "/founder/pipeline", label: "Pipeline", icon: GitBranch },
     { href: "/founder/cases", label: "All Cases", icon: FileText },
     { href: "/founder/users", label: "User Management", icon: Users },

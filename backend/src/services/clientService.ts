@@ -4,9 +4,8 @@
 // Human-friendly, simple, no backend exposure
 // ============================================
 
-import { PrismaClient, CaseStatus, DocumentStatus } from "@prisma/client";
-
-const prisma = new PrismaClient();
+import { CaseStatus, DocumentStatus } from "@prisma/client";
+import prisma from "../lib/prisma.js";
 
 // ============================================
 // CLIENT-SAFE MESSAGES

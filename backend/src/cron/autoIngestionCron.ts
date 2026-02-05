@@ -9,15 +9,14 @@
  * FOUNDER-ONLY OPS LAYER COMPONENT
  */
 
-import { PrismaClient } from "@prisma/client";
 import logger from "../utils/logger.js";
+import prisma from "../lib/prisma.js";
 import { scraperService } from "../services/scraperService.js";
 import { ingestionService } from "../services/ingestionService.js";
 import { caseRoutingService } from "../services/CaseRoutingService.js";
 import { parseContent, SourceType } from "../services/parserService.js";
 import { demoDataService } from "../services/DemoDataService.js";
 
-const prisma = new PrismaClient();
 
 // =============================================================================
 // TYPES

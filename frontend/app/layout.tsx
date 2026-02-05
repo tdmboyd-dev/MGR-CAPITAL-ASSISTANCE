@@ -3,14 +3,16 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
 import { Toaster } from "sonner";
-import { FeedbackButton } from "@/components/FeedbackButton";
-import { VoiceAiButton } from "@/components/VoiceAiButton";
+import dynamic from "next/dynamic";
+
+const FeedbackButton = dynamic(() => import("@/components/FeedbackButton").then(m => m.FeedbackButton), { ssr: false });
+const VoiceAiButton = dynamic(() => import("@/components/VoiceAiButton").then(m => m.VoiceAiButton), { ssr: false });
 
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "MGR Capital Assistance",
-  description: "Sovereign Surplus & Tax Sale Recovery Platform",
+  description: "Capital Recovery & Asset Management Platform",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,

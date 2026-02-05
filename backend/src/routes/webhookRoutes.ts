@@ -9,8 +9,8 @@
  */
 
 import { Router, Request, Response } from "express";
-import { PrismaClient } from "@prisma/client";
 import { authMiddleware, AuthRequest } from "../middleware/authMiddleware.js";
+import prisma from "../lib/prisma.js";
 import { roleGuard } from "../middleware/roleGuard.js";
 import { asyncHandler, Errors } from "../middleware/errorHandler.js";
 import { ingestionService } from "../services/ingestionService.js";
@@ -20,7 +20,6 @@ import { logger } from "../utils/logger.js";
 import crypto from "crypto";
 
 const router = Router();
-const prisma = new PrismaClient();
 
 // =============================================================================
 // RATE LIMITING (simple in-memory, 100 req/min per source)

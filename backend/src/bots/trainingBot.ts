@@ -5,7 +5,7 @@
 // Auto-tier progression with shadow accounting
 // ============================================
 
-import { PrismaClient, OpsInsightType, OpsInsightPriority, EmployeeTier } from "@prisma/client";
+import { OpsInsightType, OpsInsightPriority, EmployeeTier } from "@prisma/client";
 import { trainingIntelligenceService } from "../services/TrainingIntelligenceService.js";
 import { notificationService } from "../services/notificationService.js";
 import { botSubscriptionService } from "../services/BotSubscriptionService.js";
@@ -21,7 +21,7 @@ import {
   TrainingModuleSourceType,
 } from "../types/trainingTypes.js";
 
-const prisma = new PrismaClient();
+import prisma from "../lib/prisma.js";
 
 const BOT_NAME = "trainingBot";
 

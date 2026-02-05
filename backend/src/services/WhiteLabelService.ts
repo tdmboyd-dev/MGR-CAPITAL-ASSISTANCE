@@ -39,10 +39,8 @@
  * - Non-payment = immediate suspension, data retained 30 days
  */
 
-import { PrismaClient } from "@prisma/client";
 import { logger } from "../utils/logger.js";
-
-const prisma = new PrismaClient();
+import prisma from "../lib/prisma.js";
 
 // =============================================================================
 // CONFIGURATION — 4-TIER PARTNER HIERARCHY (What They See = What They Get)

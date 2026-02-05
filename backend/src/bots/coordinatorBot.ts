@@ -5,7 +5,7 @@
 // Produces human-readable summaries for the Founder
 // ============================================
 
-import { PrismaClient, OpsInsightType, OpsInsightPriority, WatchAlertSeverity } from "@prisma/client";
+import { OpsInsightType, OpsInsightPriority, WatchAlertSeverity } from "@prisma/client";
 import { ingestionBot } from "./ingestionBot.js";
 import { payoutBot } from "./payoutBot.js";
 import { complianceBot } from "./complianceBot.js";
@@ -13,7 +13,7 @@ import { trainingBot } from "./trainingBot.js";
 import { outreachBot } from "./outreachBot.js";
 import { docketBot } from "./docketBot.js";
 
-const prisma = new PrismaClient();
+import prisma from "../lib/prisma.js";
 
 const BOT_NAME = "coordinatorBot";
 

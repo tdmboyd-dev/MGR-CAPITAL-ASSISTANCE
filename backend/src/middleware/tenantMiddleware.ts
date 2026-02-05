@@ -9,7 +9,8 @@
  */
 
 import { Request, Response, NextFunction } from "express";
-import { PrismaClient, Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
+import type { PrismaClient } from "@prisma/client";
 import { AuthenticatedRequest } from "./authMiddleware.js";
 import { logger } from "../utils/logger.js";
 
@@ -32,7 +33,7 @@ export interface TenantRequest extends AuthenticatedRequest {
 // TENANT-AWARE PRISMA CLIENT
 // =============================================================================
 
-const basePrisma = new PrismaClient();
+import basePrisma from "../lib/prisma.js";
 
 /**
  * Create a tenant-scoped Prisma client

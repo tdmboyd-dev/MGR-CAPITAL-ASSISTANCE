@@ -5,9 +5,7 @@
 // ============================================
 
 import { Request, Response, NextFunction } from "express";
-import { PrismaClient } from "@prisma/client";
-
-const prisma = new PrismaClient();
+import prisma from "../lib/prisma.js";
 
 // ============================================
 // RATE LIMIT STORE (In-Memory, Redis-Ready)
@@ -140,8 +138,8 @@ const RATE_LIMIT_PRESETS: Record<string, RateLimitConfig> = {
   // Strict: For login, password reset
   strict: {
     windowMs: 15 * 60 * 1000,    // 15 minutes
-    maxRequests: 5,              // 5 attempts
-    blockDurationMs: 30 * 60 * 1000, // Block for 30 minutes
+    maxRequests: 15,             // 15 attempts per 15 minutes
+    blockDurationMs: 10 * 60 * 1000, // Block for 10 minutes
     message: "Too many requests. Please try again later.",
   },
 

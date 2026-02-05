@@ -26,10 +26,9 @@
  * - E&O insurance
  */
 
-import { PrismaClient, EmployeeTier } from "@prisma/client";
+import { EmployeeTier } from "@prisma/client";
 import { logger } from "../utils/logger.js";
-
-const prisma = new PrismaClient();
+import prisma from "../lib/prisma.js";
 
 // =============================================================================
 // CONFIGURATION — SHADOW ACCOUNTING (Everyone Sees Hidden Base)

@@ -5,10 +5,8 @@
  */
 
 import { createHash } from 'crypto';
-import { PrismaClient } from '@prisma/client';
 import { logger } from '../utils/logger.js';
-
-const prisma = new PrismaClient();
+import prisma from "../lib/prisma.js";
 
 // Solana configuration
 const SOLANA_RPC_URL = process.env.SOLANA_RPC_URL || 'https://api.devnet.solana.com';

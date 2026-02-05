@@ -19,11 +19,10 @@
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
 import bcrypt from "bcrypt";
-import { PrismaClient, User, UserRole, EmployeeTier } from "@prisma/client";
+import { User, UserRole, EmployeeTier } from "@prisma/client";
+import prisma from "../lib/prisma.js";
 import { config } from "../config/env.js";
 import { logger } from "../utils/logger.js";
-
-const prisma = new PrismaClient();
 
 // =============================================================================
 // TYPES

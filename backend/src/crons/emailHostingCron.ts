@@ -3,13 +3,11 @@
 // Daily: billing, renewal alerts, deletions, DNS checks, storage
 // ============================================
 
-import { PrismaClient } from "@prisma/client";
 import { emailProvisioningBot } from "../services/EmailProvisioningBot.js";
 import { modoboaService } from "../services/ModoboaService.js";
 import { notificationService } from "../services/notificationService.js";
 import { logger } from "../utils/logger.js";
-
-const prisma = new PrismaClient();
+import prisma from "../lib/prisma.js";
 const CRON_NAME = "emailHostingCron";
 
 interface CronResult {

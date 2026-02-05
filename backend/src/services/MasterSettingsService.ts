@@ -13,12 +13,10 @@
  * FOUNDER-ONLY OPS LAYER COMPONENT
  */
 
-import { PrismaClient } from "@prisma/client";
 import { z } from "zod";
 import { cacheService, CacheKeys, CacheTTL } from "./CacheService.js";
 import { logger } from "../utils/logger.js";
-
-const prisma = new PrismaClient();
+import prisma from "../lib/prisma.js";
 
 // =============================================================================
 // MASTER SETTINGS KEY

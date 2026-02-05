@@ -3120,3 +3120,124 @@ model BotUsageLog {
   @@index([caseId])
 }
 
+// ============================================
+// AUTONOMOUS WORKER BOTS (Phase 30)
+// 10 worker bots that work entire cases autonomously
+// Can spawn sub-bots, learn, and scale the company
+// ============================================
+
+enum WorkerBotStatus {
+  IDLE
+  WORKING
+  LEARNING
+  SPAWNING
+  PAUSED
+  RECALLED
+  EVOLVING
+  TERMINATED
+}
+
+enum WorkerBotGeneration {
+  GENESIS    // Original 10 bots (founder-created)
+  ALPHA      // First spawned generation
+  BETA       // Second generation (learned from Alpha)
+  GAMMA      // Third generation (optimized)
+  DELTA      // Fourth generation (specialized)
+  OMEGA      // Final evolved form (self-optimizing)
+}
+
+model WorkerBot {
+  id                String              @id @default(cuid())
+  codename          String              @unique // TITAN, HUNTER, etc.
+  designation       String              // "WB-001", "WB-002"
+  role              String              // "case_lifecycle", "lead_discovery", etc.
+  generation        WorkerBotGeneration @default(GENESIS)
+  status            WorkerBotStatus     @default(IDLE)
+
+  // Capabilities & config
+  capabilities      Json                // Array of capability strings
+  personality       Json                // Personality profile (human-like)
+  learningModel     Json?               // Accumulated knowledge/patterns
+  specialization    Json?               // What this bot has specialized in
+
+  // Performance metrics
+  casesWorked       Int                 @default(0)
+  casesWon          Int                 @default(0)
+  revenueGenerated  Int                 @default(0) // cents
+  avgCaseTimeMs     Int                 @default(0)
+  successRate       Float               @default(0)
+  learningScore     Float               @default(0) // 0-100 how much it's learned
+  evolutionLevel    Int                 @default(1) // 1-10 evolution stages
+
+  // Spawning
+  parentBotId       String?
+  parentBot         WorkerBot?          @relation("BotLineage", fields: [parentBotId], references: [id])
+  spawnedBots       WorkerBot[]         @relation("BotLineage")
+  totalSpawned      Int                 @default(0)
+  maxConcurrentCases Int                @default(100)
+
+  // Current work
+  activeCaseIds     Json?               // Array of case IDs currently being worked
+  currentTaskQueue  Json?               // Queue of pending tasks
+  lastActivityAt    DateTime?
+
+  // Lifecycle
+  isActive          Boolean             @default(true)
+  deployedAt        DateTime?
+  recalledAt        DateTime?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  // Relations
+  tasks             WorkerBotTask[]
+  learnings         WorkerBotLearning[]
+
+  @@index([codename])
+  @@index([status])
+  @@index([generation])
+  @@index([isActive])
+}
+
+model WorkerBotTask {
+  id            String          @id @default(cuid())
+  workerBotId   String
+  workerBot     WorkerBot       @relation(fields: [workerBotId], references: [id])
+  caseId        String?
+  taskType      String          // "full_case_work", "skip_trace", "outreach", "doc_gen", etc.
+  status        String          @default("QUEUED") // QUEUED, IN_PROGRESS, COMPLETED, FAILED, CANCELLED
+  priority      Int             @default(5) // 1-10
+  input         Json?           // Task input data
+  output        Json?           // Task result data
+  error         String?
+  durationMs    Int?
+  costCents     Int             @default(0)
+  revenueGenerated Int          @default(0) // cents
+  startedAt     DateTime?
+  completedAt   DateTime?
+  createdAt     DateTime        @default(now())
+
+  @@index([workerBotId])
+  @@index([caseId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model WorkerBotLearning {
+  id            String    @id @default(cuid())
+  workerBotId   String
+  workerBot     WorkerBot @relation(fields: [workerBotId], references: [id])
+  category      String    // "case_strategy", "outreach_timing", "doc_quality", "negotiation", etc.
+  pattern       String    // What was learned
+  confidence    Float     @default(0.5) // 0-1 confidence in this learning
+  appliedCount  Int       @default(0) // How many times this learning was applied
+  successCount  Int       @default(0) // How many times it led to success
+  sourceTaskId  String?   // Task that generated this learning
+  data          Json?     // Detailed learning data
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([workerBotId])
+  @@index([category])
+  @@index([confidence])
+}
+

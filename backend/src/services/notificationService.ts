@@ -5,11 +5,10 @@
 // Bot personas with real names instead of noreply@
 // ============================================
 
-import { PrismaClient, NotificationType, NotificationStatus } from "@prisma/client";
+import { NotificationType, NotificationStatus } from "@prisma/client";
+import prisma from "../lib/prisma.js";
 import * as nodemailer from "nodemailer";
 import { BOT_PERSONAS, getBotPersona, getBotIdForEmailType, type BotPersona } from "../config/botPersonas.js";
-
-const prisma = new PrismaClient();
 
 // SMTP Configuration from environment
 const SMTP_CONFIG = {

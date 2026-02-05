@@ -5,10 +5,8 @@
 
 // @ts-ignore - optional dependency, types may not be installed
 import webpush from 'web-push';
-import { PrismaClient } from '@prisma/client';
 import { logger } from '../utils/logger.js';
-
-const prisma = new PrismaClient();
+import prisma from "../lib/prisma.js";
 
 // Configure VAPID keys
 if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {

@@ -4,9 +4,8 @@
 // FOUNDER ONLY — Never expose to employees/clients
 // ============================================
 
-import { PrismaClient, CaseStatus, LedgerEntryStatus, LedgerEntryType } from "@prisma/client";
-
-const prisma = new PrismaClient();
+import { CaseStatus, LedgerEntryStatus, LedgerEntryType } from "@prisma/client";
+import prisma from "../lib/prisma.js";
 
 // ============================================
 // DATE RANGE HELPERS

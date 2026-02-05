@@ -5,10 +5,8 @@
  */
 
 import * as tf from '@tensorflow/tfjs';
-import { PrismaClient } from '@prisma/client';
 import { logger } from '../utils/logger.js';
-
-const prisma = new PrismaClient();
+import prisma from "../lib/prisma.js";
 
 interface TransactionFeatures {
   amount: number;

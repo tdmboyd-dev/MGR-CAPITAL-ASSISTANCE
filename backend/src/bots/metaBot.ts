@@ -5,10 +5,10 @@
 // Analyzes BotRunLog, generates optimization recommendations
 // ============================================
 
-import { PrismaClient, OpsInsightPriority } from "@prisma/client";
+import { OpsInsightPriority } from "@prisma/client";
 import { feedbackService } from "../services/FeedbackService.js";
 
-const prisma = new PrismaClient();
+import prisma from "../lib/prisma.js";
 
 const BOT_NAME = "metaBot";
 

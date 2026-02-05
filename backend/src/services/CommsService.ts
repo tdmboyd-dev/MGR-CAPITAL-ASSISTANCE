@@ -1,7 +1,6 @@
-import { PrismaClient, ChatRoomType, UserRole } from "@prisma/client";
+import { ChatRoomType, UserRole } from "@prisma/client";
 import bcrypt from "bcrypt";
-
-const prisma = new PrismaClient();
+import prisma from "../lib/prisma.js";
 
 export interface CreateRoomInput {
   name: string;

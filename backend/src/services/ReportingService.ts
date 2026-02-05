@@ -14,13 +14,11 @@
  * - Document Vault storage for generated reports
  */
 
-import { PrismaClient } from "@prisma/client";
 import ExcelJS from "exceljs";
 import * as fs from "fs";
 import * as path from "path";
 import logger from "../utils/logger.js";
-
-const prisma = new PrismaClient();
+import prisma from "../lib/prisma.js";
 
 // =============================================================================
 // TYPES

@@ -13,10 +13,8 @@
  * FOUNDER-ONLY OPS LAYER COMPONENT
  */
 
-import { PrismaClient } from "@prisma/client";
 import { logger } from "../utils/logger.js";
-
-const prisma = new PrismaClient();
+import prisma from "../lib/prisma.js";
 
 // =============================================================================
 // TYPES

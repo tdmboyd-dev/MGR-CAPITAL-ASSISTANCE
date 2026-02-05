@@ -3,9 +3,8 @@
 // Case management operations with Prisma
 // ============================================
 
-import { PrismaClient, Case, CaseStatus } from "@prisma/client";
-
-const prisma = new PrismaClient();
+import { Case, CaseStatus } from "@prisma/client";
+import prisma from "../lib/prisma.js";
 
 export class CaseService {
   /**

@@ -4,11 +4,10 @@
 // FOUNDER ONLY — Never expose to employees or clients
 // ============================================
 
-import { PrismaClient, IngestionSourceType } from "@prisma/client";
+import { IngestionSourceType } from "@prisma/client";
 import crypto from "crypto";
 import { legalService } from "./legalService.js";
-
-const prisma = new PrismaClient();
+import prisma from "../lib/prisma.js";
 
 // ============================================
 // PARSER PATTERNS

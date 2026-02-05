@@ -4,13 +4,11 @@
 // Handles: provisioning, billing, renewal, deletion grace
 // ============================================
 
-import { PrismaClient } from "@prisma/client";
 import { modoboaService } from "./ModoboaService.js";
 import { notificationService } from "./notificationService.js";
 import { logger } from "../utils/logger.js";
 import crypto from "crypto";
-
-const prisma = new PrismaClient();
+import prisma from "../lib/prisma.js";
 const BOT_NAME = "emailProvisioningBot";
 
 interface ProvisionResult {

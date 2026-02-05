@@ -4,12 +4,11 @@
 // No external SaaS dependencies
 // ============================================
 
-import { PrismaClient, DocumentType, DocumentStatus } from "@prisma/client";
+import { DocumentType, DocumentStatus } from "@prisma/client";
 import * as fs from "fs/promises";
 import * as path from "path";
 import * as crypto from "crypto";
-
-const prisma = new PrismaClient();
+import prisma from "../lib/prisma.js";
 
 // Base storage path - configurable via environment
 const STORAGE_BASE_PATH = process.env.DOCUMENT_STORAGE_PATH ||

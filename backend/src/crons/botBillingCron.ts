@@ -5,11 +5,9 @@
 // Suspends subscriptions if balance insufficient (7-day grace)
 // ============================================
 
-import { PrismaClient } from "@prisma/client";
 import { botSubscriptionService } from "../services/BotSubscriptionService.js";
 import logger from "../utils/logger.js";
-
-const prisma = new PrismaClient();
+import prisma from "../lib/prisma.js";
 
 /**
  * Process monthly bot subscription billing

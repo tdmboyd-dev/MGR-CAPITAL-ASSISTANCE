@@ -4,10 +4,9 @@
 // Shadow accounting: displayed rates vs actual rates
 // ============================================
 
-import { PrismaClient, EmployeeTier } from "@prisma/client";
+import { EmployeeTier } from "@prisma/client";
+import prisma from "../lib/prisma.js";
 import { enforceStateFeeCap } from "../data/stateRules.js";
-
-const prisma = new PrismaClient();
 
 export interface CommissionPlan {
   id: string;

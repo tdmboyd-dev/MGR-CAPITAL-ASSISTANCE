@@ -16,7 +16,7 @@
  */
 
 import cron, { ScheduledTask } from "node-cron";
-import { PrismaClient } from "@prisma/client";
+import prisma from "../lib/prisma.js";
 import logger from "../utils/logger.js";
 
 // Bot imports
@@ -51,8 +51,8 @@ import { runEligibilityCheckCron } from "../crons/eligibilityCheckCron.js";
 import { runAutoOutreachCron } from "../crons/autoOutreachCron.js";
 import { runCaseAutopilotCron } from "../crons/caseAutopilotCron.js";
 import { runBotBillingCron } from "../crons/botBillingCron.js";
-
-const prisma = new PrismaClient();
+import { runBotOrchestrationCron } from "../crons/botOrchestrationCron.js";
+import { runWorkerBotCron } from "../crons/workerBotCron.js";
 
 // =============================================================================
 // TYPES
@@ -348,6 +348,32 @@ const jobs: CronJob[] = [
     category: "maintenance",
     task: async () => {
       await runBotBillingCron();
+    },
+  },
+  {
+    name: "Bot Orchestration Cycle",
+    key: "bot_orchestration_cycle",
+    cronExpression: "*/15 * * * *", // Every 15 minutes
+    description: "Smart triggers, auto-response processing, pipeline advancement, contact intelligence",
+    enabledByDefault: false, // FOUNDER must enable
+    category: "bot",
+    task: async () => {
+      await runBotOrchestrationCron();
+    },
+  },
+
+  // ===========================================
+  // AUTONOMOUS WORKER BOT FLEET
+  // ===========================================
+  {
+    name: "Worker Bot Fleet Cycle",
+    key: "worker_bot_fleet_cycle",
+    cronExpression: "*/30 * * * *", // Every 30 minutes
+    description: "Auto-assign cases to worker bots, manage spawning/evolution, fleet health, natural selection",
+    enabledByDefault: false, // FOUNDER must enable
+    category: "bot",
+    task: async () => {
+      await runWorkerBotCron();
     },
   },
 
