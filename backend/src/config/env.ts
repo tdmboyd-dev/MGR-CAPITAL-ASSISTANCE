@@ -4,12 +4,30 @@ dotenv.config();
 
 export const config = {
   port: parseInt(process.env.PORT || "4000", 10),
-  databaseUrl: process.env.DATABASE_URL || "",
+  databaseUrl: (() => {
+    const url = process.env.DATABASE_URL;
+    if (!url && process.env.NODE_ENV === "production") {
+      throw new Error("FATAL: DATABASE_URL environment variable is required in production");
+    }
+    return url || "";
+  })(),
   nodeEnv: process.env.NODE_ENV || "development",
 
-  // JWT Settings (hardened)
-  jwtSecret: process.env.JWT_SECRET || "dev-secret-change-in-production",
-  jwtRefreshSecret: process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET || "dev-refresh-secret-change-in-production",
+  // JWT Settings (hardened — NEVER use defaults in production)
+  jwtSecret: (() => {
+    const secret = process.env.JWT_SECRET;
+    if (!secret && process.env.NODE_ENV === "production") {
+      throw new Error("FATAL: JWT_SECRET environment variable is required in production");
+    }
+    return secret || "dev-secret-change-in-production";
+  })(),
+  jwtRefreshSecret: (() => {
+    const secret = process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET;
+    if (!secret && process.env.NODE_ENV === "production") {
+      throw new Error("FATAL: JWT_REFRESH_SECRET environment variable is required in production");
+    }
+    return secret || "dev-refresh-secret-change-in-production";
+  })(),
   jwtAccessExpiryMinutes: parseInt(process.env.JWT_ACCESS_EXPIRY_MINUTES || "15", 10),
   jwtRefreshExpiryDays: parseInt(process.env.JWT_REFRESH_EXPIRY_DAYS || "14", 10),
 
@@ -28,10 +46,11 @@ export const config = {
   })(),
 
   // CORS settings
-  corsOrigins: process.env.CORS_ORIGINS?.split(",").map(s => s.trim()) || [
-    "http://localhost:3000",
-    "http://localhost:3011",
-  ],
+  corsOrigins: process.env.CORS_ORIGINS?.split(",").map(s => s.trim()) || (
+    process.env.NODE_ENV === "production"
+      ? [] // MUST set CORS_ORIGINS in production
+      : ["http://localhost:3000", "http://localhost:3011"]
+  ),
 
   // Rate limiting (very lenient in development for debugging)
   rateLimitWindowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || "900000", 10), // 15 min

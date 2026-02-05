@@ -14,7 +14,7 @@ const router = Router();
  * GET /api/deadlines/states
  * Get all state rules
  */
-router.get("/states", async (_req, res) => {
+router.get("/states", authenticate, async (_req, res) => {
   const states = stateDeadlineService.getAllStateRules();
   res.json({ states });
 });
@@ -23,7 +23,7 @@ router.get("/states", async (_req, res) => {
  * GET /api/deadlines/states/:stateCode
  * Get rules for a specific state
  */
-router.get("/states/:stateCode", async (req, res) => {
+router.get("/states/:stateCode", authenticate, async (req, res) => {
   const { stateCode } = req.params;
 
   const rules = stateDeadlineService.getStateRules(stateCode);
@@ -41,7 +41,7 @@ router.get("/states/:stateCode", async (req, res) => {
  * GET /api/deadlines/no-surplus-states
  * Get list of states without surplus opportunities
  */
-router.get("/no-surplus-states", async (_req, res) => {
+router.get("/no-surplus-states", authenticate, async (_req, res) => {
   const states = stateDeadlineService.getNoSurplusStates();
   res.json({ states });
 });

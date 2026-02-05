@@ -53,6 +53,7 @@ import { runCaseAutopilotCron } from "../crons/caseAutopilotCron.js";
 import { runBotBillingCron } from "../crons/botBillingCron.js";
 import { runBotOrchestrationCron } from "../crons/botOrchestrationCron.js";
 import { runWorkerBotCron } from "../crons/workerBotCron.js";
+import { runRetentionCron } from "../crons/retentionCron.js";
 
 // =============================================================================
 // TYPES
@@ -374,6 +375,21 @@ const jobs: CronJob[] = [
     category: "bot",
     task: async () => {
       await runWorkerBotCron();
+    },
+  },
+
+  // ===========================================
+  // DOCUMENT RETENTION & AUTO-DELETION
+  // ===========================================
+  {
+    name: "Document Retention Cycle",
+    key: "document_retention_cycle",
+    cronExpression: "0 2 * * *", // 2:00 AM daily
+    description: "Update retention dates, mark expired docs for deletion, purge approved deletions",
+    enabledByDefault: true,
+    category: "maintenance",
+    task: async () => {
+      await runRetentionCron();
     },
   },
 

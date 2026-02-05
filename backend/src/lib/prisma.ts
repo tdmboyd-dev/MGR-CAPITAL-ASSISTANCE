@@ -24,8 +24,17 @@ export const prisma =
     },
   });
 
-if (process.env.NODE_ENV !== "production") {
-  globalForPrisma.prisma = prisma;
-}
+// Always store singleton — prevents connection pool exhaustion in ALL environments
+globalForPrisma.prisma = prisma;
+
+// Graceful shutdown — prevent connection leaks
+process.on("SIGINT", async () => {
+  await prisma.$disconnect();
+  process.exit(0);
+});
+process.on("SIGTERM", async () => {
+  await prisma.$disconnect();
+  process.exit(0);
+});
 
 export default prisma;

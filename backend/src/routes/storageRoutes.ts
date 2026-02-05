@@ -21,14 +21,81 @@ router.use(roleGuard(["FOUNDER"]));
 // ============================================
 
 const PROVIDER_TEMPLATES: Record<string, any> = {
+  // ============================================
+  // CONTABO VPS TIERS — Plug & Play MinIO
+  // Just pick your tier, MinIO auto-configures
+  // ============================================
   "contabo-minio": {
-    displayName: "Contabo MinIO (Self-Hosted 60GB)",
+    displayName: "Contabo MinIO — Current VPS (100GB NVMe)",
     type: "S3",
     config: { region: "us-east-1", endpoint: "http://217.77.14.51:9000" },
-    capacityBytes: 60 * 1024 * 1024 * 1024, // ~60GB free on VPS
+    capacityBytes: 60 * 1024 * 1024 * 1024, // ~60GB usable (100GB disk minus OS/services)
     credentialFields: ["accessKeyId", "secretAccessKey", "bucket"],
     setupGuide:
       "ALREADY INSTALLED on your Contabo VPS (217.77.14.51:9000).\nDefault credentials: accessKeyId=mgrcapital, secretAccessKey=MgrStorage2026Secure!, bucket=mgr-documents\nMinIO Console: http://217.77.14.51:9001\nThis is YOUR server — no third-party, no limits, no fees.",
+  },
+  "contabo-vps-4": {
+    displayName: "Contabo Cloud VPS 4 (100GB NVMe)",
+    type: "S3",
+    config: { region: "us-east-1" },
+    capacityBytes: 60 * 1024 * 1024 * 1024, // ~60GB usable
+    credentialFields: ["endpoint", "accessKeyId", "secretAccessKey", "bucket"],
+    setupGuide:
+      "1) Buy Cloud VPS 4 at contabo.com ($7.24/mo — 6 vCPU, 12GB RAM, 100GB NVMe)\n2) SSH into VPS: ssh root@YOUR_IP\n3) Install Docker: curl -fsSL https://get.docker.com | sh\n4) Run MinIO:\n   docker run -d --name minio --restart always -p 9000:9000 -p 9001:9001 -v /data/minio:/data -e MINIO_ROOT_USER=mgrcapital -e MINIO_ROOT_PASSWORD=MgrStorage2026Secure! minio/minio server /data --console-address ':9001'\n5) Create bucket:\n   docker exec minio mc alias set local http://localhost:9000 mgrcapital MgrStorage2026Secure\n   docker exec minio mc mb local/mgr-documents\n6) Open firewall: ufw allow 9000/tcp && ufw allow 9001/tcp\n7) Endpoint: http://YOUR_IP:9000",
+  },
+  "contabo-vps-6": {
+    displayName: "Contabo Cloud VPS 6 (200GB NVMe)",
+    type: "S3",
+    config: { region: "us-east-1" },
+    capacityBytes: 150 * 1024 * 1024 * 1024, // ~150GB usable
+    credentialFields: ["endpoint", "accessKeyId", "secretAccessKey", "bucket"],
+    setupGuide:
+      "1) Buy Cloud VPS 6 at contabo.com (~$14/mo — 8 vCPU, 24GB RAM, 200GB NVMe)\n2) SSH into VPS: ssh root@YOUR_IP\n3) Install Docker: curl -fsSL https://get.docker.com | sh\n4) Run MinIO:\n   docker run -d --name minio --restart always -p 9000:9000 -p 9001:9001 -v /data/minio:/data -e MINIO_ROOT_USER=mgrcapital -e MINIO_ROOT_PASSWORD=YOUR_SECRET -e MINIO_VOLUMES=/data minio/minio server /data --console-address ':9001'\n5) Create bucket: docker exec minio mc alias set local http://localhost:9000 mgrcapital YOUR_SECRET && docker exec minio mc mb local/mgr-documents\n6) Open firewall: ufw allow 9000/tcp && ufw allow 9001/tcp\n7) Endpoint: http://YOUR_IP:9000",
+  },
+  "contabo-vps-8": {
+    displayName: "Contabo Cloud VPS 8 (400GB NVMe)",
+    type: "S3",
+    config: { region: "us-east-1" },
+    capacityBytes: 340 * 1024 * 1024 * 1024, // ~340GB usable
+    credentialFields: ["endpoint", "accessKeyId", "secretAccessKey", "bucket"],
+    setupGuide:
+      "1) Buy Cloud VPS 8 at contabo.com (~$22/mo — 10 vCPU, 48GB RAM, 400GB NVMe)\n2) Follow same Docker + MinIO setup as VPS 4/6\n3) 400GB NVMe = ~340GB usable for document storage\n4) Endpoint: http://YOUR_IP:9000",
+  },
+  "contabo-vps-10": {
+    displayName: "Contabo Cloud VPS 10 (800GB NVMe)",
+    type: "S3",
+    config: { region: "us-east-1" },
+    capacityBytes: 720 * 1024 * 1024 * 1024, // ~720GB usable
+    credentialFields: ["endpoint", "accessKeyId", "secretAccessKey", "bucket"],
+    setupGuide:
+      "1) Buy Cloud VPS 10 at contabo.com (~$36/mo — 12 vCPU, 64GB RAM, 800GB NVMe)\n2) Follow same Docker + MinIO setup as VPS 4/6/8\n3) 800GB NVMe = ~720GB usable for document storage\n4) Endpoint: http://YOUR_IP:9000",
+  },
+  "contabo-vps-12": {
+    displayName: "Contabo Cloud VPS 12 (1.2TB NVMe)",
+    type: "S3",
+    config: { region: "us-east-1" },
+    capacityBytes: 1100 * 1024 * 1024 * 1024, // ~1.1TB usable
+    credentialFields: ["endpoint", "accessKeyId", "secretAccessKey", "bucket"],
+    setupGuide:
+      "1) Buy Cloud VPS 12 at contabo.com (~$50/mo — 16 vCPU, 96GB RAM, 1.2TB NVMe)\n2) Follow same Docker + MinIO setup\n3) 1.2TB NVMe = ~1.1TB usable. Massive document storage.\n4) Endpoint: http://YOUR_IP:9000",
+  },
+  "contabo-vps-14": {
+    displayName: "Contabo Cloud VPS 14 (1.6TB NVMe)",
+    type: "S3",
+    config: { region: "us-east-1" },
+    capacityBytes: 1450 * 1024 * 1024 * 1024, // ~1.45TB usable
+    credentialFields: ["endpoint", "accessKeyId", "secretAccessKey", "bucket"],
+    setupGuide:
+      "1) Buy Cloud VPS 14 at contabo.com (~$65/mo — 20 vCPU, 128GB RAM, 1.6TB NVMe)\n2) Follow same Docker + MinIO setup\n3) 1.6TB NVMe = ~1.45TB usable.\n4) Endpoint: http://YOUR_IP:9000",
+  },
+  "contabo-vps-16": {
+    displayName: "Contabo Cloud VPS 16 (2TB NVMe)",
+    type: "S3",
+    config: { region: "us-east-1" },
+    capacityBytes: 1800 * 1024 * 1024 * 1024, // ~1.8TB usable
+    credentialFields: ["endpoint", "accessKeyId", "secretAccessKey", "bucket"],
+    setupGuide:
+      "1) Buy Cloud VPS 16 at contabo.com (~$85/mo — 24 vCPU, 192GB RAM, 2TB NVMe)\n2) Follow same Docker + MinIO setup\n3) 2TB NVMe = ~1.8TB usable. Enterprise-grade storage.\n4) Endpoint: http://YOUR_IP:9000",
   },
   "cloudflare-r2": {
     displayName: "Cloudflare R2",
