@@ -289,7 +289,7 @@ export default function ChildCompanyPayoutsPage() {
   }
 
   // Show only your share - platform fee is abstracted away
-  const yourSharePercent = 100 - (financials?.platformFeePercent || 15);
+  const yourSharePercent = 100 - (financials?.parentRevenueSharePercent || 15);
 
   return (
     <div className="space-y-6">
