@@ -7,6 +7,7 @@
 
 import { OpsInsightPriority } from "@prisma/client";
 import { feedbackService } from "../services/FeedbackService.js";
+import logger from "../utils/logger.js";
 
 import prisma from "../lib/prisma.js";
 
@@ -55,7 +56,7 @@ class MetaBot {
    * Analyze bot performance from BotRunLog
    */
   async analyzeBotPerformance(days: number = 7): Promise<BotPerformanceReport> {
-    console.log(`[${BOT_NAME}] Analyzing bot performance for last ${days} days...`);
+    logger.info(`[${BOT_NAME}] Analyzing bot performance for last ${days} days...`);
 
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - days);
@@ -102,7 +103,7 @@ class MetaBot {
     // Save as OpsInsight
     await this.saveReport(report);
 
-    console.log(`[${BOT_NAME}] Analysis complete. Overall health: ${overallHealth}`);
+    logger.info(`[${BOT_NAME}] Analysis complete. Overall health: ${overallHealth}`);
 
     return report;
   }
@@ -524,7 +525,7 @@ class MetaBot {
     };
     insightsSaved: boolean;
   }> {
-    console.log(`[${BOT_NAME}] Analyzing user feedback for last ${days} days...`);
+    logger.info(`[${BOT_NAME}] Analyzing user feedback for last ${days} days...`);
 
     try {
       // Get feedback analysis from FeedbackService
@@ -546,7 +547,7 @@ class MetaBot {
         },
       });
 
-      console.log(`[${BOT_NAME}] Feedback analysis complete. ${analysis.stats.totalFeedback} feedbacks analyzed.`);
+      logger.info(`[${BOT_NAME}] Feedback analysis complete. ${analysis.stats.totalFeedback} feedbacks analyzed.`);
 
       return {
         success: true,
@@ -559,7 +560,7 @@ class MetaBot {
       };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Unknown error";
-      console.error(`[${BOT_NAME}] Feedback analysis failed:`, errorMessage);
+      logger.error(`[${BOT_NAME}] Feedback analysis failed: ${errorMessage}`);
 
       await prisma.botRunLog.create({
         data: {
@@ -591,12 +592,12 @@ class MetaBot {
       stats: { totalFeedback: number; averageRating: number; recentTrend: string };
     };
   }> {
-    console.log(`[${BOT_NAME}] Running full meta analysis...`);
+    logger.info(`[${BOT_NAME}] Running full meta analysis...`);
 
     const botAnalysis = await this.analyzeBotPerformance(days);
     const feedbackAnalysis = await this.analyzeFeedback(days * 4); // 4x period for feedback
 
-    console.log(`[${BOT_NAME}] Full analysis complete.`);
+    logger.info(`[${BOT_NAME}] Full analysis complete.`);
 
     return {
       botAnalysis,

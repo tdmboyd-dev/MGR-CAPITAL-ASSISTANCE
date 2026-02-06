@@ -615,7 +615,7 @@ class AlertsChamberService {
           // Log as a system ops insight for bots to pick up
           await prisma.opsInsight.create({
             data: {
-              insightType: "founder_bot_command",
+              source: "founder_bot_command",
               title: intent.title,
               description: intent.message,
               severity: intent.priority === "urgent" ? "CRITICAL" : "INFO",

@@ -97,45 +97,9 @@ export default function AdminPayoutsPage() {
 
         const { data } = await api.get(`/payouts?${params.toString()}`)
         return data
-      } catch {
-        // Return demo data if API fails
-        return {
-          data: [
-            {
-              id: 'led-1',
-              type: 'CLIENT_PAYOUT',
-              amountCents: 3150000,
-              status: 'PENDING',
-              description: 'Client payout for case MGR-2026-001',
-              createdAt: new Date().toISOString(),
-              case: { internalCode: 'MGR-2026-001' },
-              user: { name: 'John Smith', email: 'john@email.com' }
-            },
-            {
-              id: 'led-2',
-              type: 'EMPLOYEE_COMMISSION',
-              amountCents: 270000,
-              displayedAmountCents: 675000,
-              status: 'PENDING',
-              description: 'Commission for case MGR-2026-001',
-              createdAt: new Date().toISOString(),
-              case: { internalCode: 'MGR-2026-001' },
-              user: { name: 'Sarah Wilson', email: 'sarah@mgrcapital.com', employeeTier: 'TIER_2' }
-            },
-            {
-              id: 'led-3',
-              type: 'COMPANY_FEE',
-              amountCents: 1350000,
-              status: 'COMPLETED',
-              description: 'Company fee for case MGR-2026-001',
-              createdAt: new Date(Date.now() - 86400000).toISOString(),
-              completedAt: new Date().toISOString(),
-              case: { internalCode: 'MGR-2026-001' }
-            },
-          ],
-          count: 3,
-          totalPaidCents: 1350000
-        }
+      } catch (error) {
+        // Re-throw to show error UI instead of fake financial data
+        throw error
       }
     },
   })

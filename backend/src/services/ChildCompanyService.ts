@@ -625,10 +625,30 @@ MGR Capital Assistance Team
       return { allowed: false, reason: "Child company not found", activeCases: 0, pendingCases: 0 };
     }
 
-    // Count active and pending cases
-    // TODO: Implement actual case counting logic based on schema
-    const activeCases = 0; // Placeholder
-    const pendingCases = 0; // Placeholder
+    // Get full child company with tenantId for case counting
+    const fullChildCompany = await prisma.childCompany.findUnique({
+      where: { id: childCompanyId },
+      select: { tenantId: true },
+    });
+
+    // Count active and pending cases for this child company
+    const activeCases = fullChildCompany?.tenantId
+      ? await prisma.case.count({
+          where: {
+            tenantId: fullChildCompany.tenantId,
+            status: { in: ["NEW", "CONTACTED", "DOCS_PENDING", "DOCS_SIGNED", "FILED", "AWAITING_FUNDS"] },
+          },
+        })
+      : 0;
+
+    const pendingCases = fullChildCompany?.tenantId
+      ? await prisma.case.count({
+          where: {
+            tenantId: fullChildCompany.tenantId,
+            status: { in: ["NEW", "CONTACTED", "DOCS_PENDING"] },
+          },
+        })
+      : 0;
 
     if (activeCases > 0) {
       return {

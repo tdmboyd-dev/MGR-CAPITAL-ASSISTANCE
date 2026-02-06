@@ -103,7 +103,7 @@ router.get("/", async (req: AuthRequest, res: Response) => {
     if (user.role !== "FOUNDER" && user.role !== "ADMIN") {
       where.OR = [
         { uploadedById: user.userId },
-        { case: { assignedToId: user.userId } },
+        { case: { assignedEmployeeId: user.userId } },
         { case: { clientId: user.userId } },
       ];
     }

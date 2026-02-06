@@ -298,6 +298,18 @@ model User {
   botSubscriptions    BotSubscription[]
   botUsageLogs        BotUsageLog[]
 
+  // New relations from schema audit
+  feedbacks           Feedback[]   @relation("UserFeedback")
+  aiUsageRecords      AiUsageRecord[] @relation("AiUsageRecords")
+  pushSubscriptions   PushSubscription[] @relation("PushSubscriptions")
+  tokenRewards        TokenReward[] @relation("TokenRewards")
+  clientTips          ClientTip[]  @relation("ClientTips")
+  employeeTips        ClientTip[]  @relation("EmployeeTips")
+  activityLogs        ActivityLog[] @relation("ActivityLogs")
+  employeeViolations  EmployeeViolation[] @relation("EmployeeViolations")
+  employeeIncentives  EmployeeIncentive[] @relation("EmployeeIncentives")
+  awardedIncentives   EmployeeIncentive[] @relation("AwardedIncentives")
+
   @@index([email])
   @@index([role])
   @@index([employeeTier])
@@ -420,6 +432,13 @@ model Case {
   deadlines             Deadline[]
   stateRule             StateRule?   @relation(fields: [state], references: [stateCode])
   countyRule            CountyRule?  @relation(fields: [state, county], references: [stateCode, countyName])
+
+  // New relations from schema audit
+  clientTips            ClientTip[]
+  activityLogs          ActivityLog[]
+  employeeViolations    EmployeeViolation[]
+  aiUsageRecords        AiUsageRecord[]
+  tokenRewards          TokenReward[]
 
   @@index([status])
   @@index([state])
@@ -1923,6 +1942,7 @@ enum FeedbackCategory {
 model Feedback {
   id              String            @id @default(cuid())
   userId          String
+  user            User              @relation("UserFeedback", fields: [userId], references: [id], onDelete: Cascade)
 
   // Feedback content
   category        FeedbackCategory  @default(GENERAL)
@@ -1968,7 +1988,9 @@ model Feedback {
 model AiUsageRecord {
   id              String    @id @default(cuid())
   userId          String
+  user            User      @relation("AiUsageRecords", fields: [userId], references: [id], onDelete: Cascade)
   caseId          String?
+  case            Case?     @relation(fields: [caseId], references: [id], onDelete: SetNull)
   type            String    // llm, stt, tts, document, skip_trace, notary, email
   provider        String    // deepseek, gemini, openai, etc.
   quantity        Float     // tokens, minutes, characters, etc.
@@ -1978,6 +2000,7 @@ model AiUsageRecord {
   totalCostCents  Int       // Total charged to user
   metadata        Json?
   createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
   @@index([userId])
   @@index([caseId])
@@ -2434,10 +2457,13 @@ model NotaryBotSubscription {
 // ============================================
 
 model ClientTip {
-  id                    String    @id
+  id                    String    @id @default(cuid())
   caseId                String
+  case                  Case      @relation(fields: [caseId], references: [id], onDelete: Cascade)
   clientId              String
+  client                User      @relation("ClientTips", fields: [clientId], references: [id], onDelete: Cascade)
   employeeId            String
+  employee              User      @relation("EmployeeTips", fields: [employeeId], references: [id], onDelete: Cascade)
 
   // Shadow accounting
   clientPaidCents       Int       // What client actually paid
@@ -2450,6 +2476,7 @@ model ClientTip {
   paidOutAt             DateTime?
 
   createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
 
   @@index([caseId])
   @@index([clientId])
@@ -2462,30 +2489,36 @@ model ClientTip {
 // ============================================
 
 model ActivityLog {
-  id            String    @id
+  id            String    @id @default(cuid())
   employeeId    String
+  employee      User      @relation("ActivityLogs", fields: [employeeId], references: [id], onDelete: Cascade)
   activityType  String    // login, case_view, case_note, case_document, etc.
   caseId        String?
+  case          Case?     @relation(fields: [caseId], references: [id], onDelete: SetNull)
   details       String?
-  timestamp     DateTime  @default(now())
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
   @@index([employeeId])
   @@index([caseId])
-  @@index([timestamp])
+  @@index([createdAt])
   @@index([activityType])
 }
 
 model EmployeeViolation {
-  id              String    @id
+  id              String    @id @default(cuid())
   employeeId      String
+  employee        User      @relation("EmployeeViolations", fields: [employeeId], references: [id], onDelete: Cascade)
   violationType   String    // weekly_inactivity, case_inactivity, extended_absence, etc.
   caseId          String?
+  case            Case?     @relation(fields: [caseId], references: [id], onDelete: SetNull)
   description     String
   tierBefore      Int
   tierAfter       Int
   isRecovered     Boolean   @default(false)
   recoveredAt     DateTime?
   createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
   @@index([employeeId])
   @@index([violationType])
@@ -2591,6 +2624,7 @@ model SignatureRequest {
 model PushSubscription {
   id              String   @id @default(cuid())
   userId          String
+  user            User     @relation("PushSubscriptions", fields: [userId], references: [id], onDelete: Cascade)
   endpoint        String   @db.Text
   p256dh          String
   auth            String
@@ -2627,12 +2661,15 @@ model Setting {
 model TokenReward {
   id              String   @id @default(cuid())
   userId          String
+  user            User     @relation("TokenRewards", fields: [userId], references: [id], onDelete: Cascade)
   amount          Float
   reason          String
   type            String   @default("PERFORMANCE")
   caseId          String?
+  case            Case?    @relation(fields: [caseId], references: [id], onDelete: SetNull)
   metadata        Json?
   createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   @@index([userId])
   @@index([type])
@@ -3330,7 +3367,9 @@ enum IncentiveType {
 model EmployeeIncentive {
   id              String          @id @default(cuid())
   employeeId      String
+  employee        User            @relation("EmployeeIncentives", fields: [employeeId], references: [id], onDelete: Cascade)
   awardedById     String          // FOUNDER who gave it
+  awardedBy       User            @relation("AwardedIncentives", fields: [awardedById], references: [id], onDelete: Cascade)
   type            IncentiveType
   title           String          // "Outstanding Recovery!" or "Top Closer This Week"
   message         String?         @db.Text  // Personal message from founder
@@ -3339,6 +3378,7 @@ model EmployeeIncentive {
   tenantId        String?         // null = MGR Capital main, otherwise child company scope
 
   createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
 
   @@index([employeeId])
   @@index([awardedById])

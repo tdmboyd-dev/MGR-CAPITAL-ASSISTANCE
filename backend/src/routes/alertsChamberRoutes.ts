@@ -246,7 +246,7 @@ router.post("/provision", roleGuard(["FOUNDER"]), async (req: AuthRequest, res: 
     // Notify the child company owner
     await prisma.opsInsight.create({
       data: {
-        insightType: "kidbuddy_provisioned",
+        source: "kidbuddy_provisioned",
         title: "KidBuddy Activated!",
         description: `KidBuddy has been activated for ${childCompany.companyName}. You can now use the Alerts Chamber to communicate with your team.`,
         severity: "INFO",
