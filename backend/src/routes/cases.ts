@@ -8,10 +8,10 @@ import { CaseStatus, DocumentType } from "@prisma/client";
 import { authMiddleware, AuthRequest } from "../middleware/authMiddleware.js";
 import { roleGuard } from "../middleware/roleGuard.js";
 import { asyncHandler, AppError, Errors } from "../middleware/errorHandler.js";
-import { legalService } from "../services/legalService.js";
+import { legalService } from "../services/LegalService.js";
 import { enforceStateFeeCap } from "../data/stateRules.js";
 import { notificationCenterService } from "../services/NotificationCenterService.js";
-import { notificationService } from "../services/notificationService.js";
+import { notificationService } from "../services/NotificationService.js";
 import { demoDataService } from "../services/DemoDataService.js";
 import {
   isValidTransition,

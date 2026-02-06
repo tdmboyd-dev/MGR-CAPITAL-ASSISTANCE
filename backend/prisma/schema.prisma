@@ -262,13 +262,13 @@ model User {
 
   // Multi-tenant support
   tenantId            String?
-  tenant              Tenant?      @relation(fields: [tenantId], references: [id])
+  tenant              Tenant?      @relation(fields: [tenantId], references: [id], onDelete: SetNull)
 
   // Employee-specific fields
   employeeTier        EmployeeTier?
   hireDate            DateTime?
   teamLeaderId        String?
-  teamLeader          User?        @relation("TeamMembers", fields: [teamLeaderId], references: [id])
+  teamLeader          User?        @relation("TeamMembers", fields: [teamLeaderId], references: [id], onDelete: SetNull)
   teamMembers         User[]       @relation("TeamMembers")
   trainingCompleted   Boolean      @default(false)
 
@@ -314,6 +314,7 @@ model User {
   @@index([role])
   @@index([employeeTier])
   @@index([tenantId])
+  @@index([teamLeaderId])
 }
 
 model UserSession {
@@ -367,15 +368,15 @@ model Case {
 
   // Multi-tenant support
   tenantId              String?
-  tenant                Tenant?      @relation(fields: [tenantId], references: [id])
+  tenant                Tenant?      @relation(fields: [tenantId], references: [id], onDelete: SetNull)
 
   // Client info
   clientId              String
-  client                User         @relation("ClientCases", fields: [clientId], references: [id])
+  client                User         @relation("ClientCases", fields: [clientId], references: [id], onDelete: Restrict)
 
   // Assigned employee
   assignedEmployeeId    String?
-  assignedEmployee      User?        @relation("AssignedEmployee", fields: [assignedEmployeeId], references: [id])
+  assignedEmployee      User?        @relation("AssignedEmployee", fields: [assignedEmployeeId], references: [id], onDelete: SetNull)
 
   // Property info
   state                 String
@@ -482,7 +483,7 @@ model Document {
 
   // Multi-tenant support
   tenantId        String?
-  tenant          Tenant?        @relation(fields: [tenantId], references: [id])
+  tenant          Tenant?        @relation(fields: [tenantId], references: [id], onDelete: SetNull)
 
   // File info
   fileName        String
@@ -493,7 +494,7 @@ model Document {
 
   // Generation info
   templateId      String?
-  template        DocumentTemplate? @relation(fields: [templateId], references: [id])
+  template        DocumentTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
   generatedContent String?        @db.Text
 
   // Signatures
@@ -503,7 +504,7 @@ model Document {
 
   // Tracking
   uploadedById    String
-  uploadedBy      User           @relation("UploadedBy", fields: [uploadedById], references: [id])
+  uploadedBy      User           @relation("UploadedBy", fields: [uploadedById], references: [id], onDelete: Restrict)
   submittedAt     DateTime?
   approvedAt      DateTime?
   rejectedAt      DateTime?
@@ -534,6 +535,7 @@ model Document {
   @@index([tenantId])
   @@index([deletionStatus])
   @@index([retentionExpiresAt])
+  @@index([uploadedById])
 }
 
 model DocumentTemplate {
@@ -603,7 +605,7 @@ model StateRule {
 model CountyRule {
   id                      String       @id @default(cuid())
   stateCode               String
-  state                   StateRule    @relation(fields: [stateCode], references: [stateCode])
+  state                   StateRule    @relation(fields: [stateCode], references: [stateCode], onDelete: Cascade)
   countyName              String
 
   // County-specific overrides
@@ -648,13 +650,13 @@ enum LedgerEntryStatus {
 model LedgerEntry {
   id                    String            @id @default(cuid())
   caseId                String
-  case                  Case              @relation(fields: [caseId], references: [id])
+  case                  Case              @relation(fields: [caseId], references: [id], onDelete: Cascade)
   userId                String?
-  user                  User?             @relation(fields: [userId], references: [id])
+  user                  User?             @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   // Multi-tenant support
   tenantId              String?
-  tenant                Tenant?           @relation(fields: [tenantId], references: [id])
+  tenant                Tenant?           @relation(fields: [tenantId], references: [id], onDelete: SetNull)
 
   type                  LedgerEntryType
   amountCents           Int
@@ -726,7 +728,7 @@ model Communication {
   caseId          String
   case            Case                   @relation(fields: [caseId], references: [id], onDelete: Cascade)
   userId          String
-  user            User                   @relation(fields: [userId], references: [id])
+  user            User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   type            CommunicationType
   direction       CommunicationDirection
@@ -745,7 +747,7 @@ model Communication {
 
   // Script used (if applicable)
   scriptId        String?
-  script          Script?                @relation(fields: [scriptId], references: [id])
+  script          Script?                @relation(fields: [scriptId], references: [id], onDelete: SetNull)
 
   // Outcome
   outcome         String?
@@ -757,6 +759,7 @@ model Communication {
   @@index([caseId])
   @@index([userId])
   @@index([type])
+  @@index([scriptId])
 }
 
 model Script {
@@ -787,7 +790,7 @@ model Script {
 model CallScore {
   id              String   @id @default(cuid())
   employeeId      String
-  employee        User     @relation(fields: [employeeId], references: [id])
+  employee        User     @relation(fields: [employeeId], references: [id], onDelete: Cascade)
 
   // Scoring
   clarityScore    Int      // 1-10
@@ -820,7 +823,7 @@ model TrainingModule {
 
   // Multi-tenant support
   tenantId        String?
-  tenant          Tenant?                   @relation(fields: [tenantId], references: [id])
+  tenant          Tenant?                   @relation(fields: [tenantId], references: [id], onDelete: SetNull)
 
   // Ordering
   orderIndex      Int
@@ -879,9 +882,9 @@ model TrainingQuestion {
 model EmployeeTrainingProgress {
   id              String                @id @default(cuid())
   employeeId      String
-  employee        User                  @relation(fields: [employeeId], references: [id])
+  employee        User                  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
   moduleId        String
-  module          TrainingModule        @relation(fields: [moduleId], references: [id])
+  module          TrainingModule        @relation(fields: [moduleId], references: [id], onDelete: Cascade)
 
   status          TrainingModuleStatus  @default(LOCKED)
   progress        Int                   @default(0)  // Percentage complete
@@ -1155,7 +1158,7 @@ model IngestionSource {
 model IngestionBatch {
   id              String           @id @default(cuid())
   sourceId        String
-  source          IngestionSource  @relation(fields: [sourceId], references: [id])
+  source          IngestionSource  @relation(fields: [sourceId], references: [id], onDelete: Cascade)
 
   // File info
   fileName        String?
@@ -1246,7 +1249,7 @@ model IngestionRecord {
 model AutopilotRun {
   id              String           @id @default(cuid())
   sourceId        String?
-  source          IngestionSource? @relation(fields: [sourceId], references: [id])
+  source          IngestionSource? @relation(fields: [sourceId], references: [id], onDelete: SetNull)
   batchId         String?
 
   // Run details
@@ -1331,11 +1334,11 @@ model PropertyClass {
 model AuditLog {
   id              String   @id @default(cuid())
   userId          String?
-  user            User?    @relation(fields: [userId], references: [id])
+  user            User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   // Multi-tenant support
   tenantId        String?
-  tenant          Tenant?  @relation(fields: [tenantId], references: [id])
+  tenant          Tenant?  @relation(fields: [tenantId], references: [id], onDelete: SetNull)
 
   action          String   // "CREATE", "UPDATE", "DELETE", "VIEW", "LOGIN", etc.
   entityType      String   // "Case", "Document", "User", etc.
@@ -1399,7 +1402,7 @@ model ScrapedItem {
   // Metadata
   // Watch target reference
   watchTargetId   String?
-  watchTarget     WatchTarget?             @relation(fields: [watchTargetId], references: [id])
+  watchTarget     WatchTarget?             @relation(fields: [watchTargetId], references: [id], onDelete: SetNull)
   ownerName       String?
   estimatedValueCents Int?
   metadata        Json?
@@ -1424,7 +1427,7 @@ model WatchAlert {
 
   // Multi-tenant support
   tenantId        String?
-  tenant          Tenant?              @relation(fields: [tenantId], references: [id])
+  tenant          Tenant?              @relation(fields: [tenantId], references: [id], onDelete: SetNull)
 
   // Alert content
   title           String?
@@ -1439,9 +1442,9 @@ model WatchAlert {
   relatedCaseId   String?
   relatedUserId   String?
   scrapedItemId   String?
-  scrapedItem     ScrapedItem?         @relation(fields: [scrapedItemId], references: [id])
+  scrapedItem     ScrapedItem?         @relation(fields: [scrapedItemId], references: [id], onDelete: SetNull)
   watchTargetId   String?
-  watchTarget     WatchTarget?         @relation(fields: [watchTargetId], references: [id])
+  watchTarget     WatchTarget?         @relation(fields: [watchTargetId], references: [id], onDelete: SetNull)
 
   // Resolution
   isResolved      Boolean              @default(false)
@@ -1460,6 +1463,8 @@ model WatchAlert {
   @@index([createdAt])
   @@index([tenantId])
   @@index([status])
+  @@index([scrapedItemId])
+  @@index([watchTargetId])
 }
 
 // ============================================
@@ -1810,7 +1815,7 @@ model OpsInsight {
 
   // Multi-tenant support
   tenantId        String?
-  tenant          Tenant?             @relation(fields: [tenantId], references: [id])
+  tenant          Tenant?             @relation(fields: [tenantId], references: [id], onDelete: SetNull)
 
   // Content
   title           String?
@@ -1877,7 +1882,7 @@ model ChatRoom {
 
   // Multi-tenant support
   tenantId    String?
-  tenant      Tenant?        @relation(fields: [tenantId], references: [id])
+  tenant      Tenant?        @relation(fields: [tenantId], references: [id], onDelete: SetNull)
 
   // Access control
   locked      Boolean        @default(false)
@@ -1902,7 +1907,7 @@ model ChatMessage {
   roomId      String
   room        ChatRoom  @relation(fields: [roomId], references: [id], onDelete: Cascade)
   userId      String
-  user        User      @relation(fields: [userId], references: [id])
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   content     String    @db.Text
   isEncrypted Boolean   @default(false)  // For air-gap mode
@@ -2256,7 +2261,7 @@ model NotaryApplication {
 model NotaryProfile {
   id                    String        @id @default(cuid())
   userId                String        @unique
-  user                  User          @relation(fields: [userId], references: [id])
+  user                  User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   state                 String
   commissionNumber      String
   commissionExpiration  DateTime
@@ -2809,7 +2814,7 @@ model ChildCompanyOffer {
   id                  String              @id @default(cuid())
   employeeId          String
   childCompanyId      String?
-  childCompany        ChildCompany?       @relation(fields: [childCompanyId], references: [id])
+  childCompany        ChildCompany?       @relation(fields: [childCompanyId], references: [id], onDelete: Cascade)
 
   // Qualification
   employeeTierAtOffer String              // TIER_3_SENIOR_SPECIALIST
@@ -2835,6 +2840,7 @@ model ChildCompanyOffer {
 
   @@index([employeeId])
   @@index([isAccepted])
+  @@index([childCompanyId])
 }
 
 model EmployeeTransfer {
@@ -2842,7 +2848,7 @@ model EmployeeTransfer {
   employeeId          String
   fromTenantId        String?             // null = MGR Capital direct
   toChildCompanyId    String
-  toChildCompany      ChildCompany        @relation(fields: [toChildCompanyId], references: [id])
+  toChildCompany      ChildCompany        @relation(fields: [toChildCompanyId], references: [id], onDelete: Cascade)
   status              TransferStatus      @default(PENDING)
 
   // 5-day cooling period
@@ -2873,6 +2879,7 @@ model EmployeeTransfer {
   @@index([employeeId])
   @@index([status])
   @@index([toChildCompanyId])
+  @@index([fromTenantId])
 }
 
 // ============================================
@@ -3095,7 +3102,7 @@ model EmailAccount {
   displayName         String
   userId              String              // MGR user who owns this email
   domainId            String
-  domain              EmailDomain         @relation(fields: [domainId], references: [id])
+  domain              EmailDomain         @relation(fields: [domainId], references: [id], onDelete: Cascade)
   status              EmailAccountStatus  @default(PROVISIONING)
 
   // Modoboa integration
@@ -3144,7 +3151,7 @@ enum BotTier {
 model BotSubscription {
   id                String   @id @default(cuid())
   userId            String
-  user              User     @relation(fields: [userId], references: [id])
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   tier              BotTier  @default(STARTER)
   isActive          Boolean  @default(true)
   enabledBots       Json     // ["outreach", "compliance", "docket", ...]
@@ -3164,7 +3171,7 @@ model BotSubscription {
 model BotUsageLog {
   id        String   @id @default(cuid())
   userId    String
-  user      User     @relation(fields: [userId], references: [id])
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   botName   String
   action    String   // "sms_sent", "call_made", "doc_generated", "skip_trace"
   costCents Int      @default(0)
@@ -3229,7 +3236,7 @@ model WorkerBot {
 
   // Spawning
   parentBotId       String?
-  parentBot         WorkerBot?          @relation("BotLineage", fields: [parentBotId], references: [id])
+  parentBot         WorkerBot?          @relation("BotLineage", fields: [parentBotId], references: [id], onDelete: SetNull)
   spawnedBots       WorkerBot[]         @relation("BotLineage")
   totalSpawned      Int                 @default(0)
   maxConcurrentCases Int                @default(100)
@@ -3259,7 +3266,7 @@ model WorkerBot {
 model WorkerBotTask {
   id            String          @id @default(cuid())
   workerBotId   String
-  workerBot     WorkerBot       @relation(fields: [workerBotId], references: [id])
+  workerBot     WorkerBot       @relation(fields: [workerBotId], references: [id], onDelete: Cascade)
   caseId        String?
   taskType      String          // "full_case_work", "skip_trace", "outreach", "doc_gen", etc.
   status        String          @default("QUEUED") // QUEUED, IN_PROGRESS, COMPLETED, FAILED, CANCELLED
@@ -3283,7 +3290,7 @@ model WorkerBotTask {
 model WorkerBotLearning {
   id            String    @id @default(cuid())
   workerBotId   String
-  workerBot     WorkerBot @relation(fields: [workerBotId], references: [id])
+  workerBot     WorkerBot @relation(fields: [workerBotId], references: [id], onDelete: Cascade)
   category      String    // "case_strategy", "outreach_timing", "doc_quality", "negotiation", etc.
   pattern       String    // What was learned
   confidence    Float     @default(0.5) // 0-1 confidence in this learning
@@ -3333,7 +3340,7 @@ model FileRegistry {
   documentId      String?                    // Links to existing Document model
   document        Document?        @relation(fields: [documentId], references: [id], onDelete: SetNull)
   providerId      String
-  provider        StorageProvider  @relation(fields: [providerId], references: [id])
+  provider        StorageProvider  @relation(fields: [providerId], references: [id], onDelete: Restrict)
   providerPath    String                     // Path within the provider (bucket key or pCloud path)
   fileName        String
   fileSize        BigInt
@@ -3369,7 +3376,7 @@ model EmployeeIncentive {
   employeeId      String
   employee        User            @relation("EmployeeIncentives", fields: [employeeId], references: [id], onDelete: Cascade)
   awardedById     String          // FOUNDER who gave it
-  awardedBy       User            @relation("AwardedIncentives", fields: [awardedById], references: [id], onDelete: Cascade)
+  awardedBy       User            @relation("AwardedIncentives", fields: [awardedById], references: [id], onDelete: Restrict)
   type            IncentiveType
   title           String          // "Outstanding Recovery!" or "Top Closer This Week"
   message         String?         @db.Text  // Personal message from founder

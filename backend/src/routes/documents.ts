@@ -6,7 +6,7 @@
 import { Router, Request, Response } from "express";
 import { authMiddleware, AuthRequest } from "../middleware/authMiddleware.js";
 import { roleGuard } from "../middleware/roleGuard.js";
-import { documentVaultService } from "../services/documentVaultService.js";
+import { documentVaultService } from "../services/DocumentVaultService.js";
 import { DocumentType } from "@prisma/client";
 import multer from "multer";
 

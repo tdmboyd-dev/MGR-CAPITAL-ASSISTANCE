@@ -9,15 +9,15 @@ import { IngestionSourceType } from "@prisma/client";
 import { authMiddleware, AuthRequest } from "../middleware/authMiddleware.js";
 import { roleGuard } from "../middleware/roleGuard.js";
 import { asyncHandler, Errors } from "../middleware/errorHandler.js";
-import { ingestionService } from "../services/ingestionService.js";
+import { ingestionService } from "../services/IngestionService.js";
 import { sanitizeString } from "../utils/security.js";
 import parserService, {
   parseContent,
   parseAndStoreContent,
   getParserHealth,
   SourceType,
-} from "../services/parserService.js";
-import { scraperService } from "../services/scraperService.js";
+} from "../services/ParserService.js";
+import { scraperService } from "../services/ScraperService.js";
 import { ingestionIntelligenceService } from "../services/IngestionIntelligenceService.js";
 import { JurisdictionKey } from "../types/ingestionTypes.js";
 import { caseRoutingService } from "../services/CaseRoutingService.js";

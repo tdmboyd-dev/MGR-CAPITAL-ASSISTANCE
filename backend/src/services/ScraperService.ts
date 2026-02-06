@@ -13,7 +13,7 @@ import * as https from "https";
 import * as http from "http";
 import { URL } from "url";
 import crypto from "crypto";
-import { parseContent as parseWithService, SourceType } from "./parserService.js";
+import { parseContent as parseWithService, SourceType } from "./ParserService.js";
 
 import prisma from "../lib/prisma.js";
 

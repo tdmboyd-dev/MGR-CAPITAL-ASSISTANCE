@@ -7,7 +7,7 @@ import { Router, Request, Response } from "express";
 import { authMiddleware, AuthRequest } from "../middleware/authMiddleware.js";
 import prisma from "../lib/prisma.js";
 import { roleGuard } from "../middleware/roleGuard.js";
-import { trainingService } from "../services/trainingService.js";
+import { trainingService } from "../services/TrainingService.js";
 
 const router = Router();
 

@@ -8,10 +8,10 @@ import { EmployeeTier } from "@prisma/client";
 import bcrypt from "bcrypt";
 import { authMiddleware, AuthRequest } from "../middleware/authMiddleware.js";
 import { roleGuard } from "../middleware/roleGuard.js";
-import { employeeService } from "../services/employeeService.js";
-import { trainingService } from "../services/trainingService.js";
-import { bankingService } from "../services/bankingService.js";
-import { notificationService } from "../services/notificationService.js";
+import { employeeService } from "../services/EmployeeService.js";
+import { trainingService } from "../services/TrainingService.js";
+import { bankingService } from "../services/BankingService.js";
+import { notificationService } from "../services/NotificationService.js";
 import { notificationCenterService } from "../services/NotificationCenterService.js";
 
 import prisma from "../lib/prisma.js";

@@ -8,7 +8,7 @@ import { EmployeeTier } from "@prisma/client";
 
 // Email domain type (matches schema enum)
 type EmailDomainType = "MAIN_COMPANY" | "SUBDOMAIN" | "CUSTOM";
-import { notificationService } from "./notificationService.js";
+import { notificationService } from "./NotificationService.js";
 import { logger } from "../utils/logger.js";
 import {
   EMAIL_PRICING,

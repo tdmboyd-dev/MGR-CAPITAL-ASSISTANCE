@@ -8,8 +8,8 @@ import { authMiddleware, AuthRequest } from "../middleware/authMiddleware.js";
 import prisma from "../lib/prisma.js";
 import { roleGuard } from "../middleware/roleGuard.js";
 import { asyncHandler, Errors } from "../middleware/errorHandler.js";
-import { bankingService } from "../services/bankingService.js";
-import { employeeService } from "../services/employeeService.js";
+import { bankingService } from "../services/BankingService.js";
+import { employeeService } from "../services/EmployeeService.js";
 
 const router = Router();
 

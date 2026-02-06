@@ -17,7 +17,7 @@ import { documentAssemblyService } from "./DocumentAssemblyService.js";
 import { propertyResearchService } from "./PropertyResearchService.js";
 import { skipTraceService } from "./SkipTraceService.js";
 import { autoOutreachService } from "./AutoOutreachService.js";
-import { notificationService } from "./notificationService.js";
+import { notificationService } from "./NotificationService.js";
 import { SMSService } from "./SMSService.js";
 import { botSubscriptionService, ACTION_COSTS } from "./BotSubscriptionService.js";
 import logger from "../utils/logger.js";

@@ -8,7 +8,7 @@
 import prisma from "../lib/prisma.js";
 import { logger } from "../utils/logger.js";
 import { autonomousIntelligenceService } from "../services/AutonomousIntelligenceService.js";
-import { notificationService } from "../services/notificationService.js";
+import { notificationService } from "../services/NotificationService.js";
 
 // ============================================
 // RESULT INTERFACES — GOD-TIER METHODS

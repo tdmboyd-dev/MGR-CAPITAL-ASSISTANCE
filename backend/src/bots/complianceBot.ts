@@ -10,7 +10,7 @@ import { CaseStatus, OpsInsightType, OpsInsightPriority } from "@prisma/client";
 import { aiAgentService } from "../services/AiAgentService.js";
 import { notificationCenterService } from "../services/NotificationCenterService.js";
 import { documentAssemblyService } from "../services/DocumentAssemblyService.js";
-import { notificationService } from "../services/notificationService.js";
+import { notificationService } from "../services/NotificationService.js";
 import { SMSService } from "../services/SMSService.js";
 import { botSubscriptionService } from "../services/BotSubscriptionService.js";
 import logger from "../utils/logger.js";

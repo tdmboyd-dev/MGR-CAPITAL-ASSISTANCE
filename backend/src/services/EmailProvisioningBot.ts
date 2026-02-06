@@ -5,7 +5,7 @@
 // ============================================
 
 import { modoboaService } from "./ModoboaService.js";
-import { notificationService } from "./notificationService.js";
+import { notificationService } from "./NotificationService.js";
 import { logger } from "../utils/logger.js";
 import crypto from "crypto";
 import prisma from "../lib/prisma.js";

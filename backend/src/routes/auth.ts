@@ -31,7 +31,7 @@ import {
   sanitizeEmail,
   invalidateAllSessions,
 } from "../utils/security.js";
-import { notificationService } from "../services/notificationService.js";
+import { notificationService } from "../services/NotificationService.js";
 
 const router = Router();
 

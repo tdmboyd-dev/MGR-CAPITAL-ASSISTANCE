@@ -7,7 +7,7 @@
 
 import { OpsInsightType, OpsInsightPriority, EmployeeTier } from "@prisma/client";
 import { trainingIntelligenceService } from "../services/TrainingIntelligenceService.js";
-import { notificationService } from "../services/notificationService.js";
+import { notificationService } from "../services/NotificationService.js";
 import { botSubscriptionService } from "../services/BotSubscriptionService.js";
 import logger from "../utils/logger.js";
 import {

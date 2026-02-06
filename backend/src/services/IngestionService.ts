@@ -6,7 +6,7 @@
 
 import { IngestionSourceType } from "@prisma/client";
 import crypto from "crypto";
-import { legalService } from "./legalService.js";
+import { legalService } from "./LegalService.js";
 import prisma from "../lib/prisma.js";
 
 // ============================================

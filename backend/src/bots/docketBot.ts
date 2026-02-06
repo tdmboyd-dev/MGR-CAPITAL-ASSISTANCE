@@ -6,7 +6,7 @@
 // ============================================
 
 import { CaseStatus, OpsInsightType, OpsInsightPriority } from "@prisma/client";
-import { notificationService } from "../services/notificationService.js";
+import { notificationService } from "../services/NotificationService.js";
 import { SMSService } from "../services/SMSService.js";
 import { documentAssemblyService } from "../services/DocumentAssemblyService.js";
 import { botSubscriptionService } from "../services/BotSubscriptionService.js";

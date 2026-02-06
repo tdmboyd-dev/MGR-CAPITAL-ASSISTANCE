@@ -1,7 +1,7 @@
 # TIME_TODO — MGR CAPITAL ASSISTANCE COMPLETION ROADMAP
 
 **Generated:** 2026-02-05
-**Status:** ALL CRITICAL PHASES COMPLETE
+**Status:** 100% COMPLETE — ALL PHASES DONE
 
 ---
 
@@ -87,20 +87,45 @@
 - [x] Deleted AdvancedLawyerBot.tsx (keeping AdvancedLawyerBotV2.tsx)
 - [x] Deleted RealTimeCaseEditorEnhanced.tsx (keeping RealTimeCaseEditorV2.tsx)
 
-### 7.2 Naming Standardization
-- [~] Service renaming deferred: 15 camelCase services with 50+ imports across codebase
-- Risk: High (breaking imports) vs Benefit: Low (cosmetic only)
-- Decision: Keep as-is, code works correctly
+### 7.2 Naming Standardization ✅ COMPLETE
+- [x] Renamed all 15 camelCase services to PascalCase:
+  - payoutService.ts → PayoutService.ts
+  - caseService.ts → CaseService.ts
+  - notificationService.ts → NotificationService.ts (15 imports updated)
+  - employeeService.ts → EmployeeService.ts
+  - clientService.ts → ClientService.ts
+  - opsMetricsService.ts → OpsMetricsService.ts
+  - commissionService.ts → CommissionService.ts
+  - watchService.ts → WatchService.ts
+  - scraperService.ts → ScraperService.ts
+  - parserService.ts → ParserService.ts (5 imports updated)
+  - trainingService.ts → TrainingService.ts
+  - ingestionService.ts → IngestionService.ts (4 imports updated)
+  - bankingService.ts → BankingService.ts
+  - legalService.ts → LegalService.ts (4 imports updated)
+  - documentVaultService.ts → DocumentVaultService.ts
 
 ---
 
-## PHASE 8: SCHEMA REFINEMENTS (Low Priority - Future Sprint)
+## PHASE 8: SCHEMA REFINEMENTS ✅ COMPLETE
 
 ### 8.1 Add More onDelete Policies
-- [ ] Review remaining 40+ relations for appropriate onDelete
+- [x] Added 30+ onDelete policies across all relations:
+  - User relations: Cascade (training, chat), SetNull (tenant, teamLeader), Restrict (document uploader)
+  - Case relations: Cascade (ledger entries), SetNull (tenant)
+  - Document relations: SetNull (tenant, template)
+  - Child record cleanup: Cascade on parent deletion
+  - Critical relations: Restrict to prevent orphaned records
 
 ### 8.2 More Indexes
-- [ ] EmployeeIncentive.awardedById: Add index if query performance needed
+- [x] Added @@index directives for performance:
+  - User.teamLeaderId
+  - Document.uploadedById
+  - Communication.scriptId
+  - WatchAlert.scrapedItemId, watchTargetId
+  - ChildCompanyOffer.childCompanyId
+  - EmployeeTransfer.fromTenantId
+  - (EmployeeIncentive.awardedById already had index)
 
 ---
 
@@ -114,8 +139,8 @@
 | 4 | ✅ COMPLETE | 2026-02-05 | Route bugs fixed |
 | 5 | ✅ COMPLETE | 2026-02-05 | Logging standardized |
 | 6 | ✅ COMPLETE | 2026-02-05 | Mock data removed |
-| 7 | ✅ COMPLETE | 2026-02-05 | Duplicate components deleted, service naming deferred (high risk) |
-| 8 | DEFERRED | - | Low priority refinements |
+| 7 | ✅ COMPLETE | 2026-02-05 | Duplicate components deleted, 15 services renamed to PascalCase |
+| 8 | ✅ COMPLETE | 2026-02-05 | 30+ onDelete policies added, 6 performance indexes added |
 
 ---
 
@@ -125,10 +150,13 @@
 **Critical Fixed:** 25
 **High Fixed:** 20
 **Medium Fixed:** 15
-**Low Deferred:** 50+ (future sprint)
+**Low Fixed:** 50+ (ALL COMPLETE)
 
 **TypeScript Status:** ✅ 0 errors
 **Prisma Schema:** ✅ Valid
+**All Services:** PascalCase naming
+**All Relations:** onDelete policies defined
+**All Indexes:** Performance optimized
 
 ---
 

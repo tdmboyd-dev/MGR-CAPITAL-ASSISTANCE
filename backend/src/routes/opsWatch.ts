@@ -7,9 +7,9 @@
 import { Router, Request, Response } from "express";
 import { authMiddleware } from "../middleware/authMiddleware.js";
 import { roleGuard } from "../middleware/roleGuard.js";
-import { scraperService } from "../services/scraperService.js";
-import { watchService } from "../services/watchService.js";
-import { getParserHealth } from "../services/parserService.js";
+import { scraperService } from "../services/ScraperService.js";
+import { watchService } from "../services/WatchService.js";
+import { getParserHealth } from "../services/ParserService.js";
 import { ScrapedItemType, ScrapedItemReviewStatus, WatchAlertType, WatchAlertSeverity } from "@prisma/client";
 
 const router = Router();

@@ -5,7 +5,7 @@
 // Phase 3: Switches to Modoboa SMTP as primary
 // ============================================
 
-import { notificationService } from "../services/notificationService.js";
+import { notificationService } from "../services/NotificationService.js";
 import { emailService } from "../services/EmailService.js";
 import { logger } from "../utils/logger.js";
 import prisma from "../lib/prisma.js";

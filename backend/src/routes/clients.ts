@@ -8,9 +8,9 @@ import { DocumentStatus, DocumentType } from "@prisma/client";
 import { authMiddleware, AuthRequest } from "../middleware/authMiddleware.js";
 import { roleGuard } from "../middleware/roleGuard.js";
 import { asyncHandler, Errors } from "../middleware/errorHandler.js";
-import { clientService } from "../services/clientService.js";
-import { legalService } from "../services/legalService.js";
-import { notificationService } from "../services/notificationService.js";
+import { clientService } from "../services/ClientService.js";
+import { legalService } from "../services/LegalService.js";
+import { notificationService } from "../services/NotificationService.js";
 import {
   isValidDocumentTransition,
   validateDocumentTransition,

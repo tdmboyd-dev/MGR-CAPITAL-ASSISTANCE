@@ -10,9 +10,9 @@
 
 import logger from "../utils/logger.js";
 import prisma from "../lib/prisma.js";
-import { ingestionService } from "./ingestionService.js";
+import { ingestionService } from "./IngestionService.js";
 import { caseRoutingService } from "./CaseRoutingService.js";
-import { parseContent, SourceType } from "./parserService.js";
+import { parseContent, SourceType } from "./ParserService.js";
 
 // imapflow and mailparser are optional dependencies, dynamically imported at runtime
 

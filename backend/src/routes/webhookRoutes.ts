@@ -13,7 +13,7 @@ import { authMiddleware, AuthRequest } from "../middleware/authMiddleware.js";
 import prisma from "../lib/prisma.js";
 import { roleGuard } from "../middleware/roleGuard.js";
 import { asyncHandler, Errors } from "../middleware/errorHandler.js";
-import { ingestionService } from "../services/ingestionService.js";
+import { ingestionService } from "../services/IngestionService.js";
 import { caseRoutingService } from "../services/CaseRoutingService.js";
 import { skipTraceService } from "../services/SkipTraceService.js";
 import { logger } from "../utils/logger.js";

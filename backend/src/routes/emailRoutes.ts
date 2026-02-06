@@ -8,7 +8,7 @@ import { authMiddleware, AuthenticatedRequest } from "../middleware/authMiddlewa
 import prisma from "../lib/prisma.js";
 import { roleGuard } from "../middleware/roleGuard.js";
 import { asyncHandler, Errors } from "../middleware/errorHandler.js";
-import { notificationService } from "../services/notificationService.js";
+import { notificationService } from "../services/NotificationService.js";
 import { emailService } from "../services/EmailService.js";
 
 const router = Router();

@@ -11,10 +11,10 @@
 
 import logger from "../utils/logger.js";
 import prisma from "../lib/prisma.js";
-import { scraperService } from "../services/scraperService.js";
-import { ingestionService } from "../services/ingestionService.js";
+import { scraperService } from "../services/ScraperService.js";
+import { ingestionService } from "../services/IngestionService.js";
 import { caseRoutingService } from "../services/CaseRoutingService.js";
-import { parseContent, SourceType } from "../services/parserService.js";
+import { parseContent, SourceType } from "../services/ParserService.js";
 import { demoDataService } from "../services/DemoDataService.js";
 
 

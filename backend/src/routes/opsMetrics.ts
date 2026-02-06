@@ -6,7 +6,7 @@
 import { Router, Request, Response } from "express";
 import { authMiddleware } from "../middleware/authMiddleware.js";
 import { roleGuard } from "../middleware/roleGuard.js";
-import { opsMetricsService } from "../services/opsMetricsService.js";
+import { opsMetricsService } from "../services/OpsMetricsService.js";
 import { metaBot } from "../bots/metaBot.js";
 
 const router = Router();

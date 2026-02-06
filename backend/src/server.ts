@@ -118,7 +118,7 @@ import autonomousAiRoutes from "./routes/autonomousAiRoutes.js";
 import { loginRateLimit, passwordResetRateLimit } from "./middleware/rateLimit.js";
 
 // Services that need initialization
-import { notificationService } from "./services/notificationService.js";
+import { notificationService } from "./services/NotificationService.js";
 
 // Webhook routes (external partner leads)
 import webhookRoutes from "./routes/webhookRoutes.js";

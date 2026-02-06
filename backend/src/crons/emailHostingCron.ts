@@ -5,7 +5,7 @@
 
 import { emailProvisioningBot } from "../services/EmailProvisioningBot.js";
 import { modoboaService } from "../services/ModoboaService.js";
-import { notificationService } from "../services/notificationService.js";
+import { notificationService } from "../services/NotificationService.js";
 import { logger } from "../utils/logger.js";
 import prisma from "../lib/prisma.js";
 const CRON_NAME = "emailHostingCron";
