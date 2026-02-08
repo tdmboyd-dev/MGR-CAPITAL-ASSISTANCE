@@ -128,6 +128,14 @@ export default function ForgotPasswordPage() {
                   )}
                 </div>
 
+                {/* Note for @capitalmgr.com users */}
+                <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
+                  <p className="text-xs text-amber-700 dark:text-amber-400">
+                    <strong>@capitalmgr.com users:</strong> Reset link will be sent to your recovery email.
+                    If you haven&apos;t set one, contact an administrator.
+                  </p>
+                </div>
+
                 <Button
                   type="submit"
                   disabled={isLoading || !isValid}

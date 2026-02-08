@@ -258,6 +258,7 @@ router.get(
       select: {
         id: true,
         email: true,
+        recoveryEmail: true,
         role: true,
         name: true,
         phone: true,
@@ -271,16 +272,87 @@ router.get(
       throw new AppError("User inactive", 401, "Your account is no longer active.");
     }
 
+    // Check if recovery email is required (for @capitalmgr.com users)
+    const requiresRecoveryEmail = user.email.endsWith("@capitalmgr.com") && !user.recoveryEmail;
+
     res.json({
       success: true,
       user: {
         id: user.id,
         email: user.email,
+        recoveryEmail: user.recoveryEmail,
         role: user.role,
         name: user.name,
         phone: user.phone,
         tier: user.employeeTier,
         trainingCompleted: user.trainingCompleted,
+        requiresRecoveryEmail,
+      },
+    });
+  })
+);
+
+// =============================================================================
+// UPDATE PROFILE
+// =============================================================================
+
+router.patch(
+  "/me",
+  authMiddleware,
+  asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    if (!req.user) {
+      throw Errors.unauthorized();
+    }
+
+    const { name, phone, recoveryEmail } = req.body;
+
+    // Validate recovery email format if provided
+    if (recoveryEmail !== undefined) {
+      if (recoveryEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recoveryEmail)) {
+        throw Errors.badRequest("Invalid recovery email format");
+      }
+      // Recovery email should not be @capitalmgr.com (defeats the purpose)
+      if (recoveryEmail && recoveryEmail.endsWith("@capitalmgr.com")) {
+        throw Errors.badRequest("Recovery email must be an external email address (not @capitalmgr.com)");
+      }
+    }
+
+    const updateData: Record<string, unknown> = {};
+    if (name !== undefined) updateData.name = name;
+    if (phone !== undefined) updateData.phone = phone;
+    if (recoveryEmail !== undefined) updateData.recoveryEmail = recoveryEmail || null;
+
+    const user = await prisma.user.update({
+      where: { id: req.user.id },
+      data: updateData,
+      select: {
+        id: true,
+        email: true,
+        recoveryEmail: true,
+        role: true,
+        name: true,
+        phone: true,
+        employeeTier: true,
+        trainingCompleted: true,
+      },
+    });
+
+    const requiresRecoveryEmail = user.email.endsWith("@capitalmgr.com") && !user.recoveryEmail;
+
+    logger.info("Profile updated", { userId: req.user.id, fields: Object.keys(updateData) });
+
+    res.json({
+      success: true,
+      user: {
+        id: user.id,
+        email: user.email,
+        recoveryEmail: user.recoveryEmail,
+        role: user.role,
+        name: user.name,
+        phone: user.phone,
+        tier: user.employeeTier,
+        trainingCompleted: user.trainingCompleted,
+        requiresRecoveryEmail,
       },
     });
   })
@@ -408,10 +480,25 @@ router.post(
     // Always return success to prevent email enumeration
     const user = await prisma.user.findUnique({
       where: { email: normalizedEmail },
-      select: { id: true, email: true, name: true, isActive: true },
+      select: { id: true, email: true, recoveryEmail: true, name: true, isActive: true },
     });
 
     if (user && user.isActive) {
+      // For @capitalmgr.com users, require recoveryEmail since they can't receive external emails
+      const isInternalEmail = user.email.endsWith("@capitalmgr.com");
+      if (isInternalEmail && !user.recoveryEmail) {
+        // Still return success to prevent enumeration, but log the issue
+        logger.warn("Password reset requested for internal email without recovery email", {
+          userId: user.id,
+          email: user.email,
+        });
+        return res.json({
+          success: true,
+          message:
+            "If an account exists with this email, a password reset link will be sent.",
+        });
+      }
+
       const { token, expiresAt } = await createPasswordResetToken(user.id);
 
       await prisma.auditLog.create({
@@ -426,9 +513,12 @@ router.post(
         },
       });
 
+      // Send to recoveryEmail if available (required for @capitalmgr.com), otherwise to main email
+      const resetEmailAddress = user.recoveryEmail || user.email;
+
       // Send password reset email
       const emailResult = await notificationService.sendPasswordResetEmail({
-        to: user.email,
+        to: resetEmailAddress,
         toName: user.name || undefined,
         userId: user.id,
         resetToken: token,
@@ -438,6 +528,7 @@ router.post(
       logger.info("Password reset email sent", {
         userId: user.id,
         email: user.email,
+        sentTo: resetEmailAddress,
         emailSent: emailResult.success,
         notificationId: emailResult.notificationId,
       });
