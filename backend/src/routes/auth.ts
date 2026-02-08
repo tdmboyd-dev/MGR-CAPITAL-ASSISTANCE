@@ -106,6 +106,92 @@ router.post(
 );
 
 // =============================================================================
+// REGISTER — Create new user account with recovery email verification
+// =============================================================================
+
+router.post(
+  "/register",
+  asyncHandler(async (req: Request, res: Response) => {
+    const { name, email, password, recoveryEmail } = req.body;
+
+    if (!name || !email || !password) {
+      throw Errors.badRequest("Name, email, and password are required");
+    }
+
+    if (!recoveryEmail) {
+      throw Errors.badRequest("Recovery email is required for account security");
+    }
+
+    const normalizedEmail = sanitizeEmail(email);
+    const normalizedRecoveryEmail = sanitizeEmail(recoveryEmail);
+
+    // Validate recovery email is not @capitalmgr.com
+    if (normalizedRecoveryEmail.endsWith("@capitalmgr.com")) {
+      throw Errors.badRequest("Recovery email must be an external email address (not @capitalmgr.com)");
+    }
+
+    // Check password complexity
+    const validation = validatePasswordComplexity(password);
+    if (!validation.valid) {
+      throw Errors.badRequest(validation.errors.join(". "));
+    }
+
+    // Check if email already exists
+    const existingUser = await prisma.user.findUnique({
+      where: { email: normalizedEmail },
+    });
+
+    if (existingUser) {
+      throw Errors.badRequest("An account with this email already exists");
+    }
+
+    // Hash password
+    const passwordHash = await bcrypt.hash(password, 12);
+
+    // Create user with recovery email
+    const user = await prisma.user.create({
+      data: {
+        email: normalizedEmail,
+        recoveryEmail: normalizedRecoveryEmail,
+        passwordHash,
+        name,
+        role: "EMPLOYEE", // Default role for new registrations
+        isActive: true,
+        emailVerified: false,
+      },
+    });
+
+    // Send verification email to recovery email
+    try {
+      await notificationService.sendEmailVerification({
+        to: normalizedRecoveryEmail,
+        toName: name,
+        userId: user.id,
+      });
+    } catch (err) {
+      logger.error("Failed to send verification email", { userId: user.id, error: err });
+    }
+
+    logger.info("New user registered", {
+      userId: user.id,
+      email: normalizedEmail,
+      recoveryEmail: normalizedRecoveryEmail,
+    });
+
+    res.status(201).json({
+      success: true,
+      message: "Account created! Please check your recovery email to verify your account.",
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+      },
+    });
+  })
+);
+
+// =============================================================================
 // REFRESH — Rotate refresh token, issue new access token
 // =============================================================================
 

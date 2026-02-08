@@ -665,6 +665,90 @@ MGR Capital Assistance
   }
 
   /**
+   * Send email verification for new registrations
+   * Bot: Casey Sterling, Security Analyst
+   */
+  async sendEmailVerification(params: {
+    to: string;
+    toName?: string;
+    userId: string;
+  }): Promise<NotificationResult> {
+    const frontendUrl = process.env.FRONTEND_URL || 'https://capitalmgr.com';
+    const verifyLink = `${frontendUrl}/auth/verify?userId=${params.userId}&token=${Buffer.from(params.userId + Date.now()).toString('base64')}`;
+    const bot = getBotPersona("security");
+
+    const body = `
+Hello${params.toName ? ` ${params.toName}` : ''},
+
+Thank you for registering with MGR Capital Assistance!
+
+Please verify your email address by clicking the link below:
+${verifyLink}
+
+This confirms that you have access to this recovery email and can use it to reset your password if needed.
+
+If you did not create this account, please ignore this email.
+
+Best regards,
+${bot.name}
+${bot.title}
+MGR Capital Assistance
+    `.trim();
+
+    const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+    .header { background: #1a1a2e; color: white; padding: 20px; text-align: center; }
+    .content { padding: 20px; background: #f9f9f9; }
+    .button { display: inline-block; background: #10b981; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 20px 0; }
+    .info { background: #fef3c7; border: 1px solid #f59e0b; padding: 12px; border-radius: 6px; margin-top: 20px; }
+    .footer { font-size: 12px; color: #666; margin-top: 20px; padding-top: 20px; border-top: 1px solid #ddd; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>MGR Capital Assistance</h1>
+    </div>
+    <div class="content">
+      <h2>Verify Your Email</h2>
+      <p>Hello${params.toName ? ` ${params.toName}` : ''},</p>
+      <p>Thank you for registering! Please verify your email address to complete your account setup.</p>
+      <p style="text-align: center;">
+        <a href="${verifyLink}" class="button">Verify My Email</a>
+      </p>
+      <div class="info">
+        <strong>Why is this important?</strong><br>
+        This recovery email is your ONLY way to reset your password if you get locked out. Make sure you always have access to it.
+      </div>
+      <div class="footer">
+        <p>If you did not create this account, please ignore this email.</p>
+        <p>MGR Capital Assistance Security Team</p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
+    `.trim();
+
+    return this.sendEmail({
+      to: params.to,
+      toName: params.toName,
+      subject: '[MGR Capital] Verify Your Email Address',
+      body,
+      html,
+      userId: params.userId,
+      sender: "noreply",
+      botId: "security",
+    });
+  }
+
+  /**
    * Send welcome email after registration
    * Bot: Jamie Chen, Client Success Manager
    */

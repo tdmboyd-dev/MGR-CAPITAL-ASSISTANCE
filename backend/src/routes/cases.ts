@@ -32,7 +32,7 @@ const router = Router();
 /**
  * GET /api/cases/my - Employee's assigned cases
  */
-router.get("/my", authMiddleware, roleGuard(["EMPLOYEE"]), async (req: AuthRequest, res: Response) => {
+router.get("/my", authMiddleware, roleGuard(["EMPLOYEE", "ADMIN"]), async (req: AuthRequest, res: Response) => {
   try {
     const cases = await prisma.case.findMany({
       where: {
@@ -82,7 +82,7 @@ router.get("/my", authMiddleware, roleGuard(["EMPLOYEE"]), async (req: AuthReque
  * Employees can only: NEW → CONTACTED → DOCS_PENDING
  * FILED, AWAITING_FUNDS, PAID transitions require FOUNDER
  */
-router.post("/my/:id/status", authMiddleware, roleGuard(["EMPLOYEE"]), asyncHandler(async (req: AuthRequest, res: Response) => {
+router.post("/my/:id/status", authMiddleware, roleGuard(["EMPLOYEE", "ADMIN"]), asyncHandler(async (req: AuthRequest, res: Response) => {
   const { id } = req.params;
   const { status, notes } = req.body;
 

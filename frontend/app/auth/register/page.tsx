@@ -29,6 +29,7 @@ const formSchema = z
   .object({
     name: z.string().min(2, { message: "Name must be at least 2 characters" }),
     email: z.string().email({ message: "Please enter a valid email address" }),
+    recoveryEmail: z.string().email({ message: "Please enter a valid recovery email" }),
     password: z
       .string()
       .min(8, { message: "Password must be at least 8 characters" })
@@ -43,6 +44,10 @@ const formSchema = z
   .refine((data) => data.password === data.confirmPassword, {
     message: "Passwords don't match",
     path: ["confirmPassword"],
+  })
+  .refine((data) => !data.recoveryEmail.endsWith("@capitalmgr.com"), {
+    message: "Recovery email must be an external email (not @capitalmgr.com)",
+    path: ["recoveryEmail"],
   });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -73,6 +78,7 @@ export default function RegisterPage() {
         body: JSON.stringify({
           name: data.name,
           email: data.email,
+          recoveryEmail: data.recoveryEmail,
           password: data.password,
         }),
       });
@@ -154,13 +160,13 @@ export default function RegisterPage() {
                   htmlFor="email"
                   className="text-sm font-medium text-slate-700 dark:text-slate-300"
                 >
-                  Email address
+                  Work Email
                 </Label>
                 <Input
                   id="email"
                   type="email"
                   autoComplete="email"
-                  placeholder="name@company.com"
+                  placeholder="you@capitalmgr.com"
                   className="h-12 px-4 rounded-xl border-slate-300 dark:border-slate-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-white/60 dark:bg-slate-800/60 backdrop-blur-sm"
                   {...register("email")}
                   disabled={isLoading}
@@ -168,6 +174,32 @@ export default function RegisterPage() {
                 {errors.email && (
                   <p className="text-sm text-red-600 dark:text-red-400 mt-1">
                     {errors.email.message}
+                  </p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label
+                  htmlFor="recoveryEmail"
+                  className="text-sm font-medium text-slate-700 dark:text-slate-300"
+                >
+                  Recovery Email (Required)
+                </Label>
+                <Input
+                  id="recoveryEmail"
+                  type="email"
+                  autoComplete="email"
+                  placeholder="your.personal@gmail.com"
+                  className="h-12 px-4 rounded-xl border-slate-300 dark:border-slate-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-white/60 dark:bg-slate-800/60 backdrop-blur-sm"
+                  {...register("recoveryEmail")}
+                  disabled={isLoading}
+                />
+                <p className="text-xs text-amber-600 dark:text-amber-400">
+                  This is your ONLY way to reset your password if locked out. Use a personal email you always have access to.
+                </p>
+                {errors.recoveryEmail && (
+                  <p className="text-sm text-red-600 dark:text-red-400 mt-1">
+                    {errors.recoveryEmail.message}
                   </p>
                 )}
               </div>
