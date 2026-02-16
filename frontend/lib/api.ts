@@ -93,7 +93,8 @@ api.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        const { data } = await axios.post("/api/auth/refresh", {}, {
+        // Use API_BASE_URL to ensure we hit the backend, not frontend
+        const { data } = await axios.post(`${API_BASE_URL}/auth/refresh`, {}, {
           withCredentials: true,
         });
 
