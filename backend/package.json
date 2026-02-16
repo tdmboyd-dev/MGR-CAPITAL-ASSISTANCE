@@ -54,6 +54,9 @@
     "pdf-lib": "^1.17.1",
     "pdfkit": "^0.17.2",
     "prisma": "5.22.0",
+    "puppeteer": "^24.37.3",
+    "puppeteer-extra": "^3.3.6",
+    "puppeteer-extra-plugin-stealth": "^2.11.2",
     "redis": "^5.10.0",
     "ssh2": "^1.17.0",
     "stripe": "^20.2.0",
@@ -67,6 +70,7 @@
   "devDependencies": {
     "@types/imapflow": "^1.0.23",
     "@types/jest": "^30.0.0",
+    "@types/puppeteer": "^5.4.7",
     "@types/supertest": "^6.0.3",
     "cypress": "^14.0.0",
     "jest": "^30.2.0",

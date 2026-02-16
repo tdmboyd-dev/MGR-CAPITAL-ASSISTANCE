@@ -54,6 +54,7 @@ import { runBotBillingCron } from "../crons/botBillingCron.js";
 import { runBotOrchestrationCron } from "../crons/botOrchestrationCron.js";
 import { runWorkerBotCron } from "../crons/workerBotCron.js";
 import { runRetentionCron } from "../crons/retentionCron.js";
+import { runScraperV2Cron, runScraperHighPopulation } from "./scraperV2Cron.js";
 
 // =============================================================================
 // TYPES
@@ -375,6 +376,32 @@ const jobs: CronJob[] = [
     category: "bot",
     task: async () => {
       await runWorkerBotCron();
+    },
+  },
+
+  // ===========================================
+  // PUPPETEER SCRAPER V2 (50-STATE COUNTY SCRAPING)
+  // ===========================================
+  {
+    name: "ScraperV2 Full Cycle",
+    key: "scraper_v2_full_cycle",
+    cronExpression: "0 */6 * * *", // Every 6 hours
+    description: "Puppeteer-based scraper for all 50 states county surplus funds",
+    enabledByDefault: false, // FOUNDER must enable - resource intensive
+    category: "bot",
+    task: async () => {
+      await runScraperV2Cron();
+    },
+  },
+  {
+    name: "ScraperV2 High Population",
+    key: "scraper_v2_high_population",
+    cronExpression: "0 8,20 * * *", // 8 AM and 8 PM
+    description: "Scrape high-population counties only (faster, more efficient)",
+    enabledByDefault: false, // FOUNDER must enable
+    category: "bot",
+    task: async () => {
+      await runScraperHighPopulation();
     },
   },
 

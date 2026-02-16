@@ -170,6 +170,9 @@ import retentionRoutes from "./routes/retentionRoutes.js";
 // Alerts Chamber — Founder BotBuddy chat for dispatching alerts
 import alertsChamberRoutes from "./routes/alertsChamberRoutes.js";
 
+// ScraperV2 — Puppeteer-based 50-state county scraper
+import scraperV2Routes from "./routes/scraperV2Routes.js";
+
 // Scheduler (autopilot crons)
 import scheduler from "./cron/scheduler.js";
 
@@ -407,6 +410,9 @@ app.use("/api/retention", retentionRoutes);
 
 // Alerts Chamber — Founder BotBuddy (FOUNDER ONLY)
 app.use("/api/alerts-chamber", alertsChamberRoutes);
+
+// ScraperV2 — Puppeteer-based 50-state county scraper (FOUNDER ONLY)
+app.use("/api/scraper-v2", scraperV2Routes);
 
 // ============================================
 // HEALTH CHECK
