@@ -21,30 +21,65 @@ const BREVO_API_KEY = process.env.BREVO_API_KEY;
 const BREVO_FROM = process.env.BREVO_FROM || process.env.SMTP_FROM || 'admin@capitalmgr.com';
 const SMTP_FROM = process.env.SMTP_FROM || 'admin@capitalmgr.com';
 
-// Build SMTP transporter only if configured
-let smtpTransporter: nodemailer.Transporter | null = null;
-if (process.env.SMTP_HOST) {
+// Modoboa SMTP configuration (self-hosted, unlimited, $0) — PRIMARY
+const MODOBOA_SMTP_HOST = process.env.MODOBOA_SMTP_HOST;
+const MODOBOA_SMTP_PORT = parseInt(process.env.MODOBOA_SMTP_PORT || '587');
+const MODOBOA_SMTP_USER = process.env.MODOBOA_NOREPLY_EMAIL;
+const MODOBOA_SMTP_PASS = process.env.MODOBOA_NOREPLY_PASS;
+
+// Amazon SES SMTP configuration — FALLBACK
+const SES_SMTP_HOST = process.env.SMTP_HOST;
+const SES_SMTP_PORT = parseInt(process.env.SMTP_PORT || '587');
+const SES_SMTP_USER = process.env.SMTP_USER;
+const SES_SMTP_PASS = process.env.SMTP_PASS;
+
+// Build Modoboa SMTP transporter (PRIMARY)
+let modoboaTransporter: nodemailer.Transporter | null = null;
+if (MODOBOA_SMTP_HOST && MODOBOA_SMTP_USER && MODOBOA_SMTP_PASS) {
   try {
-    smtpTransporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port: parseInt(process.env.SMTP_PORT || '587'),
-      secure: process.env.SMTP_SECURE === 'true',
+    modoboaTransporter = nodemailer.createTransport({
+      host: MODOBOA_SMTP_HOST,
+      port: MODOBOA_SMTP_PORT,
+      secure: false,
       auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
+        user: MODOBOA_SMTP_USER,
+        pass: MODOBOA_SMTP_PASS,
       },
       connectionTimeout: 10000,
       greetingTimeout: 10000,
       socketTimeout: 15000,
     });
+    logger.info('[EmailService] Modoboa SMTP configured as PRIMARY');
   } catch (err: any) {
-    logger.warn(`[EmailService] SMTP transport creation failed: ${err.message}`);
+    logger.warn(`[EmailService] Modoboa SMTP transport creation failed: ${err.message}`);
   }
 }
 
-// Determine primary provider — SMTP (Modoboa) is ALWAYS primary, Brevo is fallback only
-const PRIMARY_PROVIDER = smtpTransporter ? 'smtp' : (BREVO_API_KEY ? 'brevo' : 'log');
-logger.info(`[EmailService] Primary provider: ${PRIMARY_PROVIDER.toUpperCase()} (Modoboa SMTP), Brevo fallback: ${BREVO_API_KEY ? 'YES' : 'NO'}, SMTP: ${smtpTransporter ? 'YES' : 'NO'}`);
+// Build Amazon SES SMTP transporter (FALLBACK)
+let smtpTransporter: nodemailer.Transporter | null = null;
+if (SES_SMTP_HOST && SES_SMTP_USER && SES_SMTP_PASS) {
+  try {
+    smtpTransporter = nodemailer.createTransport({
+      host: SES_SMTP_HOST,
+      port: SES_SMTP_PORT,
+      secure: process.env.SMTP_SECURE === 'true',
+      auth: {
+        user: SES_SMTP_USER,
+        pass: SES_SMTP_PASS,
+      },
+      connectionTimeout: 10000,
+      greetingTimeout: 10000,
+      socketTimeout: 15000,
+    });
+    logger.info('[EmailService] Amazon SES SMTP configured as FALLBACK');
+  } catch (err: any) {
+    logger.warn(`[EmailService] Amazon SES SMTP transport creation failed: ${err.message}`);
+  }
+}
+
+// Determine primary provider — Modoboa is PRIMARY, SES and Brevo are fallbacks
+const PRIMARY_PROVIDER = modoboaTransporter ? 'modoboa' : (smtpTransporter ? 'ses' : (BREVO_API_KEY ? 'brevo' : 'log'));
+logger.info(`[EmailService] Provider chain: Modoboa=${modoboaTransporter ? 'YES' : 'NO'}, SES=${smtpTransporter ? 'YES' : 'NO'}, Brevo=${BREVO_API_KEY ? 'YES' : 'NO'}`);
 
 // Email templates stored in memory
 const TEMPLATES: Record<string, (data: any) => string> = {
@@ -200,20 +235,35 @@ const TEMPLATES: Record<string, (data: any) => string> = {
 };
 
 export class EmailService {
-  private smtpVerified: boolean = false;
-  private smtpFailed: boolean = false;
+  private modoboaVerified: boolean = false;
+  private modoboaFailed: boolean = false;
+  private sesVerified: boolean = false;
+  private sesFailed: boolean = false;
 
   constructor() {
-    // Verify SMTP connection asynchronously (don't block startup)
+    // Verify Modoboa SMTP connection asynchronously (don't block startup)
+    if (modoboaTransporter) {
+      modoboaTransporter.verify()
+        .then(() => {
+          this.modoboaVerified = true;
+          logger.info('[EmailService] Modoboa SMTP connection verified');
+        })
+        .catch((err: any) => {
+          this.modoboaFailed = true;
+          logger.warn(`[EmailService] Modoboa SMTP verification failed (${err.message}) — will use SES/Brevo`);
+        });
+    }
+
+    // Verify Amazon SES SMTP connection asynchronously
     if (smtpTransporter) {
       smtpTransporter.verify()
         .then(() => {
-          this.smtpVerified = true;
-          logger.info('[EmailService] SMTP connection verified');
+          this.sesVerified = true;
+          logger.info('[EmailService] Amazon SES SMTP connection verified');
         })
         .catch((err: any) => {
-          this.smtpFailed = true;
-          logger.warn(`[EmailService] SMTP verification failed (${err.message}) — will use Brevo`);
+          this.sesFailed = true;
+          logger.warn(`[EmailService] Amazon SES SMTP verification failed (${err.message}) — will use Brevo`);
         });
     }
   }
@@ -221,19 +271,21 @@ export class EmailService {
   /**
    * Get service status
    */
-  getStatus(): { provider: string; configured: boolean; brevo: boolean; smtp: boolean; smtpVerified: boolean } {
+  getStatus(): { provider: string; configured: boolean; brevo: boolean; modoboa: boolean; ses: boolean; modoboaVerified: boolean; sesVerified: boolean } {
     return {
       provider: PRIMARY_PROVIDER,
       configured: PRIMARY_PROVIDER !== 'log',
       brevo: !!BREVO_API_KEY,
-      smtp: !!smtpTransporter,
-      smtpVerified: this.smtpVerified,
+      modoboa: !!modoboaTransporter,
+      ses: !!smtpTransporter,
+      modoboaVerified: this.modoboaVerified,
+      sesVerified: this.sesVerified,
     };
   }
 
   /**
    * Send email with automatic failover chain:
-   * Brevo API → SMTP → Console Log
+   * Modoboa SMTP → Amazon SES SMTP → Brevo API → Console Log
    */
   async send(templateName: string, to: string, data: Record<string, any>): Promise<boolean> {
     const html = this.renderTemplate(templateName, data);
@@ -241,13 +293,20 @@ export class EmailService {
     const plainText = data.plainText || this.stripHtml(html);
 
     // Try Modoboa SMTP first (self-hosted, unlimited, $0 cost)
-    if (smtpTransporter && !this.smtpFailed) {
-      const smtpResult = await this.sendViaSMTP(to, subject, html, plainText);
-      if (smtpResult) return true;
-      logger.warn('[EmailService] Modoboa SMTP failed, trying Brevo fallback...');
+    if (modoboaTransporter && !this.modoboaFailed) {
+      const modoboaResult = await this.sendViaModoboa(to, subject, html, plainText);
+      if (modoboaResult) return true;
+      logger.warn('[EmailService] Modoboa SMTP failed, trying Amazon SES fallback...');
     }
 
-    // Try Brevo as fallback only (external API, rate limited)
+    // Try Amazon SES SMTP as second option
+    if (smtpTransporter && !this.sesFailed) {
+      const sesResult = await this.sendViaSES(to, subject, html, plainText);
+      if (sesResult) return true;
+      logger.warn('[EmailService] Amazon SES failed, trying Brevo fallback...');
+    }
+
+    // Try Brevo as last API fallback (external API, rate limited)
     if (BREVO_API_KEY) {
       const brevoResult = await this.sendViaBrevo(to, subject, html, plainText);
       if (brevoResult) return true;
@@ -304,11 +363,41 @@ export class EmailService {
   }
 
   /**
-   * Send email via SMTP (Amazon SES or generic SMTP)
+   * Send email via Modoboa SMTP (self-hosted, unlimited, $0 cost)
    */
-  private async sendViaSMTP(to: string, subject: string, html: string, text: string): Promise<boolean> {
+  private async sendViaModoboa(to: string, subject: string, html: string, text: string): Promise<boolean> {
+    if (!modoboaTransporter) return false;
+
     try {
-      const info = await smtpTransporter!.sendMail({
+      const info = await modoboaTransporter.sendMail({
+        from: `"MGR Capital Assistance" <${MODOBOA_SMTP_USER || SMTP_FROM}>`,
+        to,
+        subject,
+        html,
+        text,
+      });
+
+      logger.info('[EmailService] Email sent via Modoboa SMTP', { to, subject, messageId: info.messageId });
+      this.modoboaVerified = true;
+      return true;
+    } catch (error: any) {
+      logger.error('[EmailService] Modoboa SMTP send failed', { error: error.message, code: error.code });
+      if (error.responseCode === 535 || error.code === 'EAUTH') {
+        this.modoboaFailed = true;
+        logger.warn('[EmailService] Modoboa SMTP auth failed permanently — disabling for this session');
+      }
+      return false;
+    }
+  }
+
+  /**
+   * Send email via Amazon SES SMTP (paid, reliable)
+   */
+  private async sendViaSES(to: string, subject: string, html: string, text: string): Promise<boolean> {
+    if (!smtpTransporter) return false;
+
+    try {
+      const info = await smtpTransporter.sendMail({
         from: `"MGR Capital Assistance" <${SMTP_FROM}>`,
         to,
         subject,
@@ -316,15 +405,14 @@ export class EmailService {
         text,
       });
 
-      logger.info('[EmailService] Email sent via SMTP', { to, subject, messageId: info.messageId });
-      this.smtpVerified = true; // Mark as working
+      logger.info('[EmailService] Email sent via Amazon SES SMTP', { to, subject, messageId: info.messageId });
+      this.sesVerified = true;
       return true;
     } catch (error: any) {
-      logger.error('[EmailService] SMTP send failed', { error: error.message, code: error.code });
-      // If auth failed (535), mark SMTP as permanently failed for this session
+      logger.error('[EmailService] Amazon SES SMTP send failed', { error: error.message, code: error.code });
       if (error.responseCode === 535 || error.code === 'EAUTH') {
-        this.smtpFailed = true;
-        logger.warn('[EmailService] SMTP auth failed permanently (535) — disabling SMTP for this session');
+        this.sesFailed = true;
+        logger.warn('[EmailService] Amazon SES SMTP auth failed permanently — disabling for this session');
       }
       return false;
     }

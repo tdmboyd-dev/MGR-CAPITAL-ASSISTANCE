@@ -24,16 +24,18 @@ import { logger } from "../utils/logger.js";
 // =============================================================================
 
 // IMAP credentials — founder's inbox (admin@capitalmgr.com)
-const IMAP_HOST = process.env.MAIL_SERVER_HOSTNAME || "mail.capitalmgr.com";
+// Uses Modoboa admin credentials from .env for IMAP access
+const IMAP_HOST = process.env.MAIL_SERVER_HOSTNAME || process.env.MODOBOA_SMTP_HOST || "mail.capitalmgr.com";
 const IMAP_PORT = parseInt(process.env.IMAP_PORT || "993", 10);
-const IMAP_USER = process.env.IMAP_USER || "";
-const IMAP_PASS = process.env.IMAP_PASS || "";
+const IMAP_USER = process.env.IMAP_USER || process.env.MODOBOA_ADMIN_EMAIL || "";
+const IMAP_PASS = process.env.IMAP_PASS || process.env.MODOBOA_ADMIN_PASS || "";
 
 // SMTP credentials — system sender (noreply@capitalmgr.com)
+// Uses Modoboa SMTP settings with noreply credentials for sending
 const MODOBOA_SMTP_HOST = process.env.MODOBOA_SMTP_HOST || "";
 const MODOBOA_SMTP_PORT = parseInt(process.env.MODOBOA_SMTP_PORT || "587", 10);
-const MODOBOA_SMTP_USER = process.env.MODOBOA_SMTP_USER || "";
-const MODOBOA_SMTP_PASS = process.env.MODOBOA_SMTP_PASS || "";
+const MODOBOA_SMTP_USER = process.env.MODOBOA_SMTP_USER || process.env.MODOBOA_NOREPLY_EMAIL || "";
+const MODOBOA_SMTP_PASS = process.env.MODOBOA_SMTP_PASS || process.env.MODOBOA_NOREPLY_PASS || "";
 
 // =============================================================================
 // TYPES & INTERFACES

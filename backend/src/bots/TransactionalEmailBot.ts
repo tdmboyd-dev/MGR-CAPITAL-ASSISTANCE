@@ -48,14 +48,15 @@ class TransactionalEmailBot {
 
   constructor() {
     // Determine provider based on environment
+    // Uses MODOBOA_NOREPLY_EMAIL/PASS for transactional emails
     if (process.env.MODOBOA_SMTP_HOST) {
       this.provider = "modoboa";
       this.modoboaConfig = {
         host: process.env.MODOBOA_SMTP_HOST,
         port: parseInt(process.env.MODOBOA_SMTP_PORT || "587"),
         secure: process.env.MODOBOA_SMTP_SECURE === "true",
-        user: process.env.MODOBOA_SMTP_USER || "",
-        pass: process.env.MODOBOA_SMTP_PASS || "",
+        user: process.env.MODOBOA_SMTP_USER || process.env.MODOBOA_NOREPLY_EMAIL || "",
+        pass: process.env.MODOBOA_SMTP_PASS || process.env.MODOBOA_NOREPLY_PASS || "",
       };
       logger.info(`[${BOT_NAME}] Using Modoboa SMTP as primary provider`);
     } else if (process.env.BREVO_API_KEY) {
