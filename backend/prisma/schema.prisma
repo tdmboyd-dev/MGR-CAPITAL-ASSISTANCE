@@ -3395,3 +3395,142 @@ model EmployeeIncentive {
   @@index([tenantId])
 }
 
+// ============================================
+// LEAD GENERATION SYSTEM
+// FREE automated lead discovery
+// ============================================
+
+enum FOIARequestStatus {
+  PENDING
+  RESPONDED
+  DENIED
+  NO_RESPONSE
+  PARTIAL
+}
+
+enum FOIARequestType {
+  SURPLUS_FUNDS
+  TAX_SALE_RESULTS
+  EXCESS_PROCEEDS
+  UNCLAIMED_FUNDS
+}
+
+// FOIA County Contacts
+model FOIACountyContact {
+  id                  String    @id @default(cuid())
+  county              String
+  state               String
+  stateAbbr           String
+  clerkName           String?
+  email               String?
+  phone               String?
+  faxNumber           String?
+  mailingAddress      String?
+  website             String?
+  foiaEmail           String?
+  foiaFormUrl         String?
+  preferredMethod     String    @default("email")  // email, fax, mail, online_form
+  responseTimeAvgDays Int?
+  lastRequestSentAt   DateTime?
+  lastResponseAt      DateTime?
+  totalRequests       Int       @default(0)
+  totalResponses      Int       @default(0)
+  notes               String?   @db.Text
+
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  requests            FOIARequest[]
+
+  @@unique([county, stateAbbr])
+  @@index([stateAbbr])
+  @@index([lastRequestSentAt])
+}
+
+// FOIA Requests
+model FOIARequest {
+  id              String            @id @default(cuid())
+  countyId        String
+  contact         FOIACountyContact @relation(fields: [countyId], references: [id], onDelete: Cascade)
+  county          String
+  state           String
+  requestType     FOIARequestType
+  sentAt          DateTime
+  sentVia         String            @default("email")
+  status          FOIARequestStatus @default(PENDING)
+  followUpSentAt  DateTime?
+  respondedAt     DateTime?
+  responseType    String?           // pdf, excel, csv, link, denied, no_records
+  attachmentPaths Json?             // Array of file paths
+  recordsExtracted Int?
+  notes           String?           @db.Text
+
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  @@index([countyId])
+  @@index([status])
+  @@index([sentAt])
+}
+
+// Google Search Results
+model GoogleSearchResult {
+  id              String    @id @default(cuid())
+  title           String
+  link            String
+  snippet         String?   @db.Text
+  displayLink     String?
+  fileType        String?
+  state           String?
+  county          String?
+  relevanceScore  Int       @default(0)
+  downloadedAt    DateTime?
+  parsedRecords   Int?
+  processed       Boolean   @default(false)
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([state])
+  @@index([relevanceScore])
+  @@index([processed])
+}
+
+// News Alerts
+model NewsAlert {
+  id              String    @id @default(cuid())
+  monitorId       String
+  title           String
+  content         String?   @db.Text
+  sourceUrl       String
+  publishedAt     DateTime
+  category        String    // rss_feed, web_change, new_pdf, google_news
+  state           String?
+  county          String?
+  relevanceScore  Int       @default(0)
+  processed       Boolean   @default(false)
+  leadsGenerated  Int?
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([monitorId])
+  @@index([category])
+  @@index([processed])
+}
+
+// Lead Generation Run Stats
+model LeadGenRun {
+  id              String    @id @default(cuid())
+  source          String    // ORCHESTRATOR, FOIA_REQUEST_BOT, AUCTION_SCRAPER, etc.
+  leadsFound      Int       @default(0)
+  leadsCreated    Int       @default(0)
+  errors          Int       @default(0)
+  durationMs      Int       @default(0)
+
+  createdAt       DateTime  @default(now())
+
+  @@index([source])
+  @@index([createdAt])
+}
+

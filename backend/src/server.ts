@@ -173,6 +173,9 @@ import alertsChamberRoutes from "./routes/alertsChamberRoutes.js";
 // ScraperV2 — Puppeteer-based 50-state county scraper
 import scraperV2Routes from "./routes/scraperV2Routes.js";
 
+// Lead Generation — FREE automated lead discovery (FOIA, Auctions, Unclaimed Property, Google Search, News Alerts)
+import leadGenerationRoutes from "./routes/leadGenerationRoutes.js";
+
 // Scheduler (autopilot crons)
 import scheduler from "./cron/scheduler.js";
 
@@ -413,6 +416,9 @@ app.use("/api/alerts-chamber", alertsChamberRoutes);
 
 // ScraperV2 — Puppeteer-based 50-state county scraper (FOUNDER ONLY)
 app.use("/api/scraper-v2", scraperV2Routes);
+
+// Lead Generation — FREE automated lead discovery (FOUNDER ONLY)
+app.use("/api/lead-generation", leadGenerationRoutes);
 
 // ============================================
 // HEALTH CHECK
