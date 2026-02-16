@@ -189,7 +189,11 @@ app.use(generalRateLimiter);
 app.use(cors({
   origin: config.corsOrigins,
   credentials: true,
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept", "Origin"],
   exposedHeaders: ["set-cookie"],
+  preflightContinue: false,
+  optionsSuccessStatus: 204,
 }));
 app.use(cookieParser());
 app.use(express.json({ limit: "10mb" }));
