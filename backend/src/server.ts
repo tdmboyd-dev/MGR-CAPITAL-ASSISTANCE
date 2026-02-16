@@ -12,6 +12,8 @@ import { config } from "./config/env.js";
 import { globalErrorHandler, notFoundHandler } from "./middleware/errorHandler.js";
 import { auditLogMiddleware } from "./middleware/auditLogger.js";
 import { helmetMiddleware, generalRateLimiter, requestLogger } from "./middleware/securityMiddleware.js";
+import { authMiddleware } from "./middleware/authMiddleware.js";
+import { roleGuard } from "./middleware/roleGuard.js";
 
 // Route imports
 import authRoutes from "./routes/auth.js";
@@ -235,6 +237,38 @@ app.use("/api/settings/master", masterSettingsRoutes);
 // OPS Layer routes (FOUNDER ONLY — Never expose to employees/clients)
 app.use("/api/ops/metrics", opsMetricsRoutes);
 app.use("/api/ops/watch", opsWatchRoutes);
+
+// OPS Insights endpoint (FOUNDER ONLY)
+app.get("/api/ops/insights", authMiddleware, roleGuard(["FOUNDER"]), async (req, res) => {
+  try {
+    const isRead = req.query.isRead === "true";
+    const limit = parseInt(req.query.limit as string) || 10;
+
+    // Return focus feed items as insights
+    const { opsMetricsService } = await import("./services/OpsMetricsService.js");
+    const feed = await opsMetricsService.getFounderFocusFeed(limit);
+
+    const insights = (feed.items || []).map((item: any) => ({
+      id: item.id,
+      type: item.type,
+      priority: item.priority,
+      title: item.title,
+      message: item.summary,
+      isRead: item.isDismissed || isRead,
+      createdAt: item.createdAt,
+      link: item.relatedCaseId ? `/founder/cases/${item.relatedCaseId}` : null,
+    }));
+
+    res.json({
+      success: true,
+      insights,
+      count: feed.unreadCount || insights.filter((i: any) => !i.isRead).length
+    });
+  } catch (error: any) {
+    console.error("Insights fetch error:", error);
+    res.json({ success: true, insights: [], count: 0 });
+  }
+});
 
 // Role-specific management panels
 app.use("/api/hr", hrRoutes);

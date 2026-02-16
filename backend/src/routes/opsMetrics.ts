@@ -16,6 +16,27 @@ router.use(authMiddleware);
 router.use(roleGuard(["FOUNDER"]));
 
 // ============================================
+// ROOT METRICS (for /api/ops/metrics)
+// ============================================
+
+/**
+ * GET /api/ops/metrics
+ * Quick stats for dashboard cards
+ */
+router.get("/", async (req: Request, res: Response) => {
+  try {
+    const dashboard = await opsMetricsService.getOpsDashboard();
+    res.json(dashboard);
+  } catch (error: any) {
+    console.error("Metrics fetch error:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to fetch metrics"
+    });
+  }
+});
+
+// ============================================
 // DASHBOARD
 // ============================================
 

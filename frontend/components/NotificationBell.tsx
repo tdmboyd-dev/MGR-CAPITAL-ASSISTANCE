@@ -8,6 +8,8 @@
 
 import { useState, useEffect, useRef } from "react";
 import { Bell, Check, Trash2, X, ExternalLink } from "lucide-react";
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
@@ -79,7 +81,7 @@ export function NotificationBell() {
 
   const fetchUnreadCount = async () => {
     try {
-      const res = await fetch("/api/notifications/count", {
+      const res = await fetch(`${API_URL}/api/notifications/count`, {
         credentials: "include",
       });
       if (res.ok) {
@@ -94,7 +96,7 @@ export function NotificationBell() {
   const fetchNotifications = async () => {
     setIsLoading(true);
     try {
-      const res = await fetch("/api/notifications/unread", {
+      const res = await fetch(`${API_URL}/api/notifications/unread`, {
         credentials: "include",
       });
       if (res.ok) {
@@ -111,7 +113,7 @@ export function NotificationBell() {
 
   const markAsRead = async (id: string) => {
     try {
-      await fetch(`/api/notifications/${id}/read`, {
+      await fetch(`${API_URL}/api/notifications/${id}/read`, {
         method: "PATCH",
         credentials: "include",
       });
@@ -126,7 +128,7 @@ export function NotificationBell() {
 
   const markAllAsRead = async () => {
     try {
-      await fetch("/api/notifications/mark-read", {
+      await fetch(`${API_URL}/api/notifications/mark-read`, {
         method: "PATCH",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
@@ -142,7 +144,7 @@ export function NotificationBell() {
 
   const deleteNotification = async (id: string) => {
     try {
-      await fetch(`/api/notifications/${id}`, {
+      await fetch(`${API_URL}/api/notifications/${id}`, {
         method: "DELETE",
         credentials: "include",
       });
