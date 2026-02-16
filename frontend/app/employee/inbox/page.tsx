@@ -92,7 +92,7 @@ export default function EmployeeInboxPage() {
   const { data: emailAccount } = useQuery({
     queryKey: ["my-email-account"],
     queryFn: async () => {
-      const { data } = await api.get("/api/email-hosting/accounts");
+      const { data } = await api.get("/email-hosting/accounts");
       // Return the first active email account
       return data.data?.find((acc: any) => acc.status === "ACTIVE");
     },
@@ -102,7 +102,7 @@ export default function EmployeeInboxPage() {
   const { data: folderCounts } = useQuery({
     queryKey: ["employee-email-folder-counts"],
     queryFn: async () => {
-      const { data } = await api.get("/api/inbox/folders/counts");
+      const { data } = await api.get("/inbox/folders/counts");
       return data.data as FolderCount[];
     },
     enabled: !!emailAccount,
@@ -118,7 +118,7 @@ export default function EmployeeInboxPage() {
         pageSize: "25",
       });
       if (search) params.set("search", search);
-      const { data } = await api.get(`/api/inbox/emails?${params}`);
+      const { data } = await api.get(`/inbox/emails?${params}`);
       return data;
     },
     enabled: !!emailAccount,
@@ -129,7 +129,7 @@ export default function EmployeeInboxPage() {
     queryKey: ["employee-email", selectedEmail?.id],
     queryFn: async () => {
       if (!selectedEmail?.id) return null;
-      const { data } = await api.get(`/api/inbox/emails/${selectedEmail.id}`);
+      const { data } = await api.get(`/inbox/emails/${selectedEmail.id}`);
       return data.data as Email;
     },
     enabled: !!selectedEmail?.id && !!emailAccount,
@@ -138,7 +138,7 @@ export default function EmployeeInboxPage() {
   // Mark as read mutation
   const markReadMutation = useMutation({
     mutationFn: async ({ id, isRead }: { id: string; isRead: boolean }) => {
-      const { data } = await api.patch(`/api/inbox/emails/${id}`, { isRead });
+      const { data } = await api.patch(`/inbox/emails/${id}`, { isRead });
       return data;
     },
     onSuccess: () => {
@@ -150,7 +150,7 @@ export default function EmployeeInboxPage() {
   // Toggle star mutation
   const toggleStarMutation = useMutation({
     mutationFn: async ({ id, isStarred }: { id: string; isStarred: boolean }) => {
-      const { data } = await api.patch(`/api/inbox/emails/${id}`, { isStarred });
+      const { data } = await api.patch(`/inbox/emails/${id}`, { isStarred });
       return data;
     },
     onSuccess: () => {
@@ -161,7 +161,7 @@ export default function EmployeeInboxPage() {
   // Move to folder mutation
   const moveToFolderMutation = useMutation({
     mutationFn: async ({ id, folder }: { id: string; folder: string }) => {
-      const { data } = await api.patch(`/api/inbox/emails/${id}`, { folder });
+      const { data } = await api.patch(`/inbox/emails/${id}`, { folder });
       return data;
     },
     onSuccess: (_, { folder }) => {
@@ -178,7 +178,7 @@ export default function EmployeeInboxPage() {
   // Delete email mutation
   const deleteEmailMutation = useMutation({
     mutationFn: async (id: string) => {
-      const { data } = await api.delete(`/api/inbox/emails/${id}`);
+      const { data } = await api.delete(`/inbox/emails/${id}`);
       return data;
     },
     onSuccess: () => {
@@ -606,7 +606,7 @@ export default function EmployeeInboxPage() {
                           {emailDetails.attachments.map((att) => (
                             <a
                               key={att.id}
-                              href={`/api/inbox/attachments/${att.id}`}
+                              href={`/inbox/attachments/${att.id}`}
                               download={att.filename}
                               className="inline-flex items-center gap-1 px-2 py-1 bg-background rounded border text-xs hover:bg-muted transition-colors"
                             >

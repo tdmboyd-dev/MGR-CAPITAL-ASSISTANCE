@@ -117,7 +117,7 @@ export default function RetentionPage() {
   // Queries
   const { data: dashboard, isLoading: dashLoading } = useQuery<RetentionDashboard>({
     queryKey: ["retention-dashboard"],
-    queryFn: () => api.get("/api/retention/dashboard").then((r) => r.data),
+    queryFn: () => api.get("/retention/dashboard").then((r) => r.data),
   });
 
   const { data: markedData, isLoading: markedLoading } = useQuery({
@@ -137,7 +137,7 @@ export default function RetentionPage() {
   // Mutations
   const approveMut = useMutation({
     mutationFn: (ids: string[]) =>
-      api.post("/api/retention/approve", { documentIds: ids }),
+      api.post("/retention/approve", { documentIds: ids }),
     onSuccess: (_, ids) => {
       toast.success(`${ids.length} document(s) approved for deletion`);
       queryClient.invalidateQueries({ queryKey: ["retention-dashboard"] });
@@ -149,7 +149,7 @@ export default function RetentionPage() {
 
   const rejectMut = useMutation({
     mutationFn: (ids: string[]) =>
-      api.post("/api/retention/reject", { documentIds: ids, extendYears: 1 }),
+      api.post("/retention/reject", { documentIds: ids, extendYears: 1 }),
     onSuccess: (_, ids) => {
       toast.success(`${ids.length} document(s) returned to retention hold (+1 year)`);
       queryClient.invalidateQueries({ queryKey: ["retention-dashboard"] });
@@ -160,7 +160,7 @@ export default function RetentionPage() {
   });
 
   const approveAllMut = useMutation({
-    mutationFn: () => api.post("/api/retention/approve-all"),
+    mutationFn: () => api.post("/retention/approve-all"),
     onSuccess: () => {
       toast.success("All marked documents approved for deletion");
       queryClient.invalidateQueries({ queryKey: ["retention-dashboard"] });
@@ -170,7 +170,7 @@ export default function RetentionPage() {
   });
 
   const runCycleMut = useMutation({
-    mutationFn: () => api.post("/api/retention/run-cycle"),
+    mutationFn: () => api.post("/retention/run-cycle"),
     onSuccess: (res) => {
       toast.success(res.data.message);
       queryClient.invalidateQueries({ queryKey: ["retention-dashboard"] });

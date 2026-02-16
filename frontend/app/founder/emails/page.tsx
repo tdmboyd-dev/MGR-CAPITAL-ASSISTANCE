@@ -41,7 +41,7 @@ export default function FounderEmailsPage() {
   const { data: statusData, isLoading: statusLoading } = useQuery({
     queryKey: ["email-status"],
     queryFn: async () => {
-      const { data } = await api.get("/api/emails/status");
+      const { data } = await api.get("/emails/status");
       return data.data;
     },
   });
@@ -49,7 +49,7 @@ export default function FounderEmailsPage() {
   const { data: statsData } = useQuery({
     queryKey: ["email-stats"],
     queryFn: async () => {
-      const { data } = await api.get("/api/emails/stats?days=30");
+      const { data } = await api.get("/emails/stats?days=30");
       return data.data;
     },
   });
@@ -85,7 +85,7 @@ export default function FounderEmailsPage() {
 
   const retryAllMutation = useMutation({
     mutationFn: async () => {
-      const { data } = await api.post("/api/emails/retry-all-failed");
+      const { data } = await api.post("/emails/retry-all-failed");
       return data;
     },
     onSuccess: (data) => {

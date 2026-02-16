@@ -113,7 +113,7 @@ export default function OfficeTablePage() {
   const { data: summary, isLoading } = useQuery<OfficeTableSummary>({
     queryKey: ["office-table-summary"],
     queryFn: async () => {
-      const { data } = await api.get("/api/office-table/summary");
+      const { data } = await api.get("/office-table/summary");
       return data.data;
     },
   });
@@ -122,7 +122,7 @@ export default function OfficeTablePage() {
   const { data: config } = useQuery({
     queryKey: ["office-table-config"],
     queryFn: async () => {
-      const { data } = await api.get("/api/office-table/config");
+      const { data } = await api.get("/office-table/config");
       return data.data;
     },
   });
@@ -131,7 +131,7 @@ export default function OfficeTablePage() {
   const { data: pendingViolations } = useQuery<Violation[]>({
     queryKey: ["pending-violations"],
     queryFn: async () => {
-      const { data } = await api.get("/api/office-table/violations/pending");
+      const { data } = await api.get("/office-table/violations/pending");
       return data.data;
     },
     enabled: activeTab === "violations",
@@ -141,7 +141,7 @@ export default function OfficeTablePage() {
   const { data: activeBans } = useQuery<BanRecord[]>({
     queryKey: ["active-bans"],
     queryFn: async () => {
-      const { data } = await api.get("/api/office-table/bans/active");
+      const { data } = await api.get("/office-table/bans/active");
       return data.data;
     },
     enabled: activeTab === "bans",
@@ -151,7 +151,7 @@ export default function OfficeTablePage() {
   const { data: appealedBans } = useQuery<BanRecord[]>({
     queryKey: ["appealed-bans"],
     queryFn: async () => {
-      const { data } = await api.get("/api/office-table/bans/appeals");
+      const { data } = await api.get("/office-table/bans/appeals");
       return data.data;
     },
     enabled: activeTab === "appeals",
@@ -160,7 +160,7 @@ export default function OfficeTablePage() {
   // Report violation mutation
   const reportMutation = useMutation({
     mutationFn: async (data: typeof reportForm) => {
-      const { data: res } = await api.post("/api/office-table/violations", data);
+      const { data: res } = await api.post("/office-table/violations", data);
       return res;
     },
     onSuccess: () => {
