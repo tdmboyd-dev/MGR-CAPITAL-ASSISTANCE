@@ -10,3 +10,7 @@ Before substantial work in this repository:
 Status is evidence-based: QUEUED -> RESEARCHED -> SPECIFIED -> IMPLEMENTED -> TESTED -> VERIFIED.
 
 Jev is an optional bounded-decision provider behind the MGR DecisionEngine. It does not replace deterministic rules, generative models, approvals, or verification.
+
+## Cross-window continuity — owner approved 2026-09-29
+
+Read [WORK-STATE.md](WORK-STATE.md) at startup and after a handoff, alongside the mandatory local records above. It points to the current branch, existing queues, evidence and next batch. Follow the [canonical continuity protocol](https://github.com/tdmboyd-dev/mgr-perfect-skill/blob/master/CONTINUITY-PROTOCOL.md). Update the resume record and existing queue/audit after meaningful work; preserve product authority and stricter verification gates. Reconcile fresh HEAD and scoped work claims before edits; never force an overwrite. This is an advisory coordination protocol, not a technical lock or runtime-completion claim.
