@@ -5,6 +5,7 @@
  */
 
 import Stripe from 'stripe';
+import { randomUUID } from 'node:crypto';
 import { logger } from '../utils/logger.js';
 import prisma from "../lib/prisma.js";
 
@@ -43,7 +44,7 @@ export class PaymentService {
   constructor() {
     this.demoMode = !stripe && !NICKEL_API_KEY;
     if (this.demoMode) {
-      logger.info('[PaymentService] Running in DEMO MODE - payments are simulated');
+      logger.warn('[PaymentService] No live payment provider configured; money-moving operations fail closed');
     }
   }
 
@@ -61,7 +62,7 @@ export class PaymentService {
     return {
       stripe: !!stripe,
       nickel: !!NICKEL_API_KEY,
-      mode: this.demoMode ? 'demo' : 'live'
+      mode: this.demoMode ? 'unavailable' : 'live'
     };
   }
 
@@ -81,7 +82,7 @@ export class PaymentService {
       achAccountId?: string;
     }
   ): Promise<PaymentResult> {
-    const paymentId = `pay_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const paymentId = `pay_${randomUUID()}`;
 
     try {
       switch (method) {
@@ -126,41 +127,15 @@ export class PaymentService {
     amount: number,
     data: any
   ): Promise<PaymentResult> {
-    // Demo mode - simulate successful payment
     if (!stripe) {
-      logger.info('[DEMO] Simulating Stripe payment', { paymentId, amount });
-
-      // Simulate async processing
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-      const demoExternalId = `pi_demo_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-
-      try {
-        await this.recordPayment(paymentId, {
-          method: 'stripe',
-          amount,
-          status: 'succeeded',
-          providerPaymentId: demoExternalId,
-          caseId: data.caseId,
-          userId: data.userId,
-        });
-      } catch (e) {
-        // Database might not be available
-        logger.warn('Could not record demo payment to database');
-      }
-
       return {
-        success: true,
+        success: false,
         paymentId,
-        status: 'succeeded',
+        status: 'failed',
         method: 'stripe',
         amount,
         currency: 'usd',
-        metadata: {
-          stripePaymentIntentId: demoExternalId,
-          demoMode: true,
-          note: 'This is a simulated payment - no real charge was made'
-        },
+        error: 'Stripe is not configured; payment was not attempted',
       };
     }
 
@@ -344,36 +319,26 @@ export class PaymentService {
         throw new Error('PayPal order creation failed');
       } catch (error: any) {
         logger.error('PayPal API error', { paymentId, error: error.message });
-        // Fall through to demo mode
+        return {
+          success: false,
+          paymentId,
+          status: 'failed',
+          method: 'paypal',
+          amount,
+          currency: 'usd',
+          error: `PayPal payment failed: ${error.message}`,
+        };
       }
     }
 
-    // Demo mode
-    logger.info('[DEMO] PayPal payment simulated', { paymentId, amount });
-
-    const demoOrderId = `PP_DEMO_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-
-    await this.recordPayment(paymentId, {
-      method: 'paypal',
-      amount,
-      status: 'pending',
-      providerPaymentId: demoOrderId,
-      caseId: data.caseId,
-      userId: data.userId,
-    });
-
     return {
-      success: true,
+      success: false,
       paymentId,
-      status: 'pending',
+      status: 'failed',
       method: 'paypal',
       amount,
       currency: 'usd',
-      metadata: {
-        paypalOrderId: demoOrderId,
-        demoMode: true,
-        note: 'Demo mode - configure PAYPAL_CLIENT_ID and PAYPAL_CLIENT_SECRET for real payments'
-      },
+      error: 'PayPal is not configured; payment was not attempted',
     };
   }
 
@@ -442,36 +407,26 @@ export class PaymentService {
         };
       } catch (error: any) {
         logger.error('Stripe ACH failed', { paymentId, error: error.message });
-        // Fall through to demo mode
+        return {
+          success: false,
+          paymentId,
+          status: 'failed',
+          method: 'ach',
+          amount,
+          currency: 'usd',
+          error: `ACH initiation failed: ${error.message}`,
+        };
       }
     }
 
-    // Demo/fallback mode - simulate ACH for testing
-    logger.info('[DEMO] ACH payment simulated', { paymentId, amount });
-
-    const demoExternalId = `ach_demo_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-
-    await this.recordPayment(paymentId, {
-      method: 'ach',
-      amount,
-      status: 'processing',
-      providerPaymentId: demoExternalId,
-      caseId: data.caseId,
-      userId: data.userId,
-    });
-
     return {
-      success: true,
+      success: false,
       paymentId,
-      status: 'processing',
+      status: 'failed',
       method: 'ach',
       amount,
       currency: 'usd',
-      metadata: {
-        achAccountId: data.achAccountId || demoExternalId,
-        demoMode: !stripe,
-        note: 'ACH payments typically take 3-5 business days to complete'
-      },
+      error: 'A live ACH provider/payment method is not configured; payment was not attempted',
     };
   }
 
@@ -528,13 +483,10 @@ export class PaymentService {
         return { success: true, refundId: refund.id };
       }
 
-      // For other methods, just mark as refunded (manual process)
-      await prisma.payment.update({
-        where: { id: paymentId },
-        data: { status: 'refunded' },
-      });
-
-      return { success: true, refundId: `refund_${Date.now()}` };
+      return {
+        success: false,
+        error: `Automatic refunds are not implemented for payment method ${payment.method}; no refund status was changed`,
+      };
     } catch (error: any) {
       logger.error('Refund failed', { paymentId, error: error.message });
       return { success: false, error: error.message };
