@@ -571,7 +571,7 @@ Notaries believe fees are legitimate operating costs. They never know the actual
 7. [ ] Run: `cd backend && npm install`
 8. [ ] Run: `npx prisma migrate dev`
 9. [ ] Run: `npm run dev`
-10. [ ] Login at localhost:3011 with time@mgrcapital.com / Dorothy1956!
+10. [ ] Login at localhost:3011 with time@mgrcapital.com / [REDACTED — rotate leaked credential and configure via environment]
 
 ---
 
