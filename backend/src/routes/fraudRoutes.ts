@@ -5,6 +5,7 @@
 
 import { Router } from 'express';
 import { authenticate } from '../middleware/authMiddleware.js';
+import { roleGuard } from '../middleware/roleGuard.js';
 import { fraudDetectionService } from '../services/FraudDetectionService.js';
 import { logger } from '../utils/logger.js';
 
@@ -14,7 +15,7 @@ const router = Router();
  * POST /api/fraud/score
  * Score a transaction for fraud risk
  */
-router.post('/score', authenticate, async (req, res) => {
+router.post('/score', authenticate, roleGuard(["ADMIN"]), async (req, res) => {
   try {
     const { amount, userId, ip, deviceId, paymentMethod } = req.body;
 
@@ -43,7 +44,7 @@ router.post('/score', authenticate, async (req, res) => {
  * GET /api/fraud/metrics
  * Get fraud model performance metrics
  */
-router.get('/metrics', authenticate, async (req, res) => {
+router.get('/metrics', authenticate, roleGuard(["ADMIN"]), async (req, res) => {
   try {
     const metrics = await fraudDetectionService.getModelMetrics();
     res.json({ success: true, data: metrics });
@@ -57,7 +58,7 @@ router.get('/metrics', authenticate, async (req, res) => {
  * POST /api/fraud/train
  * Train model on new fraud data
  */
-router.post('/train', authenticate, async (req, res) => {
+router.post('/train', authenticate, roleGuard(["FOUNDER"]), async (req, res) => {
   try {
     const { transactions } = req.body;
 
@@ -67,7 +68,7 @@ router.post('/train', authenticate, async (req, res) => {
 
     await fraudDetectionService.trainOnNewData(transactions);
 
-    res.json({ success: true, message: 'Model training initiated' });
+    res.json({ success: true, message: 'Model trained and evaluated on labeled data' });
   } catch (error: any) {
     logger.error('Fraud training failed', { error: error.message });
     res.status(500).json({ error: error.message });
