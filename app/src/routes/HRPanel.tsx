@@ -37,7 +37,7 @@ interface OnboardingCandidate {
   status: "PENDING" | "SCREENING" | "TRAINING" | "APPROVED" | "REJECTED";
   backgroundCheckStatus: "PENDING" | "PASSED" | "FAILED" | "WAIVED";
   documentsSubmitted: boolean;
-  interviewScore?: number;
+  interviewScore?: number | null;
   notes?: string;
 }
 
@@ -48,8 +48,8 @@ interface PerformanceMetric {
   casesThisMonth: number;
   casesLastMonth: number;
   successRate: number;
-  avgResponseTime: number;
-  clientSatisfaction: number;
+  avgResponseTime: number | null;
+  clientSatisfaction: number | null;
   tierProgressPercent: number;
   flags: string[];
 }
@@ -71,7 +71,7 @@ interface TeamSummary {
   teamLeadId: string;
   teamLeadName: string;
   memberCount: number;
-  avgPerformance: number;
+  avgPerformance: number | null;
   activeCase: number;
   pendingTraining: number;
 }
@@ -831,7 +831,7 @@ export default function HRPanel() {
                         </span>
                       </td>
                       <td className="p-3 text-center text-sm">
-                        {metric.avgResponseTime}h
+                        {metric.avgResponseTime === null ? "N/A" : `${metric.avgResponseTime}h`}
                       </td>
                       <td className="p-3 text-center">
                         <span className={`${metric.clientSatisfaction >= 4 ? "text-emerald-400" : metric.clientSatisfaction >= 3 ? "text-amber-400" : "text-red-400"}`}>
