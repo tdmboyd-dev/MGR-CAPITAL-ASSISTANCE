@@ -5,16 +5,36 @@
 
 import { Router } from 'express';
 import { authenticate } from '../middleware/authMiddleware.js';
+import { roleGuard } from '../middleware/roleGuard.js';
 import { heirGenealogyService } from '../services/HeirGenealogyService.js';
+import { skipTraceService } from '../services/SkipTraceService.js';
 import { logger } from '../utils/logger.js';
 
 const router = Router();
+
+router.use(authenticate);
+router.use(roleGuard(["ADMIN"]));
+
+/**
+ * GET /api/genealogy
+ * List recent genealogy research trees for founder/admin review.
+ */
+router.get('/', async (req, res) => {
+  try {
+    const limit = Number(req.query.limit || 100);
+    const trees = await heirGenealogyService.listAllTrees(limit);
+    return res.json({ success: true, data: trees });
+  } catch (error: any) {
+    logger.error('Genealogy list failed', { error: error.message });
+    return res.status(500).json({ error: error.message });
+  }
+});
 
 /**
  * POST /api/genealogy/generate
  * Generate a new genealogy tree for a case
  */
-router.post('/generate', authenticate, async (req, res) => {
+router.post('/generate', async (req, res) => {
   try {
     const { caseId, decedentName, deathDate, lastKnownAddress, state, knownRelatives } = req.body;
 
@@ -43,7 +63,7 @@ router.post('/generate', authenticate, async (req, res) => {
  * GET /api/genealogy/:treeId
  * Get genealogy tree details
  */
-router.get('/:treeId', authenticate, async (req, res) => {
+router.get('/:treeId', async (req, res) => {
   try {
     const { treeId } = req.params;
 
@@ -64,7 +84,7 @@ router.get('/:treeId', authenticate, async (req, res) => {
  * GET /api/genealogy/:treeId/visualization
  * Get D3.js visualization data
  */
-router.get('/:treeId/visualization', authenticate, async (req, res) => {
+router.get('/:treeId/visualization', async (req, res) => {
   try {
     const { treeId } = req.params;
 
@@ -85,7 +105,7 @@ router.get('/:treeId/visualization', authenticate, async (req, res) => {
  * POST /api/genealogy/:treeId/member
  * Add family member to tree
  */
-router.post('/:treeId/member', authenticate, async (req, res) => {
+router.post('/:treeId/member', async (req, res) => {
   try {
     const { treeId } = req.params;
     const { parentId, name, relationship, isDeceased, isHeir, heirPriority, notes } = req.body;
@@ -118,29 +138,56 @@ router.post('/:treeId/member', authenticate, async (req, res) => {
  * PUT /api/genealogy/:treeId/member/:memberId/skip-trace
  * Update member with skip trace results
  */
-router.put('/:treeId/member/:memberId/skip-trace', authenticate, async (req, res) => {
+router.post('/:treeId/member/:memberId/skip-trace', async (req, res) => {
   try {
     const { treeId, memberId } = req.params;
-    const { skipTraceResult } = req.body;
-
-    if (!skipTraceResult) {
-      return res.status(400).json({ error: 'Missing skipTraceResult' });
-    }
-
-    const member = await heirGenealogyService.updateMemberFromSkipTrace(
-      treeId,
-      memberId,
-      skipTraceResult
-    );
+    const member = await heirGenealogyService.getMember(treeId, memberId);
 
     if (!member) {
       return res.status(404).json({ error: 'Member not found' });
     }
 
-    res.json({ success: true, data: member });
+    const parts = member.name.trim().split(/\s+/);
+    if (parts.length < 2) {
+      return res.status(422).json({
+        error: 'A first and last name are required before provider-backed skip tracing',
+      });
+    }
+
+    const result = await skipTraceService.tracePerson({
+      firstName: parts[0],
+      lastName: parts[parts.length - 1],
+      middleName: parts.length > 2 ? parts.slice(1, -1).join(' ') : undefined,
+      address: member.contactInfo?.address,
+    });
+
+    if (result.status === 'error') {
+      return res.status(503).json({
+        error: 'Skip trace provider is unavailable or returned an error',
+      });
+    }
+
+    const updated = await heirGenealogyService.updateMemberFromSkipTrace(
+      treeId,
+      memberId,
+      {
+        name: member.name,
+        phones: result.phones.map((p) => p.number),
+        emails: result.emails.map((e) => e.address),
+        addresses: result.addresses.map((a) =>
+          [a.street, a.city, a.state, a.zip].filter(Boolean).join(', ')
+        ),
+        relatives: result.relatives.map((r) =>
+          [r.firstName, r.lastName].filter(Boolean).join(' ')
+        ),
+        deceased: result.person?.isDeceased,
+      }
+    );
+
+    return res.json({ success: true, data: updated });
   } catch (error: any) {
     logger.error('Skip trace update failed', { error: error.message });
-    res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: error.message });
   }
 });
 
@@ -148,24 +195,19 @@ router.put('/:treeId/member/:memberId/skip-trace', authenticate, async (req, res
  * POST /api/genealogy/:treeId/calculate-distribution
  * Calculate heir distribution percentages
  */
-router.post('/:treeId/calculate-distribution', authenticate, async (req, res) => {
-  try {
-    const { treeId } = req.params;
-
-    const distribution = await heirGenealogyService.calculateHeirDistribution(treeId);
-
-    res.json({ success: true, data: distribution });
-  } catch (error: any) {
-    logger.error('Distribution calculation failed', { error: error.message });
-    res.status(500).json({ error: error.message });
-  }
+router.post('/:treeId/calculate-distribution', async (_req, res) => {
+  return res.status(409).json({
+    success: false,
+    error:
+      'Automatic heir-share calculation is disabled. Record a source-backed legal determination and review before storing any distribution.',
+  });
 });
 
 /**
  * GET /api/genealogy/:treeId/export-pdf
  * Export genealogy tree to PDF
  */
-router.get('/:treeId/export-pdf', authenticate, async (req, res) => {
+router.get('/:treeId/export-pdf', async (req, res) => {
   try {
     const { treeId } = req.params;
 
@@ -184,7 +226,7 @@ router.get('/:treeId/export-pdf', authenticate, async (req, res) => {
  * GET /api/genealogy/case/:caseId
  * List all genealogy trees for a case
  */
-router.get('/case/:caseId', authenticate, async (req, res) => {
+router.get('/case/:caseId', async (req, res) => {
   try {
     const { caseId } = req.params;
 
@@ -201,7 +243,7 @@ router.get('/case/:caseId', authenticate, async (req, res) => {
  * DELETE /api/genealogy/:treeId
  * Delete a genealogy tree
  */
-router.delete('/:treeId', authenticate, async (req, res) => {
+router.delete('/:treeId', async (req, res) => {
   try {
     const { treeId } = req.params;
 
