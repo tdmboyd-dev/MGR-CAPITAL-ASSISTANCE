@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Users, Save, Wifi, WifiOff, Circle } from "lucide-react";
 import { toast } from "sonner";
+import { api } from "@/lib/api";
 
 interface Props {
   caseId: string;
@@ -51,50 +52,60 @@ export default function CaseEditorRealTime({
 
   useEffect(() => {
     const ydoc = new Y.Doc();
+    let wsProvider: WebsocketProvider | null = null;
+    let disposed = false;
 
-    // Connect to WebSocket server
-    const wsProvider = new WebsocketProvider(
-      process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:4001",
-      `case-${caseId}`,
-      ydoc
-    );
+    const connect = async () => {
+      try {
+        const { data } = await api.post(`/cases/${caseId}/collaboration-ticket`);
+        if (disposed) return;
 
-    // Set up awareness (presence)
-    wsProvider.awareness.setLocalStateField("user", {
-      id: userId,
-      name: userName,
-      color: COLORS[Math.floor(Math.random() * COLORS.length)],
-    });
+        wsProvider = new WebsocketProvider(
+          process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:4001",
+          `case-${caseId}`,
+          ydoc,
+          { params: { ticket: data.ticket } }
+        );
 
-    // Track connection status
-    wsProvider.on("status", (event: { status: string }) => {
-      setConnected(event.status === "connected");
-    });
+        wsProvider.awareness.setLocalStateField("user", {
+          id: userId,
+          name: userName,
+          color: COLORS[Math.floor(Math.random() * COLORS.length)],
+        });
 
-    // Track collaborators
-    wsProvider.awareness.on("change", () => {
-      const states = Array.from(wsProvider.awareness.getStates().values());
-      const users = states
-        .map((state: any) => state.user)
-        .filter((user: any) => user && user.id !== userId);
-      setCollaborators(users);
-    });
+        wsProvider.on("status", (event: { status: string }) => {
+          setConnected(event.status === "connected");
+        });
 
-    // Set up Y.js shared types
-    const yTitle = ydoc.getText("title");
-    const yDescription = ydoc.getText("description");
-    const yNotes = ydoc.getText("notes");
+        wsProvider.awareness.on("change", () => {
+          const states = Array.from(wsProvider!.awareness.getStates().values());
+          const users = states
+            .map((state: any) => state.user)
+            .filter((user: any) => user && user.id !== userId);
+          setCollaborators(users);
+        });
 
-    // Observe changes
-    yTitle.observe(() => setTitle(yTitle.toString()));
-    yDescription.observe(() => setDescription(yDescription.toString()));
-    yNotes.observe(() => setNotes(yNotes.toString()));
+        const yTitle = ydoc.getText("title");
+        const yDescription = ydoc.getText("description");
+        const yNotes = ydoc.getText("notes");
 
-    setDoc(ydoc);
-    setProvider(wsProvider);
+        yTitle.observe(() => setTitle(yTitle.toString()));
+        yDescription.observe(() => setDescription(yDescription.toString()));
+        yNotes.observe(() => setNotes(yNotes.toString()));
+
+        setDoc(ydoc);
+        setProvider(wsProvider);
+      } catch {
+        setConnected(false);
+        toast.error("Unable to authorize collaboration session");
+      }
+    };
+
+    void connect();
 
     return () => {
-      wsProvider.destroy();
+      disposed = true;
+      wsProvider?.destroy();
       ydoc.destroy();
     };
   }, [caseId, userId, userName]);
@@ -114,13 +125,9 @@ export default function CaseEditorRealTime({
 
   const handleSave = async () => {
     try {
-      const response = await fetch(`/api/cases/${caseId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, description, notes }),
-      });
+      const response = await api.patch(`/cases/${caseId}`, { title, description, notes });
 
-      if (response.ok) {
+      if (response.status >= 200 && response.status < 300) {
         toast.success("Case saved successfully");
       } else {
         toast.error("Failed to save case");
