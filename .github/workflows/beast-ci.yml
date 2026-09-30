@@ -1,12 +1,14 @@
 name: BEAST CI
 
 on:
-  push:
-    branches:
-      - beast/**
+  workflow_dispatch:
   pull_request:
     branches:
       - master
+
+concurrency:
+  group: beast-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
