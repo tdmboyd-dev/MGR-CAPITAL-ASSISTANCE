@@ -11,7 +11,7 @@ describe('Payment Flow', () => {
   beforeEach(() => {
     cy.visit('/login')
     cy.get('#email').type('time@mgrcapital.com')
-    cy.get('#password').type('Dorothy1956!')
+    cy.get('#password').type(Cypress.env("founderPassword"))
     cy.get('button[type="submit"]').click()
     cy.url().should('include', '/dashboard')
   })
