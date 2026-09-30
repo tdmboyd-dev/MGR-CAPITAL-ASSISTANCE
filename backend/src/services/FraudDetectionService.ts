@@ -23,8 +23,9 @@ interface FraudScore {
   score: number; // 0-1, higher = more risky
   risk: 'low' | 'medium' | 'high' | 'critical';
   factors: string[];
-  recommendation: 'approve' | 'review' | 'block';
+  recommendation: 'approve' | 'review';
   confidence: number;
+  modelUsed: boolean;
 }
 
 interface VelocityData {
@@ -43,115 +44,39 @@ interface GeoLocation {
 
 export class FraudDetectionService {
   private model: tf.LayersModel | null = null;
-  private isModelReady: boolean = false;
+  private isModelReady = false;
+  private trainedSampleCount = 0;
+  private evaluationMetrics: {
+    accuracy: number;
+    precision: number;
+    recall: number;
+    f1Score: number;
+  } | null = null;
   private velocityCache: Map<string, VelocityData> = new Map();
   private geoCache: Map<string, GeoLocation> = new Map();
   private userLocationCache: Map<string, GeoLocation> = new Map();
 
-  constructor() {
-    this.initializeModel();
-  }
-
   /**
-   * Initialize the fraud detection neural network
+   * Build the model architecture only. Production scoring does not use an ML
+   * model until it has been trained and evaluated on labeled MGR data.
    */
-  private async initializeModel(): Promise<void> {
-    try {
-      // Create a sequential model for fraud detection
-      this.model = tf.sequential({
-        layers: [
-          // Input layer: 8 features
-          tf.layers.dense({ units: 64, activation: 'relu', inputShape: [8] }),
-          tf.layers.dropout({ rate: 0.3 }),
-
-          // Hidden layers
-          tf.layers.dense({ units: 128, activation: 'relu' }),
-          tf.layers.dropout({ rate: 0.3 }),
-          tf.layers.dense({ units: 64, activation: 'relu' }),
-          tf.layers.dropout({ rate: 0.2 }),
-          tf.layers.dense({ units: 32, activation: 'relu' }),
-
-          // Output layer: fraud probability
-          tf.layers.dense({ units: 1, activation: 'sigmoid' }),
-        ],
-      });
-
-      this.model.compile({
-        optimizer: tf.train.adam(0.001),
-        loss: 'binaryCrossentropy',
-        metrics: ['accuracy'],
-      });
-
-      // Pre-train with synthetic data
-      await this.preTrainModel();
-
-      this.isModelReady = true;
-      logger.info('Fraud detection model initialized');
-    } catch (error: any) {
-      logger.error('Failed to initialize fraud model', { error: error.message });
-    }
-  }
-
-  /**
-   * Pre-train model with synthetic fraud patterns
-   */
-  private async preTrainModel(): Promise<void> {
-    if (!this.model) return;
-
-    // Generate synthetic training data
-    const trainingData: number[][] = [];
-    const labels: number[] = [];
-
-    // Generate 1000 samples
-    for (let i = 0; i < 1000; i++) {
-      const isFraud = Math.random() < 0.1; // 10% fraud rate
-
-      if (isFraud) {
-        // Fraud patterns: high amounts, unusual times, high velocity
-        trainingData.push([
-          Math.random() * 50000 + 10000, // High amount
-          Math.random() * 20 + 10, // High velocity
-          Math.random() * 5000 + 1000, // Unusual location
-          Math.random() < 0.7 ? Math.random() * 4 : 12 + Math.random() * 4, // Odd hours
-          Math.random() < 0.5 ? 6 : Math.floor(Math.random() * 5), // Weekend bias
-          Math.random(), // Device score
-          Math.random() * 2, // New customer
-          Math.random(), // Payment method risk
-        ]);
-        labels.push(1);
-      } else {
-        // Legitimate patterns: normal amounts, business hours, stable location
-        trainingData.push([
-          Math.random() * 5000 + 100, // Normal amount
-          Math.random() * 3, // Low velocity
-          Math.random() * 100, // Close to normal
-          9 + Math.random() * 9, // Business hours
-          Math.floor(Math.random() * 5), // Weekdays
-          0.8 + Math.random() * 0.2, // Known device
-          6 + Math.random() * 24, // Established customer
-          0.9 + Math.random() * 0.1, // Low risk payment
-        ]);
-        labels.push(0);
-      }
-    }
-
-    // Normalize training data
-    const xs = tf.tensor2d(trainingData);
-    const ys = tf.tensor2d(labels, [labels.length, 1]);
-
-    // Train model
-    await this.model.fit(xs, ys, {
-      epochs: 50,
-      batchSize: 32,
-      validationSplit: 0.2,
-      verbose: 0,
+  private createModel(): tf.LayersModel {
+    const model = tf.sequential({
+      layers: [
+        tf.layers.dense({ units: 32, activation: 'relu', inputShape: [8] }),
+        tf.layers.dropout({ rate: 0.2 }),
+        tf.layers.dense({ units: 16, activation: 'relu' }),
+        tf.layers.dense({ units: 1, activation: 'sigmoid' }),
+      ],
     });
 
-    // Clean up tensors
-    xs.dispose();
-    ys.dispose();
+    model.compile({
+      optimizer: tf.train.adam(0.001),
+      loss: 'binaryCrossentropy',
+      metrics: ['accuracy'],
+    });
 
-    logger.info('Fraud model pre-training complete');
+    return model;
   }
 
   /**
@@ -165,19 +90,16 @@ export class FraudDetectionService {
     paymentMethod: string;
   }): Promise<FraudScore> {
     const factors: string[] = [];
-    let baseScore = 0;
 
-    // Rule-based checks first
+    // Deterministic/rule-based checks are always the primary signal.
     const ruleScore = await this.applyRules(data, factors);
 
-    // ML-based scoring
-    let mlScore = 0;
-    if (this.isModelReady && this.model) {
-      mlScore = await this.getMLScore(data);
-    }
-
-    // Combine scores (weighted average)
-    const finalScore = ruleScore * 0.4 + mlScore * 0.6;
+    // ML is advisory only after real labeled-data training + holdout evaluation.
+    const modelUsed = this.isModelReady && !!this.model && !!this.evaluationMetrics;
+    const mlScore = modelUsed ? await this.getMLScore(data) : 0;
+    const finalScore = modelUsed
+      ? Math.min(1, ruleScore * 0.7 + mlScore * 0.3)
+      : ruleScore;
 
     // Determine risk level
     let risk: FraudScore['risk'];
@@ -185,8 +107,8 @@ export class FraudDetectionService {
 
     if (finalScore >= 0.8) {
       risk = 'critical';
-      recommendation = 'block';
-      factors.push('Critical risk threshold exceeded');
+      recommendation = 'review';
+      factors.push('Critical risk threshold exceeded - human review required');
     } else if (finalScore >= 0.6) {
       risk = 'high';
       recommendation = 'review';
@@ -213,7 +135,10 @@ export class FraudDetectionService {
       risk,
       factors,
       recommendation,
-      confidence: this.isModelReady ? 0.85 : 0.6,
+      confidence: modelUsed && this.evaluationMetrics
+        ? Math.max(0.5, Math.min(0.95, this.evaluationMetrics.f1Score))
+        : 0.5,
+      modelUsed,
     };
   }
 
@@ -514,45 +439,109 @@ export class FraudDetectionService {
   }
 
   /**
-   * Train model on new fraud data
+   * Train the advisory model on labeled MGR data and evaluate on a holdout set.
+   * Synthetic/random samples are not accepted as production evidence.
    */
   async trainOnNewData(transactions: {
     features: number[];
     isFraud: boolean;
   }[]): Promise<void> {
-    if (!this.model || transactions.length === 0) return;
+    if (transactions.length < 100) {
+      throw new Error('At least 100 labeled transactions are required for fraud model training');
+    }
 
-    const xs = tf.tensor2d(transactions.map(t => this.normalizeFeatures(t.features)));
-    const ys = tf.tensor2d(transactions.map(t => [t.isFraud ? 1 : 0]));
+    if (transactions.some((t) => t.features.length !== 8 || t.features.some((v) => !Number.isFinite(v)))) {
+      throw new Error('Each training record must contain exactly 8 finite numeric features');
+    }
 
-    await this.model.fit(xs, ys, {
-      epochs: 10,
-      batchSize: 16,
+    const positives = transactions.filter((t) => t.isFraud).length;
+    const negatives = transactions.length - positives;
+    if (positives < 10 || negatives < 10) {
+      throw new Error('Training data must include at least 10 fraud and 10 non-fraud examples');
+    }
+
+    const shuffled = [...transactions];
+    tf.util.shuffle(shuffled);
+    const splitAt = Math.max(1, Math.floor(shuffled.length * 0.8));
+    const train = shuffled.slice(0, splitAt);
+    const test = shuffled.slice(splitAt);
+
+    if (test.length < 10) {
+      throw new Error('Training set is too small to reserve a meaningful holdout set');
+    }
+
+    this.model?.dispose();
+    this.model = this.createModel();
+
+    const trainX = tf.tensor2d(train.map((t) => this.normalizeFeatures(t.features)));
+    const trainY = tf.tensor2d(train.map((t) => [t.isFraud ? 1 : 0]));
+
+    await this.model.fit(trainX, trainY, {
+      epochs: 20,
+      batchSize: Math.min(32, train.length),
+      validationSplit: 0.1,
       verbose: 0,
     });
 
-    xs.dispose();
-    ys.dispose();
+    trainX.dispose();
+    trainY.dispose();
 
-    logger.info('Fraud model updated with new data', { samples: transactions.length });
+    const testX = tf.tensor2d(test.map((t) => this.normalizeFeatures(t.features)));
+    const predictionTensor = this.model.predict(testX) as tf.Tensor;
+    const predictionValues = Array.from(await predictionTensor.data());
+
+    testX.dispose();
+    predictionTensor.dispose();
+
+    let tp = 0;
+    let tn = 0;
+    let fp = 0;
+    let fn = 0;
+
+    test.forEach((sample, index) => {
+      const predictedFraud = predictionValues[index] >= 0.5;
+      if (predictedFraud && sample.isFraud) tp++;
+      else if (predictedFraud && !sample.isFraud) fp++;
+      else if (!predictedFraud && sample.isFraud) fn++;
+      else tn++;
+    });
+
+    const accuracy = (tp + tn) / test.length;
+    const precision = tp + fp > 0 ? tp / (tp + fp) : 0;
+    const recall = tp + fn > 0 ? tp / (tp + fn) : 0;
+    const f1Score = precision + recall > 0 ? (2 * precision * recall) / (precision + recall) : 0;
+
+    this.trainedSampleCount = transactions.length;
+    this.evaluationMetrics = { accuracy, precision, recall, f1Score };
+    this.isModelReady = true;
+
+    logger.info('Fraud model trained and evaluated on labeled data', {
+      samples: transactions.length,
+      holdoutSamples: test.length,
+      accuracy,
+      precision,
+      recall,
+      f1Score,
+    });
   }
 
-  /**
-   * Get model performance metrics
-   */
   async getModelMetrics(): Promise<{
-    accuracy: number;
-    precision: number;
-    recall: number;
-    f1Score: number;
+    accuracy: number | null;
+    precision: number | null;
+    recall: number | null;
+    f1Score: number | null;
     isReady: boolean;
+    evaluated: boolean;
+    trainedSampleCount: number;
   }> {
     return {
-      accuracy: 0.94,
-      precision: 0.89,
-      recall: 0.92,
-      f1Score: 0.90,
+      accuracy: this.evaluationMetrics?.accuracy ?? null,
+      precision: this.evaluationMetrics?.precision ?? null,
+      recall: this.evaluationMetrics?.recall ?? null,
+      f1Score: this.evaluationMetrics?.f1Score ?? null,
       isReady: this.isModelReady,
+      evaluated: !!this.evaluationMetrics,
+      trainedSampleCount: this.trainedSampleCount,
     };
   }
 }
