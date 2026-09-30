@@ -5,6 +5,7 @@
 
 import { Router } from "express";
 import { authenticate } from "../middleware/authMiddleware.js";
+import { roleGuard } from "../middleware/roleGuard.js";
 import { skipTraceService } from "../services/SkipTraceService.js";
 import { logger } from "../utils/logger.js";
 
@@ -14,7 +15,7 @@ const router = Router();
  * POST /api/skip-trace/person
  * Skip trace a single person
  */
-router.post("/person", authenticate, async (req, res) => {
+router.post("/person", authenticate, roleGuard(["ADMIN"]), async (req, res) => {
   try {
     const { person, enhanced } = req.body;
 
@@ -46,7 +47,7 @@ router.post("/person", authenticate, async (req, res) => {
  * POST /api/skip-trace/batch
  * Batch skip trace multiple people
  */
-router.post("/batch", authenticate, async (req, res) => {
+router.post("/batch", authenticate, roleGuard(["ADMIN"]), async (req, res) => {
   try {
     const { persons, enhanced } = req.body;
 
@@ -84,7 +85,7 @@ router.post("/batch", authenticate, async (req, res) => {
  * POST /api/skip-trace/heirs
  * Find heirs of a deceased person
  */
-router.post("/heirs", authenticate, async (req, res) => {
+router.post("/heirs", authenticate, roleGuard(["ADMIN"]), async (req, res) => {
   try {
     const { deceasedPerson, maxGenerations } = req.body;
 
@@ -113,7 +114,7 @@ router.post("/heirs", authenticate, async (req, res) => {
  * POST /api/skip-trace/property
  * Find owners by property address
  */
-router.post("/property", authenticate, async (req, res) => {
+router.post("/property", authenticate, roleGuard(["ADMIN"]), async (req, res) => {
   try {
     const { address, city, state, zip } = req.body;
 
@@ -144,7 +145,7 @@ router.post("/property", authenticate, async (req, res) => {
  * POST /api/skip-trace/deceased-check
  * Check if a person is deceased
  */
-router.post("/deceased-check", authenticate, async (req, res) => {
+router.post("/deceased-check", authenticate, roleGuard(["ADMIN"]), async (req, res) => {
   try {
     const { person } = req.body;
 
@@ -170,7 +171,7 @@ router.post("/deceased-check", authenticate, async (req, res) => {
  * POST /api/skip-trace/batch-submit
  * Submit a batch trace to Tracerfy — results come via webhook
  */
-router.post("/batch-submit", authenticate, async (req, res) => {
+router.post("/batch-submit", authenticate, roleGuard(["ADMIN"]), async (req, res) => {
   try {
     const { persons, enhanced } = req.body;
 
@@ -203,7 +204,7 @@ router.post("/batch-submit", authenticate, async (req, res) => {
  * GET /api/skip-trace/analytics
  * Get Tracerfy account analytics (balance, queues, etc.)
  */
-router.get("/analytics", authenticate, async (_req, res) => {
+router.get("/analytics", authenticate, roleGuard(["ADMIN"]), async (_req, res) => {
   try {
     const analytics = await skipTraceService.getTracerfyAnalytics();
     res.json({ success: true, analytics });
@@ -217,7 +218,7 @@ router.get("/analytics", authenticate, async (_req, res) => {
  * GET /api/skip-trace/status
  * Get service status and rate limits
  */
-router.get("/status", authenticate, async (_req, res) => {
+router.get("/status", authenticate, roleGuard(["ADMIN"]), async (_req, res) => {
   const status = skipTraceService.getStatus();
   res.json(status);
 });
