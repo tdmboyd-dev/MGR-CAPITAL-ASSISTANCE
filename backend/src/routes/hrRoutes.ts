@@ -584,36 +584,73 @@ router.post("/training/remind/:employeeId", async (req: AuthenticatedRequest, re
   try {
     const { employeeId } = req.params;
 
-    // Get employee
     const employee = await prisma.user.findUnique({
       where: { id: employeeId },
-      select: { name: true, email: true }
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        trainingProgress: {
+          where: { completedAt: null },
+          include: { module: true },
+          orderBy: { deadline: "asc" },
+        },
+      },
     });
 
     if (!employee) {
-      res.status(404).json({ success: false, error: "Employee not found" });
-      return;
+      return res.status(404).json({ success: false, error: "Employee not found" });
     }
 
-    // Log the notification (in real system, would send email/SMS)
-    await prisma.notificationLog.create({
-      data: {
-        type: "EMAIL",
-        toAddress: employee.email,
-        toName: employee.name,
-        subject: "Training Reminder - Action Required",
-        bodyPreview: `Hi ${employee.name}, you have overdue training modules.`,
-        bodyFull: `Hi ${employee.name}, you have overdue training modules. Please complete them as soon as possible.`,
-        status: "SENT",
-        sentAt: new Date(),
-        relatedUserId: employeeId
-      }
+    const overdue = employee.trainingProgress.filter(
+      (p) => p.deadline && new Date(p.deadline) < new Date()
+    );
+
+    if (overdue.length === 0) {
+      return res.status(409).json({
+        success: false,
+        error: "Employee has no overdue training modules to remind about",
+      });
+    }
+
+    const moduleNames = overdue.map((p) => p.module?.title).filter(Boolean);
+    const dueDate = overdue
+      .map((p) => p.deadline)
+      .filter((d): d is Date => !!d)
+      .sort((a, b) => a.getTime() - b.getTime())[0];
+
+    const result = await notificationService.notifyTrainingAssigned({
+      employeeEmail: employee.email,
+      employeeName: employee.name,
+      employeeId: employee.id,
+      moduleName: moduleNames.join(", ") || "Overdue Training",
+      dueDate,
     });
 
-    res.json({ success: true, message: "Training reminder sent" });
+    if (!result.success) {
+      return res.status(503).json({
+        success: false,
+        error: result.error || "Training reminder could not be delivered",
+      });
+    }
+
+    await prisma.employeeTrainingProgress.updateMany({
+      where: {
+        employeeId,
+        completedAt: null,
+        deadline: { lt: new Date() },
+      },
+      data: { reminderSent: true },
+    });
+
+    return res.json({
+      success: true,
+      message: "Training reminder delivered",
+      notificationId: result.notificationId,
+    });
   } catch (error: any) {
     console.error("[HR] Training reminder error:", error);
-    res.status(500).json({ success: false, error: error.message });
+    return res.status(500).json({ success: false, error: error.message });
   }
 });
 
