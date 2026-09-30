@@ -1,6 +1,6 @@
 describe("Founder Config Save", () => {
   beforeEach(() => {
-    cy.login("time@mgrcapital.com", "Dorothy1956!");
+    cy.login("time@mgrcapital.com", Cypress.env("founderPassword"));
   });
 
   it("should display config page with tabs", () => {
