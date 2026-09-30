@@ -20,6 +20,13 @@ import { logger } from "../utils/logger.js";
 import crypto from "crypto";
 
 const router = Router();
+const TRACERFY_WEBHOOK_SECRET = process.env.TRACERFY_WEBHOOK_SECRET || "";
+
+function secureEqualString(a: string, b: string): boolean {
+  const left = Buffer.from(a, "utf8");
+  const right = Buffer.from(b, "utf8");
+  return left.length === right.length && crypto.timingSafeEqual(left, right);
+}
 
 // =============================================================================
 // RATE LIMITING (simple in-memory, 100 req/min per source)
@@ -292,6 +299,20 @@ router.get(
 router.post(
   "/tracerfy",
   asyncHandler(async (req: Request, res: Response) => {
+    if (!TRACERFY_WEBHOOK_SECRET) {
+      logger.error("Tracerfy webhook rejected because TRACERFY_WEBHOOK_SECRET is not configured");
+      return res.status(503).json({ error: "Tracerfy webhook verification is not configured" });
+    }
+
+    const providedSecret =
+      (req.query.token as string | undefined) ||
+      (req.headers["x-mgr-webhook-secret"] as string | undefined);
+
+    if (!providedSecret || !secureEqualString(providedSecret, TRACERFY_WEBHOOK_SECRET)) {
+      logger.warn("Tracerfy webhook rejected due to invalid shared secret");
+      return res.status(401).json({ error: "Invalid webhook secret" });
+    }
+
     const payload = req.body;
 
     logger.info("Tracerfy webhook received", {
