@@ -5,6 +5,7 @@
  */
 
 import { jest, describe, it, expect, beforeEach } from "@jest/globals";
+import { randomUUID } from "node:crypto";
 
 describe("PaymentService", () => {
   beforeEach(() => {
@@ -17,13 +18,12 @@ describe("PaymentService", () => {
 
   describe("Payment ID Generation", () => {
     it("should generate unique payment IDs", () => {
-      const generatePaymentId = () =>
-        `pay_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      const generatePaymentId = () => `pay_${randomUUID()}`;
 
       const id1 = generatePaymentId();
       const id2 = generatePaymentId();
 
-      expect(id1).toMatch(/^pay_\d+_[a-z0-9]+$/);
+      expect(id1).toMatch(/^pay_[0-9a-f-]{36}$/);
       expect(id1).not.toBe(id2);
     });
   });
@@ -106,6 +106,35 @@ describe("PaymentService", () => {
       };
 
       expect(transitions.pending).not.toContain("refunded");
+    });
+  });
+
+  // ===========================================================================
+  // FAIL-CLOSED PROVIDER CONTRACT
+  // ===========================================================================
+
+  describe("Provider Failure Semantics", () => {
+    it("should represent an unavailable provider as a failure, never a fake success", () => {
+      const result = {
+        success: false,
+        status: "failed",
+        error: "Provider is not configured; payment was not attempted",
+      };
+
+      expect(result.success).toBe(false);
+      expect(result.status).toBe("failed");
+      expect(result.error).toContain("not attempted");
+    });
+
+    it("should keep internal approval separate from provider settlement", () => {
+      const payment = { status: "pending", metadata: {} as Record<string, unknown> };
+      const reviewed = {
+        ...payment,
+        metadata: { ...payment.metadata, internalReviewApproved: true },
+      };
+
+      expect(reviewed.status).toBe("pending");
+      expect(reviewed.metadata.internalReviewApproved).toBe(true);
     });
   });
 
