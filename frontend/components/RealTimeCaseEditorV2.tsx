@@ -26,6 +26,7 @@ import {
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'sonner'
+import { api } from '@/lib/api'
 
 interface Props {
   caseId: string
@@ -88,8 +89,17 @@ export default function RealTimeCaseEditorV2({ caseId, onSave }: Props) {
     ydocRef.current = ydoc
 
     const wsUrl = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:4001'
-    const provider = new WebsocketProvider(wsUrl, `case-${caseId}`, ydoc)
-    providerRef.current = provider
+    let provider: WebsocketProvider | null = null
+    let disposed = false
+
+    const connect = async () => {
+      try {
+        const { data } = await api.post(`/cases/${caseId}/collaboration-ticket`)
+        if (disposed) return
+        provider = new WebsocketProvider(wsUrl, `case-${caseId}`, ydoc, {
+          params: { ticket: data.ticket },
+        })
+        providerRef.current = provider
 
     const ytext = ydoc.getText('notes')
     const undoManager = new Y.UndoManager(ytext)
@@ -166,11 +176,20 @@ export default function RealTimeCaseEditorV2({ caseId, onSave }: Props) {
       }
     })
 
-    // Load initial content
-    setContent(ytext.toString())
+        // Load initial content
+        setContent(ytext.toString())
+      } catch {
+        toast.error('Unable to authorize collaboration session')
+        setConnected(false)
+      }
+    }
+
+    void connect()
 
     return () => {
-      provider.destroy()
+      disposed = true
+      provider?.destroy()
+      providerRef.current = null
       ydoc.destroy()
     }
   }, [caseId, user, userColor])
