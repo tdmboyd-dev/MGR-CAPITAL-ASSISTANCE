@@ -102,7 +102,7 @@ interface OnboardingCandidate {
   status: string;
   backgroundCheckStatus: string;
   documentsSubmitted: boolean;
-  interviewScore?: number;
+  interviewScore?: number | null;
   notes?: string;
 }
 
@@ -113,8 +113,8 @@ interface PerformanceMetric {
   casesThisMonth: number;
   casesLastMonth: number;
   successRate: number;
-  avgResponseTime: number;
-  clientSatisfaction: number;
+  avgResponseTime: number | null;
+  clientSatisfaction: number | null;
   tierProgressPercent: number;
   flags: string[];
 }
@@ -136,7 +136,7 @@ interface Team {
   teamLeadId: string;
   teamLeadName: string;
   memberCount: number;
-  avgPerformance: number;
+  avgPerformance: number | null;
   activeCase: number;
   pendingTraining: number;
 }
@@ -655,7 +655,7 @@ export default function FounderHRPage() {
                               {candidate.backgroundCheckStatus}
                             </Badge>
                           </TableCell>
-                          <TableCell>{candidate.interviewScore || "N/A"}</TableCell>
+                          <TableCell>{candidate.interviewScore ?? "N/A"}</TableCell>
                           <TableCell>
                             {candidate.status === "PENDING" && (
                               <div className="flex gap-1">
@@ -922,7 +922,7 @@ export default function FounderHRPage() {
                           </div>
                           <div>
                             <p className="text-muted-foreground">Performance</p>
-                            <p className="font-medium">{team.avgPerformance}%</p>
+                            <p className="font-medium">{team.avgPerformance === null ? "N/A" : `${team.avgPerformance}%`}</p>
                           </div>
                           <div>
                             <p className="text-muted-foreground">Active Cases</p>
