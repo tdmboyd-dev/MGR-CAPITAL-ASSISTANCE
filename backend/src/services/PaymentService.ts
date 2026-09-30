@@ -752,73 +752,24 @@ export class PaymentService {
   }
 
   /**
-   * Process Nickel ACH payment (FREE unlimited ACH)
+   * Historical Nickel ACH entrypoint retained as an explicit blocked boundary.
+   * The current Nickel adapter lives in NickelPaymentService and is itself
+   * blocked until its current OpenAPI contract is implemented and verified.
    */
   async processNickelACH(
     paymentId: string,
     amount: number,
-    data: any
+    _data: any
   ): Promise<PaymentResult> {
-    if (!NICKEL_API_KEY) {
-      logger.warn('Nickel API key not configured, falling back to Stripe');
-      return this.processACH(paymentId, amount, data);
-    }
-
-    try {
-      const response = await fetch(`${NICKEL_API_URL}/payments`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${NICKEL_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          amount: amount,
-          currency: 'USD',
-          type: 'ach_debit',
-          description: data.description || 'MGR Capital Surplus Recovery Fee',
-          customer: {
-            email: data.email,
-            name: data.name,
-          },
-          metadata: {
-            caseId: data.caseId,
-            userId: data.userId,
-            internalPaymentId: paymentId,
-          },
-        }),
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        logger.error('Nickel API error', { error: errorText });
-        // Fallback to regular ACH
-        return this.processACH(paymentId, amount, data);
-      }
-
-      const result: any = await response.json();
-
-      await this.recordPayment(paymentId, {
-        method: 'ach',
-        amount,
-        status: 'pending',
-        providerPaymentId: result.id,
-        caseId: data.caseId,
-        userId: data.userId,
-      });
-
-      return {
-        success: true,
-        paymentId,
-        status: 'pending',
-        method: 'ach',
-        amount,
-        currency: 'usd',
-        metadata: { nickelPaymentId: result.id, provider: 'nickel' },
-      };
-    } catch (error: any) {
-      logger.error('Nickel payment failed', { error: error.message });
-      return this.processACH(paymentId, amount, data);
-    }
+    return {
+      success: false,
+      paymentId,
+      status: "failed",
+      method: "ach",
+      amount,
+      currency: "usd",
+      error: "Nickel ACH is blocked pending current OpenAPI reintegration; no payment was attempted",
+    };
   }
 
   /**
@@ -926,13 +877,14 @@ export class PaymentService {
         return null;
       }
 
-      // Update payment status to approved/succeeded
+      // Approval is an internal review decision only. It must never manufacture
+      // provider settlement or convert a payment to "succeeded".
       const updated = await prisma.payment.update({
         where: { id: paymentId },
         data: {
-          status: 'succeeded',
           metadata: {
-            ...(payment.metadata as object || {}),
+            ...((payment.metadata as object) || {}),
+            internalReviewApproved: true,
             approvedBy,
             approvedAt: new Date().toISOString(),
             approvalNotes: notes,
@@ -940,7 +892,11 @@ export class PaymentService {
         },
       });
 
-      logger.info('Payment approved', { paymentId, approvedBy });
+      logger.info('Payment review approved without changing provider settlement state', {
+        paymentId,
+        approvedBy,
+        currentStatus: payment.status,
+      });
       return updated;
     } catch (error: any) {
       logger.error('Failed to approve payment', { paymentId, error: error.message });
@@ -986,24 +942,16 @@ export class PaymentService {
   }
 
   /**
-   * Handle Nickel webhook
+   * Historical generic Nickel webhook entrypoint.
+   * Provider state changes are disabled here; the dedicated adapter owns the
+   * future verified webhook contract.
    */
-  async handleNickelWebhook(payload: any, signature: string): Promise<void> {
-    // Verify webhook signature (implement based on Nickel docs)
-    logger.info('Nickel webhook received', { type: payload.type });
-
-    if (payload.type === 'payment.succeeded') {
-      const internalPaymentId = payload.data?.metadata?.internalPaymentId;
-      if (internalPaymentId) {
-        await this.updateStatus(internalPaymentId, 'succeeded');
-      }
-    } else if (payload.type === 'payment.failed') {
-      const internalPaymentId = payload.data?.metadata?.internalPaymentId;
-      if (internalPaymentId) {
-        await this.updateStatus(internalPaymentId, 'failed');
-      }
-    }
+  async handleNickelWebhook(_payload: any, _signature: string): Promise<void> {
+    throw new Error(
+      "Nickel webhook processing is blocked pending current OpenAPI/signature reintegration"
+    );
   }
+
 }
 
 export const paymentService = new PaymentService();
