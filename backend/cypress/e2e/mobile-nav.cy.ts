@@ -1,6 +1,6 @@
 describe("Mobile Navigation", () => {
   beforeEach(() => {
-    cy.login("time@mgrcapital.com", "Dorothy1956!");
+    cy.login("time@mgrcapital.com", Cypress.env("founderPassword"));
     // Set mobile viewport
     cy.viewport("iphone-x");
   });
