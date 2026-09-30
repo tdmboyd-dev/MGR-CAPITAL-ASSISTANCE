@@ -4,6 +4,7 @@
 // ============================================
 
 import { Case, CaseStatus } from "@prisma/client";
+import { randomBytes } from "node:crypto";
 import prisma from "../lib/prisma.js";
 
 export class CaseService {
@@ -258,15 +259,11 @@ export class CaseService {
   }
 
   /**
-   * Generate random token for public access
+   * Generate a cryptographically secure token for public portal access.
+   * 32 random bytes = 256 bits of entropy; base64url is URL-safe.
    */
   private generateToken(): string {
-    const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
-    let token = "";
-    for (let i = 0; i < 32; i++) {
-      token += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    return token;
+    return randomBytes(32).toString("base64url");
   }
 }
 
