@@ -1,6 +1,6 @@
 /**
  * PaymentService.ts — MGR CAPITAL ASSISTANCE
- * Payment Abstraction Layer (Nickel FREE ACH + Stripe + PayPal)
+ * Payment Abstraction Layer (Stripe + PayPal + manual check tracking)
  * ADVANCED: Multi-provider with metrics, fraud detection, auto-invoicing
  */
 
@@ -14,9 +14,7 @@ const stripe = process.env.STRIPE_SECRET_KEY
   ? new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: '2023-10-16' as any })
   : null;
 
-// Nickel API configuration (FREE unlimited ACH)
-const NICKEL_API_URL = 'https://api.nickelpayments.com/v1';
-const NICKEL_API_KEY = process.env.NICKEL_API_KEY;
+const PAYPAL_CONFIGURED = !!(process.env.PAYPAL_CLIENT_ID && process.env.PAYPAL_CLIENT_SECRET);
 
 export type PaymentMethod = 'stripe' | 'paypal' | 'ach' | 'check';
 export type PaymentStatus = 'pending' | 'processing' | 'succeeded' | 'failed' | 'refunded';
@@ -42,7 +40,7 @@ export class PaymentService {
   private demoMode: boolean;
 
   constructor() {
-    this.demoMode = !stripe && !NICKEL_API_KEY;
+    this.demoMode = !stripe && !PAYPAL_CONFIGURED;
     if (this.demoMode) {
       logger.warn('[PaymentService] No live payment provider configured; money-moving operations fail closed');
     }
@@ -58,11 +56,12 @@ export class PaymentService {
   /**
    * Get service status
    */
-  getServiceStatus(): { stripe: boolean; nickel: boolean; mode: string } {
+  getServiceStatus(): { stripe: boolean; paypal: boolean; stripeAch: boolean; mode: string } {
     return {
       stripe: !!stripe,
-      nickel: !!NICKEL_API_KEY,
-      mode: this.demoMode ? 'unavailable' : 'live'
+      paypal: PAYPAL_CONFIGURED,
+      stripeAch: !!stripe,
+      mode: this.demoMode ? 'unavailable' : 'live',
     };
   }
 
@@ -80,6 +79,11 @@ export class PaymentService {
       stripePaymentMethodId?: string;
       paypalOrderId?: string;
       achAccountId?: string;
+      stripeBankAccountId?: string;
+      ipAddress?: string;
+      userAgent?: string;
+      returnUrl?: string;
+      cancelUrl?: string;
     }
   ): Promise<PaymentResult> {
     const paymentId = `pay_${randomUUID()}`;
