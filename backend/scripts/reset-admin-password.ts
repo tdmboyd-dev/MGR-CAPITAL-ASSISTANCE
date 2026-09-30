@@ -1,6 +1,12 @@
 /**
- * Reset Admin Password Script
- * Run with: npx tsx scripts/reset-admin-password.ts
+ * Reset Admin/Founder Password Script
+ *
+ * Required environment:
+ *   ADMIN_EMAIL
+ *   ADMIN_NEW_PASSWORD
+ *
+ * This script will NOT create or promote an account. Privilege assignment must
+ * remain an explicit administrative action.
  */
 
 import { PrismaClient } from '@prisma/client';
@@ -9,47 +15,49 @@ import bcrypt from 'bcrypt';
 const prisma = new PrismaClient();
 
 async function main() {
-  const email = 'admin@capitalmgr.com';
-  const newPassword = 'Dorothy1956!';
+  const email = process.env.ADMIN_EMAIL?.trim().toLowerCase();
+  const newPassword = process.env.ADMIN_NEW_PASSWORD;
 
-  console.log(`Resetting password for ${email}...`);
-
-  // Hash password
-  const passwordHash = await bcrypt.hash(newPassword, 12);
-
-  // Check if user exists
-  const existingUser = await prisma.user.findUnique({
-    where: { email },
-  });
-
-  if (existingUser) {
-    // Update password
-    await prisma.user.update({
-      where: { email },
-      data: { passwordHash },
-    });
-    console.log('Password updated successfully!');
-  } else {
-    // Create user
-    await prisma.user.create({
-      data: {
-        email,
-        passwordHash,
-        name: 'Timebeunus Boyd',
-        role: 'FOUNDER',
-        isActive: true,
-        emailVerified: true,
-      },
-    });
-    console.log('User created successfully!');
+  if (!email || !email.includes('@')) {
+    throw new Error('ADMIN_EMAIL is required and must be a valid email address');
+  }
+  if (!newPassword || newPassword.length < 14) {
+    throw new Error('ADMIN_NEW_PASSWORD is required and must be at least 14 characters');
   }
 
-  // Verify
-  const user = await prisma.user.findUnique({ where: { email } });
-  const isValid = await bcrypt.compare(newPassword, user!.passwordHash);
-  console.log(`Password verification: ${isValid ? 'SUCCESS' : 'FAILED'}`);
+  const existingUser = await prisma.user.findUnique({
+    where: { email },
+    select: { id: true, email: true, role: true, passwordHash: true },
+  });
+
+  if (!existingUser) {
+    throw new Error('User not found. This reset script does not create privileged accounts.');
+  }
+  if (!['FOUNDER', 'ADMIN'].includes(existingUser.role)) {
+    throw new Error('Refusing password reset: target is not an ADMIN or FOUNDER account.');
+  }
+
+  const passwordHash = await bcrypt.hash(newPassword, 12);
+  await prisma.$transaction([
+    prisma.user.update({
+      where: { email },
+      data: { passwordHash },
+    }),
+    prisma.refreshToken.deleteMany({ where: { userId: existingUser.id } }),
+  ]);
+
+  const updated = await prisma.user.findUnique({ where: { email } });
+  const isValid = !!updated && await bcrypt.compare(newPassword, updated.passwordHash);
+  if (!isValid) {
+    throw new Error('Password verification failed after update');
+  }
+
+  console.log(`Password reset successfully for ${email}; existing sessions revoked.`);
 }
 
 main()
-  .catch(console.error)
+  .catch((error) => {
+    console.error('Admin password reset failed:', error instanceof Error ? error.message : error);
+    process.exitCode = 1;
+  })
   .finally(() => prisma.$disconnect());
