@@ -588,12 +588,12 @@ class NickelPaymentService {
    * Client can pay via the link with card or bank transfer
    */
   async createPaymentLink(request: CardPaymentRequest): Promise<{
-    this.assertCurrentApiIntegrated("payment link");
     success: boolean;
     paymentLink?: string;
     paymentId?: string;
     error?: string;
   }> {
+    this.assertCurrentApiIntegrated("payment link");
     logger.info("Creating payment link", { amount: request.amount, client: request.clientEmail });
 
     const paymentId = `pay_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -838,12 +838,12 @@ class NickelPaymentService {
     method: "ach" | "check",
     description: string,
     options?: {
-    this.assertCurrentApiIntegrated("bill payment");
       memo?: string;
       caseId?: string;
       scheduledDate?: Date;
     }
   ): Promise<PaymentResult> {
+    this.assertCurrentApiIntegrated("bill payment");
     logger.info("Sending bill payment", { recipientId, amount, method });
 
     const paymentId = `bill_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -1013,7 +1013,6 @@ class NickelPaymentService {
     amount: number,
     description: string,
     options?: {
-    this.assertCurrentApiIntegrated("invoice");
       caseId?: string;
       dueDate?: Date;
       lineItems?: InvoiceLineItem[];
@@ -1021,6 +1020,7 @@ class NickelPaymentService {
       sendEmail?: boolean;
     }
   ): Promise<{ success: boolean; invoice?: NickelInvoice; error?: string }> {
+    this.assertCurrentApiIntegrated("invoice");
     logger.info("Creating invoice", { clientId, amount });
 
     const client = await prisma.user.findUnique({
