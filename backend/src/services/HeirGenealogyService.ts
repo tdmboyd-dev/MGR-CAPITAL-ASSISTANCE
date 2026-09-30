@@ -254,6 +254,11 @@ export class HeirGenealogyService {
     return this.findMember(root, memberId);
   }
 
+  async getMember(treeId: string, memberId: string): Promise<FamilyMember | null> {
+    const tree = await this.getTree(treeId);
+    return tree ? this.findMember(tree.rootMember, memberId) : null;
+  }
+
   async calculateHeirDistribution(_treeId: string): Promise<Record<string, number>> {
     throw new Error(
       "Automatic inheritance-share calculation is disabled. Distribution requires an explicit, source-backed legal determination and review."
