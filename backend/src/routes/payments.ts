@@ -17,6 +17,7 @@ import { authenticate } from "../middleware/authMiddleware.js";
 import { roleGuard } from "../middleware/roleGuard.js";
 import { nickelPaymentService } from "../services/NickelPaymentService.js";
 import { logger } from "../utils/logger.js";
+import crypto from "node:crypto";
 
 const router = Router();
 
@@ -24,7 +25,7 @@ const router = Router();
  * POST /api/payments/authorize
  * Create ACH authorization for a client
  */
-router.post("/authorize", authenticate, async (req, res) => {
+router.post("/authorize", authenticate, roleGuard(["ADMIN"]), async (req, res) => {
   try {
     const {
       clientId,
@@ -71,7 +72,7 @@ router.post("/authorize", authenticate, async (req, res) => {
  * POST /api/payments/initiate
  * Initiate an ACH payment (debit client account)
  */
-router.post("/initiate", authenticate, async (req, res) => {
+router.post("/initiate", authenticate, roleGuard(["ADMIN"]), async (req, res) => {
   try {
     const { authorizationId, amount, description, caseId } = req.body;
 
@@ -99,7 +100,7 @@ router.post("/initiate", authenticate, async (req, res) => {
  * POST /api/payments/auto-collect
  * Trigger automatic fee collection for a case
  */
-router.post("/auto-collect", authenticate, async (req, res) => {
+router.post("/auto-collect", authenticate, roleGuard(["ADMIN"]), async (req, res) => {
   try {
     const { caseId, clientId, surplusAmount, contingencyPercent } = req.body;
 
@@ -127,7 +128,7 @@ router.post("/auto-collect", authenticate, async (req, res) => {
  * GET /api/payments/:paymentId
  * Get payment status
  */
-router.get("/:paymentId", authenticate, async (req, res) => {
+router.get("/:paymentId", authenticate, roleGuard(["ADMIN"]), async (req, res) => {
   try {
     const { paymentId } = req.params;
 
@@ -148,7 +149,7 @@ router.get("/:paymentId", authenticate, async (req, res) => {
  * GET /api/payments/client/:clientId
  * Get all payments for a client
  */
-router.get("/client/:clientId", authenticate, async (req, res) => {
+router.get("/client/:clientId", authenticate, roleGuard(["ADMIN"]), async (req, res) => {
   try {
     const { clientId } = req.params;
 
@@ -165,7 +166,7 @@ router.get("/client/:clientId", authenticate, async (req, res) => {
  * DELETE /api/payments/authorize/:authorizationId
  * Revoke an ACH authorization
  */
-router.delete("/authorize/:authorizationId", authenticate, async (req, res) => {
+router.delete("/authorize/:authorizationId", authenticate, roleGuard(["ADMIN"]), async (req, res) => {
   try {
     const { authorizationId } = req.params;
 
@@ -186,7 +187,7 @@ router.delete("/authorize/:authorizationId", authenticate, async (req, res) => {
  * POST /api/payments/calculate-fee
  * Calculate fee based on surplus and contingency
  */
-router.post("/calculate-fee", authenticate, async (req, res) => {
+router.post("/calculate-fee", authenticate, roleGuard(["ADMIN"]), async (req, res) => {
   const { surplusAmount, contingencyPercent } = req.body;
 
   if (!surplusAmount) {
@@ -214,7 +215,7 @@ router.get("/service/status", authenticate, roleGuard(["FOUNDER"]), async (_req,
  * GET /api/payments
  * List all payments
  */
-router.get("/", authenticate, async (req, res) => {
+router.get("/", authenticate, roleGuard(["ADMIN"]), async (req, res) => {
   try {
     const limit = parseInt(req.query.limit as string) || 50;
     const offset = parseInt(req.query.offset as string) || 0;
@@ -240,7 +241,7 @@ router.get("/", authenticate, async (req, res) => {
  * GET /api/payments/metrics
  * Get payment metrics for dashboard
  */
-router.get("/metrics", authenticate, async (_req, res) => {
+router.get("/metrics", authenticate, roleGuard(["ADMIN"]), async (_req, res) => {
   try {
     let paymentService;
     try {
@@ -262,7 +263,7 @@ router.get("/metrics", authenticate, async (_req, res) => {
  * POST /api/payments/:paymentId/approve
  * Approve a payment flagged for review (FOUNDER only)
  */
-router.post("/:paymentId/approve", authenticate, async (req: any, res) => {
+router.post("/:paymentId/approve", authenticate, roleGuard(["ADMIN"]), async (req: any, res) => {
   try {
     const { paymentId } = req.params;
     const { notes } = req.body;
@@ -297,7 +298,7 @@ router.post("/:paymentId/approve", authenticate, async (req: any, res) => {
  * POST /api/payments/:paymentId/block
  * Block a suspicious payment (FOUNDER only)
  */
-router.post("/:paymentId/block", authenticate, async (req: any, res) => {
+router.post("/:paymentId/block", authenticate, roleGuard(["ADMIN"]), async (req: any, res) => {
   try {
     const { paymentId } = req.params;
     const { reason, notes } = req.body;
@@ -336,7 +337,7 @@ router.post("/:paymentId/block", authenticate, async (req: any, res) => {
  * POST /api/payments/payment-link
  * Create a payment link (client can pay via card or ACH)
  */
-router.post("/payment-link", authenticate, async (req, res) => {
+router.post("/payment-link", authenticate, roleGuard(["ADMIN"]), async (req, res) => {
   try {
     const { amount, description, clientEmail, clientName, caseId, redirectUrl } = req.body;
 
@@ -370,7 +371,7 @@ router.post("/payment-link", authenticate, async (req, res) => {
  * POST /api/payments/recipients
  * Create a bill pay recipient (vendor, contractor, client)
  */
-router.post("/recipients", authenticate, async (req, res) => {
+router.post("/recipients", authenticate, roleGuard(["ADMIN"]), async (req, res) => {
   try {
     const { name, email, phone, bankAccount, address, preferredMethod } = req.body;
 
@@ -398,7 +399,7 @@ router.post("/recipients", authenticate, async (req, res) => {
  * POST /api/payments/bill-pay
  * Send payment to a vendor/contractor (ACH or check)
  */
-router.post("/bill-pay", authenticate, async (req: any, res) => {
+router.post("/bill-pay", authenticate, roleGuard(["ADMIN"]), async (req: any, res) => {
   try {
     const { recipientId, amount, method, description, memo, caseId, scheduledDate } = req.body;
 
@@ -436,7 +437,7 @@ router.post("/bill-pay", authenticate, async (req: any, res) => {
  * POST /api/payments/client-payout
  * Pay out to a client after case recovery
  */
-router.post("/client-payout", authenticate, async (req: any, res) => {
+router.post("/client-payout", authenticate, roleGuard(["ADMIN"]), async (req: any, res) => {
   try {
     const { clientId, amount, caseId, method } = req.body;
 
@@ -474,7 +475,7 @@ router.post("/client-payout", authenticate, async (req: any, res) => {
  * POST /api/payments/invoices
  * Create and send an invoice
  */
-router.post("/invoices", authenticate, async (req, res) => {
+router.post("/invoices", authenticate, roleGuard(["ADMIN"]), async (req, res) => {
   try {
     const { clientId, amount, description, caseId, dueDate, lineItems, allowedMethods, sendEmail } = req.body;
 
@@ -507,7 +508,7 @@ router.post("/invoices", authenticate, async (req, res) => {
  * GET /api/payments/summary
  * Get payment summary for dashboard
  */
-router.get("/summary", authenticate, async (req, res) => {
+router.get("/summary", authenticate, roleGuard(["ADMIN"]), async (req, res) => {
   try {
     const { startDate, endDate, caseId } = req.query;
 
@@ -565,7 +566,7 @@ router.post("/webhook/stripe", async (req, res) => {
     const sig = req.headers["stripe-signature"] as string;
     const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
-    // If webhook secret configured, verify signature
+    // Production webhook state changes are never accepted unsigned.
     if (webhookSecret && sig) {
       const stripe = (await import("stripe")).default;
       const stripeClient = new stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: "2023-10-16" as any });
@@ -609,9 +610,8 @@ router.post("/webhook/stripe", async (req, res) => {
         return res.status(400).json({ error: "Webhook signature verification failed" });
       }
     } else {
-      // No signature verification (dev mode)
-      logger.warn("Stripe webhook received without signature verification");
-      res.json({ received: true, warning: "No signature verification" });
+      logger.warn("Stripe webhook rejected because signature verification is not configured");
+      return res.status(503).json({ error: "Stripe webhook verification is not configured" });
     }
   } catch (error: any) {
     logger.error("Stripe webhook error", { error: error.message });
@@ -623,40 +623,11 @@ router.post("/webhook/stripe", async (req, res) => {
  * POST /api/payments/webhook/paypal
  * Handle PayPal webhook events
  */
-router.post("/webhook/paypal", async (req, res) => {
-  try {
-    const { paymentService } = await import("../services/PaymentService.js");
-    const event = req.body;
-
-    logger.info("PayPal webhook received", { type: event.event_type });
-
-    // PayPal webhook verification would go here in production
-    // Using PayPal's verify-webhook-signature API
-
-    switch (event.event_type) {
-      case "PAYMENT.CAPTURE.COMPLETED":
-        const captureId = event.resource?.id;
-        const orderId = event.resource?.supplementary_data?.related_ids?.order_id;
-        if (orderId) {
-          // Find payment by external ID and update status
-          logger.info("PayPal payment completed", { orderId, captureId });
-        }
-        break;
-
-      case "PAYMENT.CAPTURE.DENIED":
-        logger.warn("PayPal payment denied", { resource: event.resource?.id });
-        break;
-
-      case "PAYMENT.CAPTURE.REFUNDED":
-        logger.info("PayPal payment refunded", { resource: event.resource?.id });
-        break;
-    }
-
-    res.json({ received: true });
-  } catch (error: any) {
-    logger.error("PayPal webhook error", { error: error.message });
-    res.status(500).json({ error: error.message });
-  }
+router.post("/webhook/paypal", async (_req, res) => {
+  logger.warn("PayPal webhook rejected: provider signature verification is not implemented");
+  return res.status(503).json({
+    error: "PayPal webhook verification is not implemented; no payment state was changed",
+  });
 });
 
 /**
@@ -665,17 +636,35 @@ router.post("/webhook/paypal", async (req, res) => {
  */
 router.post("/webhook/opensign", async (req, res) => {
   try {
+    const secret = process.env.OPENSIGN_WEBHOOK_SECRET;
+    const signature = req.headers["x-webhook-signature"];
+
+    if (!secret || typeof signature !== "string" || !Buffer.isBuffer(req.body)) {
+      logger.warn("OpenSign webhook rejected because signature verification is unavailable");
+      return res.status(503).json({ error: "OpenSign webhook verification is not configured" });
+    }
+
+    const expected = crypto.createHmac("sha256", secret).update(req.body).digest("hex");
+    const received = signature.trim();
+    const expectedBuffer = Buffer.from(expected, "utf8");
+    const receivedBuffer = Buffer.from(received, "utf8");
+
+    if (
+      expectedBuffer.length !== receivedBuffer.length ||
+      !crypto.timingSafeEqual(expectedBuffer, receivedBuffer)
+    ) {
+      logger.warn("OpenSign webhook signature verification failed");
+      return res.status(401).json({ error: "Invalid signature" });
+    }
+
+    const event = JSON.parse(req.body.toString("utf8"));
     const { documentSigningService } = await import("../services/DocumentSigningService.js");
-    const event = req.body;
-
-    logger.info("OpenSign webhook received", { event: event.event });
-
     await documentSigningService.handleWebhook("opensign", event);
 
-    res.json({ received: true });
+    return res.json({ received: true });
   } catch (error: any) {
     logger.error("OpenSign webhook error", { error: error.message });
-    res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: "OpenSign webhook processing failed" });
   }
 });
 
