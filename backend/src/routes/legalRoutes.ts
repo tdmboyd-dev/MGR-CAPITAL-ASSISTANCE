@@ -1,5 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { legalAuditorService } from '../services/LegalAuditorService.js';
+import { authMiddleware } from '../middleware/authMiddleware.js';
+import { roleGuard } from '../middleware/roleGuard.js';
 
 const router = Router();
 
@@ -7,7 +9,7 @@ const router = Router();
  * POST /api/legal/audit
  * Audit a legal document for compliance
  */
-router.post('/audit', async (req: Request, res: Response) => {
+router.post('/audit', authMiddleware, roleGuard(["ADMIN"]), async (req: Request, res: Response) => {
   try {
     const { docText, state, type } = req.body;
 
@@ -30,7 +32,7 @@ router.post('/audit', async (req: Request, res: Response) => {
  * GET /api/legal/requirements/:state/:type
  * Get document requirements for a state and document type
  */
-router.get('/requirements/:state/:type', async (req: Request, res: Response) => {
+router.get('/requirements/:state/:type', authMiddleware, roleGuard(["ADMIN"]), async (req: Request, res: Response) => {
   try {
     const { state, type } = req.params;
 
@@ -51,7 +53,7 @@ router.get('/requirements/:state/:type', async (req: Request, res: Response) => 
  * POST /api/legal/batch-audit
  * Audit multiple documents at once
  */
-router.post('/batch-audit', async (req: Request, res: Response) => {
+router.post('/batch-audit', authMiddleware, roleGuard(["ADMIN"]), async (req: Request, res: Response) => {
   try {
     const { documents } = req.body;
 
