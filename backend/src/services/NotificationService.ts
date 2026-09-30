@@ -9,6 +9,7 @@ import { NotificationType, NotificationStatus } from "@prisma/client";
 import prisma from "../lib/prisma.js";
 import * as nodemailer from "nodemailer";
 import { BOT_PERSONAS, getBotPersona, getBotIdForEmailType, type BotPersona } from "../config/botPersonas.js";
+import { createEmailVerificationToken } from "../utils/security.js";
 
 // SMTP Configuration from environment
 const SMTP_CONFIG = {
@@ -674,7 +675,8 @@ MGR Capital Assistance
     userId: string;
   }): Promise<NotificationResult> {
     const frontendUrl = process.env.FRONTEND_URL || 'https://capitalmgr.com';
-    const verifyLink = `${frontendUrl}/auth/verify?userId=${params.userId}&token=${Buffer.from(params.userId + Date.now()).toString('base64')}`;
+    const verificationToken = await createEmailVerificationToken(params.userId);
+    const verifyLink = `${frontendUrl}/auth/verify?userId=${encodeURIComponent(params.userId)}&token=${encodeURIComponent(verificationToken)}`;
     const bot = getBotPersona("security");
 
     const body = `
