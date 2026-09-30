@@ -14,7 +14,7 @@ describe("Document Upload Flow", () => {
     cy.apiRequest("POST", "/auth/login", {
       body: {
         email: Cypress.env("founderEmail") || "time@mgrcapital.com",
-        password: Cypress.env("founderPassword") || "Dorothy1956!",
+        password: Cypress.env("founderPassword"),
       },
     }).then((response) => {
       if (response.status === 200 && response.body.data?.accessToken) {
