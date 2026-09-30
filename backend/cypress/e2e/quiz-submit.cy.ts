@@ -1,6 +1,6 @@
 describe("Training Quiz Submit", () => {
   beforeEach(() => {
-    cy.login("time@mgrcapital.com", "Dorothy1956!");
+    cy.login("time@mgrcapital.com", Cypress.env("founderPassword"));
   });
 
   it("should display training modules list", () => {
