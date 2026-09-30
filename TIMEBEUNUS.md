@@ -194,7 +194,7 @@ Session 41: Smart Storage Router — Multi-Provider Storage Engine + MinIO self-
 **MinIO INSTALLED ON CONTABO VPS (217.77.14.51):**
 - Docker container: `minio/minio:latest` running on ports 9000 (S3 API) + 9001 (Console)
 - Bucket: `mgr-documents` (created and ready)
-- Credentials: accessKeyId=`mgrcapital`, secretAccessKey=`MgrStorage2026Secure!`
+- Credentials: accessKeyId=`mgrcapital`, secretAccessKey=`[REDACTED — rotate leaked storage credential]`
 - S3 Endpoint: `http://217.77.14.51:9000`
 - Console UI: `http://217.77.14.51:9001`
 - ~60GB available disk (73GB total, 4.6GB used by Modoboa + OS)
@@ -285,7 +285,7 @@ Session 34: Fixed login (Prisma DLL lock resolved), built Client Portal expirati
 **Servers Running:**
 - Backend: http://localhost:4000
 - Frontend: http://localhost:3011
-- Login: admin@capitalmgr.com / Dorothy1956!
+- Login: admin@capitalmgr.com / [REDACTED — rotate leaked credential and configure via environment]
 
 ---
 
@@ -576,7 +576,7 @@ Loan Signing   | $150        | ~$68        | ~$82
 4. **Login Fix**
    - Prisma generate succeeded (DLL lock resolved by NOT killing Claude process)
    - DB schema in sync
-   - Founder account created: admin@capitalmgr.com / Dorothy1956!
+   - Founder account created: admin@capitalmgr.com / [REDACTED — rotate leaked credential and configure via environment]
    - Login API tested and working
 
 ---
@@ -641,7 +641,7 @@ Loan Signing   | $150        | ~$68        | ~$82
 - **Backend:** localhost:4000
 - **Frontend:** localhost:3011
 - **WebSocket:** localhost:4001
-- **Login:** admin@capitalmgr.com / Dorothy1956!
+- **Login:** admin@capitalmgr.com / [REDACTED — rotate leaked credential and configure via environment]
 
 ---
 
