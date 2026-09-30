@@ -259,14 +259,11 @@ class SelfHostedRONService {
       errors.push('Selfie required');
     }
 
-    // In production, this would use AI face matching (AWS Rekognition, Azure Face, etc.)
-    // For now, we simulate with a high confidence score
-    const faceMatchScore = this.simulateFaceMatch(
-      idData.frontImageBase64,
-      idData.selfieImageBase64
-    );
-
-    const verified = errors.length === 0 && faceMatchScore >= 85;
+    // A RON identity check must fail closed without an authoritative identity
+    // verification provider. Never manufacture a face-match confidence score.
+    const faceMatchScore = 0;
+    errors.push('Identity verification provider is not configured');
+    const verified = false;
 
     // Update session
     session.idVerified = verified;
@@ -296,37 +293,10 @@ class SelfHostedRONService {
     if (!session) {
       throw new Error('Session not found');
     }
-
     if (!session.idVerified) {
       throw new Error('ID must be verified before KBA');
     }
-
-    // In production, KBA questions would be pulled from credit bureaus
-    // For now, generate generic questions based on templates
-    const questions: KBAQuestion[] = [];
-
-    // Generate 5 questions from different categories
-    const categories = ['address', 'vehicle', 'financial', 'personal'];
-    for (let i = 0; i < 5; i++) {
-      const category = categories[i % categories.length];
-      const templates = KBA_QUESTION_TEMPLATES.find(t => t.category === category);
-
-      if (templates) {
-        const template = templates.templates[Math.floor(Math.random() * templates.templates.length)];
-        const options = this.generateKBAOptions(category);
-        const correctIndex = Math.floor(Math.random() * options.length);
-
-        questions.push({
-          id: `kba_${i}_${crypto.randomBytes(4).toString('hex')}`,
-          question: template,
-          options,
-          correctIndex,
-          category,
-        });
-      }
-    }
-
-    return questions;
+    throw new Error('Authoritative KBA provider is not configured');
   }
 
   /**
@@ -334,7 +304,7 @@ class SelfHostedRONService {
    */
   async verifyKBAAnswers(
     sessionId: string,
-    answers: { questionId: string; selectedIndex: number }[]
+    _answers: { questionId: string; selectedIndex: number }[]
   ): Promise<{
     passed: boolean;
     score: number;
@@ -344,34 +314,7 @@ class SelfHostedRONService {
     if (!session) {
       throw new Error('Session not found');
     }
-
-    if (session.kbaAttemptsRemaining <= 0) {
-      throw new Error('No KBA attempts remaining');
-    }
-
-    // In production, this would verify against actual credit bureau data
-    // For demo, require at least 4 out of 5 correct (80%)
-    const correctAnswers = Math.floor(Math.random() * 2) + 4; // 4 or 5
-    const score = (correctAnswers / 5) * 100;
-    const passed = score >= 80;
-
-    session.kbaAttemptsRemaining--;
-    session.kbaPassed = passed;
-    session.kbaScore = score;
-    session.status = passed ? 'kba_passed' : (session.kbaAttemptsRemaining > 0 ? 'kba_pending' : 'kba_failed');
-
-    logger.info('KBA verification attempt', {
-      sessionId,
-      passed,
-      score,
-      attemptsRemaining: session.kbaAttemptsRemaining,
-    });
-
-    return {
-      passed,
-      score,
-      attemptsRemaining: session.kbaAttemptsRemaining,
-    };
+    throw new Error('Authoritative KBA provider is not configured');
   }
 
   /**
