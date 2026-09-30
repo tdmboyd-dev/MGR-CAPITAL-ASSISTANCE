@@ -270,7 +270,11 @@ router.post(
   roleGuard(["FOUNDER"]),
   asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
     const { enrollmentId } = req.params;
-    const enrollment = await trustAutomationService.activateTrust(enrollmentId);
+    const { trustEIN } = req.body;
+    if (!trustEIN) {
+      throw Errors.badRequest("A verified IRS-issued trustEIN is required before activation");
+    }
+    const enrollment = await trustAutomationService.activateTrust(enrollmentId, trustEIN);
     res.json({ success: true, data: enrollment });
   })
 );
