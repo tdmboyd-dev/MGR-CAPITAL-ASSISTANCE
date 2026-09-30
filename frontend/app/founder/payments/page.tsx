@@ -15,6 +15,7 @@ import {
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { toast } from 'sonner'
+import { api } from '@/lib/api'
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6']
 
@@ -22,7 +23,7 @@ interface FraudScore {
   score: number
   risk: 'low' | 'medium' | 'high' | 'critical'
   factors: string[]
-  recommendation: 'approve' | 'review' | 'block'
+  recommendation: 'approve' | 'review'
   confidence: number
 }
 
@@ -44,122 +45,37 @@ export default function PaymentsDashboard() {
   const [wsConnected, setWsConnected] = useState(false)
   const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null)
 
-  // WebSocket connection for real-time updates
+  // Payment updates currently use verified API polling. The backend does not expose
+  // a generic unauthenticated payment WebSocket channel.
   useEffect(() => {
-    let ws: WebSocket | null = null
-
-    const connect = () => {
-      try {
-        const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-        const wsHost = process.env.NEXT_PUBLIC_WS_HOST || window.location.host
-        ws = new WebSocket(`${wsProtocol}//${wsHost}/payments`)
-
-        ws.onopen = () => {
-          setWsConnected(true)
-          console.log('WebSocket connected')
-        }
-
-        ws.onmessage = (event) => {
-          const data = JSON.parse(event.data)
-          if (data.type === 'new_payment') {
-            toast.info('New payment received!', {
-              description: `$${data.payment.amount.toLocaleString()} via ${data.payment.method}`,
-            })
-            setRealtimePayments(prev => [data.payment, ...prev].slice(0, 10))
-            refetchPayments()
-            refetchMetrics()
-          }
-          if (data.type === 'fraud_alert') {
-            toast.error('Fraud Alert!', {
-              description: data.message,
-            })
-          }
-        }
-
-        ws.onclose = () => {
-          setWsConnected(false)
-          setTimeout(connect, 3000) // Reconnect after 3s
-        }
-
-        ws.onerror = () => {
-          setWsConnected(false)
-        }
-      } catch (err) {
-        setWsConnected(false)
-      }
-    }
-
-    connect()
-
-    return () => {
-      if (ws) ws.close()
-    }
+    setWsConnected(false)
   }, [])
 
   const { data: payments, isLoading: paymentsLoading, refetch: refetchPayments } = useQuery({
     queryKey: ['payments'],
     queryFn: async () => {
-      // Demo data with fraud scores
-      return {
-        data: [
-          { id: 'pay_1', amount: 12500, method: 'ach', status: 'succeeded', clientName: 'John Smith', createdAt: new Date().toISOString(), fraudScore: { score: 0.12, risk: 'low', factors: [], recommendation: 'approve', confidence: 0.92 } },
-          { id: 'pay_2', amount: 8750, method: 'stripe', status: 'succeeded', clientName: 'Sarah Johnson', createdAt: new Date(Date.now() - 3600000).toISOString(), fraudScore: { score: 0.08, risk: 'low', factors: [], recommendation: 'approve', confidence: 0.95 } },
-          { id: 'pay_3', amount: 45000, method: 'ach', status: 'pending', clientName: 'Michael Brown', createdAt: new Date(Date.now() - 7200000).toISOString(), fraudScore: { score: 0.65, risk: 'high', factors: ['Unusual amount', 'New customer'], recommendation: 'review', confidence: 0.88 } },
-          { id: 'pay_4', amount: 3200, method: 'paypal', status: 'succeeded', clientName: 'Emily Davis', createdAt: new Date(Date.now() - 10800000).toISOString(), fraudScore: { score: 0.05, risk: 'low', factors: [], recommendation: 'approve', confidence: 0.97 } },
-          { id: 'pay_5', amount: 78000, method: 'ach', status: 'review', clientName: 'Unknown', createdAt: new Date(Date.now() - 14400000).toISOString(), fraudScore: { score: 0.89, risk: 'critical', factors: ['Very high amount', 'Unknown customer', 'Unusual time'], recommendation: 'block', confidence: 0.91 } },
-        ] as Payment[]
-      }
+      const { data } = await api.get('/payments')
+      return { data: Array.isArray(data?.data) ? data.data : [] as Payment[] }
     },
+    refetchInterval: 30000,
   })
 
   const { data: metrics, isLoading: metricsLoading, refetch: refetchMetrics } = useQuery({
     queryKey: ['payment-metrics'],
     queryFn: async () => {
-      return {
-        data: {
-          totalRecovered: 487500,
-          pending: 123000,
-          refunded: 15000,
-          trend: [
-            { date: '2026-01-19', amount: 45000 },
-            { date: '2026-01-20', amount: 62000 },
-            { date: '2026-01-21', amount: 38000 },
-            { date: '2026-01-22', amount: 71000 },
-            { date: '2026-01-23', amount: 89000 },
-            { date: '2026-01-24', amount: 95000 },
-            { date: '2026-01-25', amount: 87500 },
-          ],
-          byMethod: [
-            { method: 'ACH', total: 285000, count: 45 },
-            { method: 'Stripe', total: 142000, count: 32 },
-            { method: 'PayPal', total: 45500, count: 18 },
-            { method: 'Check', total: 15000, count: 5 },
-          ],
-          fraudStats: {
-            blocked: 3,
-            reviewed: 8,
-            approved: 89,
-            totalScanned: 100,
-            modelAccuracy: 0.94,
-          }
-        }
-      }
+      const { data } = await api.get('/payments/metrics')
+      return { data: data?.data || data }
     },
+    refetchInterval: 30000,
   })
 
   const { data: fraudMetrics } = useQuery({
     queryKey: ['fraud-metrics'],
     queryFn: async () => {
-      return {
-        data: {
-          accuracy: 0.94,
-          precision: 0.89,
-          recall: 0.92,
-          f1Score: 0.90,
-          isReady: true,
-        }
-      }
+      const { data } = await api.get('/fraud/metrics')
+      return { data: data?.data || data }
     },
+    refetchInterval: 60000,
   })
 
   const handleRefresh = async () => {
@@ -233,12 +149,12 @@ export default function PaymentsDashboard() {
             <DollarSign className="h-10 w-10 text-blue-600" />
             Payments Control Center
           </h1>
-          <p className="text-muted-foreground mt-1">AI-powered fraud detection • Real-time monitoring</p>
+          <p className="text-muted-foreground mt-1">Fraud-risk decision support • Provider-backed payment monitoring</p>
         </div>
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-white/80 dark:bg-slate-800/80 shadow">
             <div className={`w-2 h-2 rounded-full ${wsConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
-            <span className="text-sm">{wsConnected ? 'Live' : 'Offline'}</span>
+            <span className="text-sm">{wsConnected ? 'Live' : 'Polling'}</span>
           </div>
           <Button onClick={handleRefresh} disabled={refreshing} variant="outline">
             <RefreshCw className={`mr-2 h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
