@@ -1,100 +1,42 @@
-# =============================================================================
-# MGR CAPITAL ASSISTANCE — Backend Dockerfile
-# Multi-stage build for production Node.js application
-#
-# Features:
-# - Multi-stage build for minimal image size
-# - Non-root user for security
-# - Prisma client generation
-# - Health check endpoint
-# - Air-gap compatible (all deps bundled)
-# =============================================================================
-
-# -----------------------------------------------------------------------------
-# Stage 1: Dependencies
-# -----------------------------------------------------------------------------
+# MGR CAPITAL ASSISTANCE — Backend production image
 FROM node:20-alpine AS deps
-
 WORKDIR /app
-
-# Install build dependencies for native modules (bcrypt, etc.)
 RUN apk add --no-cache python3 make g++ libc6-compat
-
-# Copy package files
-COPY package*.json ./
+COPY package.json package-lock.json ./
 COPY prisma ./prisma/
-
-# Install all dependencies (including dev for build)
 RUN npm ci
-
-# Generate Prisma client
 RUN npx prisma generate
 
-# -----------------------------------------------------------------------------
-# Stage 2: Builder
-# -----------------------------------------------------------------------------
 FROM node:20-alpine AS builder
-
 WORKDIR /app
-
-# Copy dependencies from deps stage
 COPY --from=deps /app/node_modules ./node_modules
-COPY --from=deps /app/package*.json ./
+COPY --from=deps /app/package.json /app/package-lock.json ./
+COPY --from=deps /app/prisma ./prisma
+COPY tsconfig.json ./
+COPY src ./src
+RUN npm run build
+RUN npm prune --omit=dev
 
-# Copy source code
-COPY . .
-
-# Build TypeScript (if applicable)
-RUN npm run build 2>/dev/null || echo "No build script, using source directly"
-
-# Prune dev dependencies
-RUN npm prune --production
-
-# -----------------------------------------------------------------------------
-# Stage 3: Production Runner
-# -----------------------------------------------------------------------------
 FROM node:20-alpine AS runner
-
 WORKDIR /app
-
-# Install runtime dependencies
-RUN apk add --no-cache \
-    wget \
-    curl \
-    tini \
-    && rm -rf /var/cache/apk/*
-
-# Create non-root user for security
-RUN addgroup --system --gid 1001 nodejs \
-    && adduser --system --uid 1001 backend
-
-# Create necessary directories
-RUN mkdir -p /app/uploads /app/backups /app/logs \
+RUN apk add --no-cache wget tini \
+    && addgroup --system --gid 1001 nodejs \
+    && adduser --system --uid 1001 backend \
+    && mkdir -p /app/uploads /app/backups /app/logs \
     && chown -R backend:nodejs /app
 
-# Copy built application
 COPY --from=builder --chown=backend:nodejs /app/node_modules ./node_modules
-COPY --from=builder --chown=backend:nodejs /app/package*.json ./
+COPY --from=builder --chown=backend:nodejs /app/package.json /app/package-lock.json ./
 COPY --from=builder --chown=backend:nodejs /app/prisma ./prisma
-COPY --from=builder --chown=backend:nodejs /app/src ./src
-COPY --from=builder --chown=backend:nodejs /app/dist ./dist 2>/dev/null || true
+COPY --from=builder --chown=backend:nodejs /app/dist ./dist
 
-# Switch to non-root user
 USER backend
-
-# Expose port
-EXPOSE 4000
-
-# Environment
 ENV NODE_ENV=production
 ENV PORT=4000
+ENV WS_PORT=4001
+EXPOSE 4000 4001
 
-# Use tini as init system for proper signal handling
 ENTRYPOINT ["/sbin/tini", "--"]
-
-# Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost:4000/health || exit 1
-
-# Start application
-CMD ["node", "--experimental-specifier-resolution=node", "src/server.js"]
+  CMD wget --no-verbose --tries=1 --spider http://localhost:4000/api/health || exit 1
+CMD ["node", "dist/server.js"]
