@@ -36,6 +36,15 @@ export interface TokenPayload {
   type: "access" | "refresh";
 }
 
+export interface CollaborationTicketPayload {
+  userId: string;
+  email: string;
+  role: UserRole;
+  tier?: EmployeeTier | null;
+  caseId: string;
+  type: "collaboration";
+}
+
 export interface AuthTokens {
   accessToken: string;
   refreshToken: string;
@@ -137,6 +146,48 @@ class AuthService {
     });
 
     return { token, expiresAt };
+  }
+
+  /**
+   * Mint a short-lived, case-scoped ticket for the collaboration WebSocket.
+   * The normal access token never needs to appear in a WebSocket URL.
+   */
+  generateCollaborationTicket(user: {
+    id: string;
+    email: string;
+    role: UserRole;
+    tier?: EmployeeTier | null;
+  }, caseId: string): string {
+    const payload: CollaborationTicketPayload = {
+      userId: user.id,
+      email: user.email,
+      role: user.role,
+      tier: user.tier,
+      caseId,
+      type: "collaboration",
+    };
+
+    return jwt.sign(payload, config.jwtSecret, {
+      expiresIn: 60,
+      issuer: "mgr-capital",
+      audience: "mgr-capital-collaboration",
+    });
+  }
+
+  verifyCollaborationTicket(ticket: string, expectedCaseId: string): CollaborationTicketPayload | null {
+    try {
+      const decoded = jwt.verify(ticket, config.jwtSecret, {
+        issuer: "mgr-capital",
+        audience: "mgr-capital-collaboration",
+      }) as CollaborationTicketPayload;
+
+      if (decoded.type !== "collaboration" || decoded.caseId !== expectedCaseId) {
+        return null;
+      }
+      return decoded;
+    } catch {
+      return null;
+    }
   }
 
   /**
