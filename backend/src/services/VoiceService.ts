@@ -29,7 +29,7 @@ export class VoiceService {
   constructor() {
     this.ollamaUrl = process.env.OLLAMA_URL || "http://localhost:11434";
     logger.info('[VoiceService] Initialized with providers:', {
-      stt: DEEPGRAM_API_KEY ? 'Deepgram' : (OPENAI_API_KEY ? 'OpenAI Whisper' : 'Demo mode'),
+      stt: DEEPGRAM_API_KEY ? 'Deepgram' : (OPENAI_API_KEY ? 'OpenAI Whisper' : 'Unavailable'),
       tts: 'Browser Web Speech API (FREE)',
       ai: DEEPSEEK_API_KEY ? 'DeepSeek' : (GOOGLE_AI_KEY ? 'Gemini' : 'Ollama'),
     });
@@ -63,13 +63,7 @@ export class VoiceService {
         }
       }
 
-      // Fallback: Demo mode with helpful message
-      await new Promise((resolve) => setTimeout(resolve, 500));
-
-      return {
-        transcript: "Hello, how can I help you with your case today?",
-        confidence: 0.5, // Lower confidence for demo mode
-      };
+      throw new Error("Speech-to-text provider is not configured or all configured providers failed");
     } catch (error: any) {
       logger.error("[VoiceService] STT Error:", { error: error?.message || error });
       throw new Error("Speech-to-text processing failed");
@@ -86,7 +80,10 @@ export class VoiceService {
         'Authorization': `Token ${DEEPGRAM_API_KEY}`,
         'Content-Type': 'audio/webm',
       },
-      body: audioBuffer,
+      body: audioBuffer.buffer.slice(
+        audioBuffer.byteOffset,
+        audioBuffer.byteOffset + audioBuffer.byteLength
+      ) as ArrayBuffer,
     });
 
     if (!response.ok) {
@@ -105,7 +102,11 @@ export class VoiceService {
    */
   private async whisperSTT(audioBuffer: Buffer): Promise<STTResult> {
     const formData = new FormData();
-    const blob = new Blob([audioBuffer], { type: 'audio/webm' });
+    const audioArrayBuffer = audioBuffer.buffer.slice(
+      audioBuffer.byteOffset,
+      audioBuffer.byteOffset + audioBuffer.byteLength
+    ) as ArrayBuffer;
+    const blob = new Blob([audioArrayBuffer], { type: 'audio/webm' });
     formData.append('file', blob, 'audio.webm');
     formData.append('model', 'whisper-1');
     formData.append('language', 'en');
@@ -248,7 +249,7 @@ Respond naturally and concisely as if speaking. Keep responses under 100 words f
     }
 
     return {
-      stt: DEEPGRAM_API_KEY ? 'deepgram' : (OPENAI_API_KEY ? 'whisper' : 'demo'),
+      stt: DEEPGRAM_API_KEY ? 'deepgram' : (OPENAI_API_KEY ? 'whisper' : 'unavailable'),
       tts: 'browser', // Always browser-based (FREE)
       ai: aiProvider,
     };
