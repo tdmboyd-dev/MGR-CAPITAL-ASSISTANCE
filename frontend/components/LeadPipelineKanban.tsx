@@ -557,201 +557,32 @@ export default function LeadPipelineKanban() {
     })
   );
 
-  // Load leads from API with mock fallback
+  // Load leads from API. Never substitute fabricated lead/PII data.
   useEffect(() => {
     const fetchLeads = async () => {
       try {
-        const token = localStorage.getItem('token');
-        const response = await fetch('/api/leads', {
+        const token = localStorage.getItem("accessToken") || localStorage.getItem("token");
+        const response = await fetch("/api/leads", {
           headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            "Content-Type": "application/json",
+          },
         });
 
-        if (response.ok) {
-          const data = await response.json();
-          if (data.data && data.data.length > 0) {
-            setLeads(data.data);
-            return;
-          }
+        if (!response.ok) {
+          throw new Error(`Lead API returned ${response.status}`);
         }
-      } catch (error) {
-        console.log('API not available, using demo data');
-      }
 
-      // Fallback to demo data if API unavailable
-      loadDemoData();
+        const data = await response.json();
+        setLeads(Array.isArray(data?.data) ? data.data : []);
+      } catch (error) {
+        console.error("Failed to load leads:", error);
+        setLeads([]);
+      }
     };
 
     fetchLeads();
   }, []);
-
-  const loadDemoData = () => {
-    const mockLeads: Lead[] = [
-      {
-        id: "lead-1",
-        stage: "lead",
-        propertyAddress: "123 Palm Beach Blvd",
-        propertyCity: "Miami",
-        propertyState: "FL",
-        propertyZip: "33101",
-        propertyCounty: "Miami-Dade",
-        surplusAmount: 45000,
-        auctionDate: "2025-12-15",
-        ownerName: "John Smith",
-        ownerPhone: "+1 (305) 555-0123",
-        ownerEmail: "john.smith@email.com",
-        contingencyPercent: 33,
-        priority: "high",
-        skipTraceScore: 85,
-        deadlineDate: "2026-04-15",
-        deadlineDays: 80,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      },
-      {
-        id: "lead-2",
-        stage: "lead",
-        propertyAddress: "456 Oak Street",
-        propertyCity: "Tampa",
-        propertyState: "FL",
-        propertyZip: "33602",
-        propertyCounty: "Hillsborough",
-        surplusAmount: 78000,
-        auctionDate: "2025-11-20",
-        ownerName: "Mary Johnson",
-        ownerPhone: "+1 (813) 555-0456",
-        isDeceased: true,
-        contingencyPercent: 35,
-        priority: "critical",
-        skipTraceScore: 72,
-        deadlineDate: "2026-03-20",
-        deadlineDays: 54,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      },
-      {
-        id: "lead-3",
-        stage: "contacted",
-        propertyAddress: "789 Sunset Drive",
-        propertyCity: "Orlando",
-        propertyState: "FL",
-        propertyZip: "32801",
-        propertyCounty: "Orange",
-        surplusAmount: 32000,
-        auctionDate: "2025-10-05",
-        ownerName: "Robert Davis",
-        ownerPhone: "+1 (407) 555-0789",
-        ownerEmail: "rdavis@email.com",
-        contingencyPercent: 33,
-        priority: "medium",
-        skipTraceScore: 92,
-        lastActivity: "Called - Left voicemail",
-        lastActivityDate: "2026-01-20",
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      },
-      {
-        id: "lead-4",
-        stage: "interested",
-        propertyAddress: "321 River Road",
-        propertyCity: "Jacksonville",
-        propertyState: "FL",
-        propertyZip: "32202",
-        propertyCounty: "Duval",
-        surplusAmount: 125000,
-        auctionDate: "2025-09-15",
-        ownerName: "Sarah Williams",
-        ownerPhone: "+1 (904) 555-0321",
-        ownerEmail: "sarah.w@email.com",
-        contingencyPercent: 30,
-        priority: "high",
-        skipTraceScore: 95,
-        lastActivity: "Scheduled call for Monday",
-        assignedTo: "Mike Agent",
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      },
-      {
-        id: "lead-5",
-        stage: "signed",
-        propertyAddress: "555 Beach Avenue",
-        propertyCity: "Fort Lauderdale",
-        propertyState: "FL",
-        propertyZip: "33301",
-        propertyCounty: "Broward",
-        surplusAmount: 67000,
-        auctionDate: "2025-08-01",
-        ownerName: "James Brown",
-        ownerPhone: "+1 (954) 555-0555",
-        contingencyPercent: 33,
-        priority: "high",
-        lastActivity: "Agreement signed",
-        assignedTo: "Jane Agent",
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      },
-      {
-        id: "lead-6",
-        stage: "filed",
-        propertyAddress: "888 Marina Way",
-        propertyCity: "Sarasota",
-        propertyState: "FL",
-        propertyZip: "34236",
-        propertyCounty: "Sarasota",
-        surplusAmount: 92000,
-        auctionDate: "2025-07-10",
-        ownerName: "Patricia Miller",
-        ownerPhone: "+1 (941) 555-0888",
-        contingencyPercent: 33,
-        priority: "medium",
-        lastActivity: "Claim filed with clerk",
-        assignedTo: "Mike Agent",
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      },
-      {
-        id: "lead-7",
-        stage: "won",
-        propertyAddress: "999 Gulf Boulevard",
-        propertyCity: "Clearwater",
-        propertyState: "FL",
-        propertyZip: "33767",
-        propertyCounty: "Pinellas",
-        surplusAmount: 54000,
-        auctionDate: "2025-05-20",
-        ownerName: "Thomas Wilson",
-        ownerPhone: "+1 (727) 555-0999",
-        contingencyPercent: 33,
-        priority: "low",
-        lastActivity: "Claim approved - awaiting disbursement",
-        assignedTo: "Jane Agent",
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      },
-      {
-        id: "lead-8",
-        stage: "paid",
-        propertyAddress: "111 Island Drive",
-        propertyCity: "Key West",
-        propertyState: "FL",
-        propertyZip: "33040",
-        propertyCounty: "Monroe",
-        surplusAmount: 83000,
-        auctionDate: "2025-03-15",
-        ownerName: "Elizabeth Taylor",
-        contingencyPercent: 33,
-        priority: "low",
-        lastActivity: "Fee collected via ACH",
-        assignedTo: "Mike Agent",
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      },
-    ];
-
-    setLeads(mockLeads);
-  };
 
   // Update lead stage via API
   const updateLeadStage = async (leadId: string, newStage: string) => {
