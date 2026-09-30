@@ -19,7 +19,6 @@ import {
   Search,
   Plus,
   Download,
-  Brain,
   UserPlus,
   Phone,
   Mail,
@@ -27,7 +26,6 @@ import {
   CheckCircle,
   XCircle,
   Clock,
-  Sparkles,
   FileText,
   RefreshCw
 } from 'lucide-react'
@@ -55,11 +53,12 @@ interface GenealogyTree {
   decedentName: string
   state: string
   rootMember: FamilyMember
-  totalHeirs: number
-  confirmedHeirs: number
-  heirDistribution: Record<string, number>
-  confidenceScore: number
-  aiGenerated: boolean
+  candidateRelativeCount: number
+  locatedRelativeCount: number
+  legalReviewStatus: string
+  reviewedHeirCount: number
+  reviewedDistribution: Record<string, number>
+  researchAssisted: boolean
 }
 
 const US_STATES = [
@@ -91,86 +90,12 @@ export default function GenealogyPage() {
     isHeir: false
   })
 
-  // Fetch trees list
-  const { data: trees, isLoading } = useQuery({
+  // Fetch persisted genealogy research records.
+  const { data: trees = [], isLoading, refetch } = useQuery<GenealogyTree[]>({
     queryKey: ['genealogy-trees'],
     queryFn: async () => {
-      // Mock data for demo
-      return [
-        {
-          id: 'tree_demo_1',
-          caseId: 'CASE-001',
-          decedentName: 'John Smith',
-          state: 'TX',
-          rootMember: {
-            id: 'root_1',
-            name: 'John Smith',
-            relationship: 'Decedent',
-            isDeceased: true,
-            isHeir: false,
-            skipTraceStatus: 'found' as const,
-            children: [
-              {
-                id: 'child_1',
-                name: 'Mary Smith',
-                relationship: 'Daughter',
-                isDeceased: false,
-                isHeir: true,
-                heirPriority: 1,
-                skipTraceStatus: 'found' as const,
-                contactInfo: { phone: '555-0101', address: '123 Main St, Dallas, TX' },
-                children: [
-                  {
-                    id: 'grandchild_1',
-                    name: 'Tom Smith Jr',
-                    relationship: 'Grandson',
-                    isDeceased: false,
-                    isHeir: false,
-                    skipTraceStatus: 'pending' as const,
-                    children: []
-                  }
-                ]
-              },
-              {
-                id: 'child_2',
-                name: 'Robert Smith',
-                relationship: 'Son',
-                isDeceased: true,
-                isHeir: false,
-                skipTraceStatus: 'found' as const,
-                children: [
-                  {
-                    id: 'grandchild_2',
-                    name: 'Sarah Smith',
-                    relationship: 'Granddaughter',
-                    isDeceased: false,
-                    isHeir: true,
-                    heirPriority: 2,
-                    skipTraceStatus: 'found' as const,
-                    contactInfo: { phone: '555-0102', email: 'sarah@email.com' },
-                    children: []
-                  }
-                ]
-              },
-              {
-                id: 'child_3',
-                name: 'James Smith',
-                relationship: 'Son',
-                isDeceased: false,
-                isHeir: true,
-                heirPriority: 1,
-                skipTraceStatus: 'not_found' as const,
-                children: []
-              }
-            ]
-          },
-          totalHeirs: 3,
-          confirmedHeirs: 2,
-          heirDistribution: { 'child_1': 33.33, 'grandchild_2': 33.33, 'child_3': 33.33 },
-          confidenceScore: 0.85,
-          aiGenerated: true
-        }
-      ] as GenealogyTree[]
+      const { data } = await api.get('/genealogy')
+      return Array.isArray(data?.data) ? data.data : []
     }
   })
 
@@ -186,8 +111,9 @@ export default function GenealogyPage() {
         lastKnownAddress: data.lastKnownAddress || undefined
       })
     },
-    onSuccess: () => {
-      toast.success('Genealogy tree generated')
+    onSuccess: async () => {
+      toast.success('Genealogy research record created')
+      await refetch()
       setShowNewTreeDialog(false)
       setNewTreeForm({ caseId: '', decedentName: '', deathDate: '', state: '', knownRelatives: '', lastKnownAddress: '' })
     },
@@ -352,10 +278,10 @@ export default function GenealogyPage() {
           <div>
             <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent flex items-center gap-3">
               <GitBranch className="h-10 w-10 text-indigo-600" />
-              AI Heir Genealogy
+              Genealogy Research
             </h1>
             <p className="text-muted-foreground mt-2">
-              AI-powered family tree analysis with skip trace integration
+              Case-linked relationship research with provider-backed contact tracing. Legal heir status requires separate review.
             </p>
           </div>
 
@@ -370,7 +296,7 @@ export default function GenealogyPage() {
               <DialogHeader>
                 <DialogTitle className="flex items-center gap-2">
                   <Brain className="h-5 w-5 text-indigo-600" />
-                  Generate AI Genealogy Tree
+                  Create Genealogy Research Record
                 </DialogTitle>
               </DialogHeader>
               <div className="space-y-4 mt-4">
@@ -448,7 +374,7 @@ export default function GenealogyPage() {
                   ) : (
                     <Sparkles className="h-4 w-4 mr-2" />
                   )}
-                  Generate with AI
+                  Create Research Tree
                 </Button>
               </div>
             </DialogContent>
@@ -489,17 +415,14 @@ export default function GenealogyPage() {
                     </p>
                     <div className="flex items-center gap-2 mt-2">
                       <Badge variant="outline" className="text-xs">
-                        {tree.totalHeirs} heirs
+                        {tree.candidateRelativeCount} candidates
                       </Badge>
                       <Badge variant="secondary" className="text-xs">
-                        {tree.confirmedHeirs} found
+                        {tree.locatedRelativeCount} located
                       </Badge>
-                      {tree.aiGenerated && (
-                        <Badge className="text-xs bg-purple-500">
-                          <Sparkles className="h-3 w-3 mr-1" />
-                          AI
-                        </Badge>
-                      )}
+                      <Badge variant="outline" className="text-xs">
+                        {tree.legalReviewStatus}
+                      </Badge>
                     </div>
                   </motion.div>
                 ))
@@ -545,9 +468,9 @@ export default function GenealogyPage() {
                     </div>
                   </div>
                   <div className="absolute top-4 right-4 bg-white/90 dark:bg-slate-800/90 rounded-lg p-3 shadow-lg">
-                    <p className="text-sm font-medium">AI Confidence</p>
-                    <p className="text-2xl font-bold text-indigo-600">
-                      {(selectedTree.confidenceScore * 100).toFixed(0)}%
+                    <p className="text-sm font-medium">Legal Review</p>
+                    <p className="text-lg font-bold text-indigo-600">
+                      {selectedTree.legalReviewStatus}
                     </p>
                   </div>
                 </div>
@@ -635,11 +558,11 @@ export default function GenealogyPage() {
                         </div>
                       )}
 
-                      {selectedTree?.heirDistribution[selectedMember.id] && (
+                      {selectedTree?.reviewedDistribution[selectedMember.id] && (
                         <div className="flex items-center justify-between pt-2 border-t">
-                          <span className="text-sm font-medium">Estimated Share</span>
+                          <span className="text-sm font-medium">Reviewed Share</span>
                           <span className="text-lg font-bold text-green-600">
-                            {selectedTree.heirDistribution[selectedMember.id].toFixed(1)}%
+                            {selectedTree.reviewedDistribution[selectedMember.id].toFixed(1)}%
                           </span>
                         </div>
                       )}
@@ -679,24 +602,26 @@ export default function GenealogyPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Users className="h-5 w-5" />
-                Heir Distribution Summary
+                Relationship Research Summary
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="text-center p-6 rounded-xl bg-gradient-to-br from-blue-500/10 to-indigo-500/10">
-                  <p className="text-4xl font-bold text-blue-600">{selectedTree.totalHeirs}</p>
-                  <p className="text-muted-foreground">Total Heirs Identified</p>
+                  <p className="text-4xl font-bold text-blue-600">{selectedTree.candidateRelativeCount}</p>
+                  <p className="text-muted-foreground">Relationship Candidates</p>
                 </div>
                 <div className="text-center p-6 rounded-xl bg-gradient-to-br from-green-500/10 to-emerald-500/10">
-                  <p className="text-4xl font-bold text-green-600">{selectedTree.confirmedHeirs}</p>
-                  <p className="text-muted-foreground">Heirs Located</p>
+                  <p className="text-4xl font-bold text-green-600">{selectedTree.locatedRelativeCount}</p>
+                  <p className="text-muted-foreground">Candidates Located</p>
                 </div>
                 <div className="text-center p-6 rounded-xl bg-gradient-to-br from-purple-500/10 to-pink-500/10">
                   <p className="text-4xl font-bold text-purple-600">
-                    {((selectedTree.confirmedHeirs / selectedTree.totalHeirs) * 100).toFixed(0)}%
+                    {selectedTree.candidateRelativeCount > 0
+                      ? ((selectedTree.locatedRelativeCount / selectedTree.candidateRelativeCount) * 100).toFixed(0)
+                      : "0"}%
                   </p>
-                  <p className="text-muted-foreground">Location Success Rate</p>
+                  <p className="text-muted-foreground">Candidate Location Rate</p>
                 </div>
               </div>
             </CardContent>
