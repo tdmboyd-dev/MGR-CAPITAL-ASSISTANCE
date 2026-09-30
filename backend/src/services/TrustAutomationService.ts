@@ -599,14 +599,19 @@ class TrustAutomationService {
   /**
    * Complete notarization and activate trust
    */
-  async activateTrust(enrollmentId: string): Promise<TrustEnrollment> {
+  async activateTrust(enrollmentId: string, verifiedEin: string): Promise<TrustEnrollment> {
     const enrollment = await this.getEnrollment(enrollmentId);
     if (!enrollment) throw new Error('Enrollment not found');
 
     const plan = TRUST_PLANS[enrollment.trustType];
 
-    // Generate EIN for trust (would call IRS API)
-    const ein = `${Math.floor(Math.random() * 90) + 10}-${Math.floor(Math.random() * 9000000) + 1000000}`;
+    // EINs are issued by the IRS. Never synthesize a real-looking identifier.
+    // Activation requires a founder-supplied EIN that was obtained and verified
+    // through an authoritative process outside this service.
+    const ein = verifiedEin?.trim();
+    if (!/^\d{2}-\d{7}$/.test(ein || '')) {
+      throw new Error('A verified IRS-issued EIN in NN-NNNNNNN format is required before trust activation');
+    }
 
     // Update enrollment
     enrollment.trustEIN = ein;
