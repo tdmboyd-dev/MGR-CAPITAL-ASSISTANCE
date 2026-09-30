@@ -125,27 +125,6 @@ router.post("/auto-collect", authenticate, roleGuard(["ADMIN"]), async (req, res
 });
 
 /**
- * GET /api/payments/:paymentId
- * Get payment status
- */
-router.get("/:paymentId", authenticate, roleGuard(["ADMIN"]), async (req, res) => {
-  try {
-    const { paymentId } = req.params;
-
-    const payment = await nickelPaymentService.getPaymentStatus(paymentId);
-
-    if (!payment) {
-      return res.status(404).json({ error: "Payment not found" });
-    }
-
-    res.json({ payment });
-  } catch (error: any) {
-    logger.error("Payment status check failed", { error: error.message });
-    res.status(500).json({ error: error.message });
-  }
-});
-
-/**
  * GET /api/payments/client/:clientId
  * Get all payments for a client
  */
@@ -524,6 +503,28 @@ router.get("/summary", authenticate, roleGuard(["ADMIN"]), async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+
+/**
+ * GET /api/payments/:paymentId
+ * Get payment status
+ */
+router.get("/:paymentId", authenticate, roleGuard(["ADMIN"]), async (req, res) => {
+  try {
+    const { paymentId } = req.params;
+
+    const payment = await nickelPaymentService.getPaymentStatus(paymentId);
+
+    if (!payment) {
+      return res.status(404).json({ error: "Payment not found" });
+    }
+
+    res.json({ payment });
+  } catch (error: any) {
+    logger.error("Payment status check failed", { error: error.message });
+    res.status(500).json({ error: error.message });
+  }
+});
+
 
 // ============================================
 // WEBHOOKS (No auth - verified by signatures)
