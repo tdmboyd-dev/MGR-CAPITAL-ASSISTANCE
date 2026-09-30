@@ -205,6 +205,11 @@ app.use(cors({
   optionsSuccessStatus: 204,
 }));
 app.use(cookieParser());
+
+// Provider webhook signatures must be computed over the raw request bytes.
+// Register raw parsers before the general JSON parser.
+app.use("/api/payments/webhook/stripe", express.raw({ type: "application/json", limit: "2mb" }));
+app.use("/api/payments/webhook/opensign", express.raw({ type: "application/json", limit: "2mb" }));
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
