@@ -31,14 +31,6 @@ const TIER_INFO: Record<string, { displayName: string; displayRate: string; actu
   TIER_5_EXECUTIVE_PARTNER: { displayName: "Executive Partner", displayRate: "100%", actualRate: "50%", color: "text-emerald-400" },
 };
 
-function formatCurrency(cents: number): string {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 0,
-  }).format(cents / 100);
-}
-
 export default function AdminEmployees() {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
