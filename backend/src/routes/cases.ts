@@ -13,6 +13,7 @@ import { enforceStateFeeCap } from "../data/stateRules.js";
 import { notificationCenterService } from "../services/NotificationCenterService.js";
 import { notificationService } from "../services/NotificationService.js";
 import { demoDataService } from "../services/DemoDataService.js";
+import { authService } from "../services/AuthService.js";
 import {
   isValidTransition,
   validateTransition,
@@ -625,6 +626,41 @@ router.get("/deadlines", authMiddleware, roleGuard(["ADMIN"]), async (req: Reque
     res.status(500).json({ success: false, error: "Failed to load deadlines" });
   }
 });
+
+/**
+ * POST /api/cases/:id/collaboration-ticket
+ * Mint a 60-second case-scoped WebSocket ticket after checking case access.
+ */
+router.post("/:id/collaboration-ticket", authMiddleware, asyncHandler(async (req: AuthRequest, res: Response) => {
+  const caseData = await prisma.case.findUnique({
+    where: { id: req.params.id },
+    select: { id: true, clientId: true, assignedEmployeeId: true },
+  });
+
+  if (!caseData) {
+    throw Errors.notFound("Case");
+  }
+
+  const user = req.user!;
+  const allowed =
+    user.role === "FOUNDER" ||
+    user.role === "ADMIN" ||
+    (user.role === "EMPLOYEE" && caseData.assignedEmployeeId === user.id) ||
+    (user.role === "CLIENT" && caseData.clientId === user.id);
+
+  if (!allowed) {
+    throw Errors.forbidden("You do not have access to this case collaboration room");
+  }
+
+  const ticket = authService.generateCollaborationTicket({
+    id: user.id,
+    email: user.email,
+    role: user.role,
+    tier: user.tier,
+  }, caseData.id);
+
+  res.json({ success: true, ticket, expiresInSeconds: 60 });
+}));
 
 /**
  * GET /api/cases/:id - Get single case details (FOUNDER ONLY)
