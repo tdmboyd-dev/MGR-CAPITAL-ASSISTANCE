@@ -223,7 +223,7 @@ TRACERFY_API_URL=https://api.tracerfy.com/v1
 ## Login Credentials (Dev)
 
 ```
-Founder: time@mgrcapital.com / Dorothy1956!
+Founder: time@mgrcapital.com / [REDACTED — rotate leaked credential and configure via environment]
 ```
 
 ---
