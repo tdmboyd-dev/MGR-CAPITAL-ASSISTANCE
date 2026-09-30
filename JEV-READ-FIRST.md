@@ -1,5 +1,7 @@
 # Jev Read First — MGR Capital Assistance
 
+Read `MGR-Beast-Pack/MGR-BEAST-PACK.md` as the current MGR BEAST operating handbook. Preserve this repository's product requirements and existing work records.
+
 ## Jev belongs in
 Case-intake classification, jurisdiction/process routing, extracted document-type classification, missing-document triage, case/lead urgency, research relevance, exception categorization, fraud/anomaly triage for review, and model routing.
 

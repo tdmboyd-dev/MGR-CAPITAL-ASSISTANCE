@@ -1,5 +1,7 @@
 # MGR AI REPOSITORY BOOT
 
+Read `MGR-Beast-Pack/MGR-BEAST-PACK.md` as the current MGR BEAST operating handbook. Preserve this repository's product requirements and existing work records.
+
 Before substantial work in this repository:
 1. Read this repository's JEV-READ-FIRST.md.
 2. Read the repo's current continuity/spec/queue/audit/evidence files relevant to the task.
