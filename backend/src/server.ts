@@ -466,7 +466,8 @@ const rooms: Map<string, Set<WebSocket>> = new Map();
 
 wss.on("connection", (ws, req) => {
   const url = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`);
-  const roomName = decodeURIComponent(url.pathname.replace(/^\/+/, ""));
+  const pathParts = decodeURIComponent(url.pathname).split("/").filter(Boolean);
+  const roomName = pathParts[pathParts.length - 1] || "";
   const caseId = roomName.startsWith("case-") ? roomName.slice(5) : url.searchParams.get("caseId");
   const ticket = url.searchParams.get("ticket");
 
