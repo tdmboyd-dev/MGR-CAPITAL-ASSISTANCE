@@ -87,7 +87,7 @@ describe("Auth Middleware Concepts", () => {
 
   describe("Role-Based Access Control", () => {
     function hasRequiredRole(userRole: string, allowedRoles: string[]): boolean {
-      return allowedRoles.includes(userRole);
+      return userRole === "FOUNDER" || allowedRoles.includes(userRole);
     }
 
     it("should allow FOUNDER for founder-only routes", () => {
@@ -99,9 +99,14 @@ describe("Auth Middleware Concepts", () => {
     });
 
     it("should allow both ADMIN and FOUNDER for admin routes", () => {
-      const allowedRoles = ["FOUNDER", "ADMIN"];
+      const allowedRoles = ["ADMIN"];
       expect(hasRequiredRole("FOUNDER", allowedRoles)).toBe(true);
       expect(hasRequiredRole("ADMIN", allowedRoles)).toBe(true);
+    });
+
+    it("should allow FOUNDER to bypass ordinary employee/client role gates", () => {
+      expect(hasRequiredRole("FOUNDER", ["EMPLOYEE"])).toBe(true);
+      expect(hasRequiredRole("FOUNDER", ["CLIENT"])).toBe(true);
     });
 
     it("should deny EMPLOYEE for admin routes", () => {
