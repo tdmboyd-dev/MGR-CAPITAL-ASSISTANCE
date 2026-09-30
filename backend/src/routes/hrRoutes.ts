@@ -8,6 +8,11 @@ import { Router, Response } from "express";
 import { AuthenticatedRequest, authMiddleware } from "../middleware/authMiddleware.js";
 import { roleGuard, ROLE_GROUPS } from "../middleware/roleGuard.js";
 import { demoDataService } from "../services/DemoDataService.js";
+import { trainingService } from "../services/TrainingService.js";
+import { notificationService } from "../services/NotificationService.js";
+import { createPasswordResetToken } from "../utils/security.js";
+import { randomBytes } from "node:crypto";
+import bcrypt from "bcrypt";
 import prisma from "../lib/prisma.js";
 
 const router = Router();
@@ -235,23 +240,34 @@ router.get("/onboarding", async (_req: AuthenticatedRequest, res: Response) => {
         role: { in: ["EMPLOYEE", "TEAM_LEAD"] },
         createdAt: { gte: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000) }
       },
+      include: {
+        trainingProgress: {
+          select: { id: true, completedAt: true }
+        }
+      },
       orderBy: { createdAt: "desc" }
     });
 
-    // For a real system, we'd have a separate OnboardingCandidate table
-    // Here we simulate based on user creation date and activity
-    const formatted = candidates.map(c => ({
-      id: c.id,
-      name: c.name,
-      email: c.email,
-      phone: c.phone,
-      appliedDate: c.createdAt.toISOString(),
-      status: c.isActive ? "APPROVED" : "PENDING",
-      backgroundCheckStatus: "PASSED",
-      documentsSubmitted: true,
-      interviewScore: Math.floor(Math.random() * 30) + 70,
-      notes: null
-    }));
+    const formatted = candidates.map(c => {
+      const hasTrainingAssignment = c.trainingProgress.length > 0;
+      return {
+        id: c.id,
+        name: c.name,
+        email: c.email,
+        phone: c.phone,
+        appliedDate: c.createdAt.toISOString(),
+        status: c.isActive ? "APPROVED" : hasTrainingAssignment ? "TRAINING" : "PENDING",
+        backgroundCheckStatus: "PENDING",
+        documentsSubmitted: false,
+        interviewScore: null,
+        notes: null,
+        tracking: {
+          backgroundCheckTracked: false,
+          onboardingDocumentsTracked: false,
+          interviewScoreTracked: false,
+        }
+      };
+    });
 
     res.json({
       success: true,
@@ -271,16 +287,32 @@ router.post("/onboarding", async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { name, email, phone, notes } = req.body;
 
-    // Create a new user in pending state
+    const normalizedEmail = String(email || "").trim().toLowerCase();
+    if (!name || !normalizedEmail || !normalizedEmail.includes("@")) {
+      return res.status(400).json({ success: false, error: "Valid name and email are required" });
+    }
+
+    const existing = await prisma.user.findUnique({ where: { email: normalizedEmail } });
+    if (existing) {
+      return res.status(409).json({ success: false, error: "A user with this email already exists" });
+    }
+
+    // Pending candidates receive a cryptographically random unusable password.
+    // Activation sends a one-time password-setup/reset link; no shared default
+    // password is ever stored in source or returned to HR.
+    const temporarySecret = randomBytes(48).toString("base64url");
+    const passwordHash = await bcrypt.hash(temporarySecret, 12);
+
     const newUser = await prisma.user.create({
       data: {
         name,
-        email,
+        email: normalizedEmail,
         phone,
-        passwordHash: "PENDING_ONBOARDING", // Will be set during activation
+        passwordHash,
         role: "EMPLOYEE",
         employeeTier: "TIER_1_ASSOCIATE",
-        isActive: false
+        isActive: false,
+        emailVerified: false,
       }
     });
 
@@ -313,12 +345,40 @@ router.post("/onboarding/:id/approve", async (req: AuthenticatedRequest, res: Re
   try {
     const { id } = req.params;
 
+    const candidate = await prisma.user.findUnique({
+      where: { id },
+      select: { id: true, email: true, recoveryEmail: true, name: true, role: true, isActive: true }
+    });
+
+    if (!candidate || !["EMPLOYEE", "TEAM_LEAD"].includes(candidate.role)) {
+      return res.status(404).json({ success: false, error: "Onboarding candidate not found" });
+    }
+
+    const { token, expiresAt } = await createPasswordResetToken(candidate.id);
+    const setupEmail = await notificationService.sendPasswordResetEmail({
+      to: candidate.recoveryEmail || candidate.email,
+      toName: candidate.name || undefined,
+      userId: candidate.id,
+      resetToken: token,
+      expiresAt,
+    });
+
+    if (!setupEmail.success) {
+      return res.status(503).json({
+        success: false,
+        error: "Candidate was not activated because the password-setup email could not be sent",
+      });
+    }
+
     await prisma.user.update({
       where: { id },
       data: { isActive: true }
     });
 
-    res.json({ success: true, message: "Candidate approved and activated" });
+    res.json({
+      success: true,
+      message: "Candidate approved. A secure password-setup link was sent before activation.",
+    });
   } catch (error: any) {
     console.error("[HR] Approve error:", error);
     res.status(500).json({ success: false, error: error.message });
@@ -355,9 +415,20 @@ router.post("/onboarding/:id/move-to-training", async (req: AuthenticatedRequest
   try {
     const { id } = req.params;
 
-    // In a real system, this would trigger training module assignment
-    // For now, just acknowledge the transition
-    res.json({ success: true, message: "Candidate moved to training phase" });
+    const candidate = await prisma.user.findUnique({
+      where: { id },
+      select: { id: true, role: true, isActive: true }
+    });
+    if (!candidate || !["EMPLOYEE", "TEAM_LEAD"].includes(candidate.role)) {
+      return res.status(404).json({ success: false, error: "Onboarding candidate not found" });
+    }
+
+    await trainingService.assignModulesToUser(id);
+
+    res.json({
+      success: true,
+      message: "Required training modules assigned",
+    });
   } catch (error: any) {
     console.error("[HR] Move to training error:", error);
     res.status(500).json({ success: false, error: error.message });
@@ -421,8 +492,8 @@ router.get("/performance", async (_req: AuthenticatedRequest, res: Response) => 
         casesThisMonth: thisMonth,
         casesLastMonth: lastMonth,
         successRate,
-        avgResponseTime: Math.floor(Math.random() * 48) + 1, // Simulated for now
-        clientSatisfaction: 3.5 + Math.random() * 1.5, // Simulated
+        avgResponseTime: null,
+        clientSatisfaction: null,
         tierProgressPercent: Math.round(progressPercent),
         flags
       };
@@ -575,10 +646,9 @@ router.get("/teams", async (_req: AuthenticatedRequest, res: Response) => {
       const totalCases = members.reduce((sum: number, m: any) => sum + m.assignedCases.length, 0);
       const pendingTraining = members.reduce((sum: number, m: any) => sum + m.trainingProgress.length, 0);
 
-      // Calculate average performance (simplified)
-      const avgPerformance = members.length > 0
-        ? Math.round(70 + Math.random() * 25) // Simulated
-        : 0;
+      // No authoritative cross-team performance metric exists yet. Returning
+      // null is intentional; do not manufacture a score from unrelated fields.
+      const avgPerformance: number | null = null;
 
       return {
         teamLeadId: lead.id,
