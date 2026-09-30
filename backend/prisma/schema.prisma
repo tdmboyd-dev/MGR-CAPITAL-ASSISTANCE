@@ -441,6 +441,7 @@ model Case {
   employeeViolations    EmployeeViolation[]
   aiUsageRecords        AiUsageRecord[]
   tokenRewards          TokenReward[]
+  genealogyTrees        GenealogyTree[]
 
   @@index([status])
   @@index([state])
@@ -469,6 +470,44 @@ model Deadline {
 
   @@index([caseId])
   @@index([dueDate])
+}
+
+// ============================================
+// GENEALOGY RESEARCH
+// Case-linked relationship evidence. This is NOT an automatic legal-heir
+// determination. Heir/distribution fields remain unverified until explicit
+// legal review is recorded.
+// ============================================
+
+model GenealogyTree {
+  id                       String   @id @default(cuid())
+  caseId                   String
+  case                     Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  decedentName             String
+  decedentDeathDate        DateTime?
+  lastKnownAddress         String?
+  state                    String
+
+  rootMember               Json
+  candidateRelativeCount   Int      @default(0)
+  locatedRelativeCount     Int      @default(0)
+
+  legalReviewStatus        String   @default("UNVERIFIED")
+  reviewedHeirCount        Int      @default(0)
+  reviewedDistribution     Json?
+  legalReviewedBy          String?
+  legalReviewedAt          DateTime?
+
+  researchAssisted         Boolean  @default(false)
+  researchNotes            Json?
+
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+
+  @@index([caseId])
+  @@index([state])
+  @@index([legalReviewStatus])
 }
 
 // ============================================
