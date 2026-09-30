@@ -23,7 +23,7 @@ import prisma from "../lib/prisma.js";
 
 // Environment variables (configure in .env)
 const NICKEL_API_KEY = process.env.NICKEL_API_KEY || "";
-const NICKEL_API_URL = process.env.NICKEL_API_URL || "https://api.getnickel.com/v1";
+const NICKEL_API_URL = process.env.NICKEL_API_URL || "https://rest.nickel.com";
 const NICKEL_WEBHOOK_SECRET = process.env.NICKEL_WEBHOOK_SECRET || "";
 
 export interface BankAccount {
@@ -232,8 +232,18 @@ class NickelPaymentService {
     this.isConfigured = !!this.apiKey;
 
     if (!this.isConfigured) {
-      logger.warn("Nickel API key not configured - using mock mode");
+      logger.warn("Nickel API key not configured; Nickel money movement is unavailable");
     }
+  }
+
+  /**
+   * The repo's historical Nickel adapter used guessed/legacy endpoints and
+   * simulated successful transfers. Keep money movement disabled until the
+   * current Nickel OpenAPI customer/payment-method/bill-pay contracts are
+   * implemented and verified end to end.
+   */
+  private assertCurrentApiIntegrated(operation: string): never {
+    throw new Error(`Nickel ${operation} is blocked pending current OpenAPI integration; no money was moved`);
   }
 
   /**
@@ -246,6 +256,7 @@ class NickelPaymentService {
     ipAddress?: string,
     userAgent?: string
   ): Promise<ACHAuthorization> {
+    this.assertCurrentApiIntegrated("ACH authorization");
     logger.info("Creating ACH authorization", { clientId });
 
     // Validate bank account
@@ -315,6 +326,7 @@ class NickelPaymentService {
     description: string,
     caseId?: string
   ): Promise<PaymentResult> {
+    this.assertCurrentApiIntegrated("ACH debit");
     logger.info("Initiating ACH payment", { authorizationId, amount, caseId });
 
     const authRow = await prisma.payment.findFirst({
@@ -552,7 +564,7 @@ class NickelPaymentService {
   getStatus(): { configured: boolean; mode: string; features: string[] } {
     return {
       configured: this.isConfigured,
-      mode: this.isConfigured ? "live" : "mock",
+      mode: "blocked_reintegration",
       features: [
         "ach_receive",      // FREE - collect payments via ACH
         "ach_send",         // FREE - pay vendors via ACH
@@ -576,6 +588,7 @@ class NickelPaymentService {
    * Client can pay via the link with card or bank transfer
    */
   async createPaymentLink(request: CardPaymentRequest): Promise<{
+    this.assertCurrentApiIntegrated("payment link");
     success: boolean;
     paymentLink?: string;
     paymentId?: string;
@@ -666,6 +679,7 @@ class NickelPaymentService {
     description: string,
     caseId?: string
   ): Promise<PaymentResult> {
+    this.assertCurrentApiIntegrated("card payment");
     logger.info("Processing card payment", { amount, caseId });
 
     const paymentId = `card_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -752,6 +766,7 @@ class NickelPaymentService {
    * Create a recipient for bill payments (vendor, contractor, client)
    */
   async createBillPayRecipient(recipient: Omit<BillPayRecipient, "id">): Promise<BillPayRecipient> {
+    this.assertCurrentApiIntegrated("bill-pay recipient");
     logger.info("Creating bill pay recipient", { name: recipient.name });
 
     const recipientId = `rcpt_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -823,6 +838,7 @@ class NickelPaymentService {
     method: "ach" | "check",
     description: string,
     options?: {
+    this.assertCurrentApiIntegrated("bill payment");
       memo?: string;
       caseId?: string;
       scheduledDate?: Date;
@@ -997,6 +1013,7 @@ class NickelPaymentService {
     amount: number,
     description: string,
     options?: {
+    this.assertCurrentApiIntegrated("invoice");
       caseId?: string;
       dueDate?: Date;
       lineItems?: InvoiceLineItem[];
@@ -1208,8 +1225,8 @@ class NickelPaymentService {
    */
   verifyWebhookSignature(payload: string, signature: string): boolean {
     if (!NICKEL_WEBHOOK_SECRET) {
-      logger.warn("Nickel webhook secret not configured");
-      return true; // Allow in dev mode
+      logger.warn("Nickel webhook secret not configured; rejecting webhook");
+      return false
     }
 
     const crypto = require("crypto");
