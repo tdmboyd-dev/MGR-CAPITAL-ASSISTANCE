@@ -101,15 +101,6 @@ function formatDate(dateStr: string): string {
   });
 }
 
-function formatDateTime(dateStr: string): string {
-  return new Date(dateStr).toLocaleString("en-US", {
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit"
-  });
-}
-
 function getTierColor(tier: string): string {
   switch (tier) {
     case "TIER_5_EXECUTIVE_PARTNER": return "text-purple-400 bg-purple-900/30";
@@ -169,7 +160,6 @@ export default function HRPanel() {
   const [showEmployeeModal, setShowEmployeeModal] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
   const [showOnboardingModal, setShowOnboardingModal] = useState(false);
-  const [selectedCandidate, setSelectedCandidate] = useState<OnboardingCandidate | null>(null);
 
   // Filter states
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
