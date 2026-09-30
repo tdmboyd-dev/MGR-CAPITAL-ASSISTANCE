@@ -568,10 +568,12 @@ class FounderNotaryService {
       errors.push('ID has expired');
     }
 
-    // In production, would use ID verification service (Jumio, Onfido, etc.)
-    // For now, simulate verification
-    const faceMatchScore = 85 + Math.random() * 15; // 85-100
-    const verified = errors.length === 0 && faceMatchScore >= 80;
+    // Identity verification is a legal/security control. Do not simulate a
+    // successful credential or face match when no authoritative provider is
+    // configured.
+    const faceMatchScore = 0;
+    errors.push('Automated identity verification provider is not configured');
+    const verified = false;
 
     // Update session
     session.idType = idData.idType;
@@ -584,7 +586,7 @@ class FounderNotaryService {
     session.status = verified ? 'id_verified' : 'failed';
 
     if (!verified) {
-      session.failureReason = errors.join(', ') || 'Face match score too low';
+      session.failureReason = errors.join(', ') || 'Identity verification unavailable';
     }
 
     await this.updateSession(session);
