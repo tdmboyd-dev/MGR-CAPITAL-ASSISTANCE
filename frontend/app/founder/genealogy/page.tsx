@@ -295,7 +295,7 @@ export default function GenealogyPage() {
             <DialogContent className="max-w-lg">
               <DialogHeader>
                 <DialogTitle className="flex items-center gap-2">
-                  <Brain className="h-5 w-5 text-indigo-600" />
+                  <GitBranch className="h-5 w-5 text-indigo-600" />
                   Create Genealogy Research Record
                 </DialogTitle>
               </DialogHeader>
@@ -372,7 +372,7 @@ export default function GenealogyPage() {
                   {generateMutation.isPending ? (
                     <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
                   ) : (
-                    <Sparkles className="h-4 w-4 mr-2" />
+                    <Plus className="h-4 w-4 mr-2" />
                   )}
                   Create Research Tree
                 </Button>
