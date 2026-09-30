@@ -383,23 +383,14 @@ I understand that if my payment is returned unpaid, I may be charged a return fe
   }
 
   /**
-   * Verify document on blockchain (Solana stub)
+   * Verify document on blockchain.
+   *
+   * This service does not currently have an authoritative chain writer wired
+   * in. Fail closed instead of returning a fabricated transaction identifier.
    */
-  private async verifyOnBlockchain(pdfBytes: Uint8Array, userId: string): Promise<string | undefined> {
-    // In production, implement real Solana/Ethereum verification
-    // For now, return a simulated transaction ID
-    try {
-      const hash = createHash('sha256').update(pdfBytes).digest('hex');
-      const fakeNonce = Math.random().toString(36).substring(2, 15);
-      const txId = `0x${hash.substring(0, 40)}${fakeNonce}`;
-
-      logger.info('Blockchain verification simulated', { txId: txId.substring(0, 20), userId });
-
-      return txId;
-    } catch (error) {
-      logger.warn('Blockchain verification failed', { error });
-      return undefined;
-    }
+  private async verifyOnBlockchain(_pdfBytes: Uint8Array, userId: string): Promise<string | undefined> {
+    logger.warn('Blockchain verification unavailable: no authoritative chain writer configured', { userId });
+    return undefined;
   }
 
   /**
