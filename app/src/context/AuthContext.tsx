@@ -5,7 +5,7 @@ interface User {
   id: string;
   email: string;
   name: string;
-  role: "FOUNDER" | "ADMIN" | "EMPLOYEE" | "CLIENT";
+  role: "FOUNDER" | "ADMIN" | "HR" | "COMPLIANCE" | "TEAM_LEAD" | "EMPLOYEE" | "CLIENT";
   tier?: string | null;
 }
 
