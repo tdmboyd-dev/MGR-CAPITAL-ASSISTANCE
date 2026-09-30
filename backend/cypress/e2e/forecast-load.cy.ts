@@ -1,6 +1,6 @@
 describe("Analytics Forecast Load", () => {
   beforeEach(() => {
-    cy.login("time@mgrcapital.com", "Dorothy1956!");
+    cy.login("time@mgrcapital.com", Cypress.env("founderPassword"));
   });
 
   it("should display forecast summary on founder dashboard", () => {
