@@ -130,7 +130,7 @@ class SkipTraceService {
     this.isConfigured = !!this.apiKey;
 
     if (!this.isConfigured) {
-      logger.warn("Tracerfy API key not configured - using mock mode");
+      logger.warn("Tracerfy API key not configured; skip tracing will fail closed");
     }
   }
 
@@ -187,7 +187,7 @@ class SkipTraceService {
         if (!submitResponse.ok) {
           const errorText = await submitResponse.text();
           logger.error("Tracerfy submit error", { status: submitResponse.status, error: errorText });
-          return this.generateMockResult(input, enhanced);
+          return this.errorResult(input, enhanced, `Tracerfy request failed with status ${submitResponse.status}`);
         }
 
         const submitData = await submitResponse.json() as any;
@@ -235,32 +235,23 @@ class SkipTraceService {
           }
         }
 
-        logger.warn("Tracerfy queue still pending after polling, returning partial", { queueId });
-        const partialResult = this.generateMockResult(input, enhanced);
+        logger.warn("Tracerfy queue still pending after polling", { queueId });
+        const partialResult = this.errorResult(input, enhanced, "Tracerfy result is still pending");
         partialResult.status = "partial";
         partialResult.id = `tracerfy_pending_${queueId}`;
         return partialResult;
 
       } catch (error: any) {
         logger.error("Tracerfy API error", { error: error.message });
-        return this.generateMockResult(input, enhanced);
+        return this.errorResult(input, enhanced, error.message);
       }
     }
 
-    // Mock response for development
-    const result = this.generateMockResult(input, enhanced);
-    result.cost = enhanced ? 0.15 : 0.02;
-
-    logger.info("Skip trace completed (mock)", {
+    logger.warn("Skip trace not attempted because Tracerfy is not configured", {
       name: `${input.firstName} ${input.lastName}`,
-      status: result.status,
-      confidence: result.matchConfidence,
-      phones: result.phones.length,
-      relatives: result.relatives.length,
       duration: Date.now() - startTime,
     });
-
-    return result;
+    return this.errorResult(input, enhanced, "Tracerfy API key not configured");
   }
 
   /**
@@ -521,20 +512,7 @@ class SkipTraceService {
   ): Promise<SkipTraceResult[]> {
     logger.info("Tracing property owners", { address, city, state });
 
-    // In production, this would use property records API
-    // then skip trace each owner found
-
-    // Mock: Return a sample owner
-    const mockOwner = await this.tracePerson({
-      firstName: "Property",
-      lastName: "Owner",
-      address,
-      city,
-      state,
-      zip,
-    });
-
-    return [mockOwner];
+    throw new Error("Property-owner lookup provider is not configured; no owner identity was fabricated");
   }
 
   /**
@@ -762,112 +740,26 @@ class SkipTraceService {
     this.requestCount++;
   }
 
-  private generateMockResult(input: PersonInput, enhanced: boolean): SkipTraceResult {
-    const isFound = Math.random() > 0.2; // 80% success rate in mock
-    const isDeceased = Math.random() > 0.85; // 15% deceased in mock
-
-    const result: SkipTraceResult = {
-      id: `skip_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+  private errorResult(input: PersonInput, enhanced: boolean, reason: string): SkipTraceResult {
+    logger.warn("Skip trace unavailable", { reason, enhanced });
+    return {
+      id: `trace_error_${Date.now()}`,
       input,
-      matchConfidence: isFound ? Math.floor(Math.random() * 30) + 70 : 0,
-      status: isFound ? "found" : "not_found",
+      matchConfidence: 0,
+      status: "error",
       phones: [],
       emails: [],
       addresses: [],
       relatives: [],
       processedAt: new Date(),
-      cost: enhanced ? 0.15 : 0.02,
+      cost: 0,
     };
-
-    if (isFound) {
-      result.person = {
-        firstName: input.firstName,
-        lastName: input.lastName,
-        middleName: input.middleName,
-        age: Math.floor(Math.random() * 40) + 30,
-        isDeceased,
-        deceasedDate: isDeceased
-          ? new Date(Date.now() - Math.random() * 365 * 24 * 60 * 60 * 1000 * 3)
-              .toISOString()
-              .split("T")[0]
-          : undefined,
-      };
-
-      // Add mock phones
-      result.phones = [
-        {
-          number: `+1${Math.floor(Math.random() * 9000000000) + 1000000000}`,
-          type: "mobile",
-          isValid: true,
-          doNotCall: false,
-          lastSeen: new Date(),
-        },
-        {
-          number: `+1${Math.floor(Math.random() * 9000000000) + 1000000000}`,
-          type: "landline",
-          isValid: true,
-          doNotCall: false,
-          lastSeen: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
-        },
-      ];
-
-      // Add mock emails
-      result.emails = [
-        {
-          address: `${input.firstName.toLowerCase()}.${input.lastName.toLowerCase()}@email.com`,
-          isValid: true,
-          type: "personal",
-          lastSeen: new Date(),
-        },
-      ];
-
-      // Add mock addresses
-      result.addresses = [
-        {
-          street: input.address || "123 Main Street",
-          city: input.city || "Miami",
-          state: input.state || "FL",
-          zip: input.zip || "33101",
-          county: "Miami-Dade",
-          type: "current",
-          isVerified: true,
-        },
-      ];
-
-      // Add mock relatives (enhanced only)
-      if (enhanced) {
-        result.relatives = [
-          {
-            firstName: "Jane",
-            lastName: input.lastName,
-            relationship: "spouse",
-            age: Math.floor(Math.random() * 10) + (result.person.age || 40) - 5,
-          },
-          {
-            firstName: "John Jr",
-            lastName: input.lastName,
-            relationship: "child",
-            age: Math.floor(Math.random() * 15) + 18,
-          },
-          {
-            firstName: "Mary",
-            lastName: "Smith",
-            relationship: "sibling",
-            age: (result.person.age || 40) + Math.floor(Math.random() * 6) - 3,
-          },
-        ];
-
-        result.aliases = [`${input.firstName[0]}. ${input.lastName}`];
-      }
-    }
-
-    return result;
   }
 
   getStatus(): { configured: boolean; mode: string; rateLimit: { used: number; max: number } } {
     return {
       configured: this.isConfigured,
-      mode: this.isConfigured ? "live" : "mock",
+      mode: this.isConfigured ? "live" : "unavailable",
       rateLimit: {
         used: this.requestCount,
         max: this.maxRequestsPerMinute,
