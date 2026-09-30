@@ -51,7 +51,7 @@ Output JSON only:
 
     try {
       if (!openai) {
-        return this.getMockAudit(state, type);
+        throw new Error('Legal audit model is not configured; compliance was not evaluated');
       }
       const response = await openai.chat.completions.create({
         model: 'gpt-4o',
@@ -71,8 +71,7 @@ Output JSON only:
       };
     } catch (error) {
       console.error('Legal audit error:', error);
-      // Return mock audit for demo
-      return this.getMockAudit(state, type);
+      throw error instanceof Error ? error : new Error('Legal audit failed');
     }
   }
 
@@ -414,160 +413,6 @@ Output JSON only:
     }
   };
 
-  /**
-   * Perform rule-based audit when API unavailable
-   * Uses comprehensive state-specific rules for all 50 states
-   */
-  private getMockAudit(state: string, type: string): AuditResult {
-    const stateUpper = state.toUpperCase();
-    const rules = this.STATE_RULES[stateUpper] || {
-      notaryRequired: true,
-      witnessCount: 1,
-      disclosureRequired: true,
-      recordingRequired: true,
-      specialRequirements: ['Check state-specific requirements'],
-      statute: 'State specific statute',
-      deadlineYears: 3
-    };
-
-    const errors: string[] = [];
-    const suggestions: string[] = [];
-    const issues: string[] = [];
-    let score = 100;
-
-    // Check common requirements
-    if (rules.notaryRequired) {
-      errors.push('Notarization section not detected in document');
-      score -= 15;
-      issues.push(`${stateUpper} requires notarized signatures on ${type.replace(/_/g, ' ')} documents`);
-    }
-
-    if (rules.witnessCount > 0) {
-      errors.push(`${rules.witnessCount} witness signature(s) required but not detected`);
-      score -= 10;
-    }
-
-    if (rules.disclosureRequired) {
-      errors.push('Required surplus funds disclosure statement missing');
-      score -= 10;
-      issues.push('Missing mandatory disclosure per state statute');
-    }
-
-    // Add deadline warning
-    suggestions.push(`DEADLINE: ${rules.deadlineYears} year(s) from tax sale date per ${rules.statute}`);
-
-    // Add fee cap warning if applicable
-    if (rules.feeCapPercent) {
-      suggestions.push(`FEE CAP: ${rules.feeCapPercent}% maximum fee allowed in ${stateUpper}`);
-    }
-
-    // Add state-specific issues
-    rules.specialRequirements.forEach(req => {
-      suggestions.push(req);
-    });
-
-    // Common suggestions
-    suggestions.push('Include full legal property description with APN/Parcel number');
-    suggestions.push(`Reference ${rules.statute} in document`);
-    if (rules.recordingRequired) {
-      suggestions.push('Include county recording instructions and fee information');
-    }
-
-    // Determine compliance
-    const isCompliant = errors.length === 0;
-    if (!isCompliant) {
-      issues.push(`Document does not meet ${stateUpper} statutory requirements`);
-    }
-
-    return {
-      errors,
-      suggestions,
-      score: Math.max(0, score),
-      compliance: {
-        state: stateUpper,
-        type,
-        isCompliant,
-        issues
-      },
-      timestamp: new Date()
-    };
-  }
-
-  /**
-   * Check if a claim is within the deadline
-   */
-  checkDeadline(state: string, saleDate: Date): {
-    withinDeadline: boolean;
-    deadlineDate: Date;
-    daysRemaining: number;
-    statute: string;
-  } {
-    const stateUpper = state.toUpperCase();
-    const rules = this.STATE_RULES[stateUpper] || { deadlineYears: 3, statute: 'State statute' };
-
-    const deadlineDate = new Date(saleDate);
-    deadlineDate.setFullYear(deadlineDate.getFullYear() + rules.deadlineYears);
-
-    const now = new Date();
-    const daysRemaining = Math.ceil((deadlineDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-
-    return {
-      withinDeadline: daysRemaining > 0,
-      deadlineDate,
-      daysRemaining: Math.max(0, daysRemaining),
-      statute: rules.statute,
-    };
-  }
-
-  /**
-   * Check if fee complies with state cap
-   */
-  checkFeeCap(state: string, feePercent: number): {
-    compliant: boolean;
-    maxPercent: number | null;
-    message: string;
-  } {
-    const stateUpper = state.toUpperCase();
-    const rules = this.STATE_RULES[stateUpper];
-
-    if (!rules || !rules.feeCapPercent) {
-      return {
-        compliant: true,
-        maxPercent: null,
-        message: `${stateUpper} has no statutory fee cap`,
-      };
-    }
-
-    return {
-      compliant: feePercent <= rules.feeCapPercent,
-      maxPercent: rules.feeCapPercent,
-      message: feePercent <= rules.feeCapPercent
-        ? `Fee of ${feePercent}% is within ${stateUpper} cap of ${rules.feeCapPercent}%`
-        : `Fee of ${feePercent}% EXCEEDS ${stateUpper} cap of ${rules.feeCapPercent}%`,
-    };
-  }
-
-  /**
-   * Get all supported states
-   */
-  getSupportedStates(): string[] {
-    return Object.keys(this.STATE_RULES).sort();
-  }
-
-  /**
-   * Get state-specific compliance requirements
-   */
-  getStateRequirements(state: string): {
-    rules: any;
-    exists: boolean;
-  } {
-    const stateUpper = state.toUpperCase();
-    const rules = this.STATE_RULES[stateUpper];
-    return {
-      rules: rules || this.STATE_RULES['FL'], // Default to FL rules
-      exists: !!rules
-    };
-  }
 }
 
 export const legalAuditorService = new LegalAuditorService();
