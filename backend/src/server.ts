@@ -121,6 +121,7 @@ import { loginRateLimit, passwordResetRateLimit } from "./middleware/rateLimit.j
 
 // Services that need initialization
 import { notificationService } from "./services/NotificationService.js";
+import { authService } from "./services/AuthService.js";
 
 // Webhook routes (external partner leads)
 import webhookRoutes from "./routes/webhookRoutes.js";
@@ -464,25 +465,31 @@ const wss = new WebSocketServer({ port: WS_PORT });
 const rooms: Map<string, Set<WebSocket>> = new Map();
 
 wss.on("connection", (ws, req) => {
-  const url = new URL(req.url!, `http://${req.headers.host}`);
-  const caseId = url.searchParams.get("caseId") || url.pathname.split("-")[1];
+  const url = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`);
+  const roomName = decodeURIComponent(url.pathname.replace(/^\/+/, ""));
+  const caseId = roomName.startsWith("case-") ? roomName.slice(5) : url.searchParams.get("caseId");
+  const ticket = url.searchParams.get("ticket");
 
-  if (!caseId) {
-    ws.close(1008, "Missing caseId parameter");
+  if (!caseId || !ticket) {
+    ws.close(1008, "Authenticated case collaboration ticket required");
+    return;
+  }
+
+  const identity = authService.verifyCollaborationTicket(ticket, caseId);
+  if (!identity) {
+    ws.close(1008, "Invalid or expired collaboration ticket");
     return;
   }
 
   const roomKey = `case-${caseId}`;
 
-  // Join room
   if (!rooms.has(roomKey)) {
     rooms.set(roomKey, new Set());
   }
   rooms.get(roomKey)!.add(ws);
 
-  console.log(`[WS] Client joined room: ${roomKey} (${rooms.get(roomKey)!.size} users)`);
+  console.log(`[WS] Authenticated client joined room: ${roomKey} (${rooms.get(roomKey)!.size} users)`);
 
-  // Broadcast messages to all clients in the same room
   ws.on("message", (message) => {
     const room = rooms.get(roomKey);
     if (!room) return;
@@ -494,7 +501,6 @@ wss.on("connection", (ws, req) => {
     });
   });
 
-  // Handle disconnection
   ws.on("close", () => {
     const room = rooms.get(roomKey);
     if (room) {
