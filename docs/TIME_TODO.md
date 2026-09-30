@@ -287,7 +287,7 @@ ELEVENLABS_API_KEY=...
 - **Backend:** localhost:4000
 - **Frontend:** localhost:3011
 - **WebSocket:** localhost:4001
-- **Login:** admin@capitalmgr.com / Dorothy1956!
+- **Login:** admin@capitalmgr.com / [REDACTED — rotate leaked credential and configure via environment]
 
 ---
 
