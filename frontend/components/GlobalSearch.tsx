@@ -91,23 +91,8 @@ export function GlobalSearch() {
         setSelectedIndex(0);
       } catch (error) {
         console.error("Search error:", error);
-        // Fallback to mock results for demo
-        setResults([
-          {
-            id: "1",
-            type: "case",
-            title: `Case matching "${debouncedQuery}"`,
-            subtitle: "TN-001234",
-            link: "/founder/cases/1",
-          },
-          {
-            id: "2",
-            type: "client",
-            title: `Client matching "${debouncedQuery}"`,
-            subtitle: "john@example.com",
-            link: "/founder/clients/2",
-          },
-        ]);
+        setResults([]);
+        setSelectedIndex(0);
       } finally {
         setLoading(false);
       }
