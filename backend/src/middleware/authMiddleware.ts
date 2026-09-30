@@ -172,7 +172,10 @@ export function requireRoles(...allowedRoles: UserRole[]) {
       return;
     }
 
-    if (!allowedRoles.includes(req.user.role as UserRole)) {
+    // Repository authority contract: FOUNDER is the platform superuser and
+    // bypasses ordinary role gates. founderOnly() remains available for routes
+    // that must exclude every non-founder role.
+    if (req.user.role !== "FOUNDER" && !allowedRoles.includes(req.user.role as UserRole)) {
       logger.warn("Access denied - insufficient role", {
         userId: req.user.id,
         role: req.user.role,
