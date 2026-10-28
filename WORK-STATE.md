@@ -1,3 +1,11 @@
+# Current implementation checkpoint — October 28, 2026
+
+Bounded local filesystem adapter repair completed on isolated branch repair/bottom-up-capital-2026-10-28. Original master preserved. Read [HANDOFF.md](HANDOFF.md) and [current scorecard](docs/full-build/SCORECARD.md) before continuing.9/9 actual Windows filesystem acceptance checks pass; this does not establish full product completion. No external provider or Capital runtime service started.
+
+The previous continuity checkpoint follows unchanged as historical evidence.
+
+---
+
 # Current work and resume record — MGR-CAPITAL-ASSISTANCE
 
 Updated: 2026-09-29. Responsible session: continuity-recovery-2026-09-29.

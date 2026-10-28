@@ -1,0 +1,35 @@
+{
+  "repository": "tdmboyd-dev/MGR-CAPITAL-ASSISTANCE",
+  "head": "2c5d717d818041880a92e1f1f42a9cbe255549c4",
+  "sourceEdited": false,
+  "providerCalls": false,
+  "cases": [
+    {
+      "id": "CAP-FS-READ",
+      "stage": "actual filesystem on owned isolated fixture",
+      "symptom": "download accepts parent traversal outside configured vault",
+      "reproduced": true
+    },
+    {
+      "id": "CAP-FS-WRITE",
+      "stage": "actual filesystem on owned isolated fixture",
+      "symptom": "upload writes outside configured vault",
+      "reproduced": true
+    },
+    {
+      "id": "CAP-FS-LIST",
+      "stage": "actual filesystem on owned isolated fixture",
+      "symptom": "list enumerates outside configured vault",
+      "reproduced": true
+    },
+    {
+      "id": "CAP-AUTH-ROTATE",
+      "stage": "actual production function with controlled concurrent database ports, not PostgreSQL race qualification",
+      "symptom": "same old refresh token admits two successful descendants without compare-and-set",
+      "reproduced": true,
+      "successes": 2,
+      "newRecords": 2,
+      "writes": 4
+    }
+  ]
+}

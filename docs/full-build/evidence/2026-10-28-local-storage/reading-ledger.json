@@ -1,0 +1,150 @@
+{
+  "repository": "tdmboyd-dev/MGR-CAPITAL-ASSISTANCE",
+  "baseline": "2c5d717d818041880a92e1f1f42a9cbe255549c4",
+  "scope": "one local-filesystem adapter repair; not whole product audit",
+  "files": [
+    {
+      "path": "AGENTS.md",
+      "sha256": "c199755de471f55b3e0b88a856813042dbd99fb8f9e6cc657dd976dabb4d7c7c",
+      "read": "full"
+    },
+    {
+      "path": "JEV-READ-FIRST.md",
+      "sha256": "ece36eb86422d7d06dce28328ed27c5ab5c5177993820ad4a19e8cb729024984",
+      "read": "full"
+    },
+    {
+      "path": "WORK-STATE.md",
+      "sha256": "6d2a1c77946717b575dbedf19f3d6fdbf3626a61721b56e9e0e8983e40904c6a",
+      "read": "full"
+    },
+    {
+      "path": "TIME_TODO.md",
+      "sha256": "21a2a3b0e66c1edfb1b625c92637085f7cd93191e0eb532c6cce2b6d436119ae",
+      "read": "full"
+    },
+    {
+      "path": "backend/package.json",
+      "sha256": "34a1100c7c64f94f047bfdf628330e3c59edb03a3c13f9c9890c77ab4ee9cdee",
+      "read": "full"
+    },
+    {
+      "path": "frontend/package.json",
+      "sha256": "23e3946d21d29d8c458c0540b90822e562e126f7561e30d3e80b4b5028ccbf47",
+      "read": "full"
+    },
+    {
+      "path": "app/package.json",
+      "sha256": "74fb8c59d30172228f263c2c1a590141616cdaf893b66e006bf03432d6fcb4df",
+      "read": "full"
+    },
+    {
+      "path": "mobile-app/package.json",
+      "sha256": "b7a7ccac33877f84d5ffc751684a543b25bbe48d5db8d7f2773f81687c9246ff",
+      "read": "full"
+    },
+    {
+      "path": "backend/src/services/storage/LocalFilesystemAdapter.ts",
+      "sha256": "4a19479fdfb758223e1ad4e34dccb03bd2138b0a884933fd7da3c7aeaf05aa46",
+      "read": "full"
+    },
+    {
+      "path": "backend/src/services/storage/IStorageProvider.ts",
+      "sha256": "17849fd99a3e8116c7d79c601ad623f8187c56cabce1c0e54ed913c7f57a4253",
+      "read": "full"
+    },
+    {
+      "path": "backend/src/services/AuthService.ts",
+      "sha256": "e7912033c8a8765780979528c4fd4668ed8dba37a6eb2329a29cf115ec051b3e",
+      "read": "full"
+    },
+    {
+      "path": "backend/src/middleware/authMiddleware.ts",
+      "sha256": "cf67f29ec94fd2aef36b9c4b544eb21619d91b5819f76130f5d46bd80bb8ad94",
+      "read": "full"
+    },
+    {
+      "path": "backend/src/middleware/auth.ts",
+      "sha256": "270c27639948f38793f55a3b8a70df260fbdb9d2d044672f1488cbcd561730cf",
+      "read": "full"
+    },
+    {
+      "path": "backend/src/config/env.ts",
+      "sha256": "e3eb02ccda58499c448e2dfe1f4b112b41ddc6038390c1cc779763835681ca26",
+      "read": "full"
+    },
+    {
+      "path": "backend/tsconfig.json",
+      "sha256": "22067745d8830b3841f85f0191016639f9c68a4e0023e3277506ae2bbeb7de08",
+      "read": "full"
+    },
+    {
+      "path": "backend/tests/storage-local-boundary.test.cjs",
+      "sha256": "dce5d39d7076ba08d0d4d25e220f054b5e4f2cf916f4133baa3c177abe6b5435",
+      "read": "full"
+    },
+    {
+      "path": "MGR_CAPITAL_ASSISTANCE_MASTER_SPEC_V1.md",
+      "sha256": "5418bc70102bf981b82733559c61f7d6a0b66d38de7ad68a7d3309fea659b9e3",
+      "read": "partial",
+      "scope": "lines1-180,721-769,3291-3410 read; remainder of6743-line master spec unread by this lane"
+    },
+    {
+      "path": "backend/src/services/storage/StorageRouter.ts",
+      "sha256": "dc6a0950091e42397eadef2f3df7fc3fb2c66da60023f9d5f6894f27f602addc",
+      "read": "partial",
+      "scope": "lines1-320 read; rest unread"
+    },
+    {
+      "path": "backend/src/services/DocumentVaultService.ts",
+      "sha256": "de52baf70ce2979e5e6f04d268be8e0a542ce0e97a141a9d6c17530efa4899bb",
+      "read": "partial",
+      "scope": "first210 lines read; remainder unread"
+    },
+    {
+      "path": "backend/src/routes/documents.ts",
+      "sha256": "e8419f76aeef6e15175f234d37004a9133f28ba0e91edd1e2bc8131818548545",
+      "read": "partial",
+      "scope": "first180 lines read; remainder unread"
+    },
+    {
+      "path": "backend/src/routes/auth.ts",
+      "sha256": "642a8534f69146a08e295c89eb5b2f51dc4b0bc5e0503ffc52e7a70190935e7f",
+      "read": "partial",
+      "scope": "first240 lines read; remainder unread"
+    },
+    {
+      "path": "backend/src/server.ts",
+      "sha256": "d3ea966d3eafa0a6b61ed0cff26f9b4077768883ecf7467010791a27e586f928",
+      "read": "partial",
+      "scope": "first170 lines read; remainder unread"
+    },
+    {
+      "path": "backend/prisma/schema.prisma",
+      "sha256": "22f515c04350853d1e144f27ac6a86f3e3e4ae96a3c755c992ae8c7a6df0f7a7",
+      "read": "partial",
+      "scope": "StorageProviderType enum only; rest unread"
+    },
+    {
+      "path": "MGR-Beast-Pack/MGR-BEAST-PACK.md",
+      "sha256": "5bce398eadd22d12ab164035fa0c94a29f484e03293573402a2fead9d80ffe6b",
+      "read": "full-inherited",
+      "scope": "same5bce398e handbook fully read in earlier shared context; current bytes hash confirmed"
+    },
+    {
+      "path": "HANDOFF.md",
+      "sha256": "1381807b9d574d828926fc88ff2fb39100ef527e4d194ea46b82fec342850904",
+      "read": "full-authored-and-reviewed"
+    },
+    {
+      "path": "docs/full-build/LOCAL-STORAGE-REPAIR-2026-10-28.md",
+      "sha256": "bd21639eeaf6b69ce497f3d66e1cea4b7f3a171b445de7f32fac036837242edc",
+      "read": "full-authored-and-reviewed"
+    },
+    {
+      "path": "docs/full-build/SCORECARD.md",
+      "sha256": "9b5dc5db33dcd3b3fea78077fc5e1fde1b18bbe78cbbb68a7826d6ee8aeecab1",
+      "read": "full-authored-and-reviewed"
+    }
+  ]
+}
