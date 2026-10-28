@@ -198,9 +198,11 @@ class AuthService {
       const decoded = jwt.verify(token, config.jwtSecret, {
         issuer: "mgr-capital",
         audience: "mgr-capital-app",
+        algorithms: ["HS256"],
       }) as TokenPayload & { iat: number; exp: number };
 
-      if (decoded.type !== "access") {
+      if (decoded.type !== "access" || typeof decoded.userId !== "string" || !decoded.userId || decoded.userId.length > 200 ||
+        typeof decoded.email !== "string" || !decoded.email || !Number.isFinite(decoded.exp) || decoded.exp <= Date.now() / 1000) {
         return null;
       }
 
@@ -208,6 +210,16 @@ class AuthService {
     } catch {
       return null;
     }
+  }
+
+  /** JWT establishes identity only; permissions come from the current account. */
+  async resolveAccessToken(token: string): Promise<TokenPayload | null> {
+    const decoded = this.verifyAccessToken(token);
+    if (!decoded) return null;
+    const user = await prisma.user.findUnique({ where: { id: decoded.userId },
+      select: { id: true, email: true, role: true, employeeTier: true, isActive: true } });
+    if (!user?.isActive) return null;
+    return { userId: user.id, email: user.email, role: user.role, tier: user.employeeTier, type: "access" };
   }
 
   /**
@@ -263,81 +275,29 @@ class AuthService {
   ): Promise<RefreshResult> {
     const hashedToken = hashToken(rawToken);
 
-    const storedToken = await prisma.refreshToken.findFirst({
-      where: {
-        hashedToken,
-        revokedAt: null,
-        rotatedAt: null,
-        expiresAt: { gt: new Date() },
-      },
-      include: {
-        user: {
-          select: {
-            id: true,
-            email: true,
-            role: true,
-            employeeTier: true,
-            isActive: true,
-          },
-        },
-      },
-    });
-
-    if (!storedToken) {
-      return { success: false, error: "Invalid or expired refresh token" };
-    }
-
-    if (!storedToken.user.isActive) {
-      return { success: false, error: "Account is disabled" };
-    }
-
-    // Generate new token pair
     const newRawToken = generateSecureToken();
     const newHashedToken = hashToken(newRawToken);
     const newExpiresAt = getRefreshExpiryDate();
-
-    // Create new token and mark old one as rotated in a transaction
-    const [, newRefreshToken] = await prisma.$transaction([
-      prisma.refreshToken.update({
-        where: { id: storedToken.id },
-        data: { rotatedAt: new Date() },
-      }),
-      prisma.refreshToken.create({
-        data: {
-          userId: storedToken.userId,
-          hashedToken: newHashedToken,
-          userAgent,
-          ipAddress,
-          expiresAt: newExpiresAt,
-        },
-      }),
-    ]);
-
-    // Update old token with reference to new one
-    await prisma.refreshToken.update({
-      where: { id: storedToken.id },
-      data: { replacedById: newRefreshToken.id },
+    const replacementId = crypto.randomUUID();
+    // Compare-and-set consumes the predecessor once. Link, successor and signing
+    // share one transaction; failure restores the predecessor, with no token issued.
+    return prisma.$transaction(async (db) => {
+      const stored = await db.refreshToken.findFirst({
+        where: { hashedToken, revokedAt: null, rotatedAt: null, expiresAt: { gt: new Date() } },
+        include: { user: { select: { id: true, email: true, role: true, employeeTier: true, isActive: true } } },
+      });
+      if (!stored?.user.isActive) return { success: false, error: "Invalid or expired refresh token" };
+      const claimed = await db.refreshToken.updateMany({
+        where: { id: stored.id, hashedToken, revokedAt: null, rotatedAt: null, expiresAt: { gt: new Date() }, user: { isActive: true } },
+        data: { rotatedAt: new Date(), replacedById: replacementId },
+      });
+      if (claimed.count !== 1) return { success: false, error: "Invalid or expired refresh token" };
+      await db.refreshToken.create({ data: { id: replacementId, userId: stored.userId, hashedToken: newHashedToken,
+        userAgent, ipAddress, expiresAt: newExpiresAt } });
+      const access = this.generateAccessToken(stored.user);
+      return { success: true, tokens: { accessToken: access.token, refreshToken: newRawToken,
+        accessExpiresAt: access.expiresAt, refreshExpiresAt: newExpiresAt } };
     });
-
-    // Generate new access token
-    const { token: accessToken, expiresAt: accessExpiresAt } =
-      this.generateAccessToken(storedToken.user);
-
-    logger.debug("Refresh token rotated", {
-      userId: storedToken.userId,
-      oldTokenId: storedToken.id,
-      newTokenId: newRefreshToken.id,
-    });
-
-    return {
-      success: true,
-      tokens: {
-        accessToken,
-        refreshToken: newRawToken,
-        accessExpiresAt,
-        refreshExpiresAt: newExpiresAt,
-      },
-    };
   }
 
   /**

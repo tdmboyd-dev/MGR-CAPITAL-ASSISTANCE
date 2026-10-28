@@ -42,11 +42,12 @@ export type AuthRequest = AuthenticatedRequest;
  * Main authentication middleware
  * Verifies JWT access token from Authorization header
  */
-export function authMiddleware(
+export async function authMiddleware(
   req: AuthenticatedRequest,
   res: Response,
   next: NextFunction
-): void {
+): Promise<void> {
+  delete req.user; delete req.token;
   const authHeader = req.headers.authorization;
 
   if (!authHeader?.startsWith("Bearer ")) {
@@ -61,7 +62,7 @@ export function authMiddleware(
   const token = authHeader.substring(7);
 
   try {
-    const decoded = authService.verifyAccessToken(token);
+    const decoded = await authService.resolveAccessToken(token);
 
     if (!decoded) {
       res.status(401).json({
@@ -83,28 +84,8 @@ export function authMiddleware(
     req.token = token;
 
     next();
-  } catch (error: any) {
-    logger.warn("Auth middleware error", { error: error.message });
-
-    if (error.name === "TokenExpiredError") {
-      res.status(401).json({
-        success: false,
-        error: "Access token expired",
-        code: "TOKEN_EXPIRED",
-      });
-    } else if (error.name === "JsonWebTokenError") {
-      res.status(401).json({
-        success: false,
-        error: "Invalid authentication token",
-        code: "INVALID_TOKEN",
-      });
-    } else {
-      res.status(401).json({
-        success: false,
-        error: "Authentication failed",
-        code: "AUTH_FAILED",
-      });
-    }
+  } catch {
+    res.status(503).json({ success: false, error: "Authentication service unavailable", code: "AUTH_UNAVAILABLE" });
   }
 }
 
@@ -116,11 +97,12 @@ export function authMiddleware(
  * Optional authentication middleware
  * Sets user if token valid, but doesn't require auth
  */
-export function optionalAuthMiddleware(
+export async function optionalAuthMiddleware(
   req: AuthenticatedRequest,
   res: Response,
   next: NextFunction
-): void {
+): Promise<void> {
+  delete req.user; delete req.token;
   const authHeader = req.headers.authorization;
 
   if (!authHeader?.startsWith("Bearer ")) {
@@ -131,7 +113,7 @@ export function optionalAuthMiddleware(
   const token = authHeader.substring(7);
 
   try {
-    const decoded = authService.verifyAccessToken(token);
+    const decoded = await authService.resolveAccessToken(token);
 
     if (decoded) {
       req.user = {
@@ -144,7 +126,8 @@ export function optionalAuthMiddleware(
       req.token = token;
     }
   } catch {
-    // Token invalid, but that's okay for optional auth
+    res.status(503).json({ success: false, error: "Authentication service unavailable", code: "AUTH_UNAVAILABLE" });
+    return;
   }
 
   next();

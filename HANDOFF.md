@@ -1,5 +1,10 @@
 # MGR Capital Assistance — current handoff
 
+## Active continuation: authentication and build repair
+
+Read [current auth repair](docs/full-build/AUTH-REPAIR-2026-10-28.md) and the appended scorecard. Current results:13 boundary checks,14 actual auth/PostgreSQL/loopback HTTP checks,9 filesystem checks and a passing full backend build. Refresh rotation/current principal are repaired in this scope; case/document access and fallback/delete reconciliation are next. Compliance Buddy is saved and owner-held pending the TaxSlayer reply; its hourly monitor remains active.
+
+
 ## October 28, 2026 bounded repair
 
 Read [local storage repair](docs/full-build/LOCAL-STORAGE-REPAIR-2026-10-28.md), [scorecard](docs/full-build/SCORECARD.md) and [reading scope](docs/full-build/evidence/2026-10-28-local-storage/reading-ledger.json).

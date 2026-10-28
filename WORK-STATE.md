@@ -1,3 +1,7 @@
+# Active Capital repair — October28,2026
+
+Branch repair/bottom-up-capital-2026-10-28; auth rotation/current account repair implemented and qualified with13 boundary,14 actual PostgreSQL/HTTP checks,9 filesystem checks; full backend build passed. Read HANDOFF.md, docs/full-build/AUTH-REPAIR-2026-10-28.md and persistent scorecard. Next:case/document access matrix, direct fallback and delete recovery. No full autonomous server, browser/provider, legal or payout operation is verified. Compliance saved at b1ec44b, on owner hold pending TaxSlayer; hourly monitor ACTIVE. Private Capital lab config is outside Git.
+
 # Current implementation checkpoint — October 28, 2026
 
 Bounded local filesystem adapter repair completed on isolated branch repair/bottom-up-capital-2026-10-28. Original master preserved. Read [HANDOFF.md](HANDOFF.md) and [current scorecard](docs/full-build/SCORECARD.md) before continuing.9/9 actual Windows filesystem acceptance checks pass; this does not establish full product completion. No external provider or Capital runtime service started.

@@ -16,17 +16,17 @@ export const config = {
   // JWT Settings (hardened — NEVER use defaults in production)
   jwtSecret: (() => {
     const secret = process.env.JWT_SECRET;
-    if (!secret && process.env.NODE_ENV === "production") {
-      throw new Error("FATAL: JWT_SECRET environment variable is required in production");
+    if (!secret || secret.length < 32) {
+      throw new Error("FATAL: configure a server-only JWT_SECRET of at least32 characters");
     }
-    return secret || "dev-secret-change-in-production";
+    return secret;
   })(),
   jwtRefreshSecret: (() => {
     const secret = process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET;
     if (!secret && process.env.NODE_ENV === "production") {
       throw new Error("FATAL: JWT_REFRESH_SECRET environment variable is required in production");
     }
-    return secret || "dev-refresh-secret-change-in-production";
+    return secret!;
   })(),
   jwtAccessExpiryMinutes: parseInt(process.env.JWT_ACCESS_EXPIRY_MINUTES || "15", 10),
   jwtRefreshExpiryDays: parseInt(process.env.JWT_REFRESH_EXPIRY_DAYS || "14", 10),

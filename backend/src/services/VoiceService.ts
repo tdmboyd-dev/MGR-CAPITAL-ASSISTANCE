@@ -86,7 +86,7 @@ export class VoiceService {
         'Authorization': `Token ${DEEPGRAM_API_KEY}`,
         'Content-Type': 'audio/webm',
       },
-      body: audioBuffer,
+      body: new Uint8Array(audioBuffer),
     });
 
     if (!response.ok) {
@@ -105,7 +105,7 @@ export class VoiceService {
    */
   private async whisperSTT(audioBuffer: Buffer): Promise<STTResult> {
     const formData = new FormData();
-    const blob = new Blob([audioBuffer], { type: 'audio/webm' });
+    const blob = new Blob([new Uint8Array(audioBuffer)], { type: 'audio/webm' });
     formData.append('file', blob, 'audio.webm');
     formData.append('model', 'whisper-1');
     formData.append('language', 'en');

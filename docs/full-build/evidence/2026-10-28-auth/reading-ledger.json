@@ -1,0 +1,78 @@
+{
+  "readInFull": [
+    "backend/src/services/AuthService.ts",
+    "backend/src/middleware/authMiddleware.ts",
+    "backend/src/middleware/auth.ts",
+    "backend/src/config/env.ts",
+    "backend/src/utils/logger.ts",
+    "backend/src/lib/prisma.ts",
+    "backend/src/services/VoiceService.ts",
+    "backend/src/services/storage/PCloudAdapter.ts",
+    "backend/tests/auth-current-boundary.test.cjs",
+    "backend/tests/auth-postgres-acceptance.ts",
+    "backend/tests/transport-boundary.test.cjs"
+  ],
+  "relevantContextRead": [
+    "AGENTS.md",
+    "JEV-READ-FIRST.md",
+    "HANDOFF.md",
+    "WORK-STATE.md",
+    "docs/full-build/SCORECARD.md",
+    "docs/full-build/LOCAL-STORAGE-REPAIR-2026-10-28.md"
+  ],
+  "boundedRead": [
+    "Master specification overview/roles/auth/session sections only",
+    "TIME_TODO opening/history;100percent claim is not current acceptance",
+    "backend/src/routes/auth.ts login/register/refresh/logout/logout-all slices",
+    "backend/prisma/schema.prisma User/RefreshToken and role enums",
+    "tenant middleware scoped inspection; full authorization remains queued"
+  ],
+  "handbook": "Previously read full2121-line handbook unchanged SHA2565bce398eadd22d12ab164035fa0c94a29f484e03293573402a2fead9d80ffe6b confirmed",
+  "hashes": [
+    {
+      "path": "backend/src/services/AuthService.ts",
+      "sha256": "69e48984e46c796e49958b3069f0611d542ef98eb39b47c7f13502ca1dbc915f"
+    },
+    {
+      "path": "backend/src/middleware/authMiddleware.ts",
+      "sha256": "49b3c99b23b8cf7512bc7aa16269ec909de33f510f38fca3645feaf4286d8224"
+    },
+    {
+      "path": "backend/src/middleware/auth.ts",
+      "sha256": "270c27639948f38793f55a3b8a70df260fbdb9d2d044672f1488cbcd561730cf"
+    },
+    {
+      "path": "backend/src/config/env.ts",
+      "sha256": "2c2388f0bb11e8b16caae29b933683a0e4695347a585faa34b72a4c44f8b580e"
+    },
+    {
+      "path": "backend/src/utils/logger.ts",
+      "sha256": "b3b932454a7486fa523dfdedb59a88fb1df92e79824d0098453cdd254f46ae5a"
+    },
+    {
+      "path": "backend/src/lib/prisma.ts",
+      "sha256": "e52ab79459faf2401fb05de8ab0470dcc58c0f25191f143787c7736813f1afa4"
+    },
+    {
+      "path": "backend/src/services/VoiceService.ts",
+      "sha256": "25431180149ae861e57f48c9518fdd9d17622bfae0f8c7752fbd0d88c0284df2"
+    },
+    {
+      "path": "backend/src/services/storage/PCloudAdapter.ts",
+      "sha256": "688635d420b8a72af916e70216b823b754f2e05c40d3e63564508a9f85123d25"
+    },
+    {
+      "path": "backend/tests/auth-current-boundary.test.cjs",
+      "sha256": "572714ca7a37568d8fda62c1973fa249f4e7fac253a261085565987430e631c5"
+    },
+    {
+      "path": "backend/tests/auth-postgres-acceptance.ts",
+      "sha256": "2a52c31210179256c58becd684b067983b78055d11d859ba31cff946300546ab"
+    },
+    {
+      "path": "backend/tests/transport-boundary.test.cjs",
+      "sha256": "da7d13633ffac055bac515fb1fc63960eab94f40d099a604f84d448e245dd815"
+    }
+  ],
+  "unread": "Unlisted source and four application surfaces are not claimed fully semantically audited."
+}

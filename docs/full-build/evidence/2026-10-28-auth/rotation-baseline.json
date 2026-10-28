@@ -1,0 +1,15 @@
+{
+  "baseline": "AuthService unchanged from original2c5d717 through storage checkpointf658442",
+  "priorControlledReproduction": [
+    {
+      "id": "CAP-AUTH-ROTATE",
+      "stage": "actual production function with controlled concurrent database ports, not PostgreSQL race qualification",
+      "symptom": "same old refresh token admits two successful descendants without compare-and-set",
+      "reproduced": true,
+      "successes": 2,
+      "newRecords": 2,
+      "writes": 4
+    }
+  ],
+  "limit": "Historical controlled concurrency ports, not original PostgreSQL proof"
+}

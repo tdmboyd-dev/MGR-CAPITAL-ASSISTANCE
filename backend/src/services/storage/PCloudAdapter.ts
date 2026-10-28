@@ -106,7 +106,7 @@ export class PCloudAdapter implements IStorageProvider {
       url.searchParams.set("nopartial", "1");
 
       const formData = new FormData();
-      formData.append("file", new Blob([data]), fileName);
+      formData.append("file", new Blob([new Uint8Array(data)]), fileName);
 
       const response = await fetch(url.toString(), {
         method: "POST",
