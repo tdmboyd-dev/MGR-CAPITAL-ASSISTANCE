@@ -1,0 +1,9 @@
+{"timestamp":"2026-10-28T15:08:35.350Z","level":"info","message":"User logged in","context":{"userId":"cmvs91s6s00011fvbwq0pie9u","email":"login-8832d472-316c-40bd-9462-12bd90210eaa@example.invalid"}}
+{"timestamp":"2026-10-28T15:08:35.519Z","level":"warn","message":"Access denied - founder only","context":{"userId":"cmvs91s3z00001fvbh0mnglfx","role":"EMPLOYEE"}}
+prisma:error 
+Invalid `prisma.refreshToken.create()` invocation:
+
+
+Error occurred during query execution:
+ConnectorError(ConnectorError { user_facing_error: None, kind: QueryError(PostgresError { code: "P0001", message: "synthetic replacement failure", severity: "ERROR", detail: None, column: None, hint: None }), transient: false })
+Capital auth PostgreSQL/HTTP checks passed:14
