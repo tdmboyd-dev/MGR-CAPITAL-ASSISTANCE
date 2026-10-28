@@ -1,0 +1,2 @@
+[StorageRouter] Initialized with 5 provider(s): local, local, local, local, local
+Actual reopen checks passed:3

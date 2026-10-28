@@ -1,0 +1,25 @@
+
+> mgr-capital-backend@0.1.0 test:auth-boundary
+> node --test tests/auth-current-boundary.test.cjs tests/transport-boundary.test.cjs
+
+✔ six concurrent refresh calls consume one predecessor and create one linked successor (222.9233ms)
+✔ successor failure rolls back predecessor consumption and allows safe later retry (59.2921ms)
+✔ disabled and expired accounts cannot rotate (75.368ms)
+✔ current role replaces a stale founder JWT claim (45.6251ms)
+✔ deleted or disabled principal cannot regain access from a signed JWT (84.3731ms)
+✔ mandatory middleware awaits current account and publishes its role before next (35.1789ms)
+✔ database failure returns503 without next or stale request identity (43.9386ms)
+✔ optional anonymous request clears stale identity and retains anonymous behavior (22.674ms)
+✔ pCloud multipart transport preserves only the selected Buffer slice (267.7341ms)
+✔ Deepgram binary request preserves Buffer slice bytes through a controlled transport (76.3911ms)
+✔ Whisper multipart request preserves Buffer slice bytes through a controlled transport (44.4269ms)
+✔ configuration refuses missing or short signing secrets in all runtime modes (35.5573ms)
+✔ explicit strong signing configuration is retained without a shared fallback secret (21.7668ms)
+ℹ tests 13
+ℹ suites 0
+ℹ pass 13
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2138.1393

@@ -3347,6 +3347,8 @@ model FileRegistry {
   fileSize        BigInt
   mimeType        String?
   sha256Hash      String                     // For integrity verification
+  lifecycle       String           @default("READY")
+  lastError       String?
   isReplicated    Boolean          @default(false)  // Exists in 2+ providers
   replicaOf       String?                    // ID of primary FileRegistry entry
   accessCount     Int              @default(0)

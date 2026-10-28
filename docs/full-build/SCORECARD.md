@@ -24,3 +24,18 @@ Current stage:implemented and local-runtime verified for the adapter. No databas
 | Whole product |Unassessed |Unassessed |Case/document authorization, fallback/delete, voice truth, full operations |
 
 Evidence and source-reading scope: [auth repair](AUTH-REPAIR-2026-10-28.md). No statutory, fee, claimant entitlement, signing or payout authority changed. Named percentages are passed checks divided by that stated set, not project completion.
+
+
+## October28 case/document and storage recovery continuation
+
+| Defined acceptance scope | Before | Current | Evidence / remaining |
+|---|---|---|---|
+| Case/document access and saved operation API matrix | Ownership, tenant, disclosure and fallback defects |26/26 checks passed (100% of this named set) |evidence/2026-10-28-vault/vault-postgres-receipt.json; browser journey excluded |
+| Separate-process recovery |Unverified |3/3 passed |vault-reopen-receipt.json; exhaustive crash injection excluded |
+| Auth controlled boundaries |13/13 earlier |13/13 rerun |vault-auth-boundary.txt |
+| Actual auth/DB/HTTP |14/14 earlier |14/14 rerun |auth-postgres-regression.txt |
+| Filesystem boundaries |9/9 earlier |9/9 rerun |vault-filesystem.txt |
+| Full backend generated build |Passed earlier |Passed after current code |vault-build-final.txt |
+| Whole Capital application |Unassessed |Unassessed |UI, case atomicity, migration/replication recovery, session-family, voice, real signatures/filing/providers/production remain open |
+
+Current source and next execution details: VAULT-REPAIR-2026-10-28.md. Owner canceled the TaxSlayer monitor; work is Capital-only. Older scorecard rows describe their dated scopes. Named test-set success is not product completion or production acceptance.

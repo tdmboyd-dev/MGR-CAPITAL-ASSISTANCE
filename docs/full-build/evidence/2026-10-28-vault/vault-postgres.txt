@@ -1,0 +1,15 @@
+[StorageRouter] Initialized with 4 provider(s): local, local, local, local
+prisma:error 
+Invalid `prisma.auditLog.create()` invocation:
+
+
+Error occurred during query execution:
+ConnectorError(ConnectorError { user_facing_error: None, kind: QueryError(PostgresError { code: "P0001", message: "synthetic vault audit failure", severity: "ERROR", detail: None, column: None, hint: None }), transient: false })
+prisma:error 
+Invalid `prisma.auditLog.create()` invocation:
+
+
+Error occurred during query execution:
+ConnectorError(ConnectorError { user_facing_error: None, kind: QueryError(PostgresError { code: "P0001", message: "synthetic vault audit failure", severity: "ERROR", detail: None, column: None, hint: None }), transient: false })
+[StorageRouter] Initialized with 5 provider(s): local, local, local, local, local
+Actual Capital vault checks passed:26

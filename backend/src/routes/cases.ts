@@ -1,6 +1,6 @@
 // ============================================
 // CASES API ROUTES — MGR CAPITAL ASSISTANCE
-// Production-ready case management endpoints
+// Case management endpoints; qualification scope is recorded in docs/full-build.
 // ============================================
 
 import { Router, Request, Response } from "express";
@@ -21,8 +21,38 @@ import {
 } from "../utils/caseLifecycle.js";
 
 import prisma from "../lib/prisma.js";
+import {currentActor,caseScope,documentScope,requireCase,CLIENT_DOCUMENT_TYPES,accessFailure} from "../services/CaseDocumentAccess.js";
 
 const router = Router();
+// Current principal/tenant authority shared with the document domain.
+const caseAuthentication = (req: AuthRequest,res: Response,next: import("express").NextFunction) => authMiddleware(req,res,()=>{
+  void (async()=>{
+    const actor=await currentActor(prisma,req.user!.id);(req as any).capitalActor=actor;
+    const route=req.route?.path;
+    if(["/stats","/deadlines"].includes(route) && (actor.role!=="FOUNDER" || actor.tenantId!==null))throw new AppError("Forbidden",403,"Global founder access required.");
+    if(req.params.id)await requireCase(prisma,actor.id,req.params.id,req.method==="GET" || route==="/my/:id/status"?"read":"manage");
+    if(req.method==="POST" && route==="/"){
+      if(typeof req.body.clientId!=="string" || !req.body.clientId || req.body.clientId.length>100)throw new AppError("Invalid client",400,"Client is required.");
+      const client=await prisma.user.findFirst({where:{id:req.body.clientId,role:"CLIENT",isActive:true,...(actor.role==="FOUNDER"&&actor.tenantId===null?{}:{tenantId:actor.tenantId})},select:{tenantId:true}});
+      if(!client)throw new AppError("Client unavailable",404,"Client not found.");
+      (req as any).capitalTenantId=client.tenantId;
+      if(req.body.assignedEmployeeId && !await prisma.user.findFirst({where:{id:req.body.assignedEmployeeId,role:"EMPLOYEE",isActive:true,tenantId:client.tenantId},select:{id:true}}))throw new AppError("Employee unavailable",400,"Employee must belong to the case company.");
+    }
+    if(route==="/:id/assign"){
+      const owned=await requireCase(prisma,actor.id,req.params.id,"manage");
+      if(!await prisma.user.findFirst({where:{id:req.body.assignedEmployeeId,role:"EMPLOYEE",isActive:true,tenantId:owned.record.tenantId},select:{id:true}}))throw new AppError("Employee unavailable",400,"Employee must belong to the case company.");
+    }
+    next();
+  })().catch(e=>accessFailure(res,e,"Case operation could not be confirmed"));
+});
+function safeCase(record:any,role:string):any {
+  const out={...record};delete out.passwordHash;
+  if(role!=="FOUNDER")for(const key of ["surplusAmountCents","feePercent","estimatedFeeCents","actualFeeCents","clientPayoutCents","recoveryAmountCents","notes","metadata","publicAccessToken","rejectionReason"])delete out[key];
+  if(role==="CLIENT")for(const key of ["internalCode","assignedEmployeeId","assignedEmployee","priority","source","tenantId","portalExpiresAt","portalDissolveAfterDays","portalKeptAlive"])delete out[key];
+  if(Array.isArray(out.documents))out.documents=out.documents.filter((doc:any)=>(role!=="CLIENT" || CLIENT_DOCUMENT_TYPES.includes(doc.type)) && (role!=="TEAM_LEAD" || doc.type!=="CLIENT_ID")).map((doc:any)=>{const d={...doc};delete d.filePath;delete d.fileUrl;delete d.generatedContent;delete d.metadata;delete d.signatureUrl;return d;});
+  return out;
+}
+
 
 // ============================================
 // EMPLOYEE ROUTES — Limited Access
@@ -32,11 +62,12 @@ const router = Router();
 /**
  * GET /api/cases/my - Employee's assigned cases
  */
-router.get("/my", authMiddleware, roleGuard(["EMPLOYEE", "ADMIN"]), async (req: AuthRequest, res: Response) => {
+router.get("/my", caseAuthentication, roleGuard(["EMPLOYEE", "ADMIN"]), async (req: AuthRequest, res: Response) => {
   try {
     const cases = await prisma.case.findMany({
       where: {
-        assignedEmployeeId: req.user!.id
+        assignedEmployeeId: req.user!.id,
+        AND:[caseScope((req as any).capitalActor)]
       },
       select: {
         id: true,
@@ -82,7 +113,7 @@ router.get("/my", authMiddleware, roleGuard(["EMPLOYEE", "ADMIN"]), async (req: 
  * Employees can only: NEW → CONTACTED → DOCS_PENDING
  * FILED, AWAITING_FUNDS, PAID transitions require FOUNDER
  */
-router.post("/my/:id/status", authMiddleware, roleGuard(["EMPLOYEE", "ADMIN"]), asyncHandler(async (req: AuthRequest, res: Response) => {
+router.post("/my/:id/status", caseAuthentication, roleGuard(["EMPLOYEE", "ADMIN"]), asyncHandler(async (req: AuthRequest, res: Response) => {
   const { id } = req.params;
   const { status, notes } = req.body;
 
@@ -191,7 +222,7 @@ router.post("/my/:id/status", authMiddleware, roleGuard(["EMPLOYEE", "ADMIN"]), 
 
   res.json({
     success: true,
-    data: updatedCase,
+    data: safeCase(updatedCase,req.user!.role),
     message: `Case ${caseData.internalCode} moved to ${newStatus}`
   });
 }));
@@ -205,11 +236,12 @@ router.post("/my/:id/status", authMiddleware, roleGuard(["EMPLOYEE", "ADMIN"]), 
  * GET /api/cases/my-cases - Authenticated client view of their cases
  * Used by the client portal dashboard
  */
-router.get("/my-cases", authMiddleware, roleGuard(["CLIENT"]), async (req: AuthRequest, res: Response) => {
+router.get("/my-cases", caseAuthentication, roleGuard(["CLIENT"]), async (req: AuthRequest, res: Response) => {
   try {
     const cases = await prisma.case.findMany({
       where: {
-        clientId: req.user!.id
+        clientId: req.user!.id,
+        AND:[caseScope((req as any).capitalActor)]
       },
       select: {
         id: true,
@@ -249,7 +281,7 @@ router.get("/my-cases", authMiddleware, roleGuard(["CLIENT"]), async (req: AuthR
     res.json({
       success: true,
       count: cases.length,
-      data: casesWithCode
+      data: casesWithCode.map(c=>safeCase(c,req.user!.role))
     });
   } catch (error: any) {
     console.error("Client cases error:", error);
@@ -261,18 +293,18 @@ router.get("/my-cases", authMiddleware, roleGuard(["CLIENT"]), async (req: AuthR
  * GET /api/cases/my/:id - Authenticated client view of a single case
  * Used by the client portal case detail page
  */
-router.get("/my/:id", authMiddleware, async (req: AuthRequest, res: Response) => {
+router.get("/my/:id", caseAuthentication, async (req: AuthRequest, res: Response) => {
   try {
     const user = req.user!;
 
     // Build where clause based on role
-    const where: any = { id: req.params.id };
+    const where: any = { id: req.params.id, AND:[caseScope((req as any).capitalActor)] };
 
     if (user.role === "CLIENT") {
       where.clientId = user.id;
     } else if (user.role === "EMPLOYEE") {
       where.assignedEmployeeId = user.id;
-    } else if (user.role !== "ADMIN" && user.role !== "FOUNDER") {
+    } else if (!["ADMIN","FOUNDER","TEAM_LEAD","COMPLIANCE"].includes(user.role)) {
       return res.status(403).json({ success: false, error: "Access denied" });
     }
 
@@ -343,7 +375,7 @@ router.get("/my/:id", authMiddleware, async (req: AuthRequest, res: Response) =>
 
     res.json({
       success: true,
-      data: responseData
+      data: safeCase(responseData,user.role)
     });
   } catch (error: any) {
     console.error("Case detail error:", error);
@@ -366,7 +398,8 @@ router.get("/client/:token", async (req: Request, res: Response) => {
     // Find case by public token
     const caseData = await prisma.case.findFirst({
       where: {
-        publicAccessToken: token
+        publicAccessToken: token,
+        OR:[{portalKeptAlive:true},{portalExpiresAt:null},{portalExpiresAt:{gt:new Date()}}]
       },
       select: {
         id: true,
@@ -376,7 +409,7 @@ router.get("/client/:token", async (req: Request, res: Response) => {
         state: true,
         documents: {
           where: {
-            status: { in: ["PENDING_SIGNATURE", "SIGNED"] }
+            status: { in: ["PENDING_SIGNATURE", "SIGNED"] }, type:{in:CLIENT_DOCUMENT_TYPES}
           },
           select: {
             id: true,
@@ -428,7 +461,7 @@ router.get("/client/:token", async (req: Request, res: Response) => {
  * - EMPLOYEE: only assigned cases
  * - CLIENT: only their cases
  */
-router.get("/", authMiddleware, async (req: AuthRequest, res: Response) => {
+router.get("/", caseAuthentication, async (req: AuthRequest, res: Response) => {
   try {
     const user = req.user!;
     const {
@@ -442,17 +475,18 @@ router.get("/", authMiddleware, async (req: AuthRequest, res: Response) => {
 
     const pageNum = Math.max(1, parseInt(page as string, 10));
     const pageSizeNum = Math.min(100, Math.max(1, parseInt(pageSize as string, 10)));
+    if(!Number.isSafeInteger(pageNum)||!Number.isSafeInteger(pageSizeNum)||pageNum>1000000)return res.status(400).json({success:false,error:"Invalid pagination"});
     const skip = (pageNum - 1) * pageSizeNum;
 
     // Build where clause based on role
-    const where: any = {};
+    const where: any = {AND:[caseScope((req as any).capitalActor)]};
 
     if (user.role === "EMPLOYEE") {
       where.assignedEmployeeId = user.id;
     } else if (user.role === "CLIENT") {
       where.clientId = user.id;
-    } else if (user.role === "ADMIN" || user.role === "FOUNDER") {
-      // Admin/Founder can filter by employee
+    } else if (["ADMIN","FOUNDER","TEAM_LEAD","COMPLIANCE"].includes(user.role)) {
+      // Authorized staff can narrow their existing scope by employee
       if (assignedEmployeeId) {
         where.assignedEmployeeId = assignedEmployeeId;
       }
@@ -521,7 +555,7 @@ router.get("/", authMiddleware, async (req: AuthRequest, res: Response) => {
 
     res.json({
       success: true,
-      data: redactedCases,
+      data: redactedCases.map(c=>safeCase(c,user.role)),
       total,
       page: pageNum,
       pageSize: pageSizeNum,
@@ -536,7 +570,7 @@ router.get("/", authMiddleware, async (req: AuthRequest, res: Response) => {
 /**
  * GET /api/cases/stats - Dashboard statistics (FOUNDER ONLY)
  */
-router.get("/stats", authMiddleware, roleGuard(["ADMIN"]), async (_req: Request, res: Response) => {
+router.get("/stats", caseAuthentication, roleGuard(["ADMIN"]), async (_req: Request, res: Response) => {
   try {
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -610,7 +644,7 @@ router.get("/stats", authMiddleware, roleGuard(["ADMIN"]), async (_req: Request,
 /**
  * GET /api/cases/deadlines - Upcoming deadlines (FOUNDER ONLY)
  */
-router.get("/deadlines", authMiddleware, roleGuard(["ADMIN"]), async (req: Request, res: Response) => {
+router.get("/deadlines", caseAuthentication, roleGuard(["ADMIN"]), async (req: Request, res: Response) => {
   try {
     const daysAhead = parseInt(req.query.days as string) || 30;
     const deadlines = await legalService.getUpcomingDeadlines(daysAhead);
@@ -630,12 +664,12 @@ router.get("/deadlines", authMiddleware, roleGuard(["ADMIN"]), async (req: Reque
  * GET /api/cases/:id - Get single case details (FOUNDER ONLY)
  * NOTE: This route must come AFTER /my, /my/:id, /client/:token, /stats, /deadlines
  */
-router.get("/:id", authMiddleware, roleGuard(["ADMIN"]), async (req: Request, res: Response) => {
+router.get("/:id", caseAuthentication, roleGuard(["ADMIN"]), async (req: Request, res: Response) => {
   try {
     const caseData = await prisma.case.findUnique({
       where: { id: req.params.id },
       include: {
-        client: true,
+        client: {select:{id:true,name:true,email:true,phone:true}},
         assignedEmployee: {
           select: { id: true, name: true, email: true }
         },
@@ -661,9 +695,9 @@ router.get("/:id", authMiddleware, roleGuard(["ADMIN"]), async (req: Request, re
     res.json({
       success: true,
       data: {
-        ...caseData,
-        recommendations,
-        compliance
+        ...safeCase(caseData,(req as AuthRequest).user!.role),
+        recommendations: (req as AuthRequest).user!.role==="FOUNDER"?recommendations:undefined,
+        compliance: (req as AuthRequest).user!.role==="FOUNDER"?compliance:undefined
       }
     });
   } catch (error: any) {
@@ -675,7 +709,7 @@ router.get("/:id", authMiddleware, roleGuard(["ADMIN"]), async (req: Request, re
 /**
  * POST /api/cases - Create new case (FOUNDER ONLY)
  */
-router.post("/", authMiddleware, roleGuard(["ADMIN"]), async (req: AuthRequest, res: Response) => {
+router.post("/", caseAuthentication, roleGuard(["ADMIN"]), async (req: AuthRequest, res: Response) => {
   try {
     const {
       clientId,
@@ -708,6 +742,7 @@ router.post("/", authMiddleware, roleGuard(["ADMIN"]), async (req: AuthRequest, 
     const newCase = await prisma.case.create({
       data: {
         internalCode,
+        tenantId:(req as any).capitalTenantId,
         clientId,
         state,
         county,
@@ -752,7 +787,7 @@ router.post("/", authMiddleware, roleGuard(["ADMIN"]), async (req: AuthRequest, 
 
     res.status(201).json({
       success: true,
-      data: newCase
+      data: safeCase(newCase,req.user!.role)
     });
   } catch (error: any) {
     console.error("Cases error:", error);
@@ -763,13 +798,21 @@ router.post("/", authMiddleware, roleGuard(["ADMIN"]), async (req: AuthRequest, 
 /**
  * PATCH /api/cases/:id - Update case (FOUNDER ONLY)
  */
-router.patch("/:id", authMiddleware, roleGuard(["ADMIN"]), async (req: AuthRequest, res: Response) => {
+router.patch("/:id", caseAuthentication, roleGuard(["ADMIN"]), async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
     const updateData = req.body;
 
-    // Don't allow changing internal code
-    delete updateData.internalCode;
+    const editable=["propertyAddress","parcelNumber","county","state","saleDate","priority","notes","source"];
+    const financial=["surplusAmountCents","feePercent","estimatedFeeCents","actualFeeCents","clientPayoutCents"];
+    const allowed=req.user!.role==="FOUNDER"?[...editable,...financial]:editable;
+    if(!updateData || typeof updateData!=="object" || Array.isArray(updateData) || Object.keys(updateData).some(k=>!allowed.includes(k)))return res.status(400).json({success:false,error:"Unsupported or server-owned case fields"});
+    for(const key of Object.keys(updateData)){
+      const value=updateData[key];
+      if(financial.includes(key)||key==="priority"){if(!Number.isSafeInteger(value)||value<0||value>(key==="feePercent"?100:2147483647))return res.status(400).json({success:false,error:"Invalid case amount or priority"});}
+      else if(key==="saleDate"){if(value!==null && (typeof value!=="string"||!Number.isFinite(Date.parse(value))))return res.status(400).json({success:false,error:"Invalid sale date"});updateData[key]=value===null?null:new Date(value);}
+      else if(typeof value!=="string"||value.length>2000)return res.status(400).json({success:false,error:"Invalid case text"});
+    }
 
     const updatedCase = await prisma.case.update({
       where: { id },
@@ -806,7 +849,7 @@ router.patch("/:id", authMiddleware, roleGuard(["ADMIN"]), async (req: AuthReque
  * POST /api/cases/:id/status - Update case status (FOUNDER ONLY)
  * Validates transitions using state machine
  */
-router.post("/:id/status", authMiddleware, roleGuard(["ADMIN"]), asyncHandler(async (req: AuthRequest, res: Response) => {
+router.post("/:id/status", caseAuthentication, roleGuard(["ADMIN"]), asyncHandler(async (req: AuthRequest, res: Response) => {
   const { id } = req.params;
   const { status, notes, forceTransition } = req.body;
 
@@ -945,7 +988,7 @@ router.post("/:id/status", authMiddleware, roleGuard(["ADMIN"]), asyncHandler(as
 
   res.json({
     success: true,
-    data: updatedCase,
+    data: safeCase(updatedCase,req.user!.role),
     warnings: validation.warnings.length > 0 ? validation.warnings : undefined
   });
 }));
@@ -953,7 +996,7 @@ router.post("/:id/status", authMiddleware, roleGuard(["ADMIN"]), asyncHandler(as
 /**
  * POST /api/cases/:id/documents - Generate documents (FOUNDER ONLY)
  */
-router.post("/:id/documents", authMiddleware, roleGuard(["ADMIN"]), async (req: Request, res: Response) => {
+router.post("/:id/documents", caseAuthentication, roleGuard(["ADMIN"]), async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const { documentType, generateAll } = req.body;
@@ -982,7 +1025,7 @@ router.post("/:id/documents", authMiddleware, roleGuard(["ADMIN"]), async (req: 
 /**
  * PATCH /api/cases/:id/assign - Assign case to employee (FOUNDER/ADMIN ONLY)
  */
-router.patch("/:id/assign", authMiddleware, roleGuard(["FOUNDER", "ADMIN"]), async (req: AuthRequest, res: Response) => {
+router.patch("/:id/assign", caseAuthentication, roleGuard(["FOUNDER", "ADMIN"]), async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
     const { assignedEmployeeId } = req.body;
@@ -1045,7 +1088,7 @@ router.patch("/:id/assign", authMiddleware, roleGuard(["FOUNDER", "ADMIN"]), asy
 
     res.json({
       success: true,
-      data: updatedCase,
+      data: safeCase(updatedCase,req.user!.role),
       message: `Case assigned to ${employee.name}`,
     });
   } catch (error: any) {
@@ -1057,7 +1100,7 @@ router.patch("/:id/assign", authMiddleware, roleGuard(["FOUNDER", "ADMIN"]), asy
 /**
  * POST /api/cases/:id/rejection - Analyze rejection (FOUNDER ONLY)
  */
-router.post("/:id/rejection", authMiddleware, roleGuard(["ADMIN"]), async (req: Request, res: Response) => {
+router.post("/:id/rejection", caseAuthentication, roleGuard(["ADMIN"]), async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const { rejectionReason } = req.body;

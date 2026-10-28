@@ -1,8 +1,14 @@
+# Current Capital-only checkpoint — October 28, 2026
+
+Read [case/document repair](docs/full-build/VAULT-REPAIR-2026-10-28.md) and [scorecard](docs/full-build/SCORECARD.md). Case/document boundaries and upload/delete recovery are implemented and qualified by26 actual API/database/filesystem checks plus3 separate-process reopen checks. Prior13/14/9 scopes were rerun. Full UI/provider/production remains unverified. Next: browser intake journey, atomic case workflow and journaled provider migration; then honest voice behavior and signature integration. No customer or production schema changed. TaxSlayer monitor was deleted at owner direction.
+
+Earlier dated checkpoints follow as historical evidence, not the current queue.
+
 # MGR Capital Assistance — current handoff
 
 ## Active continuation: authentication and build repair
 
-Read [current auth repair](docs/full-build/AUTH-REPAIR-2026-10-28.md) and the appended scorecard. Current results:13 boundary checks,14 actual auth/PostgreSQL/loopback HTTP checks,9 filesystem checks and a passing full backend build. Refresh rotation/current principal are repaired in this scope; case/document access and fallback/delete reconciliation are next. Compliance Buddy is saved and owner-held pending the TaxSlayer reply; its hourly monitor remains active.
+Read [current auth repair](docs/full-build/AUTH-REPAIR-2026-10-28.md) and the appended scorecard. Current results:13 boundary checks,14 actual auth/PostgreSQL/loopback HTTP checks,9 filesystem checks and a passing full backend build. Refresh rotation/current principal are repaired in this scope; case/document access and fallback/delete reconciliation are next. Historical hold superseded: owner canceled TaxSlayer monitoring and directed Capital-only work.
 
 
 ## October 28, 2026 bounded repair

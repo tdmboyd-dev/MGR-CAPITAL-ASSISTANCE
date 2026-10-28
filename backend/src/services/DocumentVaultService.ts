@@ -1,576 +1,94 @@
-// ============================================
-// DOCUMENT VAULT SERVICE — MGR CAPITAL ASSISTANCE
-// Sovereign, premium local document storage
-// No external SaaS dependencies
-// ============================================
-
 import { DocumentType, DocumentStatus } from "@prisma/client";
-import * as fs from "fs/promises";
+import type { Prisma, Document } from "@prisma/client";
 import * as path from "path";
 import * as crypto from "crypto";
 import prisma from "../lib/prisma.js";
 import { storageRouter } from "./storage/StorageRouter.js";
-
-// Base storage path - configurable via environment
-const STORAGE_BASE_PATH = process.env.DOCUMENT_STORAGE_PATH ||
-  path.join(process.cwd(), "storage", "documents");
-
-// Maximum file size (50MB)
-const MAX_FILE_SIZE = 50 * 1024 * 1024;
-
-// Allowed MIME types
-const ALLOWED_MIME_TYPES = [
-  "application/pdf",
-  "image/jpeg",
-  "image/png",
-  "image/gif",
-  "application/msword",
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-  "text/plain",
-];
-
-interface UploadResult {
-  success: boolean;
-  documentId?: string;
-  fileName?: string;
-  filePath?: string;
-  fileSize?: number;
-  error?: string;
-}
-
-interface VaultStats {
-  totalDocuments: number;
-  totalSizeBytes: number;
-  documentsByType: { type: DocumentType; count: number }[];
-  documentsByStatus: { status: DocumentStatus; count: number }[];
-}
-
+import { LocalFilesystemAdapter } from "./storage/LocalFilesystemAdapter.js";
+import { requireCase, requireDocument, currentActor, documentScope, requireDocumentAction, documentAudit } from "./CaseDocumentAccess.js";
+import { AppError } from "../middleware/errorHandler.js";
+const root=process.env.DOCUMENT_STORAGE_PATH || path.join(process.cwd(),"storage","documents");
+const legacy=new LocalFilesystemAdapter({basePath:root});
+const MIME_EXT:Record<string,string>={"application/pdf":".pdf","image/jpeg":".jpg","image/png":".png","image/gif":".gif","application/msword":".doc","application/vnd.openxmlformats-officedocument.wordprocessingml.document":".docx","text/plain":".txt"};
+const meta=(doc:Document):Record<string,Prisma.JsonValue>=>doc.metadata && typeof doc.metadata==="object" && !Array.isArray(doc.metadata)?doc.metadata as Record<string,Prisma.JsonValue>:{};
+export function safeDocument(doc:Document){return {id:doc.id,caseId:doc.caseId,type:doc.type,status:doc.status,fileName:doc.fileName,fileSize:doc.fileSize,mimeType:doc.mimeType,signatureRequired:doc.signatureRequired,signedAt:doc.signedAt,createdAt:doc.createdAt,updatedAt:doc.updatedAt,deletionStatus:doc.deletionStatus,storageState:meta(doc).storageState || "LEGACY_UNVERIFIED",needsSignature:doc.signatureRequired && !doc.signedAt,signed:!!doc.signedAt};}
 class DocumentVaultService {
-  // ============================================
-  // INITIALIZATION
-  // ============================================
-
-  /**
-   * Initialize the document vault storage directory
-   */
-  async initialize(): Promise<void> {
-    try {
-      await fs.mkdir(STORAGE_BASE_PATH, { recursive: true });
-      console.log(`[DocumentVault] Initialized storage at: ${STORAGE_BASE_PATH}`);
-    } catch (error) {
-      console.error("[DocumentVault] Failed to initialize storage:", error);
-      throw error;
-    }
-  }
-
-  /**
-   * Ensure case directory exists
-   */
-  private async ensureCaseDirectory(caseId: string): Promise<string> {
-    const casePath = path.join(STORAGE_BASE_PATH, caseId);
-    await fs.mkdir(casePath, { recursive: true });
-    return casePath;
-  }
-
-  // ============================================
-  // UPLOAD OPERATIONS
-  // ============================================
-
-  /**
-   * Upload a document to the vault
-   * Stores file locally with proper security measures
-   */
-  async uploadDocument(params: {
-    caseId: string;
-    type: DocumentType;
-    fileName: string;
-    buffer: Buffer;
-    mimeType: string;
-    uploadedById: string;
-    signatureRequired?: boolean;
-    generatedContent?: string;
-  }): Promise<UploadResult> {
-    try {
-      // Validate file size
-      if (params.buffer.length > MAX_FILE_SIZE) {
-        return {
-          success: false,
-          error: `File size exceeds maximum allowed (${MAX_FILE_SIZE / 1024 / 1024}MB)`,
-        };
-      }
-
-      // Validate MIME type
-      if (!ALLOWED_MIME_TYPES.includes(params.mimeType)) {
-        return {
-          success: false,
-          error: `File type not allowed: ${params.mimeType}`,
-        };
-      }
-
-      // Verify case exists
-      const caseRecord = await prisma.case.findUnique({
-        where: { id: params.caseId },
-      });
-
-      if (!caseRecord) {
-        return {
-          success: false,
-          error: "Case not found",
-        };
-      }
-
-      // Generate secure filename
-      const timestamp = Date.now();
-      const hash = crypto.randomBytes(8).toString("hex");
-      const ext = path.extname(params.fileName) || this.getExtensionFromMime(params.mimeType);
-      const secureFileName = `${params.type}_${timestamp}_${hash}${ext}`;
-      const relativePath = path.join(params.caseId, secureFileName);
-
-      // Create document record first (need the ID for FileRegistry linking)
-      const document = await prisma.document.create({
-        data: {
-          caseId: params.caseId,
-          type: params.type,
-          status: "DRAFT",
-          fileName: params.fileName,
-          filePath: relativePath,
-          fileUrl: `/api/documents/${params.caseId}/${secureFileName}`,
-          fileSize: params.buffer.length,
-          mimeType: params.mimeType,
-          uploadedById: params.uploadedById,
-          signatureRequired: params.signatureRequired || false,
-          generatedContent: params.generatedContent,
-        },
-      });
-
-      // Upload via StorageRouter (smart multi-provider routing)
-      const routerResult = await storageRouter.upload({
-        caseId: params.caseId,
-        fileName: secureFileName,
-        data: params.buffer,
-        mimeType: params.mimeType,
-        documentId: document.id,
-      });
-
-      if (!routerResult.success) {
-        // Fallback: write directly to local filesystem
-        console.warn("[DocumentVault] StorageRouter failed, falling back to local fs:", routerResult.error);
-        const casePath = await this.ensureCaseDirectory(params.caseId);
-        const fullPath = path.join(casePath, secureFileName);
-        await fs.writeFile(fullPath, params.buffer);
-      }
-
-      return {
-        success: true,
-        documentId: document.id,
-        fileName: secureFileName,
-        filePath: relativePath,
-        fileSize: params.buffer.length,
-      };
-    } catch (error: any) {
-      console.error("[DocumentVault] Upload failed:", error);
-      return {
-        success: false,
-        error: error.message || "Upload failed",
-      };
-    }
-  }
-
-  /**
-   * Upload from generated PDF/document
-   */
-  async uploadGeneratedDocument(params: {
-    caseId: string;
-    type: DocumentType;
-    buffer: Buffer;
-    uploadedById: string;
-    generatedContent?: string;
-  }): Promise<UploadResult> {
-    const fileName = `${params.type.toLowerCase()}_${Date.now()}.pdf`;
-    return this.uploadDocument({
-      ...params,
-      fileName,
-      mimeType: "application/pdf",
+  async initialize(){await storageRouter.initialize();}
+  async uploadDocument(params:{caseId:string;type:DocumentType;fileName:string;buffer:Buffer;mimeType:string;uploadedById:string;signatureRequired?:boolean;generatedContent?:string}) {
+    if(!Buffer.isBuffer(params.buffer) || !params.buffer.length || params.buffer.length>10*1024*1024)throw new AppError("Invalid size",413,"Upload one nonempty document up to10 MiB.");
+    if(!MIME_EXT[params.mimeType] || typeof params.fileName!=="string" || params.fileName.length>180 || /[\\/\x00-\x1f\x7f]/.test(params.fileName))throw new AppError("Invalid file",400,"Unsupported document type or filename.");
+    if(!Object.values(DocumentType).includes(params.type))throw new AppError("Invalid type",400,"Invalid document type.");
+    const hash=crypto.createHash("sha256").update(params.buffer).digest("hex");
+    const name=`${params.type}_${crypto.randomUUID()}${MIME_EXT[params.mimeType]}`;
+    const doc=await prisma.$transaction(async(db)=>{
+      const {actor,record}=await requireCase(db,params.uploadedById,params.caseId);
+      requireDocumentAction(actor,"upload",params.type);
+      await db.$queryRaw`SELECT id FROM "Case" WHERE id=${record.id} FOR UPDATE`;
+      await requireCase(db,params.uploadedById,params.caseId);
+      const usage=await db.document.aggregate({where:{caseId:record.id,deletionStatus:{not:"DELETED"}},_sum:{fileSize:true}});
+      if((usage._sum.fileSize || 0)+params.buffer.length>50*1024*1024)throw new AppError("Case capacity",413,"Case document limit is50 MiB.");
+      const saved=await db.document.create({data:{caseId:record.id,tenantId:record.tenantId,type:params.type,fileName:params.fileName,fileUrl:"",filePath:`${record.id}/${name}`,fileSize:params.buffer.length,mimeType:params.mimeType,uploadedById:actor.id,signatureRequired:params.signatureRequired || false,generatedContent:params.generatedContent,metadata:{storageState:"UPLOAD_PENDING",storageKind:"ROUTED",sha256:hash,malwareScanStatus:"NOT_SCANNED"}}});
+      await documentAudit(db,actor.id,saved.id,"DOCUMENT_UPLOAD_REQUESTED");return saved;
     });
-  }
-
-  // ============================================
-  // RETRIEVAL OPERATIONS
-  // ============================================
-
-  /**
-   * Get document file stream for download
-   * Returns the file buffer and metadata
-   */
-  async getDocumentFile(documentId: string): Promise<{
-    success: boolean;
-    buffer?: Buffer;
-    fileName?: string;
-    mimeType?: string;
-    error?: string;
-  }> {
-    try {
-      const document = await prisma.document.findUnique({
-        where: { id: documentId },
-      });
-
-      if (!document) {
-        return { success: false, error: "Document not found" };
-      }
-
-      // Try StorageRouter first (checks FileRegistry for multi-provider files)
-      const routerResult = await storageRouter.download({ documentId });
-      if (routerResult.success && routerResult.data) {
-        return {
-          success: true,
-          buffer: routerResult.data,
-          fileName: routerResult.fileName || document.fileName,
-          mimeType: routerResult.mimeType || document.mimeType,
-        };
-      }
-
-      // Fallback: read directly from local filesystem (legacy files)
-      if (!document.filePath) {
-        return { success: false, error: "Document file path not set" };
-      }
-
-      const fullPath = path.join(STORAGE_BASE_PATH, document.filePath);
-
-      try {
-        await fs.access(fullPath);
-      } catch {
-        return { success: false, error: "Document file not found on disk" };
-      }
-
-      const buffer = await fs.readFile(fullPath);
-
-      return {
-        success: true,
-        buffer,
-        fileName: document.fileName,
-        mimeType: document.mimeType,
-      };
-    } catch (error: any) {
-      console.error("[DocumentVault] Get file failed:", error);
-      return { success: false, error: error.message };
-    }
-  }
-
-  /**
-   * Get document metadata
-   */
-  async getDocumentMetadata(documentId: string) {
-    return prisma.document.findUnique({
-      where: { id: documentId },
-      include: {
-        case: {
-          select: {
-            id: true,
-            internalCode: true,
-            clientId: true,
-            assignedEmployeeId: true,
-          },
-        },
-        uploadedBy: {
-          select: {
-            id: true,
-            name: true,
-            role: true,
-          },
-        },
-      },
+    let routed;
+    try {routed=await storageRouter.upload({caseId:doc.caseId,fileName:name,data:params.buffer,mimeType:doc.mimeType,documentId:doc.id});}
+    catch {return {success:false,documentId:doc.id,error:"Upload unconfirmed. Saved operation requires reconciliation."};}
+    if(!routed.success)return {success:false,documentId:doc.id,error:"Upload unconfirmed. Saved operation requires reconciliation."};
+    await prisma.$transaction(async(db)=>{
+      await requireDocument(db,params.uploadedById,doc.id,"upload");
+      await db.document.update({where:{id:doc.id},data:{metadata:{...meta(doc),storageState:"READY"},fileUrl:`/api/documents/${doc.id}/download`}});
+      await documentAudit(db,params.uploadedById,doc.id,"DOCUMENT_STORED");
     });
+    return {success:true,documentId:doc.id,fileName:params.fileName,fileSize:doc.fileSize,sha256:hash,storageVerified:true,malwareScanStatus:"NOT_SCANNED"};
   }
-
-  /**
-   * Get all documents for a case
-   */
-  async getCaseDocuments(caseId: string) {
-    return prisma.document.findMany({
-      where: { caseId },
-      include: {
-        uploadedBy: {
-          select: {
-            id: true,
-            name: true,
-            role: true,
-          },
-        },
-      },
-      orderBy: { createdAt: "desc" },
-    });
+  async uploadGeneratedDocument(params:{caseId:string;type:DocumentType;buffer:Buffer;uploadedById:string;generatedContent?:string}){return this.uploadDocument({...params,fileName:`${params.type}.pdf`,mimeType:"application/pdf"});}
+  async verifyAccess(id:string,actorId:string,_callerRole?:string){try{await requireDocument(prisma,actorId,id);return true;}catch(error){if(error instanceof AppError)return false;throw error;}}
+  async getDocumentFile(id:string,actorId:string){
+    const {document}=await requireDocument(prisma,actorId,id);
+    const state=meta(document).storageState;
+    if(state && state!=="READY")throw new AppError("Storage pending",409,"Document storage is pending reconciliation.");
+    const registry=await prisma.fileRegistry.findFirst({where:{documentId:id}});
+    let bytes:Buffer|undefined;
+    if(registry && registry.providerPath.replace(/\\/g,"/").split("/")[0]!==document.caseId)throw new AppError("Target mismatch",503,"Registered document target requires reconciliation.");
+    if(registry){const result=await storageRouter.download({documentId:id});if(result.success)bytes=result.data;}
+    else if(meta(document).storageKind!=="ROUTED" && document.filePath){if(document.filePath.replace(/\\/g,"/").split("/")[0]!==document.caseId)throw new AppError("Legacy target mismatch",503,"Legacy target requires reconciliation.");const result=await legacy.download(document.filePath);if(result.success)bytes=result.data;}
+    if(!bytes || bytes.length!==document.fileSize)throw new AppError("Storage unavailable",503,"Saved document bytes could not be verified.");
+    const hash=crypto.createHash("sha256").update(bytes).digest("hex");
+    if(typeof meta(document).sha256==="string" && meta(document).sha256!==hash)throw new AppError("Integrity failure",503,"Saved document bytes could not be verified.");
+    await prisma.$transaction(async(db)=>{await requireDocument(db,actorId,id);await documentAudit(db,actorId,id,"DOCUMENT_DOWNLOADED");});
+    return {success:true,buffer:bytes,fileName:document.fileName,mimeType:document.mimeType,sha256:hash};
   }
-
-  // ============================================
-  // STATUS MANAGEMENT
-  // ============================================
-
-  /**
-   * Update document status
-   */
-  async updateStatus(
-    documentId: string,
-    status: DocumentStatus,
-    metadata?: {
-      signedAt?: Date;
-      signatureUrl?: string;
-      submittedAt?: Date;
-      approvedAt?: Date;
-      rejectedAt?: Date;
-      rejectionReason?: string;
-    }
-  ) {
-    return prisma.document.update({
-      where: { id: documentId },
-      data: {
-        status,
-        ...metadata,
-      },
-    });
+  async getDocumentMetadata(id:string,actorId:string){const {document}=await requireDocument(prisma,actorId,id);await documentAudit(prisma,actorId,id,"DOCUMENT_METADATA_READ");return safeDocument(document);}
+  async getCaseDocuments(caseId:string,actorId:string){return prisma.$transaction(async(db)=>{const {actor}=await requireCase(db,actorId,caseId);const rows=await db.document.findMany({where:{AND:[{caseId},documentScope(actor)]},orderBy:{createdAt:"desc"},take:100});await db.auditLog.create({data:{userId:actor.id,action:"CASE_DOCUMENTS_READ",entityType:"CASE",entityId:caseId}});return rows.map(safeDocument);});}
+  async listDocuments(actorId:string){const actor=await currentActor(prisma,actorId);return (await prisma.document.findMany({where:documentScope(actor),orderBy:{createdAt:"desc"},take:100})).map(safeDocument);}
+  async updateStatus(id:string,status:DocumentStatus,actorId:string,reason?:string){return prisma.$transaction(async(db)=>{const {document}=await requireDocument(db,actorId,id,status==="SUBMITTED"?"submit":"verify");if(meta(document).storageState && meta(document).storageState!=="READY")throw new AppError("Storage pending",409,"Finish storage reconciliation before review.");if(document.status==="SUBMITTED" && status==="SUBMITTED")throw new AppError("Invalid review state",409,"Document cannot be submitted from this state.");const row=await db.document.update({where:{id},data:{status,...(status==="APPROVED"?{approvedAt:new Date()}:{}),...(status==="REJECTED"?{rejectedAt:new Date(),rejectionReason:reason}:{}),...(status==="SUBMITTED"?{submittedAt:new Date()}: {})}});await documentAudit(db,actorId,id,`DOCUMENT_REVIEW_${status}`);return {...safeDocument(row),providerSubmissionVerified:false};});}
+  async markAsSigned(id:string,_signatureUrl:string|undefined,actorId:string){await requireDocument(prisma,actorId,id,"sign");throw new AppError("Signature evidence required",503,"A recipient-bound signature workflow and verification receipt are required. A URL alone cannot mark a document signed.");}
+  async markAsSubmitted(id:string,actorId:string){return this.updateStatus(id,"SUBMITTED",actorId);}
+  async approveDocument(id:string,actorId:string){return this.updateStatus(id,"APPROVED",actorId);}
+  async rejectDocument(id:string,reason:string,actorId:string){if(typeof reason!=="string" || !reason.trim() || reason.length>2000)throw new AppError("Invalid reason",400,"A review reason up to2000 characters is required.");return this.updateStatus(id,"REJECTED",actorId,reason.trim());}
+  async reconcileDocument(id:string,actorId:string){
+    const {actor,document}=await requireDocument(prisma,actorId,id,"upload");
+    if(!["FOUNDER","ADMIN"].includes(actor.role))throw new AppError("Forbidden",403,"Administrator reconciliation required.");
+    if(String(meta(document).storageState).startsWith("DELETE"))throw new AppError("Delete pending",409,"Retry the saved delete operation instead.");
+    const rows=await prisma.fileRegistry.findMany({where:{documentId:id}});
+    if(!rows.length)throw new AppError("No registered target",409,"No registered upload target exists; no file was assumed saved.");
+    if(rows.some(row=>row.providerPath.replace(/\\/g,"/").split("/")[0]!==document.caseId))throw new AppError("Target mismatch",503,"Registered target requires reconciliation.");
+    for(const row of rows)if(!(await storageRouter.reconcileUpload(row.id)).success)throw new AppError("Readback failed",503,"Stored bytes could not be verified.");
+    return prisma.$transaction(async(db)=>{await requireDocument(db,actorId,id,"upload");const saved=await db.document.update({where:{id},data:{metadata:{...meta(document),storageState:"READY"},fileUrl:`/api/documents/${id}/download`}});await documentAudit(db,actorId,id,"DOCUMENT_UPLOAD_RECONCILED");return safeDocument(saved);});
   }
-
-  /**
-   * Mark document as signed
-   */
-  async markAsSigned(documentId: string, signatureUrl?: string) {
-    return this.updateStatus(documentId, "SIGNED", {
-      signedAt: new Date(),
-      signatureUrl,
-    });
+  async deleteDocument(id:string,actorId:string){
+    const {document}=await requireDocument(prisma,actorId,id,"delete");
+    await prisma.$transaction(async(db)=>{await requireDocument(db,actorId,id,"delete");await db.document.update({where:{id},data:{metadata:{...meta(document),storageState:"DELETE_PENDING"}}});await documentAudit(db,actorId,id,"DOCUMENT_DELETE_REQUESTED");});
+    const targets=await prisma.fileRegistry.findMany({where:{documentId:id},select:{providerPath:true}});
+    if(targets.some(t=>t.providerPath.replace(/\\/g,"/").split("/")[0]!==document.caseId))throw new AppError("Target mismatch",503,"Storage target requires reconciliation.");
+    const registries=targets.length;
+    if(registries){if(!(await storageRouter.deleteByDocumentId(id)).success)return {success:false,error:"Storage deletion unconfirmed; document and registry retained for retry."};}
+    else if(meta(document).storageKind!=="ROUTED" && document.filePath){if(document.filePath.replace(/\\/g,"/").split("/")[0]!==document.caseId)throw new AppError("Legacy target mismatch",503,"Legacy target requires reconciliation.");if(!(await legacy.delete(document.filePath)).success)return {success:false,error:"Legacy deletion unconfirmed; document retained."};}
+    await prisma.$transaction(async(db)=>{await requireDocument(db,actorId,id,"delete");await db.document.update({where:{id},data:{deletionStatus:"DELETED",deletedAt:new Date(),deletedBy:actorId,metadata:{...meta(document),storageState:"DELETED"}}});await documentAudit(db,actorId,id,"DOCUMENT_DELETED");});
+    return {success:true};
   }
-
-  /**
-   * Mark document as submitted
-   */
-  async markAsSubmitted(documentId: string) {
-    return this.updateStatus(documentId, "SUBMITTED", {
-      submittedAt: new Date(),
-    });
-  }
-
-  /**
-   * Approve document
-   */
-  async approveDocument(documentId: string) {
-    return this.updateStatus(documentId, "APPROVED", {
-      approvedAt: new Date(),
-    });
-  }
-
-  /**
-   * Reject document
-   */
-  async rejectDocument(documentId: string, reason: string) {
-    return this.updateStatus(documentId, "REJECTED", {
-      rejectedAt: new Date(),
-      rejectionReason: reason,
-    });
-  }
-
-  // ============================================
-  // DELETE OPERATIONS
-  // ============================================
-
-  /**
-   * Delete a document (file and record)
-   */
-  async deleteDocument(documentId: string): Promise<{ success: boolean; error?: string }> {
-    try {
-      const document = await prisma.document.findUnique({
-        where: { id: documentId },
-      });
-
-      if (!document) {
-        return { success: false, error: "Document not found" };
-      }
-
-      // Delete from all storage providers via StorageRouter
-      await storageRouter.deleteByDocumentId(documentId);
-
-      // Also try to delete from local filesystem (legacy files)
-      if (document.filePath) {
-        const fullPath = path.join(STORAGE_BASE_PATH, document.filePath);
-        try {
-          await fs.unlink(fullPath);
-        } catch (err) {
-          // File may not exist, continue with record deletion
-        }
-      }
-
-      // Delete database record
-      await prisma.document.delete({
-        where: { id: documentId },
-      });
-
-      return { success: true };
-    } catch (error: any) {
-      console.error("[DocumentVault] Delete failed:", error);
-      return { success: false, error: error.message };
-    }
-  }
-
-  // ============================================
-  // VAULT STATISTICS (FOUNDER ONLY)
-  // ============================================
-
-  /**
-   * Get vault statistics
-   */
-  async getVaultStats(): Promise<VaultStats> {
-    const [documents, byType, byStatus] = await Promise.all([
-      prisma.document.aggregate({
-        _count: true,
-        _sum: { fileSize: true },
-      }),
-      prisma.document.groupBy({
-        by: ["type"],
-        _count: true,
-      }),
-      prisma.document.groupBy({
-        by: ["status"],
-        _count: true,
-      }),
-    ]);
-
-    return {
-      totalDocuments: documents._count,
-      totalSizeBytes: documents._sum.fileSize || 0,
-      documentsByType: byType.map((t) => ({
-        type: t.type,
-        count: t._count,
-      })),
-      documentsByStatus: byStatus.map((s) => ({
-        status: s.status,
-        count: s._count,
-      })),
-    };
-  }
-
-  /**
-   * Get storage usage by case
-   */
-  async getStorageByCase(limit: number = 20) {
-    const results = await prisma.document.groupBy({
-      by: ["caseId"],
-      _count: true,
-      _sum: { fileSize: true },
-      orderBy: {
-        _sum: {
-          fileSize: "desc",
-        },
-      },
-      take: limit,
-    });
-
-    return results.map((r) => ({
-      caseId: r.caseId,
-      documentCount: r._count,
-      totalSizeBytes: r._sum.fileSize || 0,
-    }));
-  }
-
-  // ============================================
-  // HELPER METHODS
-  // ============================================
-
-  /**
-   * Get file extension from MIME type
-   */
-  private getExtensionFromMime(mimeType: string): string {
-    const mimeToExt: Record<string, string> = {
-      "application/pdf": ".pdf",
-      "image/jpeg": ".jpg",
-      "image/png": ".png",
-      "image/gif": ".gif",
-      "application/msword": ".doc",
-      "application/vnd.openxmlformats-officedocument.wordprocessingml.document": ".docx",
-      "text/plain": ".txt",
-    };
-    return mimeToExt[mimeType] || ".bin";
-  }
-
-  /**
-   * Verify document access permissions
-   */
-  async verifyAccess(documentId: string, userId: string, userRole: string): Promise<boolean> {
-    const document = await prisma.document.findUnique({
-      where: { id: documentId },
-      include: {
-        case: {
-          select: {
-            clientId: true,
-            assignedEmployeeId: true,
-          },
-        },
-      },
-    });
-
-    if (!document) return false;
-
-    // FOUNDER/ADMIN can access everything
-    if (userRole === "FOUNDER" || userRole === "ADMIN") {
-      return true;
-    }
-
-    // Employee can access documents for their assigned cases
-    if (userRole === "EMPLOYEE" && document.case.assignedEmployeeId === userId) {
-      return true;
-    }
-
-    // Client can access documents for their cases
-    if (userRole === "CLIENT" && document.case.clientId === userId) {
-      return true;
-    }
-
-    return false;
-  }
-
-  /**
-   * Clean up orphaned files (files on disk without DB records)
-   * FOUNDER ONLY - Use with caution
-   */
-  async cleanupOrphanedFiles(): Promise<{ removed: number; errors: string[] }> {
-    let removed = 0;
-    const errors: string[] = [];
-
-    try {
-      // Get all case directories
-      const caseDirs = await fs.readdir(STORAGE_BASE_PATH);
-
-      for (const caseDir of caseDirs) {
-        const casePath = path.join(STORAGE_BASE_PATH, caseDir);
-        const stat = await fs.stat(casePath);
-
-        if (!stat.isDirectory()) continue;
-
-        const files = await fs.readdir(casePath);
-
-        for (const file of files) {
-          const relativePath = path.join(caseDir, file);
-
-          // Check if file has a corresponding DB record
-          const document = await prisma.document.findFirst({
-            where: { filePath: relativePath },
-          });
-
-          if (!document) {
-            // Orphaned file - delete it
-            try {
-              await fs.unlink(path.join(casePath, file));
-              removed++;
-            } catch (err: any) {
-              errors.push(`Failed to delete ${relativePath}: ${err.message}`);
-            }
-          }
-        }
-      }
-
-      return { removed, errors };
-    } catch (error: any) {
-      errors.push(`Cleanup failed: ${error.message}`);
-      return { removed, errors };
-    }
-  }
+  async getVaultStats(actorId:string){const actor=await currentActor(prisma,actorId);if(actor.role!=="FOUNDER")throw new AppError("Forbidden",403,"Founder access required.");const where=documentScope(actor);const [total,byType,byStatus]=await Promise.all([prisma.document.aggregate({where,_count:true,_sum:{fileSize:true}}),prisma.document.groupBy({where,by:["type"],_count:true}),prisma.document.groupBy({where,by:["status"],_count:true})]);return {totalDocuments:total._count,totalSizeBytes:total._sum.fileSize||0,documentsByType:byType.map(r=>({type:r.type,count:r._count})),documentsByStatus:byStatus.map(r=>({status:r.status,count:r._count}))};}
+  async getStorageByCase(limit:number,actorId:string){const actor=await currentActor(prisma,actorId);if(actor.role!=="FOUNDER")throw new AppError("Forbidden",403,"Founder access required.");if(!Number.isInteger(limit)||limit<1||limit>100)throw new AppError("Invalid limit",400,"Limit must be1 to100.");return prisma.document.groupBy({where:documentScope(actor),by:["caseId"],_count:true,_sum:{fileSize:true},take:limit,orderBy:{_sum:{fileSize:"desc"}}});}
+  async cleanupOrphanedFiles(actorId:string){const actor=await currentActor(prisma,actorId);if(actor.role!=="FOUNDER")throw new AppError("Forbidden",403,"Founder access required.");throw new AppError("Cleanup unavailable",503,"Automatic orphan deletion requires a reviewed inventory and retention reconciliation. No files were deleted.");}
 }
-
-export const documentVaultService = new DocumentVaultService();
+export const documentVaultService=new DocumentVaultService();

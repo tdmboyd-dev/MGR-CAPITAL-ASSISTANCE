@@ -1,6 +1,12 @@
+# Current Capital-only checkpoint — October 28, 2026
+
+Read [case/document repair](docs/full-build/VAULT-REPAIR-2026-10-28.md) and [scorecard](docs/full-build/SCORECARD.md). Case/document boundaries and upload/delete recovery are implemented and qualified by26 actual API/database/filesystem checks plus3 separate-process reopen checks. Prior13/14/9 scopes were rerun. Full UI/provider/production remains unverified. Next: browser intake journey, atomic case workflow and journaled provider migration; then honest voice behavior and signature integration. No customer or production schema changed. TaxSlayer monitor was deleted at owner direction.
+
+Earlier dated checkpoints follow as historical evidence, not the current queue.
+
 # Active Capital repair — October28,2026
 
-Branch repair/bottom-up-capital-2026-10-28; auth rotation/current account repair implemented and qualified with13 boundary,14 actual PostgreSQL/HTTP checks,9 filesystem checks; full backend build passed. Read HANDOFF.md, docs/full-build/AUTH-REPAIR-2026-10-28.md and persistent scorecard. Next:case/document access matrix, direct fallback and delete recovery. No full autonomous server, browser/provider, legal or payout operation is verified. Compliance saved at b1ec44b, on owner hold pending TaxSlayer; hourly monitor ACTIVE. Private Capital lab config is outside Git.
+Branch repair/bottom-up-capital-2026-10-28; auth rotation/current account repair implemented and qualified with13 boundary,14 actual PostgreSQL/HTTP checks,9 filesystem checks; full backend build passed. Read HANDOFF.md, docs/full-build/AUTH-REPAIR-2026-10-28.md and persistent scorecard. Next:case/document access matrix, direct fallback and delete recovery. No full autonomous server, browser/provider, legal or payout operation is verified. Owner canceled TaxSlayer monitoring; Capital is the sole active scope. Private Capital lab config is outside Git.
 
 # Current implementation checkpoint — October 28, 2026
 

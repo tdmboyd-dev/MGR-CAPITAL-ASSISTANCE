@@ -81,7 +81,8 @@ class StorageRouter {
     } catch (error: any) {
       console.error("[StorageRouter] Initialization failed:", error.message);
       // Ensure at least local adapter is available
-      this.initialized = true;
+      this.initialized = false;
+      throw new Error("Storage initialization unavailable");
     }
   }
 
@@ -183,157 +184,86 @@ class StorageRouter {
       return { success: false, error: `No adapter for provider ${provider.name}` };
     }
 
-    // Upload to provider
-    const result = await adapter.upload(providerPath, params.data, params.mimeType);
-    if (!result.success) {
-      // Try fallback to local
-      const localProvider = await this.getLocalProvider();
-      if (localProvider && localProvider.id !== provider.id) {
-        const localAdapter = this.adapters.get(localProvider.id);
-        if (localAdapter) {
-          const fallbackResult = await localAdapter.upload(providerPath, params.data, params.mimeType);
-          if (fallbackResult.success) {
-            const registry = await this.createFileRegistry({
-              documentId: params.documentId,
-              providerId: localProvider.id,
-              providerPath,
-              fileName: params.fileName,
-              fileSize,
-              mimeType: params.mimeType,
-              sha256Hash,
-            });
-            await this.updateProviderUsage(localProvider.id, fileSize);
-            return { success: true, fileRegistryId: registry.id, providerId: localProvider.id, providerPath };
-          }
-        }
-      }
-      return { success: false, error: result.error || "Upload failed" };
-    }
-
-    // Create FileRegistry entry
-    const registry = await this.createFileRegistry({
-      documentId: params.documentId,
-      providerId: provider.id,
-      providerPath,
-      fileName: params.fileName,
-      fileSize,
-      mimeType: params.mimeType,
-      sha256Hash,
+    // Persist the exact target and reserve usage BEFORE dispatching any write.
+    const registry = await prisma.$transaction(async (db) => {
+      const saved=await db.fileRegistry.create({data:{documentId:params.documentId || null,providerId:provider.id,
+        providerPath,fileName:params.fileName,fileSize:BigInt(fileSize),mimeType:params.mimeType,sha256Hash,lifecycle:"UPLOAD_PENDING"}});
+      await db.storageProvider.update({where:{id:provider.id},data:{usedBytes:{increment:BigInt(fileSize)}}});
+      return saved;
     });
-
-    // Update provider usage
-    await this.updateProviderUsage(provider.id, fileSize);
-
-    return { success: true, fileRegistryId: registry.id, providerId: provider.id, providerPath };
+    try {
+      const uploaded=await adapter.upload(providerPath,params.data,params.mimeType);
+      if(!uploaded.success)throw Error("Storage write unconfirmed");
+      const reconciled=await this.reconcileUpload(registry.id);
+      if(!reconciled.success)throw Error("Stored bytes not verified");
+      return {success:true,fileRegistryId:registry.id,providerId:provider.id,providerPath};
+    } catch {
+      await prisma.fileRegistry.update({where:{id:registry.id},data:{lifecycle:"UPLOAD_FAILED",lastError:"Upload outcome requires readback reconciliation"}});
+      return {success:false,fileRegistryId:registry.id,providerId:provider.id,providerPath,error:"Upload unconfirmed; target retained for reconciliation"};
+    }
   }
 
-  async download(params: {
-    documentId?: string;
-    fileRegistryId?: string;
-  }): Promise<RouterDownloadResult> {
+  private async registryAdapter(registry: {providerId:string}) {
+    const provider=await prisma.storageProvider.findUnique({where:{id:registry.providerId}});
+    if(!provider?.isEnabled)return null;
+    const cached=this.adapters.get(provider.id);
+    if(cached)return cached;
+    const adapter=this.createAdapter(provider);
+    if(adapter)this.adapters.set(provider.id,adapter);
+    return adapter;
+  }
+  private verifiedBytes(registry: {fileSize:bigint;sha256Hash:string}, data?:Buffer): data is Buffer {
+    return !!data && BigInt(data.length)===registry.fileSize && crypto.createHash("sha256").update(data).digest("hex")===registry.sha256Hash;
+  }
+  async reconcileUpload(id:string):Promise<{success:boolean;error?:string}> {
     await this.initialize();
-
-    let registry;
-
-    if (params.fileRegistryId) {
-      registry = await prisma.fileRegistry.findUnique({
-        where: { id: params.fileRegistryId },
-        include: { provider: true },
-      });
-    } else if (params.documentId) {
-      registry = await prisma.fileRegistry.findFirst({
-        where: { documentId: params.documentId },
-        include: { provider: true },
-        orderBy: { createdAt: "desc" },
-      });
-    }
-
-    if (!registry) {
-      return { success: false, error: "File not found in registry" };
-    }
-
-    const adapter = this.adapters.get(registry.providerId);
-    if (!adapter) {
-      // Try to re-initialize the adapter
-      const provider = await prisma.storageProvider.findUnique({
-        where: { id: registry.providerId },
-      });
-      if (provider) {
-        const newAdapter = this.createAdapter(provider);
-        if (newAdapter) {
-          this.adapters.set(provider.id, newAdapter);
-          const result = await newAdapter.download(registry.providerPath);
-          if (result.success) {
-            await this.incrementAccessCount(registry.id);
-            return { success: true, data: result.data, fileName: registry.fileName, mimeType: registry.mimeType || undefined };
-          }
-        }
-      }
-      return { success: false, error: `Provider ${registry.provider.name} not available` };
-    }
-
-    const result = await adapter.download(registry.providerPath);
-    if (!result.success) {
-      return { success: false, error: result.error };
-    }
-
-    await this.incrementAccessCount(registry.id);
-    return { success: true, data: result.data, fileName: registry.fileName, mimeType: registry.mimeType || undefined };
+    const row=await prisma.fileRegistry.findUnique({where:{id}});
+    if(!row || row.lifecycle.startsWith("DELETE"))return {success:false,error:"Upload reconciliation unavailable"};
+    const adapter=await this.registryAdapter(row);
+    if(!adapter)return {success:false,error:"Provider unavailable"};
+    const read=await adapter.download(row.providerPath);
+    if(!read.success || !this.verifiedBytes(row,read.data))return {success:false,error:"Stored bytes could not be verified"};
+    await prisma.fileRegistry.update({where:{id:row.id},data:{lifecycle:"READY",lastError:null}});
+    return {success:true};
   }
-
-  async deleteFile(fileRegistryId: string): Promise<{ success: boolean; error?: string }> {
+  async download(params:{documentId?:string;fileRegistryId?:string}):Promise<RouterDownloadResult> {
+    if(!params.fileRegistryId && !params.documentId)return {success:false,error:"File identity required"};
     await this.initialize();
-
-    const registry = await prisma.fileRegistry.findUnique({
-      where: { id: fileRegistryId },
-      include: { provider: true },
-    });
-
-    if (!registry) {
-      return { success: false, error: "File not found in registry" };
-    }
-
-    const adapter = this.adapters.get(registry.providerId);
-    if (adapter) {
-      const result = await adapter.delete(registry.providerPath);
-      if (!result.success) {
-        console.warn(`[StorageRouter] Failed to delete from provider: ${result.error}`);
-      }
-    }
-
-    // Delete all replicas
-    if (!registry.replicaOf) {
-      const replicas = await prisma.fileRegistry.findMany({
-        where: { replicaOf: registry.id },
-      });
-      for (const replica of replicas) {
-        const replicaAdapter = this.adapters.get(replica.providerId);
-        if (replicaAdapter) {
-          await replicaAdapter.delete(replica.providerPath);
-        }
-        await prisma.fileRegistry.delete({ where: { id: replica.id } });
-      }
-    }
-
-    // Update provider usage
-    await this.updateProviderUsage(registry.providerId, -Number(registry.fileSize));
-
-    // Delete registry entry
-    await prisma.fileRegistry.delete({ where: { id: fileRegistryId } });
-
-    return { success: true };
+    const row=params.fileRegistryId?await prisma.fileRegistry.findUnique({where:{id:params.fileRegistryId}}):await prisma.fileRegistry.findFirst({where:{documentId:params.documentId,lifecycle:"READY"},orderBy:{createdAt:"desc"}});
+    if(!row || row.lifecycle!=="READY")return {success:false,error:"Registered file is not ready"};
+    const adapter=await this.registryAdapter(row);
+    if(!adapter)return {success:false,error:"Provider unavailable"};
+    const result=await adapter.download(row.providerPath);
+    if(!result.success || !this.verifiedBytes(row,result.data))return {success:false,error:"Stored file integrity could not be verified"};
+    await this.incrementAccessCount(row.id);
+    return {success:true,data:result.data,fileName:row.fileName,mimeType:row.mimeType || undefined};
   }
-
-  async deleteByDocumentId(documentId: string): Promise<{ success: boolean; error?: string }> {
-    const registries = await prisma.fileRegistry.findMany({
-      where: { documentId },
-    });
-
-    for (const registry of registries) {
-      await this.deleteFile(registry.id);
+  async deleteFile(id:string):Promise<{success:boolean;error?:string}> {
+    await this.initialize();
+    const row=await prisma.fileRegistry.findUnique({where:{id}});
+    if(!row)return {success:true}; // Retry after a committed deletion is idempotent.
+    await prisma.fileRegistry.update({where:{id},data:{lifecycle:"DELETE_PENDING",lastError:null}});
+    try {
+      const replicas=await prisma.fileRegistry.findMany({where:{replicaOf:id}});
+      for(const replica of replicas){const result=await this.deleteFile(replica.id);if(!result.success)throw Error("Replica delete unconfirmed");}
+      const adapter=await this.registryAdapter(row);
+      if(!adapter)throw Error("Provider unavailable");
+      if(!(await adapter.delete(row.providerPath)).success)throw Error("Provider delete unconfirmed");
+      await prisma.$transaction(async(db)=>{
+        const removed=await db.fileRegistry.deleteMany({where:{id}});
+        if(removed.count===1)await db.$executeRaw`UPDATE "StorageProvider" SET "usedBytes"=GREATEST(0,"usedBytes"-${row.fileSize}),"updatedAt"=NOW() WHERE id=${row.providerId}`;
+      });
+      return {success:true};
+    } catch {
+      // Preserve the exact location and reservation until a later explicit retry.
+      await prisma.fileRegistry.updateMany({where:{id},data:{lifecycle:"DELETE_FAILED",lastError:"Delete outcome requires reconciliation"}});
+      return {success:false,error:"Storage delete unconfirmed; registry retained for retry"};
     }
-
-    return { success: true };
+  }
+  async deleteByDocumentId(documentId:string):Promise<{success:boolean;error?:string}> {
+    const rows=await prisma.fileRegistry.findMany({where:{documentId},orderBy:{createdAt:"asc"}});
+    for(const row of rows){const result=await this.deleteFile(row.id);if(!result.success)return result;}
+    return {success:true};
   }
 
   // ============================================

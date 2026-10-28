@@ -16,7 +16,9 @@
     "cypress:run": "cypress run",
     "deploy:prod": "docker compose -f docker-compose.prod.yml up -d --build",
     "test:auth-boundary": "node --test tests/auth-current-boundary.test.cjs tests/transport-boundary.test.cjs",
-    "test:auth-postgres": "node --import tsx tests/auth-postgres-acceptance.ts"
+    "test:auth-postgres": "node --import tsx tests/auth-postgres-acceptance.ts",
+    "test:vault-postgres": "node --import tsx tests/vault-postgres-acceptance.ts",
+    "test:vault-reopen": "node --import tsx tests/vault-reopen-acceptance.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
