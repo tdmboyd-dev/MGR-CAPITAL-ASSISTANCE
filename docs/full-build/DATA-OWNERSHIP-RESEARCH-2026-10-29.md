@@ -54,6 +54,8 @@ The original DOR directory link returned401 through the web reader. A separately
 
 ## Costs and the unresolved questions
 
+Regrid's standard store agreement was subsequently read through its operative terms. It permits internal database/search use but has a one-year term followed by cessation of use or deletion. It restricts resale, competing products and certain AI uses. Disposition: REJECT that standard store license for a permanent MGR-owned data asset; investigate different enterprise terms only if useful. This conclusion does not assume those standard terms govern a separately negotiated agreement.
+
 Miami-Dade publicly posts $50 per file. USPS currently displays annual fees of $17,840 for End User Mailer, $36,440 Limited Service Provider and $436,300 Full Service Provider, with separate developer/interface categories. These are posted program fees, not a complete implementation quote or MGR eligibility approval. An older2025 price document differs; do not use that older figure as current. USPS requires certification and CASS-certified matching; its EUM category excludes third-party and affiliate processing. A license category must fit the actual company structure and use.
 
 ATTOM, Data Axle and negotiated enterprise/reseller rights have no verified MGR quote. Do not invent a national database price or claim a consumer mailing-list purchase grants permanent people-search or resale rights. Melissa's published Data Products terms show why this matters: that particular product's terms limit use and restrict combinations and ownership claims. That document is not assumed to govern every Melissa API/product.
