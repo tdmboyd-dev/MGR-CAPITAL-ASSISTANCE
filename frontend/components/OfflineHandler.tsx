@@ -3,8 +3,10 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { WifiOff, Wifi } from "lucide-react";
+import { useServiceWorker } from "@/hooks/useServiceWorker";
 
 export function OfflineHandler() {
+  useServiceWorker();
   const [isOnline, setIsOnline] = useState(true);
 
   useEffect(() => {

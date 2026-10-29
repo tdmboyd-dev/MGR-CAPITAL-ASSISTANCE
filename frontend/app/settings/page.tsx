@@ -36,7 +36,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
 export default function SettingsPage() {
   const router = useRouter();
-  const { user, accessToken, isLoading: authLoading } = useAuth();
+  const { user, accessToken, isLoading: authLoading, isHydrated } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [profile, setProfile] = useState({
@@ -45,6 +45,10 @@ export default function SettingsPage() {
     recoveryEmail: "",
   });
   const [requiresRecoveryEmail, setRequiresRecoveryEmail] = useState(false);
+
+  useEffect(() => {
+    if (isHydrated && !authLoading && !user) router.replace("/auth/login");
+  }, [isHydrated, authLoading, user, router]);
 
   // Fetch user profile
   useEffect(() => {
@@ -113,7 +117,7 @@ export default function SettingsPage() {
     return paths[user.role] || "/";
   };
 
-  if (authLoading || isLoading) {
+  if (!isHydrated || authLoading || isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
         <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
@@ -122,7 +126,6 @@ export default function SettingsPage() {
   }
 
   if (!user) {
-    router.push("/auth/login");
     return null;
   }
 

@@ -1,3 +1,4 @@
+import { recordMoney, recordDate } from "./RecordValues.js";
 /**
  * probateCsvParser.ts
  *
@@ -254,72 +255,9 @@ function detectColumnMapping(headers: string[]): ProbateColumnMapping | null {
 // VALUE NORMALIZATION
 // =============================================================================
 
-function normalizeMonetaryValue(value: string): number {
-  if (!value || value.trim() === "") return 0;
+function normalizeMonetaryValue(value: string): number{ return recordMoney(value); }
 
-  // Remove currency symbols, commas, spaces
-  let cleaned = value.replace(/[$,\s]/g, "").trim();
-
-  // Handle parentheses for negative numbers
-  if (cleaned.startsWith("(") && cleaned.endsWith(")")) {
-    cleaned = "-" + cleaned.slice(1, -1);
-  }
-
-  // Handle "K" for thousands, "M" for millions
-  let multiplier = 1;
-  if (/k$/i.test(cleaned)) {
-    multiplier = 1000;
-    cleaned = cleaned.slice(0, -1);
-  } else if (/m$/i.test(cleaned)) {
-    multiplier = 1000000;
-    cleaned = cleaned.slice(0, -1);
-  }
-
-  const parsed = parseFloat(cleaned);
-  if (isNaN(parsed)) return 0;
-
-  // Convert to cents
-  return Math.round(parsed * multiplier * 100);
-}
-
-function normalizeDate(value: string): Date | null {
-  if (!value || value.trim() === "") return null;
-
-  const cleaned = value.trim();
-
-  // Try various date formats
-  // MM/DD/YYYY
-  const usMatch = cleaned.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-  if (usMatch) {
-    const [, month, day, year] = usMatch;
-    const date = new Date(Date.UTC(parseInt(year), parseInt(month) - 1, parseInt(day)));
-    if (!isNaN(date.getTime())) return date;
-  }
-
-  // YYYY-MM-DD
-  const isoMatch = cleaned.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
-  if (isoMatch) {
-    const [, year, month, day] = isoMatch;
-    const date = new Date(Date.UTC(parseInt(year), parseInt(month) - 1, parseInt(day)));
-    if (!isNaN(date.getTime())) return date;
-  }
-
-  // MM-DD-YYYY
-  const usHyphenMatch = cleaned.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
-  if (usHyphenMatch) {
-    const [, month, day, year] = usHyphenMatch;
-    const date = new Date(Date.UTC(parseInt(year), parseInt(month) - 1, parseInt(day)));
-    if (!isNaN(date.getTime())) return date;
-  }
-
-  // Try ISO format as fallback
-  const isoDate = new Date(cleaned);
-  if (!isNaN(isoDate.getTime())) {
-    return isoDate;
-  }
-
-  return null;
-}
+function normalizeDate(value: string): Date | null{ return recordDate(value); }
 
 function normalizeString(value: string): string {
   if (!value) return "";

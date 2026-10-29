@@ -1,3 +1,4 @@
+import { recordMoney, recordDate } from "./RecordValues.js";
 /**
  * surplusPdfParser.ts
  *
@@ -102,10 +103,8 @@ const ADDRESS_PATTERNS = [
 ];
 
 const AMOUNT_PATTERNS = [
-  /surplus\s*(?:amount|funds?|balance)?:?\s*\$?\s*([\d,]+\.?\d*)/i,
-  /(?:excess|overage|overbid)\s*(?:amount|funds?)?:?\s*\$?\s*([\d,]+\.?\d*)/i,
-  /(?:amount|balance)\s*(?:due|owed|available):?\s*\$?\s*([\d,]+\.?\d*)/i,
-  /\$\s*([\d,]+\.?\d{2})/,
+  /surplus\s*(?:amount|funds?|balance|proceeds)?:?\s*\$?\s*([^\s;]+)/i,
+  /(?:excess|overage|overbid)\s*(?:amount|funds?|proceeds)?:?\s*\$?\s*([^\s;]+)/i,
 ];
 
 const DATE_PATTERNS = [
@@ -139,52 +138,9 @@ const MAILING_ADDRESS_PATTERNS = [
 // VALUE NORMALIZATION
 // =============================================================================
 
-function normalizeMonetaryValue(value: string): number {
-  if (!value || value.trim() === "") return 0;
+function normalizeMonetaryValue(value: string): number{ return recordMoney(value); }
 
-  // Remove currency symbols, commas, spaces
-  let cleaned = value.replace(/[$,\s]/g, "").trim();
-
-  // Handle parentheses for negative numbers
-  if (cleaned.startsWith("(") && cleaned.endsWith(")")) {
-    cleaned = "-" + cleaned.slice(1, -1);
-  }
-
-  const parsed = parseFloat(cleaned);
-  if (isNaN(parsed)) return 0;
-
-  // Convert to cents
-  return Math.round(parsed * 100);
-}
-
-function normalizeDate(value: string): Date | null {
-  if (!value || value.trim() === "") return null;
-
-  const cleaned = value.trim();
-
-  // Try MM/DD/YYYY or MM-DD-YYYY
-  const usMatch = cleaned.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{2,4})$/);
-  if (usMatch) {
-    let [, month, day, year] = usMatch;
-    // Handle 2-digit year
-    if (year.length === 2) {
-      const currentYear = new Date().getFullYear();
-      const century = Math.floor(currentYear / 100) * 100;
-      const twoDigitYear = parseInt(year);
-      year = (twoDigitYear > 50 ? century - 100 + twoDigitYear : century + twoDigitYear).toString();
-    }
-    const date = new Date(Date.UTC(parseInt(year), parseInt(month) - 1, parseInt(day)));
-    if (!isNaN(date.getTime())) return date;
-  }
-
-  // Try ISO format
-  const isoDate = new Date(cleaned);
-  if (!isNaN(isoDate.getTime())) {
-    return isoDate;
-  }
-
-  return null;
-}
+function normalizeDate(value: string): Date | null{ return recordDate(value); }
 
 function normalizeString(value: string): string {
   if (!value) return "";
@@ -403,7 +359,8 @@ function parseBlockFormat(
     const ownerMailingAddress = extractMailingAddress(block);
 
     // Use the largest amount as surplus (usually the most relevant)
-    const surplusAmountCents = Math.max(...amounts);
+    if (new Set(amounts).size !== 1) continue;
+    const surplusAmountCents = amounts[0];
 
     const contentHash = computeContentHash(
       `${caseNumber}|${ownerName}|${parcelId}|${surplusAmountCents}`
@@ -459,16 +416,18 @@ function parseTableFormat(
   }
 
   const dataStartIndex = headerIndex >= 0 ? headerIndex + 1 : 0;
+  const headerCells = headerIndex >= 0 ? lines[headerIndex].split(/\t|\s{3,}/).map(c=>c.trim()) : [];
+  const surplusIndex = headerCells.findIndex(c=>/^(?:surplus|excess|overage|overbid)(?:\s+(?:amount|funds|balance|proceeds))?$/i.test(c));
 
   for (let i = dataStartIndex; i < lines.length; i++) {
     const line = lines[i];
 
     // Split by tabs or multiple spaces
-    const cells = line.split(/\t|\s{3,}/).filter(c => c.trim());
+    const cells = line.split(/\t|\s{3,}/).map(c=>c.trim());
     if (cells.length < 2) continue;
 
     // Try to extract data from cells
-    const amounts = extractAllAmounts(line);
+    const amounts = surplusIndex >= 0 ? [recordMoney(cells[surplusIndex] || "")] : extractAllAmounts(line);
     if (amounts.length === 0) continue;
 
     const caseNumber = extractFirstMatch(line, CASE_NUMBER_PATTERNS) ||
@@ -490,7 +449,8 @@ function parseTableFormat(
     const ownerEmail = extractEmail(line);
     const ownerMailingAddress = extractMailingAddress(line);
 
-    const surplusAmountCents = Math.max(...amounts);
+    if (new Set(amounts).size !== 1) continue;
+    const surplusAmountCents = amounts[0];
 
     const contentHash = computeContentHash(
       `${caseNumber}|${ownerName}|${parcelId}|${surplusAmountCents}`
@@ -554,7 +514,8 @@ function parseListFormat(
     const ownerEmail = extractEmail(item);
     const ownerMailingAddress = extractMailingAddress(item);
 
-    const surplusAmountCents = Math.max(...amounts);
+    if (new Set(amounts).size !== 1) continue;
+    const surplusAmountCents = amounts[0];
 
     const contentHash = computeContentHash(
       `${caseNumber}|${ownerName}|${parcelId}|${surplusAmountCents}`

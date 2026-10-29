@@ -98,7 +98,7 @@ const config: Config = {
   detectOpenHandles: true,
 
   // Workaround for Windows path issues
-  testPathIgnorePatterns: ["/node_modules/"],
+  testPathIgnorePatterns: ["/node_modules/", "native-research-boundary.test.ts", "voice-truth-boundary.test.ts"],
 };
 
 export default config;

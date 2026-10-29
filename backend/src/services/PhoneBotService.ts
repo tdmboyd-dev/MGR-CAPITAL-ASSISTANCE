@@ -76,7 +76,7 @@ export class PhoneBotService {
     this.demoMode = !this.isConfigured;
 
     if (this.demoMode) {
-      logger.info('[PhoneBot] Running in DEMO MODE - calls are simulated');
+      logger.info('[PhoneBot] Phone provider unavailable');
       logger.info('[PhoneBot] To enable real calls, add TELNYX_API_KEY');
     } else {
       logger.info(`[PhoneBot] Using TELNYX for phone calls`);
@@ -88,83 +88,7 @@ export class PhoneBotService {
    * Start an outbound call via Telnyx (or simulated in demo mode)
    */
   async startCall(to: string, script: string, caseId?: string): Promise<CallResult> {
-    // Generate a call ID (real or simulated)
-    const callSid = this.demoMode
-      ? `DEMO_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-      : undefined;
-
-    try {
-      let finalCallSid = callSid;
-
-      if (!this.demoMode) {
-        // Telnyx call
-        const response = await fetch('https://api.telnyx.com/v2/calls', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${TELNYX_API_KEY}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            connection_id: process.env.TELNYX_CONNECTION_ID,
-            to,
-            from: TELNYX_NUMBER,
-            webhook_url: `${process.env.API_BASE_URL}/api/phone/webhook`,
-            record: 'record-from-answer',
-          }),
-        });
-
-        if (!response.ok) {
-          throw new Error(`Telnyx API error: ${response.status}`);
-        }
-
-        const data: any = await response.json();
-        finalCallSid = data.data?.call_control_id || `TELNYX_${Date.now()}`;
-      }
-
-      // Log call in database (works for both real and demo)
-      try {
-        if (caseId) {
-          const caseRecord = await prisma.case.findUnique({ where: { id: caseId }, select: { clientId: true } });
-          await prisma.communication.create({
-            data: {
-              caseId,
-              userId: caseRecord?.clientId || '',
-              type: 'CALL',
-              direction: 'OUTBOUND',
-              subject: 'AI Outreach Call',
-              content: script,
-              metadata: {
-                callSid: finalCallSid,
-                demoMode: this.demoMode,
-                to,
-                timestamp: new Date().toISOString(),
-                status: this.demoMode ? 'DEMO_SIMULATED' : 'INITIATED',
-              },
-            },
-          });
-        }
-      } catch (dbError) {
-        logger.warn('Could not log call to database', { error: (dbError as Error).message });
-      }
-
-      logger.info('Call initiated', {
-        callSid: finalCallSid,
-        to,
-        demoMode: this.demoMode
-      });
-
-      // In demo mode, simulate call completion after 2 seconds
-      if (this.demoMode) {
-        setTimeout(() => {
-          logger.info('Demo call completed', { callSid: finalCallSid });
-        }, 2000);
-      }
-
-      return { success: true, callSid: finalCallSid };
-    } catch (error: any) {
-      logger.error('Failed to start call', { error: error.message });
-      return { success: false, error: error.message };
-    }
+    return { success: false, error: 'Phone execution unavailable pending authenticated call lifecycle, recipient permission and MGR Voice integration. No call was placed.' };
   }
 
   /**
@@ -180,7 +104,7 @@ export class PhoneBotService {
   getStatus(): { configured: boolean; mode: string; phoneProvider: string; llmProvider: string } {
     return {
       configured: this.isConfigured,
-      mode: this.demoMode ? 'demo' : 'live',
+      mode: 'unavailable_pending_call_lifecycle',
       phoneProvider: this.phoneProvider,
       llmProvider: this.llmProvider,
     };

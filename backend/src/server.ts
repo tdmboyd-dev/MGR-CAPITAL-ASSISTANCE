@@ -1,7 +1,4 @@
-// ============================================
-// MGR CAPITAL ASSISTANCE — API SERVER
-// Production-ready Express server
-// ============================================
+/** Capital API application. Importing this module does not open ports. Full product/provider/production qualification remains incomplete. */
 
 import express from "express";
 import cors from "cors";
@@ -273,7 +270,7 @@ app.get("/api/ops/insights", authMiddleware, roleGuard(["FOUNDER"]), async (req,
     });
   } catch (error: any) {
     console.error("Insights fetch error:", error);
-    res.json({ success: true, insights: [], count: 0 });
+    res.status(503).json({ success: false, error: "Insights unavailable" });
   }
 });
 
@@ -452,74 +449,16 @@ app.use(globalErrorHandler);
 
 const PORT = config.port || 3001;
 
-// ============================================
-// WEBSOCKET SERVER (Real-time collaboration)
-// ============================================
-
-import { WebSocketServer, WebSocket } from "ws";
-
-const WS_PORT = Number(process.env.WS_PORT) || 4001;
-
-const wss = new WebSocketServer({ port: WS_PORT });
-
-// Room management for collaborative editing
-const rooms: Map<string, Set<WebSocket>> = new Map();
-
-wss.on("connection", (ws, req) => {
-  const url = new URL(req.url!, `http://${req.headers.host}`);
-  const caseId = url.searchParams.get("caseId") || url.pathname.split("-")[1];
-
-  if (!caseId) {
-    ws.close(1008, "Missing caseId parameter");
-    return;
-  }
-
-  const roomKey = `case-${caseId}`;
-
-  // Join room
-  if (!rooms.has(roomKey)) {
-    rooms.set(roomKey, new Set());
-  }
-  rooms.get(roomKey)!.add(ws);
-
-  console.log(`[WS] Client joined room: ${roomKey} (${rooms.get(roomKey)!.size} users)`);
-
-  // Broadcast messages to all clients in the same room
-  ws.on("message", (message) => {
-    const room = rooms.get(roomKey);
-    if (!room) return;
-
-    room.forEach((client) => {
-      if (client !== ws && client.readyState === WebSocket.OPEN) {
-        client.send(message);
-      }
-    });
-  });
-
-  // Handle disconnection
-  ws.on("close", () => {
-    const room = rooms.get(roomKey);
-    if (room) {
-      room.delete(ws);
-      console.log(`[WS] Client left room: ${roomKey} (${room.size} users remaining)`);
-      if (room.size === 0) {
-        rooms.delete(roomKey);
-      }
-    }
-  });
-
-  ws.on("error", (error) => {
-    console.error(`[WS] Error in room ${roomKey}:`, error.message);
-  });
-});
-
-console.log(`[WS] WebSocket server running on port ${WS_PORT}`);
+// The former unauthenticated cross-case relay is removed. Collaboration needs an
+// authenticated, case-authorized Yjs server with durable snapshots before admission.
+import { pathToFileURL } from "node:url";
 
 // ============================================
 // HTTP SERVER START
 // ============================================
 
-app.listen(PORT, async () => {
+// Importing the app for tests must not open ports or initialize external services.
+if (process.env.NODE_ENV !== "test" && process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) app.listen(PORT, async () => {
   // Initialize services
   const smtpReady = await notificationService.initialize();
   console.log(`[Email] SMTP ${smtpReady ? 'initialized' : 'not configured (emails will be logged)'}`);

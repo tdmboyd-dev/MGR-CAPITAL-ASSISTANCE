@@ -1,16 +1,4 @@
-/**
- * Payment Routes — MGR CAPITAL ASSISTANCE
- * Complete Nickel Payment Platform Integration
- *
- * FEATURES:
- * - ACH Payments (FREE) - Collect fees from clients
- * - Card Payments (2.9%) - Accept card payments via payment links
- * - Bill Pay - Pay vendors/contractors/clients via ACH or check
- * - Invoicing - Create invoices with payment links
- * - Auto-Collection - Automatic fee collection when cases settle
- *
- * Sign up at: https://getnickel.com
- */
+/** Global founder financial records and calculation routes. Nickel execution and all unqualified provider callback paths return unavailable. */
 
 import { Router } from "express";
 import { authenticate } from "../middleware/authMiddleware.js";
@@ -19,6 +7,27 @@ import { nickelPaymentService } from "../services/NickelPaymentService.js";
 import { logger } from "../utils/logger.js";
 
 const router = Router();
+// No provider callback contract has yet been qualified. Reject rather than acknowledge.
+router.use("/webhook", (_req, res) => {
+  res.status(503).json({ success: false, code: "PROVIDER_CALLBACK_UNAVAILABLE", error: "Authenticated event verification and settlement reconciliation are not qualified." });
+});
+// These are global financial endpoints, not tenant-scoped client APIs.
+router.use(authenticate, async (req: any, res, next) => {
+  try {
+    const { currentActor } = await import("../services/CaseDocumentAccess.js");
+    const { default: db } = await import("../lib/prisma.js");
+    const actor = await currentActor(db, req.user.id);
+    if (actor.role !== "FOUNDER" || actor.tenantId !== null) return res.status(403).json({ error: "Global founder financial access required" });
+    next();
+  } catch { res.status(503).json({ error: "Financial authority unavailable" }); }
+});
+// Writes through this unqualified Nickel integration cannot claim a real outcome.
+router.use((req, res, next) => {
+  if (req.method !== "GET" && req.method !== "HEAD" && req.path !== "/calculate-fee" && !req.path.startsWith("/authorize/")) {
+    return res.status(503).json({ success: false, code: "NICKEL_UNAVAILABLE", error: "Nickel payment execution awaits provider qualification. No payment was submitted." });
+  }
+  next();
+});
 
 /**
  * POST /api/payments/authorize
@@ -119,27 +128,6 @@ router.post("/auto-collect", authenticate, async (req, res) => {
     res.json(result);
   } catch (error: any) {
     logger.error("Auto-collection failed", { error: error.message });
-    res.status(500).json({ error: error.message });
-  }
-});
-
-/**
- * GET /api/payments/:paymentId
- * Get payment status
- */
-router.get("/:paymentId", authenticate, async (req, res) => {
-  try {
-    const { paymentId } = req.params;
-
-    const payment = await nickelPaymentService.getPaymentStatus(paymentId);
-
-    if (!payment) {
-      return res.status(404).json({ error: "Payment not found" });
-    }
-
-    res.json({ payment });
-  } catch (error: any) {
-    logger.error("Payment status check failed", { error: error.message });
     res.status(500).json({ error: error.message });
   }
 });
@@ -524,159 +512,26 @@ router.get("/summary", authenticate, async (req, res) => {
   }
 });
 
-// ============================================
-// WEBHOOKS (No auth - verified by signatures)
-// ============================================
-
 /**
- * POST /api/payments/webhook/nickel
- * Handle Nickel webhook events
+ * GET /api/payments/:paymentId
+ * Get payment status
  */
-router.post("/webhook/nickel", async (req, res) => {
+router.get("/:paymentId", authenticate, async (req, res) => {
   try {
-    const signature = req.headers["x-nickel-signature"] as string;
-    const payload = JSON.stringify(req.body);
+    const { paymentId } = req.params;
 
-    // Verify signature
-    if (!nickelPaymentService.verifyWebhookSignature(payload, signature)) {
-      logger.warn("Nickel webhook signature verification failed");
-      return res.status(401).json({ error: "Invalid signature" });
+    const payment = await nickelPaymentService.getPaymentStatus(paymentId);
+
+    if (!payment) {
+      return res.status(404).json({ error: "Payment not found" });
     }
 
-    const { event, data } = req.body;
-    logger.info("Nickel webhook received", { event });
-
-    await nickelPaymentService.handleWebhook(event, data);
-
-    res.json({ received: true });
+    res.json({ payment });
   } catch (error: any) {
-    logger.error("Nickel webhook error", { error: error.message });
+    logger.error("Payment status check failed", { error: error.message });
     res.status(500).json({ error: error.message });
   }
 });
 
-/**
- * POST /api/payments/webhook/stripe
- * Handle Stripe webhook events
- */
-router.post("/webhook/stripe", async (req, res) => {
-  try {
-    const { paymentService } = await import("../services/PaymentService.js");
-    const sig = req.headers["stripe-signature"] as string;
-    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
-
-    // If webhook secret configured, verify signature
-    if (webhookSecret && sig) {
-      const stripe = (await import("stripe")).default;
-      const stripeClient = new stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: "2023-10-16" as any });
-
-      try {
-        const event = stripeClient.webhooks.constructEvent(
-          req.body,
-          sig,
-          webhookSecret
-        );
-
-        logger.info("Stripe webhook received", { type: event.type });
-
-        // Handle different event types
-        switch (event.type) {
-          case "payment_intent.succeeded":
-            const paymentIntent = event.data.object as any;
-            const internalId = paymentIntent.metadata?.internalPaymentId;
-            if (internalId) {
-              await paymentService.updateStatus(internalId, "succeeded");
-            }
-            break;
-
-          case "payment_intent.payment_failed":
-            const failedIntent = event.data.object as any;
-            const failedInternalId = failedIntent.metadata?.internalPaymentId;
-            if (failedInternalId) {
-              await paymentService.updateStatus(failedInternalId, "failed");
-            }
-            break;
-
-          case "charge.refunded":
-            const refund = event.data.object as any;
-            logger.info("Charge refunded", { chargeId: refund.id });
-            break;
-        }
-
-        res.json({ received: true });
-      } catch (err: any) {
-        logger.error("Stripe webhook signature verification failed", { error: err.message });
-        return res.status(400).json({ error: "Webhook signature verification failed" });
-      }
-    } else {
-      // No signature verification (dev mode)
-      logger.warn("Stripe webhook received without signature verification");
-      res.json({ received: true, warning: "No signature verification" });
-    }
-  } catch (error: any) {
-    logger.error("Stripe webhook error", { error: error.message });
-    res.status(500).json({ error: error.message });
-  }
-});
-
-/**
- * POST /api/payments/webhook/paypal
- * Handle PayPal webhook events
- */
-router.post("/webhook/paypal", async (req, res) => {
-  try {
-    const { paymentService } = await import("../services/PaymentService.js");
-    const event = req.body;
-
-    logger.info("PayPal webhook received", { type: event.event_type });
-
-    // PayPal webhook verification would go here in production
-    // Using PayPal's verify-webhook-signature API
-
-    switch (event.event_type) {
-      case "PAYMENT.CAPTURE.COMPLETED":
-        const captureId = event.resource?.id;
-        const orderId = event.resource?.supplementary_data?.related_ids?.order_id;
-        if (orderId) {
-          // Find payment by external ID and update status
-          logger.info("PayPal payment completed", { orderId, captureId });
-        }
-        break;
-
-      case "PAYMENT.CAPTURE.DENIED":
-        logger.warn("PayPal payment denied", { resource: event.resource?.id });
-        break;
-
-      case "PAYMENT.CAPTURE.REFUNDED":
-        logger.info("PayPal payment refunded", { resource: event.resource?.id });
-        break;
-    }
-
-    res.json({ received: true });
-  } catch (error: any) {
-    logger.error("PayPal webhook error", { error: error.message });
-    res.status(500).json({ error: error.message });
-  }
-});
-
-/**
- * POST /api/payments/webhook/opensign
- * Handle OpenSign webhook events (FREE e-signatures)
- */
-router.post("/webhook/opensign", async (req, res) => {
-  try {
-    const { documentSigningService } = await import("../services/DocumentSigningService.js");
-    const event = req.body;
-
-    logger.info("OpenSign webhook received", { event: event.event });
-
-    await documentSigningService.handleWebhook("opensign", event);
-
-    res.json({ received: true });
-  } catch (error: any) {
-    logger.error("OpenSign webhook error", { error: error.message });
-    res.status(500).json({ error: error.message });
-  }
-});
 
 export default router;

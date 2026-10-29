@@ -1,0 +1,7 @@
+{
+  "scope": "Separate Node process, actual isolated PostgreSQL; synthetic allocations, no settlement",
+  "passed": 1,
+  "checks": [
+    "Pending balanced allocations and awaiting-funds case survive process reopening"
+  ]
+}

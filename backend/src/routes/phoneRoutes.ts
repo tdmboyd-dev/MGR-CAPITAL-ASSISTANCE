@@ -9,6 +9,20 @@ import { phoneBotService } from '../services/PhoneBotService.js';
 import { logger } from '../utils/logger.js';
 
 const router = Router();
+for (const callback of ['/webhook', '/process-speech', '/status', '/recording']) router.post(callback, (_req, res) => {
+  res.status(503).json({ success: false, error: 'Phone callbacks unavailable pending authenticated provider event and call ownership integration.' });
+});
+router.use(authenticate, async (req: any, res, next) => {
+  try {
+    const { currentActor } = await import('../services/CaseDocumentAccess.js');
+    const { default: db } = await import('../lib/prisma.js');
+    const actor = await currentActor(db, req.user.id);
+    if (actor.role !== 'FOUNDER' || actor.tenantId !== null) return res.status(403).json({ error: 'Global founder phone access required' });
+    next();
+  } catch { res.status(503).json({ error: 'Phone authority unavailable' }); }
+});
+router.post('/end/:callSid', (_req, res) => res.status(503).json({ success: false, error: 'Call termination integration unavailable. No call was ended.' }));
+
 
 /**
  * POST /api/phone/start
@@ -25,99 +39,12 @@ router.post('/start', authenticate, async (req, res) => {
     const result = await phoneBotService.startCall(to, script || 'initial_outreach', caseId);
 
     if (!result.success) {
-      return res.status(500).json({ error: result.error });
+      return res.status(503).json({ error: result.error });
     }
 
     res.json({ success: true, callSid: result.callSid });
   } catch (error: any) {
     logger.error('Phone call start failed', { error: error.message });
-    res.status(500).json({ error: error.message });
-  }
-});
-
-/**
- * POST /api/phone/webhook
- * Telnyx webhook for call handling
- */
-router.post('/webhook', async (req, res) => {
-  try {
-    const { call_control_id, from } = req.body?.data?.payload || {};
-    const callSid = call_control_id || req.body?.CallSid;
-    const fromNumber = from || req.body?.From;
-
-    const twiml = await phoneBotService.handleInboundCall(callSid, fromNumber);
-
-    res.type('text/xml').send(twiml);
-  } catch (error: any) {
-    logger.error('Phone webhook failed', { error: error.message });
-    res.type('text/xml').send('<Response><Say>An error occurred.</Say></Response>');
-  }
-});
-
-/**
- * POST /api/phone/process-speech
- * Process speech input from call
- */
-router.post('/process-speech', async (req, res) => {
-  try {
-    const { CallSid, SpeechResult } = req.body;
-
-    const twiml = await phoneBotService.processSpeech(SpeechResult || '', CallSid);
-
-    res.type('text/xml').send(twiml);
-  } catch (error: any) {
-    logger.error('Speech processing failed', { error: error.message });
-    res.type('text/xml').send('<Response><Say>I did not understand. Please try again.</Say></Response>');
-  }
-});
-
-/**
- * POST /api/phone/status
- * Call status callback
- */
-router.post('/status', async (req, res) => {
-  try {
-    const { CallSid, CallStatus, CallDuration } = req.body;
-
-    logger.info('Call status update', { CallSid, CallStatus, CallDuration });
-
-    res.sendStatus(200);
-  } catch (error: any) {
-    logger.error('Status callback failed', { error: error.message });
-    res.sendStatus(500);
-  }
-});
-
-/**
- * POST /api/phone/recording
- * Recording callback
- */
-router.post('/recording', async (req, res) => {
-  try {
-    const { CallSid, RecordingUrl, RecordingDuration } = req.body;
-
-    logger.info('Recording available', { CallSid, RecordingUrl, RecordingDuration });
-
-    res.sendStatus(200);
-  } catch (error: any) {
-    logger.error('Recording callback failed', { error: error.message });
-    res.sendStatus(500);
-  }
-});
-
-/**
- * POST /api/phone/end/:callSid
- * End an active call
- */
-router.post('/end/:callSid', authenticate, async (req, res) => {
-  try {
-    const { callSid } = req.params;
-
-    logger.info('Call end requested', { callSid });
-
-    res.json({ success: true, message: 'Call ended' });
-  } catch (error: any) {
-    logger.error('Call end failed', { error: error.message });
     res.status(500).json({ error: error.message });
   }
 });

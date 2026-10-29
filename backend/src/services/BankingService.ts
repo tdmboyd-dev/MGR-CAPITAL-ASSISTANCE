@@ -74,7 +74,7 @@ const COMMISSION_TIERS: CommissionTierData[] = [
 // PAYOUT CALCULATION RESULT
 // ============================================
 
-interface PayoutBreakdown {
+export interface PayoutBreakdown {
   // Input
   surplusAmountCents: number;
   feePercent: number;
@@ -185,6 +185,7 @@ export class BankingService {
   }): PayoutBreakdown {
     const { surplusAmountCents, feePercent, employeeTier, teamLeaderId, teamLeaderTier } = params;
 
+    if (!Number.isSafeInteger(surplusAmountCents) || surplusAmountCents <= 0 || surplusAmountCents > 2147483647 || !Number.isFinite(feePercent) || feePercent < 0 || feePercent > 100) throw new Error("Invalid cents or fee percentage");
     // Get tier data
     const tierData = this.getTier(employeeTier);
     if (!tierData) {

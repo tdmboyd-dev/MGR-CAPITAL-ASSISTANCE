@@ -8,9 +8,13 @@ import { jest } from "@jest/globals";
 
 // Set test environment variables
 process.env.NODE_ENV = "test";
-process.env.JWT_SECRET = "test-jwt-secret-for-testing-only";
-process.env.JWT_REFRESH_SECRET = "test-refresh-secret-for-testing-only";
-process.env.DATABASE_URL = "postgresql://test:test@localhost:5432/test";
+process.env.JWT_SECRET ||= "synthetic-unit-test-jwt-secret-32-characters";
+process.env.JWT_REFRESH_SECRET ||= "synthetic-unit-test-refresh-secret-32-characters";
+process.env.DATABASE_URL ||= "postgresql://test:test@127.0.0.1:18588/capital_auth_lab";
+const testDatabase = new URL(process.env.DATABASE_URL);
+if (testDatabase.hostname !== "127.0.0.1" || testDatabase.port !== "18588" || testDatabase.pathname !== "/capital_auth_lab") {
+  throw new Error("Jest requires the owned isolated Capital lab; refusing another database");
+}
 process.env.REDIS_ENABLED = "false";
 process.env.COOKIE_SECURE = "false";
 

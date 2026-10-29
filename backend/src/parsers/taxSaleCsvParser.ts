@@ -1,3 +1,4 @@
+import { recordMoney, recordDate } from "./RecordValues.js";
 /**
  * taxSaleCsvParser.ts
  *
@@ -155,7 +156,7 @@ function detectColumnIndex(headers: string[], patterns: RegExp[]): number {
   for (let i = 0; i < headers.length; i++) {
     const header = headers[i].trim();
     for (const pattern of patterns) {
-      if (pattern.test(header)) {
+      if (new RegExp("^(?:" + pattern.source + ")$", pattern.flags).test(header)) {
         return i;
       }
     }
@@ -192,73 +193,9 @@ function detectColumnMapping(headers: string[]): ColumnMapping | null {
 // VALUE NORMALIZATION
 // =============================================================================
 
-function normalizeMonetaryValue(value: string): number {
-  if (!value || value.trim() === "") return 0;
+function normalizeMonetaryValue(value: string): number{ return recordMoney(value); }
 
-  // Remove currency symbols, commas, spaces
-  let cleaned = value.replace(/[$,\s]/g, "").trim();
-
-  // Handle parentheses for negative numbers
-  if (cleaned.startsWith("(") && cleaned.endsWith(")")) {
-    cleaned = "-" + cleaned.slice(1, -1);
-  }
-
-  // Handle negative sign
-  const isNegative = cleaned.startsWith("-");
-  if (isNegative) {
-    cleaned = cleaned.slice(1);
-  }
-
-  // Parse the number
-  const parsed = parseFloat(cleaned);
-  if (isNaN(parsed)) return 0;
-
-  // Convert to cents
-  const cents = Math.round(parsed * 100);
-  return isNegative ? -cents : cents;
-}
-
-function normalizeDate(value: string): Date | null {
-  if (!value || value.trim() === "") return null;
-
-  const cleaned = value.trim();
-
-  // Try various date formats
-  const formats = [
-    // MM/DD/YYYY
-    /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/,
-    // YYYY-MM-DD
-    /^(\d{4})-(\d{1,2})-(\d{1,2})$/,
-    // MM-DD-YYYY
-    /^(\d{1,2})-(\d{1,2})-(\d{4})$/,
-    // DD/MM/YYYY (European)
-    /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/,
-  ];
-
-  // Try ISO format first
-  const isoDate = new Date(cleaned);
-  if (!isNaN(isoDate.getTime())) {
-    return isoDate;
-  }
-
-  // Try MM/DD/YYYY
-  const usMatch = cleaned.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-  if (usMatch) {
-    const [, month, day, year] = usMatch;
-    const date = new Date(Date.UTC(parseInt(year), parseInt(month) - 1, parseInt(day)));
-    if (!isNaN(date.getTime())) return date;
-  }
-
-  // Try YYYY-MM-DD
-  const isoMatch = cleaned.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
-  if (isoMatch) {
-    const [, year, month, day] = isoMatch;
-    const date = new Date(Date.UTC(parseInt(year), parseInt(month) - 1, parseInt(day)));
-    if (!isNaN(date.getTime())) return date;
-  }
-
-  return null;
-}
+function normalizeDate(value: string): Date | null{ return recordDate(value); }
 
 function normalizeString(value: string): string {
   if (!value) return "";
@@ -443,7 +380,8 @@ export function parseTaxSaleCsv(
       // Extract values
       const parcelId = normalizeParcelId(fields[columnMapping.parcelId] || "");
       const ownerName = normalizeString(fields[columnMapping.ownerName] || "");
-      const surplusAmountCents = normalizeMonetaryValue(fields[columnMapping.surplusAmount] || "");
+      if (!fields[columnMapping.surplusAmount]?.trim()) throw new Error("Missing explicit surplus amount");
+      const surplusAmountCents = normalizeMonetaryValue(fields[columnMapping.surplusAmount]);
 
       // Validate required fields
       if (!parcelId) {

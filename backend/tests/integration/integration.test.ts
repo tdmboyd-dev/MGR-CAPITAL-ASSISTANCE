@@ -517,11 +517,11 @@ describe("Feedback API", () => {
 // =============================================================================
 
 describe("Analytics API", () => {
-  describe("GET /api/analytics/dashboard", () => {
-    it("should reject unauthenticated requests", async () => {
+  describe("Retired /api/analytics/dashboard route", () => {
+    it("should return not found for the retired endpoint", async () => {
       const res = await request(app).get(`${API_BASE}/analytics/dashboard`);
 
-      expect(res.status).toBe(401);
+      expect(res.status).toBe(404);
     });
 
     it.skip("should return dashboard data for founder", async () => {

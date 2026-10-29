@@ -852,6 +852,7 @@ router.patch("/:id", caseAuthentication, roleGuard(["ADMIN"]), async (req: AuthR
 router.post("/:id/status", caseAuthentication, roleGuard(["ADMIN"]), asyncHandler(async (req: AuthRequest, res: Response) => {
   const { id } = req.params;
   const { status, notes, forceTransition } = req.body;
+  if (status === "PAID") throw new AppError("Settlement unavailable", 409, "A status edit cannot certify settlement. Complete the qualified payout reconciliation workflow first.");
 
   const validStatuses: CaseStatus[] = [
     "NEW", "CONTACTED", "DOCS_PENDING", "DOCS_SIGNED",

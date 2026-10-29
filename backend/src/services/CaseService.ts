@@ -3,6 +3,7 @@
 // Case management operations with Prisma
 // ============================================
 
+import { randomBytes } from "node:crypto";
 import { Case, CaseStatus } from "@prisma/client";
 import prisma from "../lib/prisma.js";
 
@@ -161,12 +162,12 @@ export class CaseService {
     status: CaseStatus,
     userId: string
   ): Promise<Case> {
+    if (status === "PAID") throw new Error("A status edit cannot certify payment settlement");
     const updatedCase = await prisma.case.update({
       where: { id: caseId },
       data: {
         status,
         filedAt: status === "FILED" ? new Date() : undefined,
-        fundsDisbursedAt: status === "PAID" ? new Date() : undefined,
       },
     });
 
@@ -261,12 +262,7 @@ export class CaseService {
    * Generate random token for public access
    */
   private generateToken(): string {
-    const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
-    let token = "";
-    for (let i = 0; i < 32; i++) {
-      token += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    return token;
+    return randomBytes(32).toString("hex");
   }
 }
 

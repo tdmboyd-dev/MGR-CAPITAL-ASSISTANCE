@@ -12,6 +12,16 @@ import { bankingService } from "../services/BankingService.js";
 import { employeeService } from "../services/EmployeeService.js";
 
 const router = Router();
+// Global finance queries are not tenant scoped. Own employee views retain their existing boundary.
+router.use(authMiddleware, async (req: AuthRequest, res, next) => {
+  if (req.path === "/my" || req.path === "/my/summary") return next();
+  try {
+    const { currentActor } = await import("../services/CaseDocumentAccess.js");
+    const actor = await currentActor(prisma, req.user!.id);
+    if (actor.role !== "FOUNDER" || actor.tenantId !== null) return res.status(403).json({ error: "Global founder financial access required" });
+    next();
+  } catch { res.status(503).json({ error: "Financial authority unavailable" }); }
+});
 
 // ============================================
 // VALIDATION HELPERS
@@ -123,7 +133,7 @@ router.get("/nickel", authMiddleware, roleGuard(["ADMIN", "FOUNDER"]), async (_r
 
     const nickelPayouts = cases.map((c: any) => {
       const surplusAmount = c.surplusAmountCents || 0;
-      const feePercent = c.feePercent || 33;
+      const feePercent = c.feePercent;
 
       // Use bankingService for accurate calculation
       const calculation = bankingService.calculatePayout({
@@ -135,9 +145,9 @@ router.get("/nickel", authMiddleware, roleGuard(["ADMIN", "FOUNDER"]), async (_r
       // Determine status
       let status: 'READY' | 'PENDING_INFO' | 'PROCESSING' | 'COMPLETED' = 'PENDING_INFO';
       if (c.status === 'PAID' && c.client?.email) {
-        status = 'COMPLETED';
+        status = 'PENDING_INFO';
       } else if (c.status === 'AWAITING_FUNDS' && c.client?.email) {
-        status = 'READY';
+        status = 'PENDING_INFO';
       }
 
       // Get banking info from metadata
@@ -284,312 +294,19 @@ router.post("/calculate", authMiddleware, roleGuard(["ADMIN"]), async (req: Requ
  * POST /api/payouts/process/:caseId - Process payout for a case (FOUNDER ONLY)
  * Includes idempotency checks to prevent double-processing
  */
-router.post("/process/:caseId", authMiddleware, roleGuard(["ADMIN"]), asyncHandler(async (req: AuthRequest, res: Response) => {
-  const { caseId } = req.params;
-  const { confirmAmount } = req.body; // Optional confirmation of expected payout
-
-  if (!caseId) {
-    throw Errors.badRequest("caseId is required");
-  }
-
-  // Get case data with lock for update (prevents race conditions)
-  const caseData = await prisma.case.findUnique({
-    where: { id: caseId },
-    include: {
-      client: true,
-      assignedEmployee: true
-    }
-  });
-
-  if (!caseData) {
-    throw Errors.notFound("Case");
-  }
-
-  // IDEMPOTENCY CHECK: Prevent double-processing
-  if (caseData.status === "PAID") {
-    // Check if ledger entries already exist
-    const existingEntries = await prisma.ledgerEntry.findMany({
-      where: { caseId },
-      select: { id: true, type: true, amountCents: true }
-    });
-
-    if (existingEntries.length > 0) {
-      res.json({
-        success: true,
-        message: "Payout already processed for this case",
-        alreadyProcessed: true,
-        data: {
-          caseId,
-          internalCode: caseData.internalCode,
-          ledgerEntries: existingEntries
-        }
-      });
-      return;
-    }
-  }
-
-  // Validate case status
-  if (caseData.status !== "AWAITING_FUNDS") {
-    throw Errors.badRequest(
-      `Case is not ready for payout. Current status: ${caseData.status}. Required status: AWAITING_FUNDS.`
-    );
-  }
-
-  // Validate surplus amount
-  if (!caseData.surplusAmountCents || caseData.surplusAmountCents <= 0) {
-    throw Errors.badRequest("Case has no surplus amount recorded");
-  }
-
-  // Validate fee percent
-  if (!caseData.feePercent || caseData.feePercent < 0 || caseData.feePercent > 100) {
-    throw Errors.badRequest("Invalid fee percentage on case");
-  }
-
-  // Calculate payout
-  const calculation = bankingService.calculatePayout({
-    surplusAmountCents: caseData.surplusAmountCents,
-    feePercent: caseData.feePercent,
-    employeeTier: caseData.assignedEmployee?.employeeTier || "TIER_1_ASSOCIATE"
-  });
-
-  // VERIFICATION: If confirmAmount provided, verify it matches
-  if (confirmAmount !== undefined) {
-    const totalPayout = calculation.clientPayoutCents + calculation.companyFeeCents;
-    if (confirmAmount !== totalPayout) {
-      throw Errors.badRequest(
-        `Amount confirmation mismatch. Expected: ${confirmAmount}, Calculated: ${totalPayout}. ` +
-        `This may indicate a calculation error.`
-      );
-    }
-  }
-
-  // VALIDATION: Verify calculation integrity
-  // The correct formula is: client + employee + override + founderShare = surplus
-  // NOT including companyFeeCents (which is split between employee, override, and founder)
-  if (!calculation.isValid) {
-    throw Errors.internal(
-      `Payout calculation mismatch. Surplus: ${caseData.surplusAmountCents}, ` +
-      `Distributed: ${calculation.totalDistributed}. Please verify fee configuration.`
-    );
-  }
-
-  // Create ledger entries in a transaction
-  const ledgerEntries = await prisma.$transaction(async (tx) => {
-    // Double-check status inside transaction (race condition prevention)
-    const freshCase = await tx.case.findUnique({
-      where: { id: caseId },
-      select: { status: true }
-    });
-
-    if (freshCase?.status !== "AWAITING_FUNDS") {
-      throw new Error(`Case status changed during processing. Current: ${freshCase?.status}`);
-    }
-
-    // Client payout
-    const clientEntry = await tx.ledgerEntry.create({
-      data: {
-        caseId,
-        userId: caseData.clientId,
-        type: "CLIENT_PAYOUT",
-        amountCents: calculation.clientPayoutCents,
-        description: `Client payout for case ${caseData.internalCode}`,
-        status: "PENDING"
-      }
-    });
-
-    // Company fee
-    const companyEntry = await tx.ledgerEntry.create({
-      data: {
-        caseId,
-        type: "COMPANY_FEE",
-        amountCents: calculation.companyFeeCents,
-        description: `Company fee for case ${caseData.internalCode}`,
-        status: "COMPLETED"
-      }
-    });
-
-    // Employee commission (if assigned)
-    let employeeEntry = null;
-    if (caseData.assignedEmployeeId) {
-      employeeEntry = await tx.ledgerEntry.create({
-        data: {
-          caseId,
-          userId: caseData.assignedEmployeeId,
-          type: "EMPLOYEE_COMMISSION",
-          amountCents: calculation.employeeCommissionCents,
-          displayedAmountCents: calculation.employeeDisplayedCommissionCents,
-          description: `Commission for case ${caseData.internalCode}`,
-          status: "PENDING"
-        }
-      });
-    }
-
-    // Team leader override commission (if applicable)
-    let overrideEntry = null;
-    if (calculation.overrideRecipientId && calculation.overrideCommissionCents > 0) {
-      overrideEntry = await tx.ledgerEntry.create({
-        data: {
-          caseId,
-          userId: calculation.overrideRecipientId,
-          type: "OVERRIDE",
-          amountCents: calculation.overrideCommissionCents,
-          description: `Override commission for team member case ${caseData.internalCode}`,
-          status: "PENDING"
-        }
-      });
-    }
-
-    // Founder profit
-    const founderEntry = await tx.ledgerEntry.create({
-      data: {
-        caseId,
-        type: "FOUNDER_SHARE",
-        amountCents: calculation.founderShareCents,
-        description: `Founder share for case ${caseData.internalCode}`,
-        status: "COMPLETED"
-      }
-    });
-
-    // Update case status and record actual fee
-    await tx.case.update({
-      where: { id: caseId },
-      data: {
-        status: "PAID",
-        fundsDisbursedAt: new Date(),
-        actualFeeCents: calculation.companyFeeCents,
-        clientPayoutCents: calculation.clientPayoutCents
-      }
-    });
-
-    return { clientEntry, companyEntry, employeeEntry, overrideEntry, founderEntry };
-  });
-
-  // Log audit with full financial details
-  await prisma.auditLog.create({
-    data: {
-      userId: req.user!.id,
-      action: "PAYOUT_PROCESSED",
-      entityType: "CASE",
-      entityId: caseId,
-      ipAddress: req.ip,
-      userAgent: req.get("User-Agent"),
-      details: {
-        internalCode: caseData.internalCode,
-        surplusAmountCents: caseData.surplusAmountCents,
-        feePercent: caseData.feePercent,
-        clientPayoutCents: calculation.clientPayoutCents,
-        companyFeeCents: calculation.companyFeeCents,
-        employeeCommissionCents: calculation.employeeCommissionCents,
-        employeeDisplayedCents: calculation.employeeDisplayedCommissionCents,
-        overrideCommissionCents: calculation.overrideCommissionCents,
-        overrideRecipientId: calculation.overrideRecipientId,
-        founderShareCents: calculation.founderShareCents,
-        employeeId: caseData.assignedEmployeeId,
-        clientId: caseData.clientId
-      }
-    }
-  });
-
-  res.json({
-    success: true,
-    data: {
-      caseId,
-      internalCode: caseData.internalCode,
-      calculation,
-      ledgerEntries: {
-        clientEntry: ledgerEntries.clientEntry.id,
-        companyEntry: ledgerEntries.companyEntry.id,
-        employeeEntry: ledgerEntries.employeeEntry?.id,
-        overrideEntry: ledgerEntries.overrideEntry?.id,
-        founderEntry: ledgerEntries.founderEntry.id
-      }
-    }
-  });
+router.post("/process/:caseId", authMiddleware, roleGuard(["FOUNDER"]), asyncHandler(async (req: AuthRequest, res: Response) => {
+  const { planCasePayout } = await import("../services/PayoutPlanningService.js");
+  const plan = await planCasePayout(req.user!.id, req.params.caseId, req.body.confirmAmount);
+  res.json({ success: true, message: "Pending allocation saved. No funds submitted; case remains awaiting funds.", data: plan });
 }));
 
 /**
  * POST /api/payouts/:entryId/complete - Mark payout as completed (FOUNDER ONLY)
  * Requires payment reference for audit trail
  */
-router.post("/:entryId/complete", authMiddleware, roleGuard(["ADMIN"]), asyncHandler(async (req: AuthRequest, res: Response) => {
-  const { entryId } = req.params;
-  const { reference, notes, paymentMethod } = req.body;
-
-  if (!entryId) {
-    throw Errors.badRequest("entryId is required");
-  }
-
-  // Require payment reference for compliance
-  if (!reference) {
-    throw Errors.badRequest("Payment reference is required for audit compliance");
-  }
-
-  // Get current entry
-  const existingEntry = await prisma.ledgerEntry.findUnique({
-    where: { id: entryId },
-    include: {
-      case: { select: { internalCode: true } },
-      user: { select: { name: true, email: true } }
-    }
-  });
-
-  if (!existingEntry) {
-    throw Errors.notFound("Ledger entry");
-  }
-
-  // IDEMPOTENCY: Already completed
-  if (existingEntry.status === "COMPLETED") {
-    res.json({
-      success: true,
-      message: "Payout already marked as completed",
-      alreadyCompleted: true,
-      data: existingEntry
-    });
-    return;
-  }
-
-  // Validate entry is in correct status
-  if (existingEntry.status !== "PENDING") {
-    throw Errors.badRequest(`Cannot complete entry with status: ${existingEntry.status}`);
-  }
-
-  const entry = await prisma.ledgerEntry.update({
-    where: { id: entryId },
-    data: {
-      status: "COMPLETED",
-      completedAt: new Date(),
-      reference,
-      notes
-    }
-  });
-
-  // Log audit with full details
-  await prisma.auditLog.create({
-    data: {
-      userId: req.user!.id,
-      action: "PAYOUT_COMPLETED",
-      entityType: "LEDGER_ENTRY",
-      entityId: entryId,
-      ipAddress: req.ip,
-      userAgent: req.get("User-Agent"),
-      details: {
-        caseCode: existingEntry.case?.internalCode,
-        recipientName: existingEntry.user?.name,
-        recipientEmail: existingEntry.user?.email,
-        type: existingEntry.type,
-        amountCents: existingEntry.amountCents,
-        paymentReference: reference,
-        paymentMethod,
-        notes
-      }
-    }
-  });
-
-  res.json({
-    success: true,
-    data: entry
-  });
-}));
+router.post("/:entryId/complete", authMiddleware, roleGuard(["FOUNDER"]), (_req, res) => {
+  res.status(503).json({ success: false, error: "Settlement reconciliation is unavailable. A typed reference alone cannot certify a payout." });
+});
 
 /**
  * GET /api/payouts/ledger - Full ledger view (FOUNDER ONLY)

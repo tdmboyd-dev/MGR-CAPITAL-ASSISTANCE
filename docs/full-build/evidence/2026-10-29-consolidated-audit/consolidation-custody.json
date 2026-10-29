@@ -1,0 +1,30 @@
+{
+  "scope": "Exact narrative files consolidated into root HANDOFF; original committed versions verified before removal; evidence/source/assets retained",
+  "removedNarratives": [
+    {
+      "path": "docs/full-build/LOCAL-STORAGE-REPAIR-2026-10-28.md",
+      "sha256": "bd21639eeaf6b69ce497f3d66e1cea4b7f3a171b445de7f32fac036837242edc",
+      "preservedInGitCommit": "00118517dae56cc870326a88a7f073606a363bd9"
+    },
+    {
+      "path": "docs/full-build/AUTH-REPAIR-2026-10-28.md",
+      "sha256": "45a33f88cf69e65b1a9b6da912701570515793142023d085c739a97253af0d3e",
+      "preservedInGitCommit": "00118517dae56cc870326a88a7f073606a363bd9"
+    },
+    {
+      "path": "docs/full-build/VAULT-REPAIR-2026-10-28.md",
+      "sha256": "efa0b890dc5399e734c9315c0f3a76e4fcbbcad10dcc0d8708200f06701b64e8",
+      "preservedInGitCommit": "00118517dae56cc870326a88a7f073606a363bd9"
+    },
+    {
+      "path": "docs/full-build/CAPITAL-SYSTEM-REVIEW-2026-10-29.md",
+      "sha256": "6954157cdd1a008d6b8dab0d71b3cc36d98f8d02405f314c4d74f82ade5fa791",
+      "preservedInGitCommit": "00118517dae56cc870326a88a7f073606a363bd9"
+    },
+    {
+      "path": "docs/full-build/DATA-OWNERSHIP-RESEARCH-2026-10-29.md",
+      "sha256": "1377e25d32251e42f4ee83b7e07f6321db04288d7a9fa2920e5405a8fce1cde9",
+      "preservedInGitCommit": "00118517dae56cc870326a88a7f073606a363bd9"
+    }
+  ]
+}

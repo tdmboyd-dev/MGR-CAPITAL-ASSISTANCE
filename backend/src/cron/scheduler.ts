@@ -620,7 +620,7 @@ class Scheduler {
 
       logger.info("Scheduler config loaded", { timezone: this.config.timezone });
     } catch (error) {
-      logger.warn("Failed to load scheduler config, using defaults");
+      throw new Error("Scheduler configuration unavailable; jobs were not admitted");
     }
   }
 
@@ -731,6 +731,7 @@ class Scheduler {
           status: "OPEN",
         },
       });
+      throw error;
     }
   }
 
@@ -770,6 +771,7 @@ class Scheduler {
         },
         {
           timezone: this.config.timezone,
+          noOverlap: true,
         }
       );
 

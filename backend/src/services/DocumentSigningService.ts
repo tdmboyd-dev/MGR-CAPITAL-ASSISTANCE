@@ -1,9 +1,4 @@
-/**
- * DocumentSigningService.ts — MGR CAPITAL ASSISTANCE
- * E-Signature Integration with OpenSign (FREE unlimited signatures)
- *
- * OpenSign: FREE unlimited signatures - no paid alternatives needed
- */
+/** Signature request adapter. Missing providers cannot simulate invitations; callbacks are unavailable pending authenticated document/recipient evidence. */
 
 import { logger } from '../utils/logger.js';
 import prisma from "../lib/prisma.js";
@@ -47,10 +42,10 @@ export class DocumentSigningService {
     this.demoMode = this.provider === 'demo';
 
     if (this.demoMode) {
-      logger.info('[DocumentSigning] Running in DEMO MODE - signatures are simulated');
-      logger.info('[DocumentSigning] To enable real signatures, add OPENSIGN_API_KEY (FREE unlimited)');
+      logger.info('[DocumentSigning] Signature provider unavailable');
+      logger.info('[DocumentSigning] To enable real signatures, add OPENSIGN_API_KEY');
     } else {
-      logger.info('[DocumentSigning] Using OpenSign for e-signatures (FREE unlimited)');
+      logger.info('[DocumentSigning] Using OpenSign for e-signatures');
     }
   }
 
@@ -61,7 +56,7 @@ export class DocumentSigningService {
     return {
       provider: this.provider,
       configured: !this.demoMode,
-      mode: this.demoMode ? 'demo' : 'live',
+      mode: this.demoMode ? 'unavailable' : 'configured_unverified',
     };
   }
 
@@ -76,7 +71,7 @@ export class DocumentSigningService {
         return await this.createOpenSignRequest(requestId, request);
       } else {
         // Demo mode
-        return await this.createDemoRequest(requestId, request);
+        return { success: false, requestId: '', status: 'pending', error: 'Signature provider unavailable. No invitation was sent.' };
       }
     } catch (error: any) {
       logger.error('Signature request failed', { error: error.message });
@@ -90,7 +85,7 @@ export class DocumentSigningService {
   }
 
   /**
-   * Create signature request via OpenSign (FREE unlimited)
+   * Create signature request via OpenSign
    */
   private async createOpenSignRequest(requestId: string, request: SignatureRequest): Promise<SignatureResult> {
     try {
@@ -157,38 +152,6 @@ export class DocumentSigningService {
   }
 
   /**
-   * Create demo signature request (simulated)
-   */
-  private async createDemoRequest(requestId: string, request: SignatureRequest): Promise<SignatureResult> {
-    logger.info('[DEMO] Signature request created', {
-      requestId,
-      document: request.documentName,
-      signers: request.signers.map(s => s.email),
-    });
-
-    try {
-      await this.recordSignatureRequest(requestId, {
-        provider: 'demo',
-        documentName: request.documentName,
-        signers: request.signers,
-        status: 'sent',
-        caseId: request.caseId,
-      });
-    } catch (e) {
-      // Database might not be available
-      logger.warn('Could not record demo signature request');
-    }
-
-    // In demo mode, return a fake signing URL
-    return {
-      success: true,
-      requestId,
-      status: 'sent',
-      signingUrl: `https://demo.capitalmgr.com/sign/${requestId}`,
-    };
-  }
-
-  /**
    * Get signature request status
    */
   async getStatus(requestId: string): Promise<SignatureResult | null> {
@@ -214,20 +177,7 @@ export class DocumentSigningService {
    * Handle webhook from OpenSign
    */
   async handleWebhook(provider: string, payload: any): Promise<void> {
-    logger.info('Signature webhook received', { provider, type: payload.event });
-
-    if (provider === 'opensign') {
-      const requestId = payload.data?.metadata?.internal_id;
-      if (requestId) {
-        const newStatus = payload.event === 'signature_request.completed' ? 'completed' :
-                         payload.event === 'signature_request.declined' ? 'declined' : 'pending';
-
-        await prisma.signatureRequest.update({
-          where: { id: requestId },
-          data: { status: newStatus },
-        });
-      }
-    }
+    throw new Error('Signature callback unavailable until event authenticity, recipient and document evidence are qualified.');
   }
 
   /**

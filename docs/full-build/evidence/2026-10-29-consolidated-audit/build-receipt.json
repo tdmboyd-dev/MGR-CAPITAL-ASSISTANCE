@@ -1,0 +1,17 @@
+{
+  "backend": "npm run build exit 0",
+  "frontend": "npm run build exit 0, 92 generated routes, no ReferenceError",
+  "scope": "Compilation/prerender only; not deployment or provider proof",
+  "logs": {
+    "backend": {
+      "sha256": "278bcf68ac6c9bdca58ea0be83214c5224b7fadce48aedd305f236a30753c044",
+      "originalSHA256": "59ba6923b9372d4f8e30dc862570f1f795fe5d8066b7a9339a3fe0de6bedd463",
+      "normalization": "Display copy: trailing whitespace/blank EOF removed; original log hash retained"
+    },
+    "frontend": {
+      "sha256": "f97d1dd646e4df8f828509735f8f2ef1ce8ffb81e3917421e90a8be726f4b406",
+      "originalSHA256": "2f66f1bca71f991ce453db14c579d0e4a331f4f939e278d20e8db6c4712e71c7",
+      "normalization": "Display copy: trailing whitespace/blank EOF removed; original log hash retained"
+    }
+  }
+}

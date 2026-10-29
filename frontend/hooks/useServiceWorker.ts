@@ -26,6 +26,9 @@ export function useServiceWorker() {
 
     if (!isSupported) return;
 
+    let updateTimer: ReturnType<typeof setInterval> | undefined;
+    let disposed = false;
+
     // Register service worker
     const registerSW = async () => {
       try {
@@ -33,7 +36,7 @@ export function useServiceWorker() {
           scope: "/",
         });
 
-        console.log("[SW] Service worker registered:", registration.scope);
+        if (disposed) return;
 
         setState((prev) => ({
           ...prev,
@@ -57,8 +60,8 @@ export function useServiceWorker() {
         });
 
         // Check for updates periodically (every 60 minutes)
-        setInterval(() => {
-          registration.update();
+        updateTimer = setInterval(() => {
+          void registration.update().catch(() => undefined);
         }, 60 * 60 * 1000);
       } catch (error) {
         console.error("[SW] Registration failed:", error);
@@ -78,6 +81,8 @@ export function useServiceWorker() {
     setState((prev) => ({ ...prev, isOffline: !navigator.onLine }));
 
     return () => {
+      disposed = true;
+      if (updateTimer) clearInterval(updateTimer);
       window.removeEventListener("online", handleOnline);
       window.removeEventListener("offline", handleOffline);
     };
@@ -137,23 +142,7 @@ export function useServiceWorker() {
     headers?: Record<string, string>;
     body?: string;
   }) => {
-    const db = await openDatabase();
-    const tx = db.transaction("pending-requests", "readwrite");
-    const store = tx.objectStore("pending-requests");
-
-    await new Promise<void>((resolve, reject) => {
-      const req = store.add({
-        ...request,
-        timestamp: Date.now(),
-      });
-      req.onsuccess = () => resolve();
-      req.onerror = () => reject(req.error);
-    });
-
-    // Request background sync
-    if (state.registration && "sync" in state.registration) {
-      await (state.registration as any).sync.register("sync-pending-data");
-    }
+    throw new Error("Offline changes are unavailable. Reconnect and submit while signed in; no request or credentials were stored.");
   };
 
   return {
@@ -174,22 +163,4 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
     outputArray[i] = rawData.charCodeAt(i);
   }
   return outputArray;
-}
-
-// Helper: Open IndexedDB
-function openDatabase(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open("mgr-capital-offline", 1);
-    request.onerror = () => reject(request.error);
-    request.onsuccess = () => resolve(request.result);
-    request.onupgradeneeded = (event) => {
-      const db = (event.target as IDBOpenDBRequest).result;
-      if (!db.objectStoreNames.contains("pending-requests")) {
-        db.createObjectStore("pending-requests", { keyPath: "id", autoIncrement: true });
-      }
-      if (!db.objectStoreNames.contains("cached-data")) {
-        db.createObjectStore("cached-data", { keyPath: "key" });
-      }
-    };
-  });
 }

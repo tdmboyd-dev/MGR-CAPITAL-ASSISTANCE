@@ -1,0 +1,121 @@
+
+> mgr-frontend@1.0.0 build
+> next build
+
+  ▲ Next.js 14.2.35
+
+   Creating an optimized production build ...
+ ✓ Compiled successfully
+   Linting and checking validity of types ...
+   Collecting page data ...
+   Generating static pages (0/92) ...
+   Generating static pages (23/92)
+   Generating static pages (46/92)
+   Generating static pages (69/92)
+ ✓ Generating static pages (92/92)
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)                              Size     First Load JS
+┌ ○ /                                    2.13 kB         114 kB
+├ ○ /_not-found                          880 B          88.6 kB
+├ ○ /admin/cases                         5.84 kB         139 kB
+├ ƒ /admin/cases/[id]                    8.53 kB         173 kB
+├ ○ /admin/comms                         3.75 kB         137 kB
+├ ○ /admin/compliance                    10.4 kB         178 kB
+├ ○ /admin/dashboard                     2.7 kB          127 kB
+├ ○ /admin/hr                            10.4 kB         150 kB
+├ ○ /admin/insights                      3.15 kB         128 kB
+├ ○ /admin/payouts                       10.7 kB         179 kB
+├ ○ /admin/training                      9.48 kB         157 kB
+├ ○ /admin/users                         12.5 kB         194 kB
+├ ○ /auth/forgot-password                4.35 kB         176 kB
+├ ○ /auth/login                          10.3 kB         198 kB
+├ ○ /auth/register                       9.4 kB          181 kB
+├ ○ /auth/reset-password                 4.87 kB         177 kB
+├ ○ /client/cases                        7.14 kB         176 kB
+├ ƒ /client/cases/[id]                   11.3 kB         210 kB
+├ ○ /client/dashboard                    8.88 kB         181 kB
+├ ○ /client/documents                    9.32 kB         238 kB
+├ ○ /client/inbox                        1.12 kB        88.9 kB
+├ ○ /client/messages                     10.5 kB         229 kB
+├ ○ /client/notifications                7.2 kB          187 kB
+├ ○ /client/portal                       2.66 kB         114 kB
+├ ○ /employee/alerts-chamber             8.26 kB         133 kB
+├ ○ /employee/bots                       6.93 kB         134 kB
+├ ○ /employee/cases                      3.92 kB         137 kB
+├ ƒ /employee/cases/[id]                 11.5 kB         199 kB
+├ ○ /employee/child-company              7.92 kB         144 kB
+├ ○ /employee/child-company/cases        7.1 kB          141 kB
+├ ○ /employee/child-company/employees    8.42 kB         198 kB
+├ ○ /employee/child-company/payouts      9.9 kB          301 kB
+├ ○ /employee/child-company/settings     12.2 kB         190 kB
+├ ○ /employee/child-company/setup        8.85 kB         139 kB
+├ ○ /employee/comms                      6.57 kB         144 kB
+├ ○ /employee/compliance                 6.22 kB         140 kB
+├ ○ /employee/dashboard                  5.23 kB         252 kB
+├ ○ /employee/email                      6.4 kB          150 kB
+├ ○ /employee/email/setup                7.63 kB         169 kB
+├ ○ /employee/inbox                      3.84 kB         189 kB
+├ ○ /employee/leaderboard                204 B           147 kB
+├ ○ /employee/notary                     10.9 kB         147 kB
+├ ○ /employee/payouts                    7.04 kB         168 kB
+├ ○ /employee/training                   5.08 kB         139 kB
+├ ƒ /employee/training/[id]              7.42 kB         142 kB
+├ ○ /employee/trusts                     9.16 kB         174 kB
+├ ○ /founder/ai-bots                     9.26 kB         192 kB
+├ ○ /founder/alerts-chamber              8.24 kB         133 kB
+├ ○ /founder/analytics                   14.3 kB         286 kB
+├ ○ /founder/auctions                    21 kB           228 kB
+├ ○ /founder/bots                        5.95 kB         131 kB
+├ ○ /founder/cases                       8.29 kB         142 kB
+├ ○ /founder/child-companies             7.38 kB         132 kB
+├ ○ /founder/command-center              8.64 kB        96.4 kB
+├ ○ /founder/comms                       7.3 kB          145 kB
+├ ○ /founder/compliance                  10.3 kB         165 kB
+├ ○ /founder/config                      11.2 kB         151 kB
+├ ○ /founder/dashboard                   4.44 kB         138 kB
+├ ○ /founder/deadlines                   7.57 kB         147 kB
+├ ○ /founder/documents/assignment        10.3 kB         203 kB
+├ ○ /founder/email-hosting               7.55 kB         143 kB
+├ ○ /founder/emails                      6.83 kB         142 kB
+├ ○ /founder/genealogy                   24.1 kB         233 kB
+├ ○ /founder/hr                          12.6 kB         184 kB
+├ ○ /founder/inbox                       3.79 kB         189 kB
+├ ○ /founder/inbox/compose               7.35 kB         151 kB
+├ ○ /founder/ingestion                   6.72 kB         140 kB
+├ ○ /founder/ingestion/autopilot         8.1 kB          142 kB
+├ ○ /founder/ingestion/sources           8.56 kB         142 kB
+├ ○ /founder/insights                    5.77 kB         130 kB
+├ ○ /founder/leaderboard                 251 B           147 kB
+├ ○ /founder/ledger                      5.59 kB         130 kB
+├ ○ /founder/marketplace                 6.68 kB         168 kB
+├ ○ /founder/nft                         6.18 kB         156 kB
+├ ○ /founder/notary                      14.6 kB         183 kB
+├ ○ /founder/office-table                11.9 kB         183 kB
+├ ○ /founder/ops                         6.66 kB         242 kB
+├ ○ /founder/ops/dashboard               29.2 kB         156 kB
+├ ○ /founder/payments                    10.5 kB         266 kB
+├ ○ /founder/payouts                     15.9 kB         202 kB
+├ ○ /founder/phone-bot                   7.97 kB         187 kB
+├ ○ /founder/pipeline                    25 kB           169 kB
+├ ○ /founder/retention                   7.68 kB         143 kB
+├ ○ /founder/skip-trace                  5.99 kB         122 kB
+├ ○ /founder/storage                     9.63 kB         145 kB
+├ ○ /founder/training                    5.75 kB         130 kB
+├ ○ /founder/trusts                      7.02 kB         256 kB
+├ ○ /founder/users                       5.47 kB         130 kB
+├ ○ /founder/vr-simulation               4.48 kB         135 kB
+├ ○ /founder/worker-bots                 11.7 kB        99.4 kB
+├ ○ /privacy                             2.02 kB        89.8 kB
+├ ○ /settings                            6.95 kB         172 kB
+├ ○ /sign-portal                         7.15 kB         152 kB
+└ ○ /terms                               1.66 kB        89.4 kB
++ First Load JS shared by all            87.7 kB
+  ├ chunks/2117-7375ca3665d11882.js      31.9 kB
+  ├ chunks/fd9d1056-b5b851ad9cb9f93d.js  53.6 kB
+  └ other shared chunks (total)          2.19 kB
+
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand

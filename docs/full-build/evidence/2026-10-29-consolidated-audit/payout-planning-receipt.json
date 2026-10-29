@@ -1,0 +1,28 @@
+{
+  "scope": "Actual isolated PostgreSQL, synthetic pending allocations; no external transfer or settlement proof",
+  "caseId": "cmvtdx1ld000213mekhfqzc8e",
+  "passed": 21,
+  "checks": [
+    "Missing recorded receipt blocks planning",
+    "Tenant administrator cannot prepare global payout",
+    "Amount mismatch cannot prepare plan",
+    "Concurrent requests serialize one balanced pending plan without duplicate company fee",
+    "Plan never marks case PAID or records disbursement",
+    "Plan and audit persist together",
+    "Changed fee invalidates prior plan rather than silently reusing old allocations",
+    "All nine unqualified Nickel effect methods plus callback create no bank/payment rows",
+    "Status never claims live execution from a key alone",
+    "Invalid cents and rates rejected",
+    "Missing signature provider creates no fake invitation or signature record; unauthenticated callback rejected",
+    "Missing phone provider creates no fake call receipt or communication",
+    "Autonomous payout bot cannot bypass pending plan or invent settlement",
+    "Six unqualified remote-notary actions cannot fabricate identity, KBA, recording, signature or journal success",
+    "Actual PostgreSQL audit failure rolls back every pending allocation",
+    "Actual HTTP/JWT denies anonymous, client and tenant-admin global finance access",
+    "Founder receives explicit unavailable for unqualified transfers and free-text settlement",
+    "Four unauthenticated provider callback paths reject without success acknowledgments",
+    "Founder force-status cannot bypass settlement reconciliation",
+    "Phone API rejects unbound callbacks, client-wide logs and fake call termination",
+    "Named payment metrics path is no longer shadowed by paymentId"
+  ]
+}

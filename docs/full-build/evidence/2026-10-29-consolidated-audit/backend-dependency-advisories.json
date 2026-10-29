@@ -1,0 +1,2118 @@
+{
+  "auditReportVersion": 2,
+  "vulnerabilities": {
+    "@puppeteer/browsers": {
+      "name": "@puppeteer/browsers",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "extract-zip",
+        "proxy-agent"
+      ],
+      "effects": [
+        "puppeteer",
+        "puppeteer-core"
+      ],
+      "range": "*",
+      "nodes": [
+        "node_modules/@puppeteer/browsers"
+      ],
+      "fixAvailable": {
+        "name": "puppeteer",
+        "version": "25.16.0",
+        "isSemVerMajor": true
+      }
+    },
+    "@solana/spl-token": {
+      "name": "@solana/spl-token",
+      "severity": "moderate",
+      "isDirect": true,
+      "via": [
+        "@solana/web3.js"
+      ],
+      "effects": [],
+      "range": "*",
+      "nodes": [
+        "node_modules/@solana/spl-token"
+      ],
+      "fixAvailable": false
+    },
+    "@solana/web3.js": {
+      "name": "@solana/web3.js",
+      "severity": "moderate",
+      "isDirect": true,
+      "via": [
+        "jayson"
+      ],
+      "effects": [
+        "@solana/spl-token"
+      ],
+      "range": "<=0.0.0-pr-29130 || 0.0.4 - 1.99.0",
+      "nodes": [
+        "node_modules/@solana/web3.js"
+      ],
+      "fixAvailable": false
+    },
+    "basic-ftp": {
+      "name": "basic-ftp",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        {
+          "source": 1240853,
+          "name": "basic-ftp",
+          "dependency": "basic-ftp",
+          "title": "basic-ftp: Quadratic-time CPU denial of service in Client.list() Unix directory-listing parser (RE_LINE backtracking)",
+          "url": "https://github.com/advisories/GHSA-c475-qrg2-pj4r",
+          "severity": "high",
+          "cwe": [
+            "CWE-1333"
+          ],
+          "cvss": {
+            "score": 0,
+            "vectorString": null
+          },
+          "range": "<=6.2.0"
+        }
+      ],
+      "effects": [
+        "get-uri"
+      ],
+      "range": "<=6.2.0",
+      "nodes": [
+        "node_modules/basic-ftp"
+      ],
+      "fixAvailable": {
+        "name": "puppeteer",
+        "version": "25.16.0",
+        "isSemVerMajor": true
+      }
+    },
+    "chromium-bidi": {
+      "name": "chromium-bidi",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "zod"
+      ],
+      "effects": [
+        "puppeteer",
+        "puppeteer-core"
+      ],
+      "range": "0.5.13 - 157.0.8081-0",
+      "nodes": [
+        "node_modules/chromium-bidi"
+      ],
+      "fixAvailable": {
+        "name": "puppeteer",
+        "version": "25.16.0",
+        "isSemVerMajor": true
+      }
+    },
+    "deepmerge": {
+      "name": "deepmerge",
+      "severity": "low",
+      "isDirect": false,
+      "via": [
+        {
+          "source": 1243505,
+          "name": "deepmerge",
+          "dependency": "deepmerge",
+          "title": "deepmerge mergeObject() allows prototype poisoning of returned objects",
+          "url": "https://github.com/advisories/GHSA-gcqx-w48m-w2h4",
+          "severity": "low",
+          "cwe": [
+            "CWE-1321"
+          ],
+          "cvss": {
+            "score": 5.3,
+            "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:L/A:N"
+          },
+          "range": ">=4.2.0 <=4.3.1"
+        }
+      ],
+      "effects": [
+        "puppeteer-extra",
+        "puppeteer-extra-plugin-user-preferences"
+      ],
+      "range": ">=4.2.0",
+      "nodes": [
+        "node_modules/deepmerge"
+      ],
+      "fixAvailable": {
+        "name": "puppeteer-extra",
+        "version": "2.1.3",
+        "isSemVerMajor": true
+      }
+    },
+    "exceljs": {
+      "name": "exceljs",
+      "severity": "moderate",
+      "isDirect": true,
+      "via": [
+        "uuid"
+      ],
+      "effects": [],
+      "range": ">=3.5.0",
+      "nodes": [
+        "node_modules/exceljs"
+      ],
+      "fixAvailable": {
+        "name": "exceljs",
+        "version": "3.4.0",
+        "isSemVerMajor": true
+      }
+    },
+    "extract-zip": {
+      "name": "extract-zip",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        {
+          "source": 1139346,
+          "name": "extract-zip",
+          "dependency": "extract-zip",
+          "title": "extract-zip unvalidated symlink path traversal",
+          "url": "https://github.com/advisories/GHSA-jmr9-qjv8-65gv",
+          "severity": "high",
+          "cwe": [
+            "CWE-22"
+          ],
+          "cvss": {
+            "score": 8.1,
+            "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:N"
+          },
+          "range": "<=2.0.1"
+        },
+        {
+          "source": 1193685,
+          "name": "extract-zip",
+          "dependency": "extract-zip",
+          "title": "extract-zip allows arbitrary file writes through symlink archive entries",
+          "url": "https://github.com/advisories/GHSA-7pqw-9j4j-h8q3",
+          "severity": "high",
+          "cwe": [
+            "CWE-22"
+          ],
+          "cvss": {
+            "score": 8.1,
+            "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:H/A:H"
+          },
+          "range": "<=2.0.1"
+        }
+      ],
+      "effects": [
+        "@puppeteer/browsers"
+      ],
+      "range": "*",
+      "nodes": [
+        "node_modules/extract-zip"
+      ],
+      "fixAvailable": {
+        "name": "puppeteer",
+        "version": "25.16.0",
+        "isSemVerMajor": true
+      }
+    },
+    "get-uri": {
+      "name": "get-uri",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "basic-ftp"
+      ],
+      "effects": [
+        "pac-proxy-agent"
+      ],
+      "range": ">=5.0.0",
+      "nodes": [
+        "node_modules/get-uri"
+      ],
+      "fixAvailable": {
+        "name": "puppeteer",
+        "version": "25.16.0",
+        "isSemVerMajor": true
+      }
+    },
+    "html-minifier": {
+      "name": "html-minifier",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        {
+          "source": 1105440,
+          "name": "html-minifier",
+          "dependency": "html-minifier",
+          "title": "kangax html-minifier REDoS vulnerability",
+          "url": "https://github.com/advisories/GHSA-pfq8-rq6v-vf5m",
+          "severity": "high",
+          "cwe": [
+            "CWE-400",
+            "CWE-1333"
+          ],
+          "cvss": {
+            "score": 7.5,
+            "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"
+          },
+          "range": "<=4.0.0"
+        }
+      ],
+      "effects": [
+        "mjml-cli",
+        "mjml-core"
+      ],
+      "range": "*",
+      "nodes": [
+        "node_modules/html-minifier"
+      ],
+      "fixAvailable": {
+        "name": "mjml",
+        "version": "5.4.1",
+        "isSemVerMajor": true
+      }
+    },
+    "jayson": {
+      "name": "jayson",
+      "severity": "moderate",
+      "isDirect": false,
+      "via": [
+        "stream-json",
+        "uuid"
+      ],
+      "effects": [
+        "@solana/web3.js"
+      ],
+      "range": "2.0.6 - 4.3.0",
+      "nodes": [
+        "node_modules/jayson"
+      ],
+      "fixAvailable": false
+    },
+    "mjml": {
+      "name": "mjml",
+      "severity": "high",
+      "isDirect": true,
+      "via": [
+        {
+          "source": 1121799,
+          "name": "mjml",
+          "dependency": "mjml",
+          "title": "MJML allows mj-include directory traversal due to an incomplete fix for CVE-2020-12827",
+          "url": "https://github.com/advisories/GHSA-45h5-66jx-r2wf",
+          "severity": "moderate",
+          "cwe": [
+            "CWE-36"
+          ],
+          "cvss": {
+            "score": 4.5,
+            "vectorString": "CVSS:3.1/AV:L/AC:H/PR:N/UI:N/S:C/C:L/I:N/A:L"
+          },
+          "range": "<5.0.0-alpha.9"
+        },
+        "mjml-cli",
+        "mjml-core",
+        "mjml-migrate",
+        "mjml-preset-core"
+      ],
+      "effects": [],
+      "range": "<=5.0.0-beta.2",
+      "nodes": [
+        "node_modules/mjml"
+      ],
+      "fixAvailable": {
+        "name": "mjml",
+        "version": "5.4.1",
+        "isSemVerMajor": true
+      }
+    },
+    "mjml-accordion": {
+      "name": "mjml-accordion",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "mjml-core"
+      ],
+      "effects": [
+        "mjml-preset-core"
+      ],
+      "range": "<=4.18.0",
+      "nodes": [
+        "node_modules/mjml-accordion"
+      ],
+      "fixAvailable": {
+        "name": "mjml",
+        "version": "5.4.1",
+        "isSemVerMajor": true
+      }
+    },
+    "mjml-body": {
+      "name": "mjml-body",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "mjml-core"
+      ],
+      "effects": [
+        "mjml-preset-core"
+      ],
+      "range": "<=4.18.0",
+      "nodes": [
+        "node_modules/mjml-body"
+      ],
+      "fixAvailable": {
+        "name": "mjml",
+        "version": "5.4.1",
+        "isSemVerMajor": true
+      }
+    },
+    "mjml-button": {
+      "name": "mjml-button",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "mjml-core"
+      ],
+      "effects": [
+        "mjml-preset-core"
+      ],
+      "range": "<=4.18.0",
+      "nodes": [
+        "node_modules/mjml-button"
+      ],
+      "fixAvailable": {
+        "name": "mjml",
+        "version": "5.4.1",
+        "isSemVerMajor": true
+      }
+    },
+    "mjml-carousel": {
+      "name": "mjml-carousel",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "mjml-core"
+      ],
+      "effects": [
+        "mjml-preset-core"
+      ],
+      "range": "<=4.18.0",
+      "nodes": [
+        "node_modules/mjml-carousel"
+      ],
+      "fixAvailable": {
+        "name": "mjml",
+        "version": "5.4.1",
+        "isSemVerMajor": true
+      }
+    },
+    "mjml-cli": {
+      "name": "mjml-cli",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "html-minifier",
+        "mjml-core",
+        "mjml-migrate"
+      ],
+      "effects": [
+        "mjml"
+      ],
+      "range": "<=5.0.0-beta.2",
+      "nodes": [
+        "node_modules/mjml-cli"
+      ],
+      "fixAvailable": {
+        "name": "mjml",
+        "version": "5.4.1",
+        "isSemVerMajor": true
+      }
+    },
+    "mjml-column": {
+      "name": "mjml-column",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "mjml-core"
+      ],
+      "effects": [
+        "mjml-preset-core"
+      ],
+      "range": "<=4.18.0",
+      "nodes": [
+        "node_modules/mjml-column"
+      ],
+      "fixAvailable": {
+        "name": "mjml",
+        "version": "5.4.1",
+        "isSemVerMajor": true
+      }
+    },
+    "mjml-core": {
+      "name": "mjml-core",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "html-minifier",
+        "mjml-migrate"
+      ],
+      "effects": [
+        "mjml",
+        "mjml-accordion",
+        "mjml-body",
+        "mjml-button",
+        "mjml-carousel",
+        "mjml-cli",
+        "mjml-column",
+        "mjml-divider",
+        "mjml-group",
+        "mjml-head",
+        "mjml-head-attributes",
+        "mjml-head-breakpoint",
+        "mjml-head-font",
+        "mjml-head-html-attributes",
+        "mjml-head-preview",
+        "mjml-head-style",
+        "mjml-head-title",
+        "mjml-hero",
+        "mjml-image",
+        "mjml-migrate",
+        "mjml-navbar",
+        "mjml-raw",
+        "mjml-section",
+        "mjml-social",
+        "mjml-spacer",
+        "mjml-table",
+        "mjml-text",
+        "mjml-wrapper"
+      ],
+      "range": "<=4.18.0",
+      "nodes": [
+        "node_modules/mjml-core"
+      ],
+      "fixAvailable": {
+        "name": "mjml",
+        "version": "5.4.1",
+        "isSemVerMajor": true
+      }
+    },
+    "mjml-divider": {
+      "name": "mjml-divider",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "mjml-core"
+      ],
+      "effects": [
+        "mjml-preset-core"
+      ],
+      "range": "<=4.18.0",
+      "nodes": [
+        "node_modules/mjml-divider"
+      ],
+      "fixAvailable": {
+        "name": "mjml",
+        "version": "5.4.1",
+        "isSemVerMajor": true
+      }
+    },
+    "mjml-group": {
+      "name": "mjml-group",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "mjml-core"
+      ],
+      "effects": [
+        "mjml-preset-core"
+      ],
+      "range": "<=4.18.0",
+      "nodes": [
+        "node_modules/mjml-group"
+      ],
+      "fixAvailable": {
+        "name": "mjml",
+        "version": "5.4.1",
+        "isSemVerMajor": true
+      }
+    },
+    "mjml-head": {
+      "name": "mjml-head",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "mjml-core"
+      ],
+      "effects": [
+        "mjml-preset-core"
+      ],
+      "range": "<=4.18.0",
+      "nodes": [
+        "node_modules/mjml-head"
+      ],
+      "fixAvailable": {
+        "name": "mjml",
+        "version": "5.4.1",
+        "isSemVerMajor": true
+      }
+    },
+    "mjml-head-attributes": {
+      "name": "mjml-head-attributes",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "mjml-core"
+      ],
+      "effects": [
+        "mjml-preset-core"
+      ],
+      "range": "<=2.0.4 || 4.0.0-alpha.1 - 4.18.0",
+      "nodes": [
+        "node_modules/mjml-head-attributes"
+      ],
+      "fixAvailable": {
+        "name": "mjml",
+        "version": "5.4.1",
+        "isSemVerMajor": true
+      }
+    },
+    "mjml-head-breakpoint": {
+      "name": "mjml-head-breakpoint",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "mjml-core"
+      ],
+      "effects": [
+        "mjml-preset-core"
+      ],
+      "range": "<=4.18.0",
+      "nodes": [
+        "node_modules/mjml-head-breakpoint"
+      ],
+      "fixAvailable": {
+        "name": "mjml",
+        "version": "5.4.1",
+        "isSemVerMajor": true
+      }
+    },
+    "mjml-head-font": {
+      "name": "mjml-head-font",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "mjml-core"
+      ],
+      "effects": [
+        "mjml-preset-core"
+      ],
+      "range": "4.0.0-alpha.1 - 4.18.0",
+      "nodes": [
+        "node_modules/mjml-head-font"
+      ],
+      "fixAvailable": {
+        "name": "mjml",
+        "version": "5.4.1",
+        "isSemVerMajor": true
+      }
+    },
+    "mjml-head-html-attributes": {
+      "name": "mjml-head-html-attributes",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "mjml-core"
+      ],
+      "effects": [
+        "mjml-preset-core"
+      ],
+      "range": "<=4.18.0",
+      "nodes": [
+        "node_modules/mjml-head-html-attributes"
+      ],
+      "fixAvailable": {
+        "name": "mjml",
+        "version": "5.4.1",
+        "isSemVerMajor": true
+      }
+    },
+    "mjml-head-preview": {
+      "name": "mjml-head-preview",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "mjml-core"
+      ],
+      "effects": [
+        "mjml-preset-core"
+      ],
+      "range": "4.0.0-alpha.3 - 4.18.0",
+      "nodes": [
+        "node_modules/mjml-head-preview"
+      ],
+      "fixAvailable": {
+        "name": "mjml",
+        "version": "5.4.1",
+        "isSemVerMajor": true
+      }
+    },
+    "mjml-head-style": {
+      "name": "mjml-head-style",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "mjml-core"
+      ],
+      "effects": [
+        "mjml-preset-core"
+      ],
+      "range": "4.0.0-alpha.1 - 4.18.0",
+      "nodes": [
+        "node_modules/mjml-head-style"
+      ],
+      "fixAvailable": {
+        "name": "mjml",
+        "version": "5.4.1",
+        "isSemVerMajor": true
+      }
+    },
+    "mjml-head-title": {
+      "name": "mjml-head-title",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "mjml-core"
+      ],
+      "effects": [
+        "mjml-preset-core"
+      ],
+      "range": "4.0.0-alpha.1 - 4.18.0",
+      "nodes": [
+        "node_modules/mjml-head-title"
+      ],
+      "fixAvailable": {
+        "name": "mjml",
+        "version": "5.4.1",
+        "isSemVerMajor": true
+      }
+    },
+    "mjml-hero": {
+      "name": "mjml-hero",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "mjml-core"
+      ],
+      "effects": [
+        "mjml-preset-core"
+      ],
+      "range": "<=4.18.0",
+      "nodes": [
+        "node_modules/mjml-hero"
+      ],
+      "fixAvailable": {
+        "name": "mjml",
+        "version": "5.4.1",
+        "isSemVerMajor": true
+      }
+    },
+    "mjml-image": {
+      "name": "mjml-image",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "mjml-core"
+      ],
+      "effects": [
+        "mjml-preset-core"
+      ],
+      "range": "<=4.18.0",
+      "nodes": [
+        "node_modules/mjml-image"
+      ],
+      "fixAvailable": {
+        "name": "mjml",
+        "version": "5.4.1",
+        "isSemVerMajor": true
+      }
+    },
+    "mjml-migrate": {
+      "name": "mjml-migrate",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "mjml-core"
+      ],
+      "effects": [
+        "mjml",
+        "mjml-cli",
+        "mjml-core"
+      ],
+      "range": "4.0.0-beta.1 - 4.18.0",
+      "nodes": [
+        "node_modules/mjml-migrate"
+      ],
+      "fixAvailable": {
+        "name": "mjml",
+        "version": "5.4.1",
+        "isSemVerMajor": true
+      }
+    },
+    "mjml-navbar": {
+      "name": "mjml-navbar",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "mjml-core"
+      ],
+      "effects": [
+        "mjml-preset-core"
+      ],
+      "range": "<=4.18.0",
+      "nodes": [
+        "node_modules/mjml-navbar"
+      ],
+      "fixAvailable": {
+        "name": "mjml",
+        "version": "5.4.1",
+        "isSemVerMajor": true
+      }
+    },
+    "mjml-preset-core": {
+      "name": "mjml-preset-core",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "mjml-accordion",
+        "mjml-body",
+        "mjml-button",
+        "mjml-carousel",
+        "mjml-column",
+        "mjml-divider",
+        "mjml-group",
+        "mjml-head",
+        "mjml-head-attributes",
+        "mjml-head-breakpoint",
+        "mjml-head-font",
+        "mjml-head-html-attributes",
+        "mjml-head-preview",
+        "mjml-head-style",
+        "mjml-head-title",
+        "mjml-hero",
+        "mjml-image",
+        "mjml-navbar",
+        "mjml-raw",
+        "mjml-section",
+        "mjml-social",
+        "mjml-spacer",
+        "mjml-table",
+        "mjml-text",
+        "mjml-wrapper"
+      ],
+      "effects": [
+        "mjml"
+      ],
+      "range": "<=4.18.0",
+      "nodes": [
+        "node_modules/mjml-preset-core"
+      ],
+      "fixAvailable": {
+        "name": "mjml",
+        "version": "5.4.1",
+        "isSemVerMajor": true
+      }
+    },
+    "mjml-raw": {
+      "name": "mjml-raw",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "mjml-core"
+      ],
+      "effects": [
+        "mjml-preset-core"
+      ],
+      "range": "<=4.18.0",
+      "nodes": [
+        "node_modules/mjml-raw"
+      ],
+      "fixAvailable": {
+        "name": "mjml",
+        "version": "5.4.1",
+        "isSemVerMajor": true
+      }
+    },
+    "mjml-section": {
+      "name": "mjml-section",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "mjml-core"
+      ],
+      "effects": [
+        "mjml-preset-core",
+        "mjml-wrapper"
+      ],
+      "range": "<=4.18.0",
+      "nodes": [
+        "node_modules/mjml-section"
+      ],
+      "fixAvailable": {
+        "name": "mjml",
+        "version": "5.4.1",
+        "isSemVerMajor": true
+      }
+    },
+    "mjml-social": {
+      "name": "mjml-social",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "mjml-core"
+      ],
+      "effects": [
+        "mjml-preset-core"
+      ],
+      "range": "<=4.18.0",
+      "nodes": [
+        "node_modules/mjml-social"
+      ],
+      "fixAvailable": {
+        "name": "mjml",
+        "version": "5.4.1",
+        "isSemVerMajor": true
+      }
+    },
+    "mjml-spacer": {
+      "name": "mjml-spacer",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "mjml-core"
+      ],
+      "effects": [
+        "mjml-preset-core"
+      ],
+      "range": "<=4.18.0",
+      "nodes": [
+        "node_modules/mjml-spacer"
+      ],
+      "fixAvailable": {
+        "name": "mjml",
+        "version": "5.4.1",
+        "isSemVerMajor": true
+      }
+    },
+    "mjml-table": {
+      "name": "mjml-table",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "mjml-core"
+      ],
+      "effects": [
+        "mjml-preset-core"
+      ],
+      "range": "<=4.18.0",
+      "nodes": [
+        "node_modules/mjml-table"
+      ],
+      "fixAvailable": {
+        "name": "mjml",
+        "version": "5.4.1",
+        "isSemVerMajor": true
+      }
+    },
+    "mjml-text": {
+      "name": "mjml-text",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "mjml-core"
+      ],
+      "effects": [
+        "mjml-preset-core"
+      ],
+      "range": "<=4.18.0",
+      "nodes": [
+        "node_modules/mjml-text"
+      ],
+      "fixAvailable": {
+        "name": "mjml",
+        "version": "5.4.1",
+        "isSemVerMajor": true
+      }
+    },
+    "mjml-wrapper": {
+      "name": "mjml-wrapper",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "mjml-core",
+        "mjml-section"
+      ],
+      "effects": [
+        "mjml-preset-core"
+      ],
+      "range": "<=4.18.0",
+      "nodes": [
+        "node_modules/mjml-wrapper"
+      ],
+      "fixAvailable": {
+        "name": "mjml",
+        "version": "5.4.1",
+        "isSemVerMajor": true
+      }
+    },
+    "nodemailer": {
+      "name": "nodemailer",
+      "severity": "high",
+      "isDirect": true,
+      "via": [
+        {
+          "source": 1115470,
+          "name": "nodemailer",
+          "dependency": "nodemailer",
+          "title": "Nodemailer has SMTP command injection due to unsanitized `envelope.size` parameter",
+          "url": "https://github.com/advisories/GHSA-c7w3-x93f-qmm8",
+          "severity": "low",
+          "cwe": [
+            "CWE-93"
+          ],
+          "cvss": {
+            "score": 0,
+            "vectorString": null
+          },
+          "range": "<8.0.4"
+        },
+        {
+          "source": 1116270,
+          "name": "nodemailer",
+          "dependency": "nodemailer",
+          "title": "Nodemailer Vulnerable to SMTP Command Injection via CRLF in Transport name Option (EHLO/HELO) ",
+          "url": "https://github.com/advisories/GHSA-vvjj-xcjg-gr5g",
+          "severity": "moderate",
+          "cwe": [
+            "CWE-93"
+          ],
+          "cvss": {
+            "score": 4.9,
+            "vectorString": "CVSS:3.1/AV:N/AC:L/PR:H/UI:N/S:U/C:N/I:H/A:N"
+          },
+          "range": "<=8.0.4"
+        },
+        {
+          "source": 1120795,
+          "name": "nodemailer",
+          "dependency": "nodemailer",
+          "title": "Nodemailer: CRLF injection in Nodemailer List-* header comments allows arbitrary message header injection",
+          "url": "https://github.com/advisories/GHSA-268h-hp4c-crq3",
+          "severity": "moderate",
+          "cwe": [
+            "CWE-93"
+          ],
+          "cvss": {
+            "score": 5.4,
+            "vectorString": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:L/I:L/A:N"
+          },
+          "range": "<=8.0.8"
+        },
+        {
+          "source": 1120796,
+          "name": "nodemailer",
+          "dependency": "nodemailer",
+          "title": "Nodemailer jsonTransport bypasses disableFileAccess and disableUrlAccess during message normalization",
+          "url": "https://github.com/advisories/GHSA-wqvq-jvpq-h66f",
+          "severity": "moderate",
+          "cwe": [
+            "CWE-862"
+          ],
+          "cvss": {
+            "score": 5.4,
+            "vectorString": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:L/I:L/A:N"
+          },
+          "range": "<=8.0.8"
+        },
+        {
+          "source": 1158513,
+          "name": "nodemailer",
+          "dependency": "nodemailer",
+          "title": "Nodemailer: Message-level raw option bypasses disableFileAccess/disableUrlAccess, enabling arbitrary file read and full-response SSRF in the delivered message",
+          "url": "https://github.com/advisories/GHSA-p6gq-j5cr-w38f",
+          "severity": "high",
+          "cwe": [
+            "CWE-73",
+            "CWE-918"
+          ],
+          "cvss": {
+            "score": 7.1,
+            "vectorString": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:L/A:N"
+          },
+          "range": "<=9.0.0"
+        },
+        {
+          "source": 1193741,
+          "name": "nodemailer",
+          "dependency": "nodemailer",
+          "title": "Nodemailer: resolveContent() on a MailMessage bypasses disableFileAccess/disableUrlAccess when called with the legacy signature",
+          "url": "https://github.com/advisories/GHSA-8m3c-c648-2xjj",
+          "severity": "moderate",
+          "cwe": [
+            "CWE-73",
+            "CWE-918"
+          ],
+          "cvss": {
+            "score": 5.9,
+            "vectorString": "CVSS:3.1/AV:N/AC:H/PR:L/UI:N/S:U/C:H/I:L/A:N"
+          },
+          "range": "<=9.1.0"
+        },
+        {
+          "source": 1193770,
+          "name": "nodemailer",
+          "dependency": "nodemailer",
+          "title": "Nodemailer: IDN/Punycode domain allow-list bypass leads to email delivery to an attacker-controlled domain",
+          "url": "https://github.com/advisories/GHSA-wmmp-3585-3rmp",
+          "severity": "moderate",
+          "cwe": [
+            "CWE-20",
+            "CWE-436"
+          ],
+          "cvss": {
+            "score": 6.5,
+            "vectorString": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:L/A:N"
+          },
+          "range": "<9.1.0"
+        },
+        {
+          "source": 1193778,
+          "name": "nodemailer",
+          "dependency": "nodemailer",
+          "title": "Nodemailer: Quadratic (O(n²)) time complexity in addressparser allows remote denial of service via a crafted address list",
+          "url": "https://github.com/advisories/GHSA-2x7j-588g-ccc2",
+          "severity": "high",
+          "cwe": [
+            "CWE-400",
+            "CWE-407"
+          ],
+          "cvss": {
+            "score": 7.5,
+            "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"
+          },
+          "range": "<9.1.0"
+        },
+        {
+          "source": 1193779,
+          "name": "nodemailer",
+          "dependency": "nodemailer",
+          "title": "Nodemailer: Recipient-domain validation bypass via RFC 5322 comment mis-parsing leads to email delivery to an attacker-controlled domain",
+          "url": "https://github.com/advisories/GHSA-cc9r-2j5m-2m83",
+          "severity": "moderate",
+          "cwe": [
+            "CWE-20",
+            "CWE-436"
+          ],
+          "cvss": {
+            "score": 6.5,
+            "vectorString": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:L/A:N"
+          },
+          "range": ">=6.9.16 <9.1.0"
+        },
+        {
+          "source": 1239931,
+          "name": "nodemailer",
+          "dependency": "nodemailer",
+          "title": "Nodemailer: Process-global DNS cache reuses TLS `servername` across transports, enabling cross-tenant SMTP credential disclosure",
+          "url": "https://github.com/advisories/GHSA-6vj9-mwq6-2f5v",
+          "severity": "moderate",
+          "cwe": [
+            "CWE-295"
+          ],
+          "cvss": {
+            "score": 5.9,
+            "vectorString": "CVSS:3.1/AV:N/AC:H/PR:L/UI:N/S:U/C:H/I:L/A:N"
+          },
+          "range": ">=5.0.0 <10.0.2"
+        },
+        {
+          "source": 1240033,
+          "name": "nodemailer",
+          "dependency": "nodemailer",
+          "title": "Nodemailer: Nested structured recipient arrays bypass the parser depth limit and cause stack exhaustion DoS",
+          "url": "https://github.com/advisories/GHSA-8vvx-rff5-p5rq",
+          "severity": "moderate",
+          "cwe": [
+            "CWE-674"
+          ],
+          "cvss": {
+            "score": 5.9,
+            "vectorString": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:N/A:H"
+          },
+          "range": "<10.0.2"
+        },
+        {
+          "source": 1240114,
+          "name": "nodemailer",
+          "dependency": "nodemailer",
+          "title": "Nodemailer: Quadratic backtracking in the addressparser free-text fallback allows remote denial of service",
+          "url": "https://github.com/advisories/GHSA-v53p-9fqp-m79j",
+          "severity": "high",
+          "cwe": [
+            "CWE-407",
+            "CWE-1333"
+          ],
+          "cvss": {
+            "score": 7.5,
+            "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"
+          },
+          "range": "<=10.0.5"
+        },
+        {
+          "source": 1241195,
+          "name": "nodemailer",
+          "dependency": "nodemailer",
+          "title": "Nodemailer: Improper TLS Certificate Validation in OAuth2 Token Fetch Enables Credential Interception",
+          "url": "https://github.com/advisories/GHSA-r7g4-qg5f-qqm2",
+          "severity": "high",
+          "cwe": [
+            "CWE-295"
+          ],
+          "cvss": {
+            "score": 6.5,
+            "vectorString": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:L/A:N"
+          },
+          "range": "<=8.0.7"
+        },
+        {
+          "source": 1242826,
+          "name": "nodemailer",
+          "dependency": "nodemailer",
+          "title": "Nodemailer: Quadratic (O(n^2)) DKIM header unfolding lets a large folded header cause remote denial of service during signing",
+          "url": "https://github.com/advisories/GHSA-39m8-27wv-hr27",
+          "severity": "moderate",
+          "cwe": [
+            "CWE-400",
+            "CWE-407"
+          ],
+          "cvss": {
+            "score": 6.5,
+            "vectorString": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:N/I:N/A:H"
+          },
+          "range": ">=3.0.0 <=10.0.9"
+        },
+        {
+          "source": 1243091,
+          "name": "nodemailer",
+          "dependency": "nodemailer",
+          "title": "Nodemailer: A nested comment ends early in addressparser, releasing the rest of the comment as a recipient",
+          "url": "https://github.com/advisories/GHSA-8c8m-p3m8-cjg8",
+          "severity": "moderate",
+          "cwe": [
+            "CWE-20",
+            "CWE-436"
+          ],
+          "cvss": {
+            "score": 6.5,
+            "vectorString": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:L/A:N"
+          },
+          "range": ">=3.0.0 <10.1.4"
+        },
+        {
+          "source": 1243092,
+          "name": "nodemailer",
+          "dependency": "nodemailer",
+          "title": "Nodemailer: A \";\" inside a quoted string or comment ends an address group early in addressparser, turning display text into a recipient",
+          "url": "https://github.com/advisories/GHSA-m943-m63m-w62w",
+          "severity": "moderate",
+          "cwe": [
+            "CWE-20",
+            "CWE-436"
+          ],
+          "cvss": {
+            "score": 6.5,
+            "vectorString": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:L/A:N"
+          },
+          "range": ">=3.0.0 <10.1.4"
+        },
+        {
+          "source": 1243093,
+          "name": "nodemailer",
+          "dependency": "nodemailer",
+          "title": "Nodemailer: A \">\" inside a quoted local part ends an angle-addr early in addressparser, delivering to a domain the header does not name",
+          "url": "https://github.com/advisories/GHSA-85x2-q946-cp5h",
+          "severity": "moderate",
+          "cwe": [
+            "CWE-20",
+            "CWE-436"
+          ],
+          "cvss": {
+            "score": 6.5,
+            "vectorString": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:L/A:N"
+          },
+          "range": ">=3.0.0 <10.1.4"
+        },
+        {
+          "source": 1243442,
+          "name": "nodemailer",
+          "dependency": "nodemailer",
+          "title": "Nodemailer: Quadratic backtracking in SMTP AUTH mechanism detection regexes allows pre-auth remote denial of service",
+          "url": "https://github.com/advisories/GHSA-4ffr-jq9g-5ffx",
+          "severity": "moderate",
+          "cwe": [
+            "CWE-1333"
+          ],
+          "cvss": {
+            "score": 5.9,
+            "vectorString": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:N/A:H"
+          },
+          "range": ">=3.0.0 <=10.0.12"
+        },
+        {
+          "source": 1243443,
+          "name": "nodemailer",
+          "dependency": "nodemailer",
+          "title": "Nodemailer: RFC 5322 comment inside an angle-bracket address is never stripped",
+          "url": "https://github.com/advisories/GHSA-g73g-hqqh-jr95",
+          "severity": "moderate",
+          "cwe": [
+            "CWE-20",
+            "CWE-436"
+          ],
+          "cvss": {
+            "score": 5.3,
+            "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:L/A:N"
+          },
+          "range": ">=3.0.0 <=10.0.12"
+        },
+        {
+          "source": 1243444,
+          "name": "nodemailer",
+          "dependency": "nodemailer",
+          "title": "Nodemailer: Quadratic (O(n^2)) SMTP client reply parsing lets a malicious server or MITM cause a pre-auth remote denial of service",
+          "url": "https://github.com/advisories/GHSA-4g23-2xm8-66gc",
+          "severity": "moderate",
+          "cwe": [
+            "CWE-400",
+            "CWE-407"
+          ],
+          "cvss": {
+            "score": 5.9,
+            "vectorString": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:N/A:H"
+          },
+          "range": ">=3.0.0 <=10.0.9"
+        }
+      ],
+      "effects": [],
+      "range": "<=10.1.3",
+      "nodes": [
+        "node_modules/nodemailer"
+      ],
+      "fixAvailable": {
+        "name": "nodemailer",
+        "version": "10.3.0",
+        "isSemVerMajor": true
+      }
+    },
+    "pac-proxy-agent": {
+      "name": "pac-proxy-agent",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "get-uri"
+      ],
+      "effects": [
+        "proxy-agent"
+      ],
+      "range": ">=6.0.0",
+      "nodes": [
+        "node_modules/pac-proxy-agent"
+      ],
+      "fixAvailable": {
+        "name": "puppeteer",
+        "version": "25.16.0",
+        "isSemVerMajor": true
+      }
+    },
+    "proxy-agent": {
+      "name": "proxy-agent",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "pac-proxy-agent"
+      ],
+      "effects": [
+        "@puppeteer/browsers"
+      ],
+      "range": ">=6.0.0",
+      "nodes": [
+        "node_modules/proxy-agent"
+      ],
+      "fixAvailable": {
+        "name": "puppeteer",
+        "version": "25.16.0",
+        "isSemVerMajor": true
+      }
+    },
+    "puppeteer": {
+      "name": "puppeteer",
+      "severity": "high",
+      "isDirect": true,
+      "via": [
+        "@puppeteer/browsers",
+        "chromium-bidi",
+        "puppeteer-core"
+      ],
+      "effects": [],
+      "range": "19.8.1 - 25.12.0",
+      "nodes": [
+        "node_modules/puppeteer"
+      ],
+      "fixAvailable": {
+        "name": "puppeteer",
+        "version": "25.16.0",
+        "isSemVerMajor": true
+      }
+    },
+    "puppeteer-core": {
+      "name": "puppeteer-core",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "@puppeteer/browsers",
+        "chromium-bidi"
+      ],
+      "effects": [
+        "puppeteer"
+      ],
+      "range": "19.8.4 - 25.12.0",
+      "nodes": [
+        "node_modules/puppeteer-core"
+      ],
+      "fixAvailable": {
+        "name": "puppeteer",
+        "version": "25.16.0",
+        "isSemVerMajor": true
+      }
+    },
+    "puppeteer-extra": {
+      "name": "puppeteer-extra",
+      "severity": "low",
+      "isDirect": true,
+      "via": [
+        "deepmerge"
+      ],
+      "effects": [],
+      "range": ">=2.1.6",
+      "nodes": [
+        "node_modules/puppeteer-extra"
+      ],
+      "fixAvailable": {
+        "name": "puppeteer-extra",
+        "version": "2.1.3",
+        "isSemVerMajor": true
+      }
+    },
+    "puppeteer-extra-plugin-stealth": {
+      "name": "puppeteer-extra-plugin-stealth",
+      "severity": "low",
+      "isDirect": true,
+      "via": [
+        "puppeteer-extra-plugin-user-preferences"
+      ],
+      "effects": [],
+      "range": ">=2.7.1",
+      "nodes": [
+        "node_modules/puppeteer-extra-plugin-stealth"
+      ],
+      "fixAvailable": {
+        "name": "puppeteer-extra-plugin-stealth",
+        "version": "2.7.0",
+        "isSemVerMajor": true
+      }
+    },
+    "puppeteer-extra-plugin-user-preferences": {
+      "name": "puppeteer-extra-plugin-user-preferences",
+      "severity": "low",
+      "isDirect": false,
+      "via": [
+        "deepmerge"
+      ],
+      "effects": [
+        "puppeteer-extra-plugin-stealth"
+      ],
+      "range": ">=2.1.5",
+      "nodes": [
+        "node_modules/puppeteer-extra-plugin-user-preferences"
+      ],
+      "fixAvailable": {
+        "name": "puppeteer-extra-plugin-stealth",
+        "version": "2.7.0",
+        "isSemVerMajor": true
+      }
+    },
+    "qs": {
+      "name": "qs",
+      "severity": "moderate",
+      "isDirect": false,
+      "via": [
+        {
+          "source": 1113161,
+          "name": "qs",
+          "dependency": "qs",
+          "title": "qs's arrayLimit bypass in comma parsing allows denial of service",
+          "url": "https://github.com/advisories/GHSA-w7fw-mjwx-w883",
+          "severity": "low",
+          "cwe": [
+            "CWE-20"
+          ],
+          "cvss": {
+            "score": 3.7,
+            "vectorString": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:N/A:L"
+          },
+          "range": ">=6.7.0 <=6.14.1"
+        },
+        {
+          "source": 1119502,
+          "name": "qs",
+          "dependency": "qs",
+          "title": "qs has a remotely triggerable DoS: qs.stringify crashes with TypeError on null/undefined entries in comma-format arrays when encodeValuesOnly is set",
+          "url": "https://github.com/advisories/GHSA-q8mj-m7cp-5q26",
+          "severity": "moderate",
+          "cwe": [
+            "CWE-476"
+          ],
+          "cvss": {
+            "score": 5.3,
+            "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L"
+          },
+          "range": ">=6.11.1 <=6.15.1"
+        },
+        {
+          "source": 1158507,
+          "name": "qs",
+          "dependency": "qs",
+          "title": "qs: Denial of Service via Attacker Controlled isBuffer",
+          "url": "https://github.com/advisories/GHSA-4mjr-xmp4-gh2g",
+          "severity": "moderate",
+          "cwe": [
+            "CWE-248",
+            "CWE-703"
+          ],
+          "cvss": {
+            "score": 5.3,
+            "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L"
+          },
+          "range": ">=2.2.5 <6.16.0"
+        },
+        {
+          "source": 1243687,
+          "name": "qs",
+          "dependency": "qs",
+          "title": "qs : qs.stringify with arrayFormat 'comma' throws an uncaught TypeError on array elements carrying a non-callable own toString (DoS)",
+          "url": "https://github.com/advisories/GHSA-6pq8-jhm2-2vcw",
+          "severity": "moderate",
+          "cwe": [
+            "CWE-248",
+            "CWE-704"
+          ],
+          "cvss": {
+            "score": 5.3,
+            "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L"
+          },
+          "range": ">=6.7.0 <=6.16.0"
+        }
+      ],
+      "effects": [],
+      "range": "2.2.5 - 6.16.0",
+      "nodes": [
+        "node_modules/qs"
+      ],
+      "fixAvailable": true
+    },
+    "stream-json": {
+      "name": "stream-json",
+      "severity": "moderate",
+      "isDirect": false,
+      "via": [
+        {
+          "source": 1164823,
+          "name": "stream-json",
+          "dependency": "stream-json",
+          "title": "stream-json: pick/ignore/filter/replace filters are O(depth²) on nested input — small crafted JSON blocks the event loop for seconds→minutes (DoS)",
+          "url": "https://github.com/advisories/GHSA-528h-pc64-c93x",
+          "severity": "moderate",
+          "cwe": [
+            "CWE-407"
+          ],
+          "cvss": {
+            "score": 6.2,
+            "vectorString": "CVSS:3.1/AV:L/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"
+          },
+          "range": "<=3.4.0"
+        },
+        {
+          "source": 1241262,
+          "name": "stream-json",
+          "dependency": "stream-json",
+          "title": "stream-json: JSONC parser and verifier re-scan the whole accumulated comment on every input chunk",
+          "url": "https://github.com/advisories/GHSA-hqr4-qq8f-hg3x",
+          "severity": "moderate",
+          "cwe": [
+            "CWE-407"
+          ],
+          "cvss": {
+            "score": 6.2,
+            "vectorString": "CVSS:3.1/AV:L/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"
+          },
+          "range": "<=3.5.0"
+        },
+        {
+          "source": 1241263,
+          "name": "stream-json",
+          "dependency": "stream-json",
+          "title": "stream-json has a prototype pollution issue: Assembler writes this.current[this.key] on plain objects",
+          "url": "https://github.com/advisories/GHSA-mjw6-4jj6-33hc",
+          "severity": "moderate",
+          "cwe": [
+            "CWE-1321"
+          ],
+          "cvss": {
+            "score": 5.1,
+            "vectorString": "CVSS:3.1/AV:L/AC:L/PR:N/UI:N/S:U/C:N/I:L/A:L"
+          },
+          "range": "<3.6.0"
+        }
+      ],
+      "effects": [
+        "jayson"
+      ],
+      "range": "<=3.5.0",
+      "nodes": [
+        "node_modules/stream-json"
+      ],
+      "fixAvailable": false
+    },
+    "uuid": {
+      "name": "uuid",
+      "severity": "moderate",
+      "isDirect": false,
+      "via": [
+        {
+          "source": 1119441,
+          "name": "uuid",
+          "dependency": "uuid",
+          "title": "uuid: Missing buffer bounds check in v3/v5/v6 when buf is provided",
+          "url": "https://github.com/advisories/GHSA-w5hq-g745-h8pq",
+          "severity": "moderate",
+          "cwe": [
+            "CWE-787",
+            "CWE-1285"
+          ],
+          "cvss": {
+            "score": 7.5,
+            "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:N"
+          },
+          "range": "<11.1.1"
+        }
+      ],
+      "effects": [
+        "exceljs",
+        "jayson"
+      ],
+      "range": "<11.1.1",
+      "nodes": [
+        "node_modules/uuid"
+      ],
+      "fixAvailable": false
+    },
+    "web3": {
+      "name": "web3",
+      "severity": "high",
+      "isDirect": true,
+      "via": [
+        "web3-core",
+        "web3-eth",
+        "web3-eth-abi",
+        "web3-eth-accounts",
+        "web3-eth-contract",
+        "web3-eth-ens",
+        "web3-eth-iban",
+        "web3-eth-personal",
+        "web3-net",
+        "web3-providers-http",
+        "web3-providers-ws",
+        "web3-rpc-methods",
+        "web3-rpc-providers",
+        "web3-utils",
+        "web3-validator"
+      ],
+      "effects": [],
+      "range": ">=4.0.4-dev.1361787.0",
+      "nodes": [
+        "node_modules/web3"
+      ],
+      "fixAvailable": {
+        "name": "web3",
+        "version": "4.0.3",
+        "isSemVerMajor": true
+      }
+    },
+    "web3-core": {
+      "name": "web3-core",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "web3-eth-accounts",
+        "web3-eth-iban",
+        "web3-providers-http",
+        "web3-providers-ipc",
+        "web3-providers-ws",
+        "web3-utils",
+        "web3-validator"
+      ],
+      "effects": [
+        "web3",
+        "web3-eth",
+        "web3-eth-contract",
+        "web3-eth-ens",
+        "web3-eth-personal",
+        "web3-net",
+        "web3-rpc-methods"
+      ],
+      "range": ">=4.0.4-dev.1361787.0",
+      "nodes": [
+        "node_modules/web3-core"
+      ],
+      "fixAvailable": {
+        "name": "web3",
+        "version": "4.0.3",
+        "isSemVerMajor": true
+      }
+    },
+    "web3-eth": {
+      "name": "web3-eth",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "web3-core",
+        "web3-eth-abi",
+        "web3-eth-accounts",
+        "web3-net",
+        "web3-providers-ws",
+        "web3-rpc-methods",
+        "web3-utils",
+        "web3-validator"
+      ],
+      "effects": [
+        "web3",
+        "web3-eth-contract",
+        "web3-eth-ens",
+        "web3-eth-personal"
+      ],
+      "range": "<=1.0.0 || >=4.0.4-dev.1361787.0",
+      "nodes": [
+        "node_modules/web3-eth"
+      ],
+      "fixAvailable": {
+        "name": "web3",
+        "version": "4.0.3",
+        "isSemVerMajor": true
+      }
+    },
+    "web3-eth-abi": {
+      "name": "web3-eth-abi",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "web3-utils",
+        "web3-validator"
+      ],
+      "effects": [
+        "web3",
+        "web3-eth",
+        "web3-eth-contract"
+      ],
+      "range": ">=4.0.4-dev.1361787.0",
+      "nodes": [
+        "node_modules/web3-eth-abi"
+      ],
+      "fixAvailable": {
+        "name": "web3",
+        "version": "4.0.3",
+        "isSemVerMajor": true
+      }
+    },
+    "web3-eth-accounts": {
+      "name": "web3-eth-accounts",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "web3-utils",
+        "web3-validator"
+      ],
+      "effects": [
+        "web3",
+        "web3-core",
+        "web3-eth"
+      ],
+      "range": ">=4.0.4-dev.1361787.0",
+      "nodes": [
+        "node_modules/web3-eth-accounts"
+      ],
+      "fixAvailable": {
+        "name": "web3",
+        "version": "4.0.3",
+        "isSemVerMajor": true
+      }
+    },
+    "web3-eth-contract": {
+      "name": "web3-eth-contract",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "web3-core",
+        "web3-eth",
+        "web3-eth-abi",
+        "web3-utils",
+        "web3-validator"
+      ],
+      "effects": [
+        "web3",
+        "web3-eth-ens"
+      ],
+      "range": "<=1.0.0 || >=4.0.4-dev.1361787.0",
+      "nodes": [
+        "node_modules/web3-eth-contract"
+      ],
+      "fixAvailable": {
+        "name": "web3",
+        "version": "4.0.3",
+        "isSemVerMajor": true
+      }
+    },
+    "web3-eth-ens": {
+      "name": "web3-eth-ens",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "web3-core",
+        "web3-eth",
+        "web3-eth-contract",
+        "web3-net",
+        "web3-utils",
+        "web3-validator"
+      ],
+      "effects": [
+        "web3"
+      ],
+      "range": ">=4.0.4-dev.1361787.0",
+      "nodes": [
+        "node_modules/web3-eth-ens"
+      ],
+      "fixAvailable": {
+        "name": "web3",
+        "version": "4.0.3",
+        "isSemVerMajor": true
+      }
+    },
+    "web3-eth-iban": {
+      "name": "web3-eth-iban",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "web3-utils",
+        "web3-validator"
+      ],
+      "effects": [
+        "web3",
+        "web3-core"
+      ],
+      "range": ">=4.0.4-dev.1361787.0",
+      "nodes": [
+        "node_modules/web3-eth-iban"
+      ],
+      "fixAvailable": {
+        "name": "web3",
+        "version": "4.0.3",
+        "isSemVerMajor": true
+      }
+    },
+    "web3-eth-personal": {
+      "name": "web3-eth-personal",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "web3-core",
+        "web3-eth",
+        "web3-rpc-methods",
+        "web3-utils",
+        "web3-validator"
+      ],
+      "effects": [
+        "web3"
+      ],
+      "range": "<=1.0.0 || >=4.0.4-dev.1361787.0",
+      "nodes": [
+        "node_modules/web3-eth-personal"
+      ],
+      "fixAvailable": {
+        "name": "web3",
+        "version": "4.0.3",
+        "isSemVerMajor": true
+      }
+    },
+    "web3-net": {
+      "name": "web3-net",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "web3-core",
+        "web3-rpc-methods",
+        "web3-utils"
+      ],
+      "effects": [
+        "web3",
+        "web3-eth",
+        "web3-eth-ens"
+      ],
+      "range": ">=4.0.4-dev.1361787.0",
+      "nodes": [
+        "node_modules/web3-net"
+      ],
+      "fixAvailable": {
+        "name": "web3",
+        "version": "4.0.3",
+        "isSemVerMajor": true
+      }
+    },
+    "web3-providers-http": {
+      "name": "web3-providers-http",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "web3-utils"
+      ],
+      "effects": [
+        "web3",
+        "web3-core",
+        "web3-rpc-providers"
+      ],
+      "range": ">=4.0.4-dev.1361787.0",
+      "nodes": [
+        "node_modules/web3-providers-http"
+      ],
+      "fixAvailable": {
+        "name": "web3",
+        "version": "4.0.3",
+        "isSemVerMajor": true
+      }
+    },
+    "web3-providers-ipc": {
+      "name": "web3-providers-ipc",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "web3-utils"
+      ],
+      "effects": [
+        "web3-core"
+      ],
+      "range": ">=4.0.4-dev.1361787.0",
+      "nodes": [
+        "node_modules/web3-providers-ipc"
+      ],
+      "fixAvailable": {
+        "name": "web3",
+        "version": "4.0.3",
+        "isSemVerMajor": true
+      }
+    },
+    "web3-providers-ws": {
+      "name": "web3-providers-ws",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "web3-utils"
+      ],
+      "effects": [
+        "web3",
+        "web3-core",
+        "web3-eth",
+        "web3-rpc-providers"
+      ],
+      "range": ">=4.0.4-dev.1361787.0",
+      "nodes": [
+        "node_modules/web3-providers-ws"
+      ],
+      "fixAvailable": {
+        "name": "web3",
+        "version": "4.0.3",
+        "isSemVerMajor": true
+      }
+    },
+    "web3-rpc-methods": {
+      "name": "web3-rpc-methods",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "web3-core",
+        "web3-validator"
+      ],
+      "effects": [
+        "web3",
+        "web3-eth",
+        "web3-eth-personal",
+        "web3-net"
+      ],
+      "range": ">=1.0.3-dev.1361787.0",
+      "nodes": [
+        "node_modules/web3-rpc-methods"
+      ],
+      "fixAvailable": {
+        "name": "web3",
+        "version": "4.0.3",
+        "isSemVerMajor": true
+      }
+    },
+    "web3-rpc-providers": {
+      "name": "web3-rpc-providers",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "web3-providers-http",
+        "web3-providers-ws",
+        "web3-utils",
+        "web3-validator"
+      ],
+      "effects": [
+        "web3"
+      ],
+      "range": "*",
+      "nodes": [
+        "node_modules/web3-rpc-providers"
+      ],
+      "fixAvailable": {
+        "name": "web3",
+        "version": "4.0.3",
+        "isSemVerMajor": true
+      }
+    },
+    "web3-utils": {
+      "name": "web3-utils",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "web3-validator"
+      ],
+      "effects": [
+        "web3",
+        "web3-core",
+        "web3-eth",
+        "web3-eth-abi",
+        "web3-eth-accounts",
+        "web3-eth-contract",
+        "web3-eth-ens",
+        "web3-eth-iban",
+        "web3-eth-personal",
+        "web3-net",
+        "web3-providers-http",
+        "web3-providers-ipc",
+        "web3-providers-ws",
+        "web3-rpc-providers"
+      ],
+      "range": ">=4.0.4-dev.1361787.0",
+      "nodes": [
+        "node_modules/web3-utils"
+      ],
+      "fixAvailable": {
+        "name": "web3",
+        "version": "4.0.3",
+        "isSemVerMajor": true
+      }
+    },
+    "web3-validator": {
+      "name": "web3-validator",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "zod"
+      ],
+      "effects": [
+        "web3",
+        "web3-core",
+        "web3-eth",
+        "web3-eth-abi",
+        "web3-eth-accounts",
+        "web3-eth-contract",
+        "web3-eth-ens",
+        "web3-eth-iban",
+        "web3-eth-personal",
+        "web3-rpc-methods",
+        "web3-rpc-providers",
+        "web3-utils"
+      ],
+      "range": ">=1.0.3-dev.1361787.0",
+      "nodes": [
+        "node_modules/web3-validator"
+      ],
+      "fixAvailable": {
+        "name": "web3",
+        "version": "4.0.3",
+        "isSemVerMajor": true
+      }
+    },
+    "zod": {
+      "name": "zod",
+      "severity": "high",
+      "isDirect": true,
+      "via": [
+        {
+          "source": 1243066,
+          "name": "zod",
+          "dependency": "zod",
+          "title": "Zod can exhaust memory while validating oversized constrained collections",
+          "url": "https://github.com/advisories/GHSA-mrhx-c7xc-m3w5",
+          "severity": "high",
+          "cwe": [
+            "CWE-770"
+          ],
+          "cvss": {
+            "score": 7.5,
+            "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"
+          },
+          "range": "<4.6.6"
+        }
+      ],
+      "effects": [
+        "chromium-bidi",
+        "web3-validator"
+      ],
+      "range": "<4.6.6",
+      "nodes": [
+        "node_modules/zod"
+      ],
+      "fixAvailable": {
+        "name": "zod",
+        "version": "4.6.7",
+        "isSemVerMajor": true
+      }
+    }
+  },
+  "metadata": {
+    "vulnerabilities": {
+      "info": 0,
+      "low": 4,
+      "moderate": 7,
+      "high": 59,
+      "critical": 0,
+      "total": 70
+    },
+    "dependencies": {
+      "prod": 806,
+      "dev": 387,
+      "optional": 75,
+      "peer": 0,
+      "peerOptional": 0,
+      "total": 1227
+    }
+  }
+}
