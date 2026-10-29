@@ -1,0 +1,62 @@
+{
+  "name": "CADASTRAL_DOR",
+  "capabilities": "Query,Extract",
+  "maxRecordCount": 2000,
+  "objectIdField": "OBJECTID",
+  "copyrightText": "Alachua County Property Appraiser",
+  "fields": [
+    {
+      "name": "PARCELNO",
+      "type": "esriFieldTypeString"
+    },
+    {
+      "name": "CO_NO",
+      "type": "esriFieldTypeDouble"
+    },
+    {
+      "name": "PARCEL_ID",
+      "type": "esriFieldTypeString"
+    },
+    {
+      "name": "ASMNT_YR",
+      "type": "esriFieldTypeDouble"
+    },
+    {
+      "name": "OWN_NAME",
+      "type": "esriFieldTypeString"
+    },
+    {
+      "name": "OWN_ADDR1",
+      "type": "esriFieldTypeString"
+    },
+    {
+      "name": "OWN_ADDR2",
+      "type": "esriFieldTypeString"
+    },
+    {
+      "name": "OWN_CITY",
+      "type": "esriFieldTypeString"
+    },
+    {
+      "name": "OWN_STATE",
+      "type": "esriFieldTypeString"
+    },
+    {
+      "name": "OWN_ZIPCD",
+      "type": "esriFieldTypeDouble"
+    },
+    {
+      "name": "PHY_ADDR1",
+      "type": "esriFieldTypeString"
+    },
+    {
+      "name": "PHY_CITY",
+      "type": "esriFieldTypeString"
+    },
+    {
+      "name": "PHY_ZIPCD",
+      "type": "esriFieldTypeDouble"
+    }
+  ],
+  "endpoint": "https://services9.arcgis.com/Gh9awoU677aKree0/arcgis/rest/services/Florida_Statewide_Cadastral/FeatureServer/0"
+}

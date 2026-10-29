@@ -1,0 +1,20 @@
+{
+  "scope": "Actual Express/JWT/PostgreSQL, synthetic research records; no paid provider or real claimant identity proof",
+  "checks": [
+    "Anonymous native research denied",
+    "Client cannot read internal claimant evidence",
+    "Another company cannot read native evidence",
+    "Actual PostgreSQL saves source-attributed evidence and audit without a paid provider",
+    "Duplicate submission returns the original evidence",
+    "Concurrent evidence appends survive row locking without lost records",
+    "Native matching explains exact name/address support without inventing identity confidence",
+    "SSN, unsupported fields, insecure source and future dates rejected",
+    "Actual audit failure rolls back evidence atomically",
+    "Government acquisition catalog is available to the global founder only",
+    "Unadmitted source ID cannot trigger arbitrary network fetch",
+    "Optional vendor lookup rejects client access and missing credit acknowledgement",
+    "Missing provider returns unavailable and retained audit operation, never fabricated contacts",
+    "Unbound unauthenticated trace callback cannot attach identities to surname-matched cases"
+  ],
+  "passed": 14
+}

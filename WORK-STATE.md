@@ -1,3 +1,7 @@
+# Active Capital native-research checkpoint — October 29, 2026
+
+Continue from docs/full-build/CAPITAL-SYSTEM-REVIEW-2026-10-29.md and DATA-OWNERSHIP-RESEARCH-2026-10-29.md. MGR-native evidence, source probes/direct parcel API and truth repairs are implemented. Current named acceptance sets and remaining whole-system scope are explicit. The source-reading ledger records the unread scope. Recheck Git/remote and runtime custody before continuing. Paid tracing is disabled; no paid data, claims, signature or bank outcome was executed. Earlier checkpoints follow as history.
+
 # Current Capital-only checkpoint — October 28, 2026
 
 Read [case/document repair](docs/full-build/VAULT-REPAIR-2026-10-28.md) and [scorecard](docs/full-build/SCORECARD.md). Case/document boundaries and upload/delete recovery are implemented and qualified by26 actual API/database/filesystem checks plus3 separate-process reopen checks. Prior13/14/9 scopes were rerun. Full UI/provider/production remains unverified. Next: browser intake journey, atomic case workflow and journaled provider migration; then honest voice behavior and signature integration. No customer or production schema changed. TaxSlayer monitor was deleted at owner direction.

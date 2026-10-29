@@ -1,0 +1,56 @@
+✔ Missing provider never fabricates contacts (18.7655ms)
+✔ Provider 401 remains a failure without automatic retry (88.569ms)
+✔ Provider 402 remains a failure without automatic retry (1.3745ms)
+✔ Provider 403 remains a failure without automatic retry (0.9731ms)
+✔ Provider 429 remains a failure without automatic retry (1.183ms)
+✔ Provider 500 remains a failure without automatic retry (0.8204ms)
+✔ Provider 503 remains a failure without automatic retry (15.8127ms)
+✔ Network failure never fabricates or resubmits (0.9083ms)
+✔ Provider key cannot reach an arbitrary or sandbox host (11.1042ms)
+✔ Invalid person and SSN fail before provider request (8.7181ms)
+✔ Provider candidates never become verified identity or consent (19.6343ms)
+✔ Malformed provider result cannot masquerade as no match (5.8965ms)
+✔ Property lookup uses owner mode, not a fake person (12.1041ms)
+✔ Legal heir, death and unfinished bulk workflows stay explicit (1.7397ms)
+✔ Unknown government source never causes network request (0.8638ms)
+✔ Government source refuses private-host redirect (8.9051ms)
+✔ Source hash is distinct from record-import verification (1.4702ms)
+✔ Oversized and failed source responses stay unconfirmed (7.9844ms)
+✔ Money parser rejects partial/negative/exponent/unsafe values (7.0396ms)
+✔ Generic amounts/names do not become surplus/claimant fields (0.4644ms)
+✔ Shared surname/parcel never verifies claimant identity (9.8683ms)
+✔ Parcel query rejects SQL-like text and invalid county before transport (1.6903ms)
+✔ Parcel response mismatch cannot attach another parcel owner (19.6426ms)
+✔ ArcGIS JSON error in HTTP200 cannot become a successful no-match (3.3814ms)
+✔ A public parcel candidate preserves provenance without identity/phone invention (1.1584ms)
+✔ Provider key alone cannot activate paid lookup (0.5474ms)
+[32m[INFO][0m 2026-10-29T09:01:24.771Z - [VoiceService] Initialized with providers:
+  Context: {
+  "stt": "Unavailable",
+  "tts": "Browser Web Speech API (FREE)",
+  "ai": "Ollama"
+}
+[32m[INFO][0m 2026-10-29T09:01:24.774Z - [VoiceService] Initialized with providers:
+  Context: {
+  "stt": "Unavailable",
+  "tts": "Browser Web Speech API (FREE)",
+  "ai": "Ollama"
+}
+[32m[INFO][0m 2026-10-29T09:01:24.774Z - [VoiceService] STT: Processing audio buffer of size:
+  Context: {
+  "size": 29
+}
+[31m[ERROR][0m 2026-10-29T09:01:24.774Z - [VoiceService] STT Error:
+  Context: {
+  "error": "Speech recognition is unavailable. No transcript was produced."
+}
+[33m[WARN][0m 2026-10-29T09:01:24.776Z - [VoiceService] Ollama not available
+✔ Unavailable speech providers cannot manufacture a transcript or AI reply (34.343ms)
+ℹ tests 27
+ℹ suites 0
+ℹ pass 27
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3098.6558

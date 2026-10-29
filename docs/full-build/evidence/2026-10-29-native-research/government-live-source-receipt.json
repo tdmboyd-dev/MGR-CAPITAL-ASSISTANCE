@@ -1,0 +1,44 @@
+{
+  "scope": "Actual unauthenticated read-only HTTP retrieval; no reports bought, bulk data imported, agreements accepted, owner/customer records queried or source restrictions bypassed",
+  "results": [
+    {
+      "sourceId": "fl-dor-rolls",
+      "checkedAt": "2026-10-29T08:28:44.422Z",
+      "status": "SOURCE_PAGE_FETCHED",
+      "httpStatus": 200,
+      "contentType": "text/html; charset=utf-8",
+      "bytes": 59501,
+      "sha256": "83cad76291ca8d724be061f58d61bc8c1e83a17b6ff2bb5197add9d5e598ce23",
+      "recordsImported": 0,
+      "recordExtractionVerified": false
+    },
+    {
+      "sourceId": "miami-dade-bulk",
+      "checkedAt": "2026-10-29T08:28:45.241Z",
+      "status": "SOURCE_FETCH_UNCONFIRMED",
+      "recordsImported": 0
+    },
+    {
+      "sourceId": "sarasota-tax-deed",
+      "checkedAt": "2026-10-29T08:28:45.624Z",
+      "status": "SOURCE_PAGE_FETCHED",
+      "httpStatus": 200,
+      "contentType": "text/html; charset=utf-8",
+      "bytes": 112571,
+      "sha256": "2a87a64d77ce927303bbdd8d0c1245568bec6d0bdf32ef93e3e3fd054e5511be",
+      "recordsImported": 0,
+      "recordExtractionVerified": false
+    },
+    {
+      "sourceId": "census-geocoder",
+      "checkedAt": "2026-10-29T08:28:46.389Z",
+      "status": "SOURCE_PAGE_FETCHED",
+      "httpStatus": 200,
+      "contentType": "text/html",
+      "bytes": 46478,
+      "sha256": "6cefb7f5c0f6581752412b58517251e8f8ae9822fe37c7e445dea1c3b3102c5d",
+      "recordsImported": 0,
+      "recordExtractionVerified": false
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "endpoint": "https://services9.arcgis.com/Gh9awoU677aKree0/arcgis/rest/services/Florida_Statewide_Cadastral/FeatureServer/0",
+  "scope": "Actual public aggregate query only; no owner names or addresses fetched",
+  "error": null,
+  "countyGroups": 68,
+  "recordCount": 10950670,
+  "sampleCountyGroups": [
+    {
+      "records": 97244,
+      "CO_NO": 0
+    },
+    {
+      "records": 118535,
+      "CO_NO": 11
+    },
+    {
+      "records": 13028,
+      "CO_NO": 12
+    },
+    {
+      "records": 133971,
+      "CO_NO": 13
+    },
+    {
+      "records": 15591,
+      "CO_NO": 14
+    }
+  ]
+}

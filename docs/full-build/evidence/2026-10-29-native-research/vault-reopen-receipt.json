@@ -1,0 +1,9 @@
+{
+  "scope": "Separate Node process; actual retained PostgreSQL records and Windows files, synthetic data only",
+  "checks": [
+    "New Node process and fresh adapter cache recover previously reconciled bytes through actual HTTP",
+    "Cross-company denial survives process reopening",
+    "Deletion tombstone and removed registry persist across process reopening"
+  ],
+  "passed": 3
+}

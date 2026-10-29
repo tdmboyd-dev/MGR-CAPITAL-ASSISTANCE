@@ -29,6 +29,7 @@ interface PaymentResult {
   currency: string;
   error?: string;
   metadata?: Record<string, any>;
+  outcomeUnknown?: boolean;
 }
 
 interface RefundResult {
@@ -43,7 +44,7 @@ export class PaymentService {
   constructor() {
     this.demoMode = !stripe && !NICKEL_API_KEY;
     if (this.demoMode) {
-      logger.info('[PaymentService] Running in DEMO MODE - payments are simulated');
+      logger.info('[PaymentService] Payment providers unavailable; no simulated payments will be created');
     }
   }
 
@@ -61,7 +62,7 @@ export class PaymentService {
     return {
       stripe: !!stripe,
       nickel: !!NICKEL_API_KEY,
-      mode: this.demoMode ? 'demo' : 'live'
+      mode: this.demoMode ? 'unavailable' : 'configured_unverified'
     };
   }
 
@@ -83,6 +84,7 @@ export class PaymentService {
   ): Promise<PaymentResult> {
     const paymentId = `pay_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
+    if(!Number.isSafeInteger(amount)||amount<=0)return {success:false,paymentId,status:'failed',method,amount,currency:'usd',error:'Payment amount must be a positive safe integer in cents.'};
     try {
       switch (method) {
         case 'stripe':
@@ -106,14 +108,16 @@ export class PaymentService {
       }
     } catch (error: any) {
       logger.error('Payment failed', { method, amount, error: error.message });
+      const outcomeUnknown=(method==='stripe'||method==='ach')?!!stripe:method==='paypal'?!!(process.env.PAYPAL_CLIENT_ID&&process.env.PAYPAL_CLIENT_SECRET):false;
       return {
         success: false,
         paymentId,
-        status: 'failed',
+        status: outcomeUnknown ? 'processing' : 'failed',
         method,
         amount,
         currency: 'usd',
-        error: error.message,
+        outcomeUnknown,
+        error: outcomeUnknown ? 'Provider outcome is unconfirmed. Reconcile this operation before retrying.' : error.message,
       };
     }
   }
@@ -126,43 +130,7 @@ export class PaymentService {
     amount: number,
     data: any
   ): Promise<PaymentResult> {
-    // Demo mode - simulate successful payment
-    if (!stripe) {
-      logger.info('[DEMO] Simulating Stripe payment', { paymentId, amount });
-
-      // Simulate async processing
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-      const demoExternalId = `pi_demo_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-
-      try {
-        await this.recordPayment(paymentId, {
-          method: 'stripe',
-          amount,
-          status: 'succeeded',
-          providerPaymentId: demoExternalId,
-          caseId: data.caseId,
-          userId: data.userId,
-        });
-      } catch (e) {
-        // Database might not be available
-        logger.warn('Could not record demo payment to database');
-      }
-
-      return {
-        success: true,
-        paymentId,
-        status: 'succeeded',
-        method: 'stripe',
-        amount,
-        currency: 'usd',
-        metadata: {
-          stripePaymentIntentId: demoExternalId,
-          demoMode: true,
-          note: 'This is a simulated payment - no real charge was made'
-        },
-      };
-    }
+    if(!stripe)throw new Error('Stripe is unavailable; no payment was created.');
 
     const paymentIntent = await stripe.paymentIntents.create({
       amount,
@@ -344,37 +312,11 @@ export class PaymentService {
         throw new Error('PayPal order creation failed');
       } catch (error: any) {
         logger.error('PayPal API error', { paymentId, error: error.message });
-        // Fall through to demo mode
+        throw new Error('PayPal completion was not confirmed; do not automatically retry.');
       }
     }
 
-    // Demo mode
-    logger.info('[DEMO] PayPal payment simulated', { paymentId, amount });
-
-    const demoOrderId = `PP_DEMO_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-
-    await this.recordPayment(paymentId, {
-      method: 'paypal',
-      amount,
-      status: 'pending',
-      providerPaymentId: demoOrderId,
-      caseId: data.caseId,
-      userId: data.userId,
-    });
-
-    return {
-      success: true,
-      paymentId,
-      status: 'pending',
-      method: 'paypal',
-      amount,
-      currency: 'usd',
-      metadata: {
-        paypalOrderId: demoOrderId,
-        demoMode: true,
-        note: 'Demo mode - configure PAYPAL_CLIENT_ID and PAYPAL_CLIENT_SECRET for real payments'
-      },
-    };
+    throw new Error('PayPal is unavailable; no payment was created.');
   }
 
   /**
@@ -442,37 +384,11 @@ export class PaymentService {
         };
       } catch (error: any) {
         logger.error('Stripe ACH failed', { paymentId, error: error.message });
-        // Fall through to demo mode
+        throw new Error('ACH completion was not confirmed; do not automatically retry.');
       }
     }
 
-    // Demo/fallback mode - simulate ACH for testing
-    logger.info('[DEMO] ACH payment simulated', { paymentId, amount });
-
-    const demoExternalId = `ach_demo_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-
-    await this.recordPayment(paymentId, {
-      method: 'ach',
-      amount,
-      status: 'processing',
-      providerPaymentId: demoExternalId,
-      caseId: data.caseId,
-      userId: data.userId,
-    });
-
-    return {
-      success: true,
-      paymentId,
-      status: 'processing',
-      method: 'ach',
-      amount,
-      currency: 'usd',
-      metadata: {
-        achAccountId: data.achAccountId || demoExternalId,
-        demoMode: !stripe,
-        note: 'ACH payments typically take 3-5 business days to complete'
-      },
-    };
+    throw new Error('A configured ACH provider and authorized linked payment method are required. No transfer was created.');
   }
 
   /**
@@ -514,12 +430,14 @@ export class PaymentService {
         return { success: false, error: 'Payment not found' };
       }
 
+      if(amount!==undefined && amount!==payment.amountCents)return {success:false,error:'Partial refunds require a reconciled refund ledger; no refund was requested.'};
       if (payment.method === 'stripe' && stripe && payment.providerPaymentId) {
         const refund = await stripe.refunds.create({
           payment_intent: payment.providerPaymentId,
           amount: amount || undefined, // Full refund if not specified
         });
 
+        if(refund.status!=='succeeded')return {success:false,refundId:refund.id,error:'Provider refund is not yet confirmed succeeded. Reconcile this receipt before retrying.'};
         await prisma.payment.update({
           where: { id: paymentId },
           data: { status: 'refunded' },
@@ -528,13 +446,7 @@ export class PaymentService {
         return { success: true, refundId: refund.id };
       }
 
-      // For other methods, just mark as refunded (manual process)
-      await prisma.payment.update({
-        where: { id: paymentId },
-        data: { status: 'refunded' },
-      });
-
-      return { success: true, refundId: `refund_${Date.now()}` };
+      return {success:false,error:'A verified provider refund or bank reconciliation receipt is required. No refund was assumed completed.'};
     } catch (error: any) {
       logger.error('Refund failed', { paymentId, error: error.message });
       return { success: false, error: error.message };
@@ -1033,20 +945,7 @@ export class PaymentService {
    * Handle Nickel webhook
    */
   async handleNickelWebhook(payload: any, signature: string): Promise<void> {
-    // Verify webhook signature (implement based on Nickel docs)
-    logger.info('Nickel webhook received', { type: payload.type });
-
-    if (payload.type === 'payment.succeeded') {
-      const internalPaymentId = payload.data?.metadata?.internalPaymentId;
-      if (internalPaymentId) {
-        await this.updateStatus(internalPaymentId, 'succeeded');
-      }
-    } else if (payload.type === 'payment.failed') {
-      const internalPaymentId = payload.data?.metadata?.internalPaymentId;
-      if (internalPaymentId) {
-        await this.updateStatus(internalPaymentId, 'failed');
-      }
-    }
+    throw new Error('Nickel callbacks require verified signatures, account binding and event replay protection before payment status can change.');
   }
 }
 

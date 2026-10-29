@@ -1,0 +1,10 @@
+[
+  {"id":"CAP-NATIVE-01","capability":"Case-scoped native source evidence","status":"PASS","evidence":"evidence/2026-10-29-native-research/native-research-receipt.json","followUp":"Normalized bulk warehouse and historical ownership"},
+  {"id":"CAP-NATIVE-02","capability":"Independent process persistence","status":"PASS","evidence":"evidence/2026-10-29-native-research/native-research-reopen-receipt.json"},
+  {"id":"CAP-TRUTH-01","capability":"No fabricated trace/voice/source/parser outcomes","status":"PASS","evidence":"evidence/2026-10-29-native-research/native-research-boundaries.txt","followUp":"Real approved provider positive accuracy remains unverified"},
+  {"id":"CAP-TRUTH-02","capability":"PaymentService missing-provider/refund/callback truth","status":"PASS","evidence":"evidence/2026-10-29-native-research/payment-truth-receipt.json","followUp":"Other financial services and provider reconciliation"},
+  {"id":"CAP-SOURCE-01","capability":"Live public parcel query and coverage discovery","status":"PASS","evidence":"evidence/2026-10-29-native-research/florida-live-query-receipt.json","followUp":"Positive source accuracy and bulk acquisition"},
+  {"id":"CAP-BROWSER-01","capability":"Native browser save/reopen and honest failure states","status":"PASS","evidence":"evidence/2026-10-29-native-research/browser-receipt.json","followUp":"Complete breakpoint and remaining route coverage"},
+  {"id":"CAP-DATA-01","capability":"Direct public/bulk/licensing/reseller acquisition paths","status":"SOURCED","evidence":"DATA-OWNERSHIP-RESEARCH-2026-10-29.md","followUp":"Exact use rights, MGR eligibility, quotes and accuracy benchmark"},
+  {"id":"CAP-AUDIT-01","capability":"Remaining whole-system semantic audit","status":"OPEN","evidence":"evidence/2026-10-29-native-research/source-reading-ledger.json","followUp":"Read and qualify the remaining source ledger"}
+]

@@ -1,0 +1,4822 @@
+{
+  "date": "2026-10-29",
+  "scope": "Whole repository inventory plus explicit affected-source readings. Inventory and static discovery are not semantic whole-repo review. Prior auth/storage/document ledgers remain separate dated evidence.",
+  "files": [
+    {
+      "path": "AGENTS.md",
+      "bytes": 766,
+      "lines": 14,
+      "sha256": "c199755de471f55b3e0b88a856813042dbd99fb8f9e6cc657dd976dabb4d7c7c",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "API_GUIDE.md",
+      "bytes": 9932,
+      "lines": 352,
+      "sha256": "ad80e199dfeb5aa8138c9b6bfbc6cc76a5f9d173db4775ef6a15d19e63af36f5",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "API_REQUIREMENTS.md",
+      "bytes": 6924,
+      "lines": 228,
+      "sha256": "7d0d539fb1fae999b406d870a84bfad2921c6faf6d97aa9b36cb02c1e6f1051b",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "BEST_APIS_GUIDE.md",
+      "bytes": 13173,
+      "lines": 415,
+      "sha256": "de4eb74c4180c58d18800656941ac1ec111fba3c50e29fdc0ebee21aee9d4793",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "Deploy.md",
+      "bytes": 25462,
+      "lines": 605,
+      "sha256": "d66022770df176c6ad91306dfc594b5f63dcf554ee362dc2c92dfcdd10b0b654",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "DEPLOYMENT.md",
+      "bytes": 7206,
+      "lines": 348,
+      "sha256": "c8e4d3fde5939040c6c1321f07e0217a0ed3f3b7d9ce0224f481f7a46b3219e0",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "docker-compose.prod.yml",
+      "bytes": 6587,
+      "lines": 213,
+      "sha256": "e558288993732f0972a8a8a847e011c017a6df6d9006e789915ac427778cb8a4",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "DROP_THIS_TO_COPILOT.md",
+      "bytes": 49798,
+      "lines": 1125,
+      "sha256": "e11ee34c51c68c58cd3fa71dea95d41b15aa3666e1d435e28e9fed1a32d9e96f",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "FULL_SYSTEM_CONTEXT_FOR_GROK.md",
+      "bytes": 7284,
+      "lines": 278,
+      "sha256": "853b721c502fbbdc1d8408840975b47411a53b219d2265857d3f17563f4abc24",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "GROK_RESPOND.md",
+      "bytes": 17290,
+      "lines": 418,
+      "sha256": "9e0ed05954ae34db9022540086ab98e5962708c737fbca10dd009f3480057b07",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "HANDOFF.md",
+      "bytes": 3338,
+      "lines": 27,
+      "sha256": "44b7a1f94fbb242e3d800e8982fe691fefc55402ce09212a3f939a9d4cf5e82e",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "JEV-READ-FIRST.md",
+      "bytes": 861,
+      "lines": 13,
+      "sha256": "ece36eb86422d7d06dce28328ed27c5ab5c5177993820ad4a19e8cb729024984",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "MGR_CAPITAL_ASSISTANCE_MASTER_SPEC_V1.md",
+      "bytes": 213235,
+      "lines": 6744,
+      "sha256": "5418bc70102bf981b82733559c61f7d6a0b66d38de7ad68a7d3309fea659b9e3",
+      "readingStatus": "PARTIAL_SEE_SCOPE",
+      "scope": "prior overview/roles/document matrix/resolution; entire master remains unread"
+    },
+    {
+      "path": "SETUP_INSTRUCTIONS.md",
+      "bytes": 5110,
+      "lines": 172,
+      "sha256": "6b970321cb3169b60f18c62b402691e869bf9253fb5dc8c0d8d0dd02aae2a584",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "TIMEBEUNUS.md",
+      "bytes": 30973,
+      "lines": 666,
+      "sha256": "818f5774e5ed911078ccaf36dd620d0caab8fcb9ca04d23c19c723102d78ccf1",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "TIME_TODO.md",
+      "bytes": 6153,
+      "lines": 177,
+      "sha256": "8a7caca81adbc3370c6d19457bfe6b53a828a8fbe5d7296135c790bcb7d5fcb2",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "TO_GROK.md",
+      "bytes": 4174,
+      "lines": 134,
+      "sha256": "bd88b96d44020e6046584265862a21cc3f6975fa0738da539c2d05d35db06cd8",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "WORK-STATE.md",
+      "bytes": 4679,
+      "lines": 63,
+      "sha256": "b8f26831b581b3e5c2e8fbc268b6fd55ee191f07812c8ee1bdbf00e700a7c3e1",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": ".continue/agents/new-config.yaml",
+      "bytes": 659,
+      "lines": 24,
+      "sha256": "be2efe3d0883aef455037903a1005799601f2fdb1f8c7ce0bf3cb793d418b1c2",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "app/package-lock.json",
+      "bytes": 93509,
+      "lines": 2706,
+      "sha256": "2b80ba231e403973acbb14dd846b226299aba869865f81b97de20dd9ff52ec68",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "app/package.json",
+      "bytes": 643,
+      "lines": 28,
+      "sha256": "74fb8c59d30172228f263c2c1a590141616cdaf893b66e006bf03432d6fcb4df",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "app/tsconfig.json",
+      "bytes": 583,
+      "lines": 22,
+      "sha256": "5b64ad9aaceb81fd619fa40d2a16cebde7c167425e22744f59687a438c1e34a8",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "app/tsconfig.node.json",
+      "bytes": 244,
+      "lines": 12,
+      "sha256": "e2926034a7ed41a1431e4b8e60e58371af014a8856a3fcc583d3efa85440b996",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "app/vite.config.ts",
+      "bytes": 295,
+      "lines": 16,
+      "sha256": "e90df12718a8b79721b030743e40ac1d7364b47aeb72843572d4fcb34ff8f972",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "app/src/App.tsx",
+      "bytes": 4401,
+      "lines": 135,
+      "sha256": "d9b454efac7cd57d40122531115d762daad9cd2bc7f86473912b6caee29a41ec",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "app/src/main.tsx",
+      "bytes": 456,
+      "lines": 16,
+      "sha256": "9b0be1673fb0dcd6350a7ff94358e2bcd309107c702138d7d13d239942329b42",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "app/src/components/charts/SimpleStatCard.tsx",
+      "bytes": 397,
+      "lines": 14,
+      "sha256": "0d6a8c49fa94090c49e861012655609e3851e27c5d58d6d7c9dc9198cef18d4d",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "app/src/components/layout/AdminLayout.tsx",
+      "bytes": 5563,
+      "lines": 158,
+      "sha256": "b823459c010be84b138cc0f75c22d1ef3a3bced4c56f30bdcb781720ff8c50a8",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "app/src/components/layout/ClientLayout.tsx",
+      "bytes": 991,
+      "lines": 29,
+      "sha256": "3d4009585c84ea40c9279bd049511f4fb8c4d6573898f083d6c4f6c922fe7157",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "app/src/components/layout/EmployeeLayout.tsx",
+      "bytes": 2866,
+      "lines": 84,
+      "sha256": "58aff95ba56d8805d5224898626b7d695e314a351595d082e5d73a5584218f16",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "app/src/components/ui/Badge.tsx",
+      "bytes": 650,
+      "lines": 23,
+      "sha256": "6eaf37c3633a73c5641ff5ca7c08108c5bdd933acb326d148b1b99501ad56221",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "app/src/components/ui/Button.tsx",
+      "bytes": 1247,
+      "lines": 43,
+      "sha256": "552039e574076fe25ca843e089984743f2ed3906715694bce2087dec9f2a0a9d",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "app/src/components/ui/Card.tsx",
+      "bytes": 327,
+      "lines": 15,
+      "sha256": "fdaf20f4bc634b4e827b09dbf8a92a7a8b1bddeaca99e77ae966909787c5b20e",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "app/src/components/ui/ProgressBar.tsx",
+      "bytes": 1062,
+      "lines": 43,
+      "sha256": "e3246be2bb39c21b0d57fba25c2c8e4f9d56b40eb1108c107ee7f014627a2da8",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "app/src/context/AuthContext.tsx",
+      "bytes": 2444,
+      "lines": 92,
+      "sha256": "827149b748d3ae5cbfcc1f7fade77249e9ab5acab04fa1dca1f9d207ed46455a",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "app/src/hooks/useAuth.ts",
+      "bytes": 282,
+      "lines": 11,
+      "sha256": "69d065272275504d989a2993060ebdac1f1cd304223a643cc3ac155b8c342ada",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "app/src/lib/api.ts",
+      "bytes": 1885,
+      "lines": 72,
+      "sha256": "898e0b05bd8478b627698940f90798494e468756ef9acae591f3c3ccecd13e45",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "app/src/routes/AdminBanking.tsx",
+      "bytes": 11958,
+      "lines": 283,
+      "sha256": "14b7545048b5ccfa95b4a1a9b2bb535688c0ce620f121905090c50b5792e8a6d",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "app/src/routes/AdminCases.tsx",
+      "bytes": 10912,
+      "lines": 274,
+      "sha256": "492b5dc97ac90ddd01cdba9b15fdaba80efd465df73a7273d2f18a2ccc9c2176",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "app/src/routes/AdminDashboard.tsx",
+      "bytes": 13589,
+      "lines": 366,
+      "sha256": "91c26a8a6256dd3c030c4b2593fe8d6d58dba547e5508929a7f48db67bfb9499",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "app/src/routes/AdminEmployees.tsx",
+      "bytes": 12159,
+      "lines": 316,
+      "sha256": "e91d57341e8d3bcd01e46fc577c2cd71824305d4178f5a5f10d6568b4c6fbfba",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "app/src/routes/AdminIngestion.tsx",
+      "bytes": 11413,
+      "lines": 311,
+      "sha256": "cad2a113dd80b8903c60d98024a0affa00dfebbb8dea23c79ac3d20d4a716a76",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "app/src/routes/AdminSettings.tsx",
+      "bytes": 22407,
+      "lines": 512,
+      "sha256": "cb3483f978979142064f5cda54f090ccd1bc207a120860d0857149c4ee9bd09b",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "app/src/routes/AdminTraining.tsx",
+      "bytes": 10833,
+      "lines": 277,
+      "sha256": "8aa2ab4e122904e37e577eae286ce66c9fad6bd49b5b793488de1d8f2bff4de8",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "app/src/routes/ClientOnboarding.tsx",
+      "bytes": 13234,
+      "lines": 378,
+      "sha256": "f2da3953f97d70ca3a1e86f627082663df3cf35d279a7f999cab0bdfd67a11b1",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "app/src/routes/ClientPortal.tsx",
+      "bytes": 9082,
+      "lines": 293,
+      "sha256": "5b0affd51ce381cbb9fa3a4a30dc57be3a289d805f67bbfc33710176e5a56346",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "app/src/routes/CompliancePanel.tsx",
+      "bytes": 39635,
+      "lines": 939,
+      "sha256": "fb7834a5dcf585a397705999c171502f823750b89be93ca5a18f5b7b864e2fe6",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "app/src/routes/EmployeeOffice.tsx",
+      "bytes": 10611,
+      "lines": 258,
+      "sha256": "4d1b1fac17053b1a5c9300544468d0e5445d1b636713da844c51cf30e2807175",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "app/src/routes/EmployeeTraining.tsx",
+      "bytes": 10268,
+      "lines": 271,
+      "sha256": "90da0917cf90afd9c9434b2ef154b89c0168fba111c2a536181acc1cc9d6abf6",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "app/src/routes/FounderConsole.tsx",
+      "bytes": 30133,
+      "lines": 743,
+      "sha256": "16c9dbadb110136ad69a83f638c72aa482f4ed831a5d76f57552194486da40a8",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "app/src/routes/HRPanel.tsx",
+      "bytes": 51700,
+      "lines": 1181,
+      "sha256": "c819003d4cbe9d96d893aa053cbb982dcc9497a73a3e54cd75ff40f5e7fc22e3",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "app/src/routes/Login.tsx",
+      "bytes": 4131,
+      "lines": 124,
+      "sha256": "2ce74e7edbd9549495e600fc9bfd61b5a846dfe9b479345a0bed800daacc16db",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "app/src/types/case.ts",
+      "bytes": 900,
+      "lines": 45,
+      "sha256": "96a51af9e4536a025415f12e3b15dabd8aedb20792cccd02ba166f580f8c47a6",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "app/src/types/payouts.ts",
+      "bytes": 692,
+      "lines": 31,
+      "sha256": "d1be30bb2bf78f875282a36a9c8547b3f1ac9b4b27f1cd4a8b94de180e58cef7",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "app/src/types/user.ts",
+      "bytes": 541,
+      "lines": 29,
+      "sha256": "5328ed3fb3ad65725589bbb14844411b2d6e3594022085dc3efdb27439103dbf",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/cypress.config.ts",
+      "bytes": 1005,
+      "lines": 49,
+      "sha256": "43808f0d9121f4b4ce6b068cba62a15c380cdd499c073db8013ab66aa0575b91",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/jest.config.ts",
+      "bytes": 2133,
+      "lines": 105,
+      "sha256": "0c44f3ad7f1241195bb3d2a46254f0f29b4157ae1e1747b1f6d51b9dc4a9ea29",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/package-lock.json",
+      "bytes": 582579,
+      "lines": 15398,
+      "sha256": "1d57e69f3384bee8ca2de52d5b0d96b4e03c481bafd6fb096a9d60ad3b04d5bb",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/package.json",
+      "bytes": 3276,
+      "lines": 90,
+      "sha256": "de36324187ef31284be0affa6efa66fa11f416cd7c39645a72dedd0a33b901e3",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/REVENUE_SCENARIOS_V5.md",
+      "bytes": 11769,
+      "lines": 377,
+      "sha256": "43785fde704b14d2d599cfe52bbe0f2d3b0e3561bfaa23a4d2a0655d5caf477d",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/serverless.yml",
+      "bytes": 482,
+      "lines": 25,
+      "sha256": "0079c8cee5a4bc2447c5cd55bd2171183b5f48d16420f7d7f54293439ab37d2d",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/tsconfig.json",
+      "bytes": 508,
+      "lines": 21,
+      "sha256": "22067745d8830b3841f85f0191016639f9c68a4e0023e3277506ae2bbeb7de08",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/cypress/e2e/ai-agent.cy.ts",
+      "bytes": 11528,
+      "lines": 343,
+      "sha256": "06700c39347d41f7a5146bad8a4ae3ed0fe83a492da7f2752785f835031bbf1a",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/cypress/e2e/auth.cy.ts",
+      "bytes": 4746,
+      "lines": 146,
+      "sha256": "8c3d95bd4f628877a6ed1375d430e4b39245748f4a29eca32ee4e1379128b524",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/cypress/e2e/cases-upload.cy.ts",
+      "bytes": 1696,
+      "lines": 45,
+      "sha256": "9e103fa1c046439227b02e14ee134b68794ae4583571d96d8ac3cea033fcc472",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/cypress/e2e/config-save.cy.ts",
+      "bytes": 2672,
+      "lines": 75,
+      "sha256": "5ee283a8721ae1e98507822a63bd3bbfebc76a2fb45f3d5d09fc168cf5a62dc4",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/cypress/e2e/docs-upload.cy.ts",
+      "bytes": 5791,
+      "lines": 183,
+      "sha256": "a4f9443535e5333878bee6c75b377ef98484aca1dd3d2fdae2b786fc71444019",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/cypress/e2e/forecast-load.cy.ts",
+      "bytes": 2450,
+      "lines": 68,
+      "sha256": "6fdf16c2527b9eb542a174d7eda78e3503c7be1597be1ea06046f90ba9c7aed9",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/cypress/e2e/health.cy.ts",
+      "bytes": 1645,
+      "lines": 49,
+      "sha256": "17bfa9707121a2ad5c1af222a5fcca4ec7a3d3e63bc03e0ae67a818c2144febe",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/cypress/e2e/mobile-nav.cy.ts",
+      "bytes": 3045,
+      "lines": 88,
+      "sha256": "f2dd9aa2033eef83ae1cc09b9709e32a0be3393037b33b0011e2b6857b561374",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/cypress/e2e/quiz-submit.cy.ts",
+      "bytes": 3221,
+      "lines": 95,
+      "sha256": "436e4310506c04a904153f2788e337264c434eea01c0ac328e054de34dafd769",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/cypress/fixtures/users.json",
+      "bytes": 782,
+      "lines": 34,
+      "sha256": "46068519bb7b1dbaa6ff985b70266771a31336b80942dcbc730fb1c36483172a",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/cypress/support/commands.ts",
+      "bytes": 2584,
+      "lines": 105,
+      "sha256": "beaa691c295de150512b77c8a854a31cae1e7cfac7541eccac115b48a9ec1921",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/cypress/support/e2e.ts",
+      "bytes": 1490,
+      "lines": 63,
+      "sha256": "47d85701903b9f3d2c9a6ae52c96042c984404d95dcb60dcb21e102e020bd46a",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/prisma/schema.prisma",
+      "bytes": 114753,
+      "lines": 3539,
+      "sha256": "5efb4b5ae827e9b819be4016fb507e312c683755feba3043379ebb27544bbd8b",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/prisma/seed.ts",
+      "bytes": 69842,
+      "lines": 1987,
+      "sha256": "437709e853e3e8b58b60f073f33ac3edd5c55de125fe5c193fa37e1641ed7bbb",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/prisma/repairs/20261028-storage-lifecycle.sql",
+      "bytes": 207,
+      "lines": 6,
+      "sha256": "4488ad48391be653f05128dea17764f7792842612474b61cd5a50bcb1c7ab30e",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/scripts/reset-admin-password.ts",
+      "bytes": 1388,
+      "lines": 56,
+      "sha256": "8465467bd2f4e54bff053cce4667ed16af85f546f4b5abeb0e664d07555f8c2f",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/server.ts",
+      "bytes": 19500,
+      "lines": 581,
+      "sha256": "cd44d681f1b6d2cc7022098cfca866de85c5def37f9cc69d480c4c263f943340",
+      "readingStatus": "PARTIAL_SEE_SCOPE",
+      "scope": "imports, middleware and selected route mounts"
+    },
+    {
+      "path": "backend/src/bots/complianceBot.ts",
+      "bytes": 28957,
+      "lines": 870,
+      "sha256": "7316d239a3d2fec3798b43abca38275204580c0fac82769881ab897d6d69c1c0",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/bots/coordinatorBot.ts",
+      "bytes": 20240,
+      "lines": 716,
+      "sha256": "d0a2877b0ddc00d5e86203588ae7ba3d8e770939d2be82da01f16fbbb24eac8f",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/bots/docketBot.ts",
+      "bytes": 38547,
+      "lines": 1085,
+      "sha256": "4598b58778dd00ce24236346c7e9ac93dd38b8ff8e8d83dab0ab074e69920e82",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/bots/ingestionBot.ts",
+      "bytes": 30430,
+      "lines": 914,
+      "sha256": "e97157ff772bce80ceae1fcccb562da316d711c4dab39748fea7e35806bfc4a9",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/bots/metaBot.ts",
+      "bytes": 22168,
+      "lines": 666,
+      "sha256": "f1c92d0039341286ae165d4b70dabc9ab603695130c27ab667c2f5b01cc87b07",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/bots/monitoringBot.ts",
+      "bytes": 104729,
+      "lines": 3065,
+      "sha256": "e7f4c90976bb8e3001949491e39d43cf0a4290c633413365826f6fcf740cf6d8",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/bots/omniscientBot.ts",
+      "bytes": 113545,
+      "lines": 3067,
+      "sha256": "eda0d5d49a710e8e417ceb0dc99b610f696040c7c67fcb2b3bdce154475cc69e",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/bots/outreachBot.ts",
+      "bytes": 31143,
+      "lines": 938,
+      "sha256": "16ef7f38f89190cef1498c2365676e89e219cfb23376d4bf59de294519bbc50c",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/bots/payoutBot.ts",
+      "bytes": 82359,
+      "lines": 2342,
+      "sha256": "4c2b9f71f3e28fec67e0254bc416c30d6f7ba0ccb1932f3d5446ad2c013de5ba",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/bots/trainingBot.ts",
+      "bytes": 27902,
+      "lines": 807,
+      "sha256": "aec0c1e4ade7524a88b4be967f4dbc555595f61631b1f0fc9adefa0afdd8a73d",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/bots/TransactionalEmailBot.ts",
+      "bytes": 12590,
+      "lines": 420,
+      "sha256": "fd04616623ab544a01368e366553715540c5017a2ea622c15996ff511e397a7e",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/config/botGuardrails.ts",
+      "bytes": 15552,
+      "lines": 341,
+      "sha256": "51e81ec4326bc6ed81744402ad02f5f51208bf599ed3c3c5535cad36868c8391",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/config/botPersonas.ts",
+      "bytes": 10014,
+      "lines": 323,
+      "sha256": "1962dcc7f951543e054e2bfb1c57ce9c68bd4d284453dbd4e7b9299588020e95",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/config/contractorFees.ts",
+      "bytes": 10219,
+      "lines": 352,
+      "sha256": "a83b43932424557feb2d4df63eb363d1081c165c9bc8ef7f384e1b6c2c0d7f35",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/config/contracts.ts",
+      "bytes": 13209,
+      "lines": 352,
+      "sha256": "e7b947b61ce491e611c56d091954b977244532f416e9565a2d6a5abe91f4b935",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/config/emailPricing.ts",
+      "bytes": 14484,
+      "lines": 435,
+      "sha256": "e5c4040a00b0724b31c13b73850a72544961858b1547aa3574ad5149fc515886",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/config/env.ts",
+      "bytes": 3168,
+      "lines": 79,
+      "sha256": "2c2388f0bb11e8b16caae29b933683a0e4695347a585faa34b72a4c44f8b580e",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/cron/autoIngestionCron.ts",
+      "bytes": 12064,
+      "lines": 334,
+      "sha256": "b761cacf5aaba5575b2aa70cf770f2952b2ba8279568253c66cd6a5ff1811555",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/cron/scheduler.ts",
+      "bytes": 29064,
+      "lines": 917,
+      "sha256": "59fb6fdb6eb914885e0d39195d365d335a4441b6092b6cc8646b050e039b7f8f",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/cron/scraperV2Cron.ts",
+      "bytes": 10867,
+      "lines": 313,
+      "sha256": "b64fa73245f9d17a7fa877dbc97fd44419d8d3d42ea69e03b8388554c6ccc706",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/crons/autoOutreachCron.ts",
+      "bytes": 1709,
+      "lines": 47,
+      "sha256": "9cfa29ebbb3b4a12359ff85fe42a3c0a5a2f2695b362b7d5759db7505b8d6b55",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/crons/botBillingCron.ts",
+      "bytes": 4269,
+      "lines": 116,
+      "sha256": "319dbcf32f24ff36e5d91bdeae71caeab84e5d3a737a4bf99d3e667df1614373",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/crons/botOrchestrationCron.ts",
+      "bytes": 5400,
+      "lines": 150,
+      "sha256": "9a7ed39af4e0a59893ff650b4d6478def4ae625575f85611cba1026318c3f555",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/crons/caseAutopilotCron.ts",
+      "bytes": 1350,
+      "lines": 43,
+      "sha256": "a4c43c0170c998c2996faf3b4bf41eb820b97687835706cd5400855b97fae576",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/crons/childCompanyBillingCron.ts",
+      "bytes": 5127,
+      "lines": 157,
+      "sha256": "7e4a6d4246b24d8d548ca6c194ad0ed1892b517929c2daf749faa78f7eda6e43",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/crons/eligibilityCheckCron.ts",
+      "bytes": 3181,
+      "lines": 99,
+      "sha256": "31b2ca8c126ec379a0ddafebb939af30f3ee107d26a440941a235e7e2903e34f",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/crons/emailHostingCron.ts",
+      "bytes": 7111,
+      "lines": 228,
+      "sha256": "8b721e5db09b7d62d2aed2db0402d430796ff1bedf2046325e1f39368839afea",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/crons/retentionCron.ts",
+      "bytes": 884,
+      "lines": 26,
+      "sha256": "7331e5f82bc081245999c866ed452341720de35b57c8ecc68cde9cb0c9494cde",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/crons/transferCoolingCron.ts",
+      "bytes": 4734,
+      "lines": 143,
+      "sha256": "4d25bab6413dd104270ae8b267d6e1f7dc278efdfcbda1999dca2b4c4516dd81",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/crons/workerBotCron.ts",
+      "bytes": 9715,
+      "lines": 250,
+      "sha256": "959c11e8b475c3c66b62fa25a04ad8589cfc505530829e389ff8d8608c11687b",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/data/documentTemplates.ts",
+      "bytes": 54241,
+      "lines": 1594,
+      "sha256": "c23b543f0a535b4d5ffc4bc1363a46dcee195c65c7395ed18bde6128c3ada18d",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/data/stateRules.ts",
+      "bytes": 42131,
+      "lines": 1102,
+      "sha256": "e80f879d488aa9bace375367e5d660166959f3f795bd7409c72da2794e63ac26",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/data/SurplusIntelligenceData.ts",
+      "bytes": 22968,
+      "lines": 466,
+      "sha256": "7f5f6022234aef40c656460e9bf1eef8cd306536e83defbfe0420bc2e4328759",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/data/trainingModules.ts",
+      "bytes": 87838,
+      "lines": 3075,
+      "sha256": "30ca3e46a8556500d592aad28eea82c045731d4e665fecfd7579ed3cc8dbd693",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/lib/prisma.ts",
+      "bytes": 1069,
+      "lines": 41,
+      "sha256": "e52ab79459faf2401fb05de8ab0470dcc58c0f25191f143787c7736813f1afa4",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/middleware/auditLogger.ts",
+      "bytes": 8335,
+      "lines": 332,
+      "sha256": "878eae4bf18e9bfc81b0efdacc7021e137f7c2579e5a4c646226e8d07667376b",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/middleware/auth.ts",
+      "bytes": 1079,
+      "lines": 50,
+      "sha256": "270c27639948f38793f55a3b8a70df260fbdb9d2d044672f1488cbcd561730cf",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/middleware/authMiddleware.ts",
+      "bytes": 7916,
+      "lines": 323,
+      "sha256": "49b3c99b23b8cf7512bc7aa16269ec909de33f510f38fca3645feaf4286d8224",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/middleware/errorHandler.ts",
+      "bytes": 6391,
+      "lines": 213,
+      "sha256": "ffa2cc7da275a26d8d52ddafe19750cd499839da176377232561ae52b429529b",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/middleware/rateLimit.ts",
+      "bytes": 10611,
+      "lines": 364,
+      "sha256": "38330895befa899f5beffc86cb6277042456ce91524b0b3b63ea0893bb008e6b",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/middleware/roleGuard.ts",
+      "bytes": 11827,
+      "lines": 424,
+      "sha256": "25b68fe739986e4f6d676d9c761f4211dde1b607ab4d691a2a2f04cbcf4d2e6f",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/middleware/securityMiddleware.ts",
+      "bytes": 7462,
+      "lines": 253,
+      "sha256": "669b43186ffeb65b000ce719771753bad7d9847e066ede48f3fc9fc48ec34d43",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/middleware/tenantMiddleware.ts",
+      "bytes": 7818,
+      "lines": 268,
+      "sha256": "516765267144e2d8207f1a05ae3878c0d41e5071da97fb89142e41cd6bde2239",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/models/Case.ts",
+      "bytes": 528,
+      "lines": 24,
+      "sha256": "84c2e8ae6e47361077d77e8b35d59859ccef32268ca21127dca22497b87dde94",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/models/CommissionPlan.ts",
+      "bytes": 246,
+      "lines": 7,
+      "sha256": "f64afa8fda15cdd36fcb9737d1bd109dd2b96199c7335e14f984effcfd79ebf5",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/models/LedgerEntry.ts",
+      "bytes": 480,
+      "lines": 25,
+      "sha256": "f703f19dd73abcf4bb68d1361a7dc693ac874e38fa187c75a6ec5331865a4760",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/models/Role.ts",
+      "bytes": 961,
+      "lines": 48,
+      "sha256": "0308cf2d8bc604110888f319254b789249a114282c53f135d6ee7de1bab8b08f",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/models/User.ts",
+      "bytes": 623,
+      "lines": 34,
+      "sha256": "8cd01d3f9e1920f7dc33e959ed9d363935fa18d33e678c0c1d95042d736b5088",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/parsers/probateCsvParser.ts",
+      "bytes": 26586,
+      "lines": 936,
+      "sha256": "21864fe228818e51d8d96861f09ebcd3abb01160f347b2d1c548a15c9e8d3707",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/parsers/surplusPdfParser.ts",
+      "bytes": 23698,
+      "lines": 764,
+      "sha256": "5cb9baccbc8bff9cfe1a38328c9d459ef43f1435cb46601eb35cff35bd694951",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/parsers/taxSaleCsvParser.ts",
+      "bytes": 17207,
+      "lines": 599,
+      "sha256": "6a27ecb2ed8b02a72888511cc4c9bb9721724589e4571c94dd20c58b6cbca66b",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/routes/activityRoutes.ts",
+      "bytes": 5548,
+      "lines": 182,
+      "sha256": "29144bf1d48e66aaba6d63be5f027eeb41f88361165c39012cd5361599142b7f",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/routes/aiBotsRoutes.ts",
+      "bytes": 4510,
+      "lines": 188,
+      "sha256": "4108cb666f1059a871483915b2934bc1a153ccf748060e4ce2ba8658195ee8f5",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/routes/aiRoutes.ts",
+      "bytes": 9800,
+      "lines": 356,
+      "sha256": "3c538a26ba901e413db59066b439cff4be830a6526d23dd271dcfb444e4bf0c9",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/routes/alertsChamberRoutes.ts",
+      "bytes": 10133,
+      "lines": 298,
+      "sha256": "3cb5ac27e048772dacedeaa6d134868d0f1c75b4c6fc2bfdaa29711259654a0a",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/routes/analytics.ts",
+      "bytes": 17587,
+      "lines": 524,
+      "sha256": "3bfe2250e125b20c04212dd477ffd2391c815fbbd70507bcc2473bf27ae00f1d",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/routes/auctionRoutes.ts",
+      "bytes": 7095,
+      "lines": 263,
+      "sha256": "88f1f11235cfe4ebd3df8c42af736d0cf17d4a891ea7afb87fe9b3b14889695f",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/routes/auth.ts",
+      "bytes": 21044,
+      "lines": 691,
+      "sha256": "642a8534f69146a08e295c89eb5b2f51dc4b0bc5e0503ffc52e7a70190935e7f",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/routes/autonomousAiRoutes.ts",
+      "bytes": 6407,
+      "lines": 200,
+      "sha256": "9769be8793b96c7aae6b887c84eb165a426bb768df18cb7e70fdbd1c4b513701",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/routes/blockchainRoutes.ts",
+      "bytes": 3962,
+      "lines": 166,
+      "sha256": "947f6d9b4cfe99d1d3d758461886496797b5facdcc1ab00aced55355d0fbfdc6",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/routes/botOrchestrationRoutes.ts",
+      "bytes": 14467,
+      "lines": 414,
+      "sha256": "054e17e73f8d4d16f84a403ff7dd0359fabefa4ccdfa313b48f305750cb3f560",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/routes/botSubscriptionRoutes.ts",
+      "bytes": 5003,
+      "lines": 152,
+      "sha256": "9eea40378082797e5598b584e7075205be9564c00b5051073a93975fa41bff94",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/routes/cases.ts",
+      "bytes": 38989,
+      "lines": 1145,
+      "sha256": "83490673e3175f126370c256e57dd6b086271a4979f8b41704e02adabc77b3c8",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/routes/childCompanyRoutes.ts",
+      "bytes": 15635,
+      "lines": 516,
+      "sha256": "fe9ebdc44b394720277f2b5fe376440e80469de0105439290346e384b16a4f50",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/routes/claimantResearch.ts",
+      "bytes": 3140,
+      "lines": 57,
+      "sha256": "bf634649b4bc0b68b837a944f231a4bfbfafa48522843f31b8f17f1a4a8a06f8",
+      "readingStatus": "CURRENT_AFFECTED_SOURCE_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/routes/clients.ts",
+      "bytes": 28203,
+      "lines": 977,
+      "sha256": "07585ec66af131106211f6ea4103741cc85e4907a22c4c5a82aa3118f59a3951",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/routes/comms.ts",
+      "bytes": 9435,
+      "lines": 380,
+      "sha256": "273c5598b03b358913a1ccbba080aeddf760162b557f70a85af8f46fde46144c",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/routes/complianceRoutes.ts",
+      "bytes": 29557,
+      "lines": 875,
+      "sha256": "96135cec7144f4a26c799b65d59179fe19f52aed0eb8cc8f0b1d40823eef1521",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/routes/deadlines.ts",
+      "bytes": 7993,
+      "lines": 289,
+      "sha256": "d1f3403e7f9f985b2b75c7184b5fa4993d36cf5c11a1ca214c90bee5d9e57137",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/routes/documentGeneration.ts",
+      "bytes": 22550,
+      "lines": 778,
+      "sha256": "91405706e5e3ae2a899f6ef1713c776f85263d6b51684666aaefeef823da06af",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/routes/documents.ts",
+      "bytes": 5063,
+      "lines": 32,
+      "sha256": "0e94b22e92b8587f9eabd7ecdd374dff32eafe532db85385c0741ef9fe5afada",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/routes/emailHostingRoutes.ts",
+      "bytes": 9902,
+      "lines": 328,
+      "sha256": "151f69d4d93ad482cc6e1defd04f973d1443bb8b6b58b589c126dcc66ecf51dd",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/routes/emailInboxRoutes.ts",
+      "bytes": 28705,
+      "lines": 953,
+      "sha256": "e87cbf049ff41389f89764bc7a24c232c18b33ba799ae7fa018517ca6d27258b",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/routes/emailRoutes.ts",
+      "bytes": 5439,
+      "lines": 190,
+      "sha256": "0f43db1ea389be84e44bab16fb18da3f9e6a1a7453746cd5e5ea7c85c2cb4a73",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/routes/employeeNotaryRoutes.ts",
+      "bytes": 19030,
+      "lines": 624,
+      "sha256": "7be050766021ff61ff91df66a1a588e70e7a9ba33890cc6c51695917c2cf4fa6",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/routes/employees.ts",
+      "bytes": 29650,
+      "lines": 925,
+      "sha256": "6e8c0c9e4b4bed97387b57326c374872b6b021ebf0f3d63e8422db248d905142",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/routes/feedbackRoutes.ts",
+      "bytes": 6242,
+      "lines": 212,
+      "sha256": "aff4b9ec5cdff88a139062e9e1588bc332d4ab52137835d62bbc466813a1e25e",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/routes/founderNotaryRoutes.ts",
+      "bytes": 9005,
+      "lines": 313,
+      "sha256": "5c3769ae0892c86157b9b717a88a243a16f87631411389d62f57ea5f15de19af",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/routes/fraudRoutes.ts",
+      "bytes": 2180,
+      "lines": 78,
+      "sha256": "6c3ba90de23efacee7983d99205d9a9fb73beb9999968e1f6ac1a742c44eff89",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/routes/genealogyRoutes.ts",
+      "bytes": 6464,
+      "lines": 222,
+      "sha256": "a83fae1b6ff7f54760f678e4d1a74782367b11910afc025c6d755935584c233e",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/routes/hrRoutes.ts",
+      "bytes": 19730,
+      "lines": 604,
+      "sha256": "a3d545c021223bf654450595cad446e9ce085512eebe88c20c5d842a5a74ef03",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/routes/hrTrainingRoutes.ts",
+      "bytes": 22018,
+      "lines": 750,
+      "sha256": "f9980c98a3acc232b5e95764ed80911b1124367d7fbfa9c099e542c753f77bf8",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/routes/ingestion.ts",
+      "bytes": 50356,
+      "lines": 1695,
+      "sha256": "1dea84fe986d81beb3b547af2e0f97caca77a7e6637181ecfd40a149dc408077",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/routes/leadGenerationRoutes.ts",
+      "bytes": 13811,
+      "lines": 467,
+      "sha256": "6fb4969415d8a000d3bb731b6afeb1642db8b11f30c6ce0bd33c721e247a0668",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/routes/legal.ts",
+      "bytes": 12162,
+      "lines": 402,
+      "sha256": "dfcb19b6e025cd750e293ef7bdfa105d0c2b30cea7e3754c56cc5b07ec88e98b",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/routes/legalRoutes.ts",
+      "bytes": 2006,
+      "lines": 77,
+      "sha256": "3b6ab4c530edf43e1b2ba986017a7f9f2c153109ab8088dec58f5520e9a960a7",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/routes/marketplaceRoutes.ts",
+      "bytes": 4723,
+      "lines": 173,
+      "sha256": "1831e7c74d5b5b2affde7e11388729782e2b2cdfc7712952e287c1ae70a926b9",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/routes/masterSettingsRoutes.ts",
+      "bytes": 6023,
+      "lines": 217,
+      "sha256": "0f95def478f1a4efcfdac7c541f1bb60f5530f7afcadb83a69f8b21296a1625b",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/routes/messagesRoutes.ts",
+      "bytes": 6415,
+      "lines": 239,
+      "sha256": "f6643455a19006b957d45e28a7b97d1ac51a0f69ca0de61c3ca63bea8f0f1c04",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/routes/mobileRoutes.ts",
+      "bytes": 24054,
+      "lines": 829,
+      "sha256": "3a756313cd7a742db9bb563be7cc720753dbd84cada7a2c8592b68ea79719fe8",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/routes/nftRoutes.ts",
+      "bytes": 3671,
+      "lines": 134,
+      "sha256": "341d498be837f975762f4bfc12de44ee0ca6a674636e40593289937981b513b7",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/routes/notificationRoutes.ts",
+      "bytes": 9388,
+      "lines": 322,
+      "sha256": "6cad0f93fe728f60f6276c80ba69d98aa95c20860071edafe60141df986e1315",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/routes/officeTableRoutes.ts",
+      "bytes": 12094,
+      "lines": 414,
+      "sha256": "2d28eb1b53ccff61f436a8731de27a91f2980463ec9f01c42c6000a1ba4b4082",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/routes/opsMetrics.ts",
+      "bytes": 11725,
+      "lines": 402,
+      "sha256": "ffecb7a8f24c5d3bd6285dc9a34ef6e9bd8c16ad06e1532cafcdb3bb79dd5971",
+      "readingStatus": "PARTIAL_SEE_SCOPE",
+      "scope": "metrics/dashboard contract and selected routes"
+    },
+    {
+      "path": "backend/src/routes/opsWatch.ts",
+      "bytes": 21988,
+      "lines": 776,
+      "sha256": "f19e5c9ae7fe7d39b0209e8a77e4ffaf11a114c144355fca284cc908e83eee5a",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/routes/oracleRoutes.ts",
+      "bytes": 3186,
+      "lines": 122,
+      "sha256": "82dae40c12bb42a2602edc5768efdb65af37677e36e9fcb318cee9bb9a1e75aa",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/routes/payments.ts",
+      "bytes": 21423,
+      "lines": 683,
+      "sha256": "624694e564a87ca9031edb57fe122353634df2b4df6ef7cec8e41335f9dddc8c",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/routes/payouts.ts",
+      "bytes": 24727,
+      "lines": 756,
+      "sha256": "589dc0b261a33068e1c124d9164c5f768da8219410f423ee1da79278a55a7ff7",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/routes/phoneRoutes.ts",
+      "bytes": 5536,
+      "lines": 196,
+      "sha256": "1a824a79a58f9f9a00503720b2ba99882044d78d2d12fcad7234f08f92938fce",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/routes/retentionRoutes.ts",
+      "bytes": 5860,
+      "lines": 193,
+      "sha256": "62a8134d02dd66ded63138c23841fdaef91ab6560cb0957e7848cc353ebff4af",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/routes/scraperV2Routes.ts",
+      "bytes": 12293,
+      "lines": 513,
+      "sha256": "5052a2d2d361668df298307cc553bfa8f0871afcfa61cf7d8ad6e40d462a11e9",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/routes/searchRoutes.ts",
+      "bytes": 4464,
+      "lines": 166,
+      "sha256": "301f13aefb8c7db15a0840ef2c9e4784bb6bd0ba1971a655500f11ece9c8289b",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/routes/settings.ts",
+      "bytes": 7907,
+      "lines": 298,
+      "sha256": "8a4644d959a388275a70801c783101833948599113c901d0c7fb26dc4841483a",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/routes/skipTrace.ts",
+      "bytes": 3546,
+      "lines": 43,
+      "sha256": "acf58c2b622df56bd0810b4cde194a7d8949c0552278092e159ca9ed3755ae6b",
+      "readingStatus": "CURRENT_AFFECTED_SOURCE_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/routes/smsTemplateRoutes.ts",
+      "bytes": 14725,
+      "lines": 557,
+      "sha256": "b33368bb4efecea272778bc72289d2bad8507811e47fc113a3a105fc9a6c5449",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/routes/storageRoutes.ts",
+      "bytes": 20228,
+      "lines": 486,
+      "sha256": "56d998a5c1ae733b4c209e8dd574a8aca8d49f39febde8b92deca1fbd9beebb1",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/routes/surplusRequirementsRoutes.ts",
+      "bytes": 6994,
+      "lines": 211,
+      "sha256": "e4d9d8f551a9b93c2cf931202e4ee000d34ce42eb4d3d8551ffb507aa60a04f6",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/routes/tippingRoutes.ts",
+      "bytes": 4134,
+      "lines": 143,
+      "sha256": "7a8bc249edfb7f606e38834396dc0c0d23a8cdf01cd156d6433fd571a57606b5",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/routes/training.ts",
+      "bytes": 5769,
+      "lines": 197,
+      "sha256": "574585c61cd44bcc83fa1175440186e3ab14a2c2821b24ba91615fbae3dc76f7",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/routes/trustRoutes.ts",
+      "bytes": 8961,
+      "lines": 282,
+      "sha256": "fbf3d41f0bcb2d31e6fa28ee88c4517b00ee99fdab7f0b541223a7ed51cfef92",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/routes/voiceRoutes.ts",
+      "bytes": 4360,
+      "lines": 170,
+      "sha256": "f6284c26b6c5fa437a71112a2cc8ec33e4c9f8eb8706d32ca384e80469e2d4b4",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/routes/webhookRoutes.ts",
+      "bytes": 9472,
+      "lines": 295,
+      "sha256": "c44c5a78e98c0cc71cfccd3286808a5d140af6a4b207492c8defbd1b5802a8cf",
+      "readingStatus": "PARTIAL_SEE_SCOPE",
+      "scope": "Tracerfy callback and imported boundaries"
+    },
+    {
+      "path": "backend/src/routes/workerBotRoutes.ts",
+      "bytes": 11065,
+      "lines": 334,
+      "sha256": "0d29de6fe4f30b37a78a6179408022b32e23f3783a11782d553a6baa310849d8",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/services/ActivityTrackingService.ts",
+      "bytes": 17816,
+      "lines": 584,
+      "sha256": "9205965434f4e8aea621b6c461d746a2695a21f0f8fe4521b1e52312b9cb9a09",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/services/AiAgentService.ts",
+      "bytes": 21492,
+      "lines": 703,
+      "sha256": "45207129ceec618fb32372200820877f5ee3299d49ac4d77e5b30e5ae7f4c189",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/services/AILegalBotsService.ts",
+      "bytes": 38008,
+      "lines": 1099,
+      "sha256": "6d635dd6ddff038b28b647677fa5518ea3a20701c210a82fa0ac410adfb200bd",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/services/AiSearchService.ts",
+      "bytes": 25997,
+      "lines": 828,
+      "sha256": "443c9bf9ccb5a17766af3147cb33e792ed2758d5c95e35adf84741eb0ac59e68",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/services/AiUsageBillingService.ts",
+      "bytes": 15773,
+      "lines": 501,
+      "sha256": "3c423db2bdd389c1d193088a9d8bc3d7027c8ec260204a1c8ef6c3952d7d1a65",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/services/AlertsChamberService.ts",
+      "bytes": 24809,
+      "lines": 697,
+      "sha256": "f455887a07c4e8b75099dc210954b456a50003972e0bb8e4e9142e86cfb5e7d0",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/services/AuctionService.ts",
+      "bytes": 17285,
+      "lines": 591,
+      "sha256": "0ba45db4eca09dfbe1667fe110cdd201313c6f75e60ece62fa647b079cbe696c",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/services/AuthService.ts",
+      "bytes": 14552,
+      "lines": 505,
+      "sha256": "69e48984e46c796e49958b3069f0611d542ef98eb39b47c7f13502ca1dbc915f",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/services/AutonomousIntelligenceService.ts",
+      "bytes": 34827,
+      "lines": 1054,
+      "sha256": "778241fab40aa39ec7783b9e8cb3df733d02b62400df473c4826f76bc9dd2efd",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/services/AutoOutreachService.ts",
+      "bytes": 18143,
+      "lines": 491,
+      "sha256": "c6025c473d8c583a263497ae4f406d301e2233b6060dc282df753fc10b020054",
+      "readingStatus": "PARTIAL_SEE_SCOPE",
+      "scope": "initiateOutreach, followUp, batch/escalation and template paths"
+    },
+    {
+      "path": "backend/src/services/AutoResponseProcessor.ts",
+      "bytes": 34701,
+      "lines": 1092,
+      "sha256": "e6c12b6352a89db6dbfccbaf409dffa972e4e7ff7a498bdfc60de28c39fbec54",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/services/BackupService.ts",
+      "bytes": 39240,
+      "lines": 1202,
+      "sha256": "c5766b618c9bd4aeb012275ab7decb160d97acbaaacfd5b5905f32d70b1a6416",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/services/BankingService.ts",
+      "bytes": 17889,
+      "lines": 611,
+      "sha256": "b7916b2a535868199d729b78c71a3386517300848d7ff9831272301a58cd303e",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/services/BatchBotOperations.ts",
+      "bytes": 22601,
+      "lines": 792,
+      "sha256": "b3945a0fe9e57d896ed449d42566050f1dd5445694f78943a186e1da305e1885",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/services/BlockchainService.ts",
+      "bytes": 11519,
+      "lines": 396,
+      "sha256": "b1168cc3fc7cbf02c5bb21e12584f00eed0a6b58bf4389a0e527e61a245a74fb",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/services/BotOrchestratorService.ts",
+      "bytes": 61002,
+      "lines": 1653,
+      "sha256": "201a8c9e335f8629ff11aaa9040c42e53e1cf13ad475b4501b289f0f2b552dfb",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/services/BotSubscriptionService.ts",
+      "bytes": 63523,
+      "lines": 1010,
+      "sha256": "2f337702ec5d26dc4fb4e321b650948b50dc14404d0b3767e30b04f0c93afbcb",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/services/CacheService.ts",
+      "bytes": 11523,
+      "lines": 457,
+      "sha256": "4f695f590dea36898dd33476c1d7447d9a457d78433887b8978409d1a529ebcb",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/services/CaseAutopilotService.ts",
+      "bytes": 17148,
+      "lines": 471,
+      "sha256": "8bb700123efb0ed897269be6e140c918e64cd153c26cc4b9dc1ce93fafe1bf73",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/services/CaseDocumentAccess.ts",
+      "bytes": 4382,
+      "lines": 56,
+      "sha256": "67913cfe9883b0a22ddba627c2c205542a964ed908440d027c66b883962c38be",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/services/CaseRoutingService.ts",
+      "bytes": 7636,
+      "lines": 273,
+      "sha256": "90c8cb6f8295e1f42ebf05ec8687fef1942fc8ec1f1014d60a7bc1279ff4085e",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/services/CaseService.ts",
+      "bytes": 6787,
+      "lines": 274,
+      "sha256": "9154d328ea46a114ea5ae1e6523b0e413e9ec02c0732371d48cd1c1468818044",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/services/ChildCompanyService.ts",
+      "bytes": 30019,
+      "lines": 878,
+      "sha256": "27bb46fa9c1094edfa7d4e1a44dd4f67d6c30b2d4ce2a03b3ee7e2d051db5ebc",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/services/ClaimantResearchContract.ts",
+      "bytes": 1848,
+      "lines": 20,
+      "sha256": "3a492c4946eea075dad40388be1671d50fbb1ed08692d1fd976a1ce9fad2b438",
+      "readingStatus": "CURRENT_AFFECTED_SOURCE_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/services/ClaimantResearchService.ts",
+      "bytes": 4897,
+      "lines": 42,
+      "sha256": "80df0bb33b51f9cc7198040f829abfd54203040c688049edee4b336e0224fd62",
+      "readingStatus": "CURRENT_AFFECTED_SOURCE_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/services/ClientService.ts",
+      "bytes": 21314,
+      "lines": 662,
+      "sha256": "651236ca15c29dbed026fd10dc3d8cdd29ef9c2c2dd4bddfa92d0a45eef82936",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/services/ClientTippingService.ts",
+      "bytes": 8017,
+      "lines": 274,
+      "sha256": "f453f4168624b54350792c61642c931d66841cbc7cc12292464d0403839448d0",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/services/CommissionService.ts",
+      "bytes": 7744,
+      "lines": 253,
+      "sha256": "3a421e2a3427f0886b115d5d3d85206e885522f8ee909193a5fe2cd3fdba0c81",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/services/CommsService.ts",
+      "bytes": 9495,
+      "lines": 396,
+      "sha256": "2bf1f6d099092cc5ea942e1b093e36f6c7e6ef263609e686f6b545d517a25cf9",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/services/ComplianceExportService.ts",
+      "bytes": 18742,
+      "lines": 568,
+      "sha256": "7a9452e57a70d29a93b6c82d5335924314bcdd2aa3de1b4f3d3b90f9e1a1966f",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/services/ConfigService.ts",
+      "bytes": 10524,
+      "lines": 330,
+      "sha256": "dab21de87aefb0eba376ccbd32f2e64cc1996a2df724a20dd789224ce2e09bbe",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/services/CountySurplusRequirementsService.ts",
+      "bytes": 17986,
+      "lines": 557,
+      "sha256": "acac41992099f8dc0c1202930a0147f9beaa6dfe21b0a14bf4a026679370df58",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/services/DeadlineService.ts",
+      "bytes": 11240,
+      "lines": 294,
+      "sha256": "27bbed468142a5f97938e4fc89c82e7f058f0403729b9efa46314de1b001e608",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/services/DemoDataService.ts",
+      "bytes": 18008,
+      "lines": 610,
+      "sha256": "d644de8a85680ddf7065485efe631f56311c03c02d6f48939dbf8aa27ba979ff",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/services/DigitalSealService.ts",
+      "bytes": 49407,
+      "lines": 1533,
+      "sha256": "2adf6157b27f86b14e36441ad685c5789dfdaf3c6fe7ff95a3532063a6bcb32e",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/services/DocumentAssemblyService.ts",
+      "bytes": 26579,
+      "lines": 662,
+      "sha256": "01a9dccd279743e535213d0a7e19d500502a6d5fedc8f60e9c870f4ab0393f54",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/services/DocumentRetentionService.ts",
+      "bytes": 20625,
+      "lines": 655,
+      "sha256": "c31089ca7aac0af30a19242b79390ab62eea861d969ae4fbcdad50691ac44789",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/services/DocumentServiceAdvanced.ts",
+      "bytes": 13860,
+      "lines": 457,
+      "sha256": "73f9929179e660983564da501a7e219c88850d21bae39cb8ee6f35331f933756",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/services/DocumentSigningService.ts",
+      "bytes": 8314,
+      "lines": 288,
+      "sha256": "82229c8293a7911487511b64195264f826310e741fcad62ffc426b13473bfc07",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/services/DocumentVaultService.ts",
+      "bytes": 13770,
+      "lines": 95,
+      "sha256": "7049e14758962fec4812e0d56122eac66a40b287b859d8a2e118e7553e9fda99",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/services/EmailInboxService.ts",
+      "bytes": 52221,
+      "lines": 1500,
+      "sha256": "99117d543ec8d81b984b68de9d5293ea12b48c120640596b461a4b74277abdad",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/services/EmailIngestionService.ts",
+      "bytes": 13208,
+      "lines": 406,
+      "sha256": "306aeb45c8d714f1ee928d9edc835d9a83b1bdef0629642674b55a04440400f3",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/services/EmailProvisioningBot.ts",
+      "bytes": 8278,
+      "lines": 251,
+      "sha256": "30077016d2251789db75ebcdf83a9926b71237952aab963819f0fde4d6b68d07",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/services/EmailService.ts",
+      "bytes": 18938,
+      "lines": 512,
+      "sha256": "d55ac856faa6337752a3751ec740814b447b7c955451826be777de76ccdfaa9e",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/services/EmployeeNotaryService.ts",
+      "bytes": 31374,
+      "lines": 947,
+      "sha256": "26a404ff2a24d8d37a1e469337b0cc6107a226658f57efe752d3c7da37464fa8",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/services/EmployeeService.ts",
+      "bytes": 22825,
+      "lines": 662,
+      "sha256": "e69ec1e652d75f1b886b534feffa5500b46f2b04a974b918582699189373da8f",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/services/FeedbackService.ts",
+      "bytes": 19765,
+      "lines": 600,
+      "sha256": "14e358c14a5a38168526569e05310e7dfd2c9ebd9742d021f7ed19ad36b3db9b",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/services/FloridaPublicParcelService.ts",
+      "bytes": 4450,
+      "lines": 60,
+      "sha256": "00c7f935c3fa5b5a7be2d7bfab6918132b09e41c6042928da3477ff0ad456194",
+      "readingStatus": "CURRENT_AFFECTED_SOURCE_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/services/FounderCommandAI.ts",
+      "bytes": 50006,
+      "lines": 1436,
+      "sha256": "5420b8e018ab38e1165d712f4d9771d9e53564810875bf352cf3f29f6de38ef6",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/services/FounderNotaryService.ts",
+      "bytes": 34580,
+      "lines": 1084,
+      "sha256": "db88ad1217b9761bee35a18d4962bf1b27e67d5f0bc093cea1a664c6c6ca74e5",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/services/FraudDetectionService.ts",
+      "bytes": 16230,
+      "lines": 561,
+      "sha256": "b792933c0fca81a3033e4f1ec66198fe5ad822c1bf008f008a211325876e9fb2",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/services/GlobalSearchService.ts",
+      "bytes": 15259,
+      "lines": 545,
+      "sha256": "5c346ea6f87053f9502ebfb3da20b984113e3f0da14b6f6ace4b3bcf52590ca6",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/services/GovernmentSourceService.ts",
+      "bytes": 5347,
+      "lines": 64,
+      "sha256": "d24378ece91939279e1d6ac4416400bd20fcbe76b769f7a80f1ec5db45bf2c7a",
+      "readingStatus": "CURRENT_AFFECTED_SOURCE_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/services/HeirGenealogyService.ts",
+      "bytes": 22449,
+      "lines": 799,
+      "sha256": "49cbc73dbdcb93c829f1201a1946136f77c45239abe5f264bcc0e879f5cc0f20",
+      "readingStatus": "PARTIAL_SEE_SCOPE",
+      "scope": "data types and generation entry; deeper AI/storage/distribution not yet audited"
+    },
+    {
+      "path": "backend/src/services/IngestionIntelligenceService.ts",
+      "bytes": 47688,
+      "lines": 1339,
+      "sha256": "a3b4bb2a4f7650fa826505584c6bcf92627e40b5186c72441d805d94bd0f96c6",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/services/IngestionService.ts",
+      "bytes": 34352,
+      "lines": 1130,
+      "sha256": "ca4bbc2a21dda0fe10db9b47a161c65b82bffe6bca66b7a6d5c27b844483818c",
+      "readingStatus": "PARTIAL_SEE_SCOPE",
+      "scope": "imports, record/parser contracts, source management opening"
+    },
+    {
+      "path": "backend/src/services/LegalAuditorService.ts",
+      "bytes": 21473,
+      "lines": 574,
+      "sha256": "c26fbefe0eb5355fd6ec14520f23ddca6a9d852090972d32e1007e8200960d96",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/services/LegalService.ts",
+      "bytes": 22682,
+      "lines": 738,
+      "sha256": "7404137c01fbf648f9f18dc70782b53eac74a2383fc9c72908b54983351113cb",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/services/MarketplaceService.ts",
+      "bytes": 5484,
+      "lines": 226,
+      "sha256": "54a6b12cdffb651a85f2b9a597aeb4a2f7f949eaef12bb435adb13445e2838ab",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/services/MasterSettingsService.ts",
+      "bytes": 13638,
+      "lines": 451,
+      "sha256": "c8b8d218bee07f5ab42ffd8df0bd7ab344b67a79c35381995783013eaccc79d2",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/services/ModoboaService.ts",
+      "bytes": 7533,
+      "lines": 244,
+      "sha256": "6366a895e8fd986c47a18fab07c546d85a514c0a9e68bb87a75f64fc56a07221",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/services/NFTService.ts",
+      "bytes": 11237,
+      "lines": 361,
+      "sha256": "6a898d93071b20b241aa971235080138e2f93e865f227f997d681c84425bfcc3",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/services/NickelPaymentService.ts",
+      "bytes": 38569,
+      "lines": 1303,
+      "sha256": "750ce6d913715e1fd75be16715b32f65af057b1f9abb47a7b091f33b963994a2",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/services/NotaryAutomationBotService.ts",
+      "bytes": 12265,
+      "lines": 411,
+      "sha256": "7e30547eb07df53af8466c646fe5432136d0603c34d2f179f8ded480fee048e0",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/services/NotaryService.ts",
+      "bytes": 28941,
+      "lines": 581,
+      "sha256": "eb56af327c52895ae14aad1e8c2aa0916631e0ea73aa9df9a617a6b5ec0acf48",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/services/NotificationCenterService.ts",
+      "bytes": 13206,
+      "lines": 500,
+      "sha256": "3e8f15758e78e61e1bcecb63bc0a3037be8c925d4c220f451c338ec92e70da10",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/services/NotificationService.ts",
+      "bytes": 27539,
+      "lines": 959,
+      "sha256": "8048f911401384d1f6d187d32ca9977eec128c991e09347927c16d9c65863ea5",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/services/OfficeTableService.ts",
+      "bytes": 16810,
+      "lines": 603,
+      "sha256": "141c1364fcd49e567ceb3708bee613cc526d91f7f8cb05ca7d018354b24a4776",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/services/OpsMetricsService.ts",
+      "bytes": 37689,
+      "lines": 1206,
+      "sha256": "58941d7a5b811171fe700a6dfc5a737769ffa88c3634d6d61e66122161197fc2",
+      "readingStatus": "PARTIAL_SEE_SCOPE",
+      "scope": "getOpsDashboard full, selected integrity/heatmap portions; remaining calculations unqualified"
+    },
+    {
+      "path": "backend/src/services/OracleService.ts",
+      "bytes": 15654,
+      "lines": 288,
+      "sha256": "7fcac83802b9e04a929c8c41c6433a19424eb2c343193b2197576842cbeb5e7c",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/services/ParserService.ts",
+      "bytes": 20685,
+      "lines": 643,
+      "sha256": "06643859010a99438aa776c3c7eb1f5b308a2e7bc70af09a2ae2f79353a2287a",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/services/PaymentService.ts",
+      "bytes": 28862,
+      "lines": 953,
+      "sha256": "6f2a247f79672c197eb73cfb622b71258aea683f8bac4f66f900ecdf3ac20056",
+      "readingStatus": "PARTIAL_SEE_SCOPE",
+      "scope": "createPayment; Stripe/PayPal/ACH/check; refund; status/callback and selected later methods; remaining approval/bank-link methods partial"
+    },
+    {
+      "path": "backend/src/services/PayoutService.ts",
+      "bytes": 693,
+      "lines": 26,
+      "sha256": "c3a9036784d7189ef2ee941edb13b8ceb27588d6906a8da84aee5da395e1ca10",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/services/PhoneBotService.ts",
+      "bytes": 15268,
+      "lines": 431,
+      "sha256": "99b000bbe8496afc6f32e6ca7b04e231ecc40cf4d41d529319d9a662af7c122f",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/services/ProfessionalEmailService.ts",
+      "bytes": 19476,
+      "lines": 611,
+      "sha256": "6dcb77c7bed7cb4b9f0556b71d993874091332f38c5e5ddfc9a82365af60e4f9",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/services/PropertyResearchService.ts",
+      "bytes": 9925,
+      "lines": 266,
+      "sha256": "c202946a5bcebc9d25a103779e719c62fa7629150f23cd2429ed63cc85cbcc4a",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/services/PushService.ts",
+      "bytes": 6019,
+      "lines": 247,
+      "sha256": "f958c81dba2ed70cc61724392eb9289ba7a04af2e0d410ad719f47de8f5cb904",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/services/ReportingService.ts",
+      "bytes": 36768,
+      "lines": 1116,
+      "sha256": "77e32970e2de1a0082123ff326ef6f326c8f03e634f1c763184db2d9428bfc7a",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/services/RevenueForecasterService.ts",
+      "bytes": 28156,
+      "lines": 852,
+      "sha256": "19e08d25e7d76a8c174a2b57e897bc935e000775ec26bcafb3a584b297d1c847",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/services/ScraperService.ts",
+      "bytes": 28982,
+      "lines": 983,
+      "sha256": "6c9105a0dff358ca11ff7d94f2146e8d3e636f419cdccd4648f78dc9ec9c2469",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/services/SelfHostedRONService.ts",
+      "bytes": 23694,
+      "lines": 747,
+      "sha256": "3aab14facbbb904184108dce3dbb2e061a4569d6677d14c5cdbf5013f9f15396",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/services/SelfImprovingBot.ts",
+      "bytes": 7243,
+      "lines": 254,
+      "sha256": "6676c3194184bd85efddbb6ded3dff418d66fd5f1a2e41ef595aa73f94a99521",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/services/SkipTraceService.ts",
+      "bytes": 13788,
+      "lines": 247,
+      "sha256": "d3be831cbd6e288512130ea6ba02fcbba077c24ab521248ff07144716e082094",
+      "readingStatus": "CURRENT_AFFECTED_SOURCE_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/services/SmartContactIntelligence.ts",
+      "bytes": 35603,
+      "lines": 889,
+      "sha256": "efd94531563a05088a53cbbcd9959152a3259b3439a7192cf89f179f5d045095",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/services/SMSService.ts",
+      "bytes": 10251,
+      "lines": 335,
+      "sha256": "a8658fe2feb2da8578f892d557b73672e71cfcacfe554a56c5c4595c65339798",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/services/SMSTemplatesService.ts",
+      "bytes": 31706,
+      "lines": 845,
+      "sha256": "5f8a61034ad00bea772220f12cf643926d4b3a1adf7170b9b075fee3d37c777f",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/services/StateDeadlineService.ts",
+      "bytes": 17242,
+      "lines": 605,
+      "sha256": "a1db0a55670688fb0dbfdd98c85e30fb796dc9180251f20ff77c8f945e9310c1",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/services/TokenomicsService.ts",
+      "bytes": 7303,
+      "lines": 261,
+      "sha256": "5c6aeecdad2b2893efdf425581333a235fa5255a6b5f7ce079a8e566bd48e3c7",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/services/TrainingIntelligenceService.ts",
+      "bytes": 38116,
+      "lines": 1061,
+      "sha256": "9abb38a03e0c418bec3dbf58352cae89d2c144e906757bb3cb1861b3a0e1facb",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/services/TrainingService.ts",
+      "bytes": 51537,
+      "lines": 1576,
+      "sha256": "af7330aa0d756200ef359af948dbc36b5fbf2539a0ab3c9544d8ea3ec68c5213",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/services/TrustAutomationService.ts",
+      "bytes": 25678,
+      "lines": 782,
+      "sha256": "62dade822ddb921e4c6748aa5b75fafa646d3c0f838a3e049a91d86369475c1b",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/services/VoiceService.ts",
+      "bytes": 8705,
+      "lines": 258,
+      "sha256": "5b022387fd586896a104b6b2b5f2e8bb40e02491f5f03ffba1f9207661790614",
+      "readingStatus": "CURRENT_AFFECTED_SOURCE_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/services/WatchService.ts",
+      "bytes": 37770,
+      "lines": 1173,
+      "sha256": "ea70670301bf133eeccdda8660869ff185955b63ab28dc7690e51249999161dc",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/services/WhiteLabelService.ts",
+      "bytes": 32211,
+      "lines": 959,
+      "sha256": "c3fe0a67ee1a9ae342a0539784edc8c819725b418a6480ca6eee80a12b7685b3",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/services/WorkerBotEngine.ts",
+      "bytes": 106306,
+      "lines": 3064,
+      "sha256": "ee5a4e811306a218eae4d7c07bcf435d680ae03e2fa1f73ae4a1c9c5bdee3822",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/services/WorkerBotSpawner.ts",
+      "bytes": 81095,
+      "lines": 1997,
+      "sha256": "a4c76d37d9c7c1278ddb90533cae95f05a36e09a7df3a637c717afc9d794d5e0",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/services/leadGeneration/AuctionSiteScraper.ts",
+      "bytes": 23392,
+      "lines": 737,
+      "sha256": "e7ca272377e17b5a762372ccf01c955c248394b03ea6b95dc8d06f9d1d3bd0ee",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/services/leadGeneration/FOIARequestBot.ts",
+      "bytes": 31427,
+      "lines": 1009,
+      "sha256": "308820517073007facf5ba29ba2d1e458d0c4be55a481a3dc24956730f2da979",
+      "readingStatus": "PARTIAL_SEE_SCOPE",
+      "scope": "initial templates; fee/response wording repaired; delivery and complete county contacts remain unqualified"
+    },
+    {
+      "path": "backend/src/services/leadGeneration/GoogleSearchBot.ts",
+      "bytes": 20696,
+      "lines": 628,
+      "sha256": "b01ca3527fe760826305d6164898c0395361fc9e46943843ce8a69b9c851646e",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/services/leadGeneration/index.ts",
+      "bytes": 2157,
+      "lines": 53,
+      "sha256": "f038e0e5b63a4815765185cb87704781ab794636fd31c3b7c656b57b1defd5c5",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/services/leadGeneration/LeadGenerationOrchestrator.ts",
+      "bytes": 16286,
+      "lines": 523,
+      "sha256": "1ee611b0e7efe43605e46ed6c11ea139489efb558727ee9f06c85092cd53c8d7",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/services/leadGeneration/NewsAlertMonitor.ts",
+      "bytes": 19372,
+      "lines": 596,
+      "sha256": "a46460a8132b404ada29967c07fa9028358f51e60e6bbac5194065419c3afaa7",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/services/leadGeneration/types.ts",
+      "bytes": 8249,
+      "lines": 312,
+      "sha256": "1cafef03e1943758fe15269ff1ba2afdd687f849856b5eed3e04e92e02212e54",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/services/leadGeneration/UnclaimedPropertyScraper.ts",
+      "bytes": 26535,
+      "lines": 796,
+      "sha256": "c4aeda6b68c7fbdec394f9a0646b8bb825daec5e0acbb53adf0facde2e5e1f81",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/services/scraper/countyConfigs.ts",
+      "bytes": 87470,
+      "lines": 3214,
+      "sha256": "407f67cfd37de44752e7d00702b3c59ce405a66eb627a1b8806197a39036089c",
+      "readingStatus": "PARTIAL_SEE_SCOPE",
+      "scope": "header and initial configurations; 150+ configuration claims not verified"
+    },
+    {
+      "path": "backend/src/services/scraper/index.ts",
+      "bytes": 669,
+      "lines": 30,
+      "sha256": "32a8f1b07ce7f224bdc603acaeadc3dfb44f3433cdb122d3c6e9589555c3d94c",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/services/scraper/PublicRecordParsing.ts",
+      "bytes": 1301,
+      "lines": 4,
+      "sha256": "0760735cb7414787d380745973a3766733b7946e56ab5fe92d655ebfa1c9083a",
+      "readingStatus": "CURRENT_AFFECTED_SOURCE_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/services/scraper/ScraperEngineV2.ts",
+      "bytes": 36870,
+      "lines": 1190,
+      "sha256": "fd5c1a61144bcf7cf2b20700a50e4f96fe4cce886426c1ef25f045b777c57511",
+      "readingStatus": "PARTIAL_SEE_SCOPE",
+      "scope": "browser setup, scrapeConfig, field/money/JSON/text extraction, scout and batch/save integration; selected remainder unread"
+    },
+    {
+      "path": "backend/src/services/scraper/types.ts",
+      "bytes": 5846,
+      "lines": 244,
+      "sha256": "4ad2c8a692948c864434c3161a246bda066585e71e5a1cdb6d4a4036cc78e02d",
+      "readingStatus": "PARTIAL_SEE_SCOPE",
+      "scope": "county/source and record contracts"
+    },
+    {
+      "path": "backend/src/services/scraper/UrlScoutService.ts",
+      "bytes": 17448,
+      "lines": 575,
+      "sha256": "aeb766f0bf45a450d4d901ea981c4dd9a83364ffdf33f99fb7d2fef563025770",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/types/ingestionTypes.ts",
+      "bytes": 13225,
+      "lines": 471,
+      "sha256": "f5642210f26661770bebb10a8c6d4c8a62d5a9189e77ec08623f195b3ea446e4",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/types/modules.d.ts",
+      "bytes": 362,
+      "lines": 16,
+      "sha256": "a224132ebdec5b2a1048d8d52210f3cdf00460cb2bf1c6b61dceebc9d6e94ca6",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/types/trainingTypes.ts",
+      "bytes": 9697,
+      "lines": 408,
+      "sha256": "4b1b5f1d9c12ce9e394133be9d8a6cdce6033133732b349c1806e6546c50b206",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/utils/caseLifecycle.ts",
+      "bytes": 6039,
+      "lines": 204,
+      "sha256": "4490dcd060aa7bfe8aea07571cee42b57142406bc13f00d33db1279fc1f70301",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/utils/documentLifecycle.ts",
+      "bytes": 6884,
+      "lines": 218,
+      "sha256": "1bb30b93604d4015b09543af6884baf8f02e5d75c9f4a77a3c35e4713cdaf95c",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/utils/fieldMasking.ts",
+      "bytes": 9760,
+      "lines": 334,
+      "sha256": "01b776e2f125faa240958f6679ce9a2d2e284769bf69ad69c4e10dc88b709384",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/utils/logger.ts",
+      "bytes": 1962,
+      "lines": 74,
+      "sha256": "b3b932454a7486fa523dfdedb59a88fb1df92e79824d0098453cdd254f46ae5a",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/utils/security.ts",
+      "bytes": 9056,
+      "lines": 319,
+      "sha256": "29f3b8da3915e8629eecd2ca6c6ce7c6baed7b3cbe75c5d12276bd5a6564ec90",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/utils/shadowTerminology.ts",
+      "bytes": 6566,
+      "lines": 200,
+      "sha256": "0bc332bda9be3893a849028f1d9ff759031fe5f57a1c66d82bc9222c71608209",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/zod/config.ts",
+      "bytes": 17566,
+      "lines": 502,
+      "sha256": "4071475eef3a03ce17d81ccd26bb1e975909d4e43d6821592bc3708e8f2cf4be",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/zod/index.ts",
+      "bytes": 2329,
+      "lines": 96,
+      "sha256": "75cd137dee9703bb00209fc91373d655024013183b826e704d1ff96b368c407a",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/src/zod/ingestion.ts",
+      "bytes": 9955,
+      "lines": 316,
+      "sha256": "f3af3528b34ada76854ec75a9b3bdebce5e33d97d8c4b18f7d15292bbdc5b3a3",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/tests/auth-postgres-acceptance.ts",
+      "bytes": 8609,
+      "lines": 41,
+      "sha256": "2a52c31210179256c58becd684b067983b78055d11d859ba31cff946300546ab",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/tests/capital-research-browser-server.ts",
+      "bytes": 1784,
+      "lines": 6,
+      "sha256": "3cef063bebdbd3cc81f2315ac7cb13dac1c71d2ae7c1e9d426a7a245547c7675",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/tests/close-capital-browser-account.ts",
+      "bytes": 821,
+      "lines": 2,
+      "sha256": "ddd64f3a0ee4ad5992fdc5e2803b83461e940d060766f2aa855079b0083060b9",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/tests/florida-live-query.ts",
+      "bytes": 981,
+      "lines": 3,
+      "sha256": "641e4cdfafb147a8e44f798399aea98efa7ea8e1e9bf50d32dee8bef0a2495f5",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/tests/government-source-probe.ts",
+      "bytes": 777,
+      "lines": 3,
+      "sha256": "c27222d48395108645d515f0336e9683e222af6f64ce0753448cd1f58cb1f993",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/tests/native-research-boundary.test.ts",
+      "bytes": 7956,
+      "lines": 27,
+      "sha256": "e6cc76bb3a13f241dee5bcb899b1177943abf57637048250847e09a98e3d877d",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/tests/native-research-postgres-acceptance.ts",
+      "bytes": 7330,
+      "lines": 24,
+      "sha256": "1f6f48b60fba4d4b6d0b65af025e3c02acfb99a1874da78af53469026f7f801d",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/tests/native-research-reopen.ts",
+      "bytes": 1180,
+      "lines": 4,
+      "sha256": "123bd8383686c25c2f3f13f3cb8c16ab77eb7ad3a55a988d6e657861dba9ff09",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/tests/payment-truth-postgres.ts",
+      "bytes": 2404,
+      "lines": 3,
+      "sha256": "bf7f30e1ccdc8da9746267b0d4dcd7e03e44ebd044b6ddca9a91e5dd604bb336",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/tests/setup.ts",
+      "bytes": 1235,
+      "lines": 51,
+      "sha256": "97526626ab5d78c7db58d2b58d18e319b3a2d32a24f37c4b9ade474bdd01c135",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/tests/vault-postgres-acceptance.ts",
+      "bytes": 16208,
+      "lines": 52,
+      "sha256": "4ceaa11a484394bacddc7aabc3a901f8d0a9ae1db4b183676b61e2f10aa3d275",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/tests/vault-reopen-acceptance.ts",
+      "bytes": 2714,
+      "lines": 26,
+      "sha256": "b3ec2ffa2f1dc6426a65f3c316126693181af16631f8057454eca88a4537cc52",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/tests/voice-truth-boundary.test.ts",
+      "bytes": 792,
+      "lines": 3,
+      "sha256": "b02e56a94b244864becf791a3601f2c2a4e731c2c789a0c431e5acc02ebb699a",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/tests/helpers/index.ts",
+      "bytes": 5236,
+      "lines": 211,
+      "sha256": "d1aea9dc2c38301f402b6b400b06fbd0e69b41ac894da41e24bf65773edb0655",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/tests/integration/integration.test.ts",
+      "bytes": 19153,
+      "lines": 596,
+      "sha256": "9783e652ce389e14d6a88479670fff54b3dc995ea464deb5cb43993add364c4c",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/tests/middleware/authMiddleware.test.ts",
+      "bytes": 9840,
+      "lines": 291,
+      "sha256": "8de4cd4375cd22c833672b56014f4607e65cf8796adea9fcbd7f3f8c4b1e16bd",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/tests/mocks/prisma.ts",
+      "bytes": 3796,
+      "lines": 152,
+      "sha256": "b15a33fa3721088fc4f75d47669dcd24f97b4fb73f38e930bccc24fa70139684",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/tests/mocks/redis.ts",
+      "bytes": 2292,
+      "lines": 91,
+      "sha256": "f3cf98bcd065152da1552a79926970be9445b366c8b3906654ad2f02fff0be35",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/tests/services/AuthService.test.ts",
+      "bytes": 14229,
+      "lines": 447,
+      "sha256": "f3a11d9832f3d72671012d543ab45bcacbea80c882f9081f91faa41aa2ed33d4",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/tests/services/BlockchainService.test.ts",
+      "bytes": 10205,
+      "lines": 298,
+      "sha256": "288db05abd4896830d85fc90634b8156683ae70867ceb3c0b6ecea50824c1009",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/tests/services/CacheService.test.ts",
+      "bytes": 9018,
+      "lines": 278,
+      "sha256": "019209a8d4d2530717b6146bea03c09387fc1d5e23e527bde81388c1a111ee9c",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/tests/services/CaseService.test.ts",
+      "bytes": 12718,
+      "lines": 360,
+      "sha256": "cc2880085b022be54d615ad46e8a9e025d44a131c88cea86feb0f0394fa14add",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/tests/services/ConfigService.test.ts",
+      "bytes": 11133,
+      "lines": 331,
+      "sha256": "7cf9478bdaf5167393040de7d8ca9e7b8e002f87ec625e7d6f986ca9d998510c",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "backend/tests/services/PaymentService.test.ts",
+      "bytes": 10638,
+      "lines": 294,
+      "sha256": "943a6068d3a708465baf7a34fedcf3ca58fa582db878048a184748f03dc185e5",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "docs/00_OVERVIEW.md",
+      "bytes": 393,
+      "lines": 9,
+      "sha256": "b8a1f00914ccd07e88b173b4a3c0d52630080127fc4c81ad789849358b82ff3c",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "docs/02_MODULES_LEGAL.md",
+      "bytes": 1417,
+      "lines": 42,
+      "sha256": "5eed83847a08133eb0b90e64006a4dd5dd3692770edd3464a9a8e3c721382b5c",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "docs/03_MODULES_EMPLOYEE.md",
+      "bytes": 1610,
+      "lines": 77,
+      "sha256": "55887bcc8971bbae1e4d07a4c659c11edafe3efc28d58ae54e13bc7c5e5ecb3f",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "docs/04_MODULES_CLIENT.md",
+      "bytes": 777,
+      "lines": 47,
+      "sha256": "4e5d591d3880e437096971d39b1a25f284f6edcaf515967404ab35715fcc3716",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "docs/05_MODULES_BANKING.md",
+      "bytes": 960,
+      "lines": 53,
+      "sha256": "c8e8c437cbcc5a4a6bf70b8513dd7841ba0b9b078866be71a516966e8f718b3d",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "docs/06_MODULES_INGESTION.md",
+      "bytes": 932,
+      "lines": 49,
+      "sha256": "dc87c613dda8dd1ab9dca5e8a3d4fcfef779a51e01addec785b930d69a0533cf",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "docs/08_EMPLOYEE_TIERS_AND_MONEY.md",
+      "bytes": 579,
+      "lines": 26,
+      "sha256": "61de4eb55103423939176022981f953305d6ff6240ff9ccb430738b9c201ba26",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "docs/09_SECURITY_AND_PROTECTION.md",
+      "bytes": 825,
+      "lines": 50,
+      "sha256": "a38446e5f68f4e1ec012eebc5b07431cd3181650752b62ecc58e1e0027c1a09c",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "docs/10_FOUNDER_MODE.md",
+      "bytes": 877,
+      "lines": 45,
+      "sha256": "da3cad36fe79edf51aceec647e28601dc955708c045ca9a68552a38d8f8084d8",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "docs/A0_BUILD_BRIEF.md",
+      "bytes": 660,
+      "lines": 15,
+      "sha256": "645c6abbf6b288d6c95f24e9614ee326e9df9741235b0772eeb220d3912c737e",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "docs/AI_BEHAVIORS.md",
+      "bytes": 1045,
+      "lines": 36,
+      "sha256": "54860f7a8c5e97db03b7ae5afb937439d30462ae34d254bf6c072988511504cb",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "docs/BACKUPS.md",
+      "bytes": 9982,
+      "lines": 370,
+      "sha256": "3868c9b1a9e50e82493d4e2d1e8eebe9028111869b34294f0ae80367d41b9b60",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "docs/CLIENT_ONBOARDING_FLOW.md",
+      "bytes": 1193,
+      "lines": 55,
+      "sha256": "a7b6c7ea40ab6aee4105098a0adf23369ce84b71435d885a2c8f76c97ca3e119",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "docs/COMPETITIVE_ANALYSIS.md",
+      "bytes": 15243,
+      "lines": 269,
+      "sha256": "776b00119c0fbb31c9a12ae178225994a28ec49e334952c7332b0da9771490a9",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "docs/DEPLOYMENT_GUIDE.md",
+      "bytes": 23775,
+      "lines": 1029,
+      "sha256": "9ceca91584263f9257703844ac6e6cc0834f0c646647cd3d5490f05c97565d52",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "docs/DOMINANCE_FEATURES.md",
+      "bytes": 54767,
+      "lines": 528,
+      "sha256": "9ac60ecffd4ace5a51a0df69bb1870f63b0f1547981e0c1c73cfce5f5bc28cd8",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "docs/MGR_OPS_AI_PROMPT.md",
+      "bytes": 11011,
+      "lines": 360,
+      "sha256": "f2be235776b19cebe0c8e4edd9dc022d52e8ea607948c09e4e895a36a01f72e2",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "docs/SECURITY_AIRGAP_CHECKLIST.md",
+      "bytes": 9070,
+      "lines": 317,
+      "sha256": "8f5265b8ce4fdb420508fb327ff015913a4fb879821163eb82776707d09d132a",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "docs/SETUP_GUIDE.md",
+      "bytes": 15008,
+      "lines": 583,
+      "sha256": "73a9ec54d2eeeef4afc9bf0cf49adec47927f33951a1182ea24b6600077a2020",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "docs/SURPLUS_FUNDS_LEGAL_DOCUMENTS_RESEARCH.md",
+      "bytes": 34445,
+      "lines": 667,
+      "sha256": "e0511e4fe4670aa2cdb57e3b33bd37f4737621017915d598783e6220f77bcaf8",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "docs/TIME_TODO.md",
+      "bytes": 11432,
+      "lines": 318,
+      "sha256": "6789aa6fbd4154b8fcfa769f207bb622677f2245241d8d585dfbaaec4735a770",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "docs/TRAINING_EMPLOYEES.md",
+      "bytes": 1109,
+      "lines": 31,
+      "sha256": "c885a0eb4672a8b63be41ca83f802d78f54921f89ddf4509ba36ef1a5fb5d7a8",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "docs/full-build/AUTH-REPAIR-2026-10-28.md",
+      "bytes": 6135,
+      "lines": 36,
+      "sha256": "45a33f88cf69e65b1a9b6da912701570515793142023d085c739a97253af0d3e",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "docs/full-build/CAPITAL-SYSTEM-REVIEW-2026-10-29.md",
+      "bytes": 11251,
+      "lines": 59,
+      "sha256": "6954157cdd1a008d6b8dab0d71b3cc36d98f8d02405f314c4d74f82ade5fa791",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "docs/full-build/CAPITAL-TASK-LEDGER-2026-10-29.json",
+      "bytes": 1880,
+      "lines": 11,
+      "sha256": "d205ec4a3984bd2504447c55a23f82e6b83434a3ddda157de0fe95314a8a9663",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "docs/full-build/DATA-OWNERSHIP-RESEARCH-2026-10-29.md",
+      "bytes": 13357,
+      "lines": 91,
+      "sha256": "2ca1369c81631edb6d8024e76469a4c5ab688f547179ba2ab16dfcaedfe0b639",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "docs/full-build/LOCAL-STORAGE-REPAIR-2026-10-28.md",
+      "bytes": 4870,
+      "lines": 40,
+      "sha256": "bd21639eeaf6b69ce497f3d66e1cea4b7f3a171b445de7f32fac036837242edc",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "docs/full-build/SCORECARD.md",
+      "bytes": 5990,
+      "lines": 59,
+      "sha256": "2a74ee148ff0b2c5e5b58f730f3addbd018bb97cb1587a581610966967324ca1",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "docs/full-build/VAULT-REPAIR-2026-10-28.md",
+      "bytes": 8710,
+      "lines": 63,
+      "sha256": "efa0b890dc5399e734c9315c0f3a76e4fcbbcad10dcc0d8708200f06701b64e8",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "docs/full-build/evidence/2026-10-28-auth/auth-postgres-receipt.json",
+      "bytes": 1376,
+      "lines": 20,
+      "sha256": "7e2fb7dcd3ae265a82bead120c10586c1661354cfdc329ca8bd5ad17c0011637",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "docs/full-build/evidence/2026-10-28-auth/reading-ledger.json",
+      "bytes": 3095,
+      "lines": 78,
+      "sha256": "814d82a5e47146a4bd10ab9b8c0a81b748bb9ffcf52303662c0ded39b36903c5",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "docs/full-build/evidence/2026-10-28-auth/rotation-baseline.json",
+      "bytes": 590,
+      "lines": 15,
+      "sha256": "77060fecee12cf3b299bd759dfe4c49bf6abf39b3ed0593ef9212f2b8995fac8",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "docs/full-build/evidence/2026-10-28-local-storage/before-reproduction.json",
+      "bytes": 1149,
+      "lines": 35,
+      "sha256": "232afe17ce026a89cfff432fce1d574077d680bdcaf47ca486c97a8d922a0ea1",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "docs/full-build/evidence/2026-10-28-local-storage/reading-ledger.json",
+      "bytes": 5454,
+      "lines": 150,
+      "sha256": "6b19808c6ad74af7aae3dec4c94f35e58b0af86dd84e35724a08b04b3c637481",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "docs/full-build/evidence/2026-10-28-vault/vault-postgres-receipt.json",
+      "bytes": 2575,
+      "lines": 32,
+      "sha256": "b995b66fe48e8191167d3478aaff1ae6f4980851c3a677403b80a2d05305a8e6",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "docs/full-build/evidence/2026-10-28-vault/vault-reopen-receipt.json",
+      "bytes": 385,
+      "lines": 9,
+      "sha256": "11345719dcc19d62fffc6d7919c680053979439f42d0c88e6fb3ea40c7ab4c42",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "docs/full-build/evidence/2026-10-29-native-research/browser-receipt.json",
+      "bytes": 912,
+      "lines": 19,
+      "sha256": "6a6fda0163df8bea3f4ef3196b35b644dcf5ae2e0a2f267d29c6a81c803a938b",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "docs/full-build/evidence/2026-10-29-native-research/florida-live-query-receipt.json",
+      "bytes": 1160,
+      "lines": 18,
+      "sha256": "dd31291b0f12f8f4bb1af8fba5ad3d556e80a7acc88aeab1425b5fa572d82e96",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "docs/full-build/evidence/2026-10-29-native-research/florida-parcel-aggregate-2026-10-29.json",
+      "bytes": 616,
+      "lines": 29,
+      "sha256": "7d8ac9bb8c959533c00b1daa956a40e304f305e3fae19c44835c2f1dfe9a54b6",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "docs/full-build/evidence/2026-10-29-native-research/florida-parcel-layer-2026-10-29.json",
+      "bytes": 1363,
+      "lines": 62,
+      "sha256": "35ec3a43d70a454825e2a2db75c776f744b4f2bcb17adaae153a2936ca4ba612",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "docs/full-build/evidence/2026-10-29-native-research/florida-parcel-metadata-2026-10-29.json",
+      "bytes": 786,
+      "lines": 12,
+      "sha256": "4e34fbc33286873f4def3e15ae88d241c317bcce0554d1bdede686b0adacc143",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "docs/full-build/evidence/2026-10-29-native-research/government-live-source-receipt.json",
+      "bytes": 1512,
+      "lines": 44,
+      "sha256": "6cfb21439a433c1e88db5b7f3ff126ba0ea2e28150e18da36c90af8e99358f8d",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "docs/full-build/evidence/2026-10-29-native-research/native-research-receipt.json",
+      "bytes": 1186,
+      "lines": 20,
+      "sha256": "3b35b951aca0b2261f0f7cb48748bca9f5da22e0718ee0c35c8dcda02fee6d88",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "docs/full-build/evidence/2026-10-29-native-research/native-research-reopen-receipt.json",
+      "bytes": 201,
+      "lines": 7,
+      "sha256": "fd06722018a6795990f2780a9de2cab2642bc84da7ea691fc0b6b903e39005e3",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "docs/full-build/evidence/2026-10-29-native-research/payment-truth-receipt.json",
+      "bytes": 642,
+      "lines": 13,
+      "sha256": "3336e0dc71b4ab119a4d0c62bea9a570c1538d6a8bd9e740a99140c6b5f03abd",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "docs/full-build/evidence/2026-10-29-native-research/runtime-custody.json",
+      "bytes": 599,
+      "lines": 19,
+      "sha256": "0733c174995d4a5b1b5c1883dad758aec4270cbd40a47513dd638f8f41f7a726",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "docs/full-build/evidence/2026-10-29-native-research/vault-postgres-receipt.json",
+      "bytes": 2575,
+      "lines": 32,
+      "sha256": "b995b66fe48e8191167d3478aaff1ae6f4980851c3a677403b80a2d05305a8e6",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "docs/full-build/evidence/2026-10-29-native-research/vault-reopen-receipt.json",
+      "bytes": 385,
+      "lines": 9,
+      "sha256": "11345719dcc19d62fffc6d7919c680053979439f42d0c88e6fb3ea40c7ab4c42",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/cypress.config.ts",
+      "bytes": 298,
+      "lines": 15,
+      "sha256": "512da54dcc0737bf7b02b39b7afe31daf7160fc0017bda68514dff11b30a8b19",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/i18n.ts",
+      "bytes": 806,
+      "lines": 37,
+      "sha256": "3e5379d839bf7ce0aa84f5ce59b9effaecebf2ec456e25ff55cbb54439e78b4f",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/next-env.d.ts",
+      "bytes": 233,
+      "lines": 6,
+      "sha256": "e462a655754db9df18b4a657454a7b6a88717ffded4e89403b2b3a47c6603fc3",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/next.config.js",
+      "bytes": 798,
+      "lines": 33,
+      "sha256": "e4d35b14b7f120697cf79593e297e9a701cd2ba635b40a541c4a6bc4a061d51a",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/package-lock.json",
+      "bytes": 486218,
+      "lines": 13075,
+      "sha256": "685af0b50e8ffa0f6e16157349d89fa45e19d4d3a2ca3fdf570260a421eb6bf8",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/package.json",
+      "bytes": 2684,
+      "lines": 86,
+      "sha256": "23e3946d21d29d8c458c0540b90822e562e126f7561e30d3e80b4b5028ccbf47",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/postcss.config.js",
+      "bytes": 89,
+      "lines": 7,
+      "sha256": "b78f5d0a0a449ecf58b6b6252e26cd2216c7aa41235e2d6d01a26b9a065cd439",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/tailwind.config.ts",
+      "bytes": 1525,
+      "lines": 55,
+      "sha256": "82e18c71d9899edd288e4d4120fb6057edc6585f48ee8ae73aede6ddb339d29c",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/tsconfig.json",
+      "bytes": 687,
+      "lines": 29,
+      "sha256": "bea54ba234e4039d6df093bc2aec6f7433b19f50502e353ff4bbb35eba6e478c",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/vercel.json",
+      "bytes": 154,
+      "lines": 7,
+      "sha256": "a3671f02ad02e3631f96c4f7cbdcc007daa58c5d11eefcc07e59c0ed4500d1a8",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/app/error.tsx",
+      "bytes": 1664,
+      "lines": 56,
+      "sha256": "4f6da491530f5dfffc45bca66ad3adf0fcf39a78bf6aaf670b34919245e3851f",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/app/global-error.tsx",
+      "bytes": 3607,
+      "lines": 128,
+      "sha256": "94f876f1dcf0ea24e37c285b4c3994a7c9f831f9efd42e13e32c6005c8904b0d",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/app/layout.tsx",
+      "bytes": 1534,
+      "lines": 55,
+      "sha256": "3aaa3ed1936792737f8f6f9d3865dc9dd9411b41a3412c74e4b58787882af0f4",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/app/page.tsx",
+      "bytes": 1166,
+      "lines": 45,
+      "sha256": "c9922679b8f85cd074ecef4c3b1af4527298ace697223e6678244ba6091ffb6f",
+      "readingStatus": "CURRENT_AFFECTED_SOURCE_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/app/providers.tsx",
+      "bytes": 1304,
+      "lines": 44,
+      "sha256": "ebe22c0a9090089d666d04c005da69f194df26e7a80bea6b32516ba8be4bd2c7",
+      "readingStatus": "CURRENT_AFFECTED_SOURCE_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/app/admin/layout.tsx",
+      "bytes": 300,
+      "lines": 16,
+      "sha256": "6a795db46ee88bae7a955845c6b4cc13553a88a019d0f67f9d7d80c116759071",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/app/admin/cases/page.tsx",
+      "bytes": 9988,
+      "lines": 291,
+      "sha256": "a5fb98a7c52a00b86ee7ae2d754f705d33bbc357f43c26af1984c5434eb3bc69",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/app/admin/cases/[id]/page.tsx",
+      "bytes": 16747,
+      "lines": 447,
+      "sha256": "dfeba5199d85931cbd1fc6012424dd8fa64766c9c81a99fd4dc1529a081ab25a",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/app/admin/comms/page.tsx",
+      "bytes": 5947,
+      "lines": 171,
+      "sha256": "69f6a8ab2195b11d0bec4152ebbb922c5038b032500e2864f3391cf99ad6df6f",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/app/admin/compliance/page.tsx",
+      "bytes": 18949,
+      "lines": 504,
+      "sha256": "b3b8d55cd2d24bbdaff2b3e15fabfe9dd4c3337157db815010dad16ed3512481",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/app/admin/dashboard/page.tsx",
+      "bytes": 3080,
+      "lines": 93,
+      "sha256": "906101dc1ad3a63eeb8622daa3c0effbb3a8b28da8ac798b5ed338d3ef4cefde",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/app/admin/hr/page.tsx",
+      "bytes": 17207,
+      "lines": 470,
+      "sha256": "c6893e82247c7827e85f9debe9bb12c7a12fe2d680d9174b31cc9b8b1f1f9610",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/app/admin/insights/page.tsx",
+      "bytes": 6759,
+      "lines": 177,
+      "sha256": "8f7c21f24db147199a3f630f5f607f4e85777b761a706fbc5359d066c8de7bb1",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/app/admin/payouts/page.tsx",
+      "bytes": 21476,
+      "lines": 526,
+      "sha256": "fa8976088af717404a7eaacbb696868782ca23a5faeee83e8ba43aa0ca8d9642",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/app/admin/training/page.tsx",
+      "bytes": 17657,
+      "lines": 456,
+      "sha256": "7fc08f5cf14f7b6834756635cabf0ebf2d78985a545c55bd6e7911df13ac80f6",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/app/admin/users/page.tsx",
+      "bytes": 12695,
+      "lines": 364,
+      "sha256": "a12452f724ea67d27d38360d5356505a8efbee7042c38aba55fd0dd0cb52010e",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/app/auth/forgot-password/page.tsx",
+      "bytes": 7517,
+      "lines": 185,
+      "sha256": "9d896ab4d47f2222fe10e749e460198516572c39c3a3c471621cb0e6bdcd99af",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/app/auth/login/page.tsx",
+      "bytes": 11953,
+      "lines": 288,
+      "sha256": "63dfceb8a2841ec9a90e7ea5e2080802909a96a60bda56863be41c41af33e0b1",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/app/auth/register/page.tsx",
+      "bytes": 14793,
+      "lines": 345,
+      "sha256": "a126303aa48f8e7c45a2ed7f2f50492d11e2d0b9f3b7f1157d96e6ea3b0d97bb",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/app/auth/reset-password/page.tsx",
+      "bytes": 11382,
+      "lines": 278,
+      "sha256": "00a3ea3092898ad9499f7807cf8265bf2e5cf3a728e28fde61d310ed76cd4853",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/app/client/layout.tsx",
+      "bytes": 311,
+      "lines": 16,
+      "sha256": "2be1f9706118402af24f4107f05c62a7b8298eb5bd5205b7b6057055c4877698",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/app/client/cases/page.tsx",
+      "bytes": 14833,
+      "lines": 315,
+      "sha256": "f64e184b537bd74a398454ece0bd53e14ee90ec3a1e12ba3c5741a5877750a54",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/app/client/cases/[id]/page.tsx",
+      "bytes": 31491,
+      "lines": 787,
+      "sha256": "10e44f6fa964b82bdcdcb7b16f748a4d5ba6f4fc7b083b50a04a1056a9dcca3d",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/app/client/dashboard/page.tsx",
+      "bytes": 21813,
+      "lines": 541,
+      "sha256": "17405212731027aab20881d887bbf606f44d32beaf557e8e8a12550c5b8b2086",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/app/client/documents/page.tsx",
+      "bytes": 23721,
+      "lines": 555,
+      "sha256": "c96f659bc6c11e1ea574d008d6ee4bd927bcad1728115b11460b68053827a18c",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/app/client/inbox/page.tsx",
+      "bytes": 676,
+      "lines": 24,
+      "sha256": "76fcfeb41e251f68b7d92f0d2fc11e3fbe1f9eb5bc4ca4334339f047dddf7635",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/app/client/messages/page.tsx",
+      "bytes": 20221,
+      "lines": 504,
+      "sha256": "c392086b25f349c6cfbdecdbc4bb2048ce55f2b961daebe6139093dc6f2bc389",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/app/client/notifications/page.tsx",
+      "bytes": 16464,
+      "lines": 449,
+      "sha256": "035c1c02a81493ffcf3fe2acbd11869d66668817e0f082a7f4f7b0f1bcdcbec2",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/app/client/portal/page.tsx",
+      "bytes": 914,
+      "lines": 27,
+      "sha256": "d572d3fc491f714f657a01f644961e4ada1c8ca5e754ccf51009f5afb027a027",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/app/employee/layout.tsx",
+      "bytes": 315,
+      "lines": 16,
+      "sha256": "58412aa6c24f07738565be83dc5609f01d79f127b862b0a452e019d2e3241c72",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/app/employee/alerts-chamber/page.tsx",
+      "bytes": 11382,
+      "lines": 321,
+      "sha256": "74df53d7fb92a35029e7a3ff1104b957ae9b9a73218c72fed3c9346f35dc6df9",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/app/employee/bots/page.tsx",
+      "bytes": 11627,
+      "lines": 279,
+      "sha256": "81ae2083b83b105323746a26e1ed92e4d109f189efda74d80c3c84de21d1265f",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/app/employee/cases/page.tsx",
+      "bytes": 5976,
+      "lines": 159,
+      "sha256": "105baf83985b4143a044a5f518fbbd8aad088ed6519f738dea8839e8eadeb6e0",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/app/employee/cases/[id]/page.tsx",
+      "bytes": 14293,
+      "lines": 391,
+      "sha256": "043cc87e4f0f6fe87a9f09d16e550992b08c3cdbe58fa040ef5199740abd9dae",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/app/employee/child-company/page.tsx",
+      "bytes": 22852,
+      "lines": 534,
+      "sha256": "ea6363c17a6d4458177f7a9ba4f6c3dbbdc2ac5548736674c4cba5851fe0a130",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/app/employee/child-company/cases/page.tsx",
+      "bytes": 18387,
+      "lines": 499,
+      "sha256": "3490f5adab2a50ad70d64f9b30e18172f30d97d837b76e3db45cda0940846c07",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/app/employee/child-company/employees/page.tsx",
+      "bytes": 24380,
+      "lines": 665,
+      "sha256": "28399d3ccd00c354117542f4c81c6211d54fe64fa091bf27e5a5dfc27e3485d3",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/app/employee/child-company/payouts/page.tsx",
+      "bytes": 25789,
+      "lines": 693,
+      "sha256": "4d502fd341da53c120a9b30191e32bcb3746f1a1dc71c554cb43afaccb83a1f3",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/app/employee/child-company/settings/page.tsx",
+      "bytes": 31987,
+      "lines": 842,
+      "sha256": "ea0dfcd43ff4c0cac9f092d47aa5d903d94e851b627933830b4d7c5d050e3272",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/app/employee/child-company/setup/page.tsx",
+      "bytes": 25305,
+      "lines": 659,
+      "sha256": "301d616713ed440c9d3419761e90e992ee0e363fa61220b10450cab1bfb06205",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/app/employee/comms/page.tsx",
+      "bytes": 7535,
+      "lines": 206,
+      "sha256": "61c3bbfc1bd8c54537500e158fa63ac250c529c2253ddeb91ed4c4d7ff9b6da9",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/app/employee/compliance/page.tsx",
+      "bytes": 11697,
+      "lines": 301,
+      "sha256": "b29ce16cb701f89da214cf92728fb4cbf605c117d3d4b947f74d48c2d89f060c",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/app/employee/dashboard/page.tsx",
+      "bytes": 9089,
+      "lines": 246,
+      "sha256": "861e27907892a77fb0fdb5f042bf2eddb40861414c2650f68363d2c07d94c9ec",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/app/employee/email/page.tsx",
+      "bytes": 10596,
+      "lines": 296,
+      "sha256": "4421b519fcf358fc1a63c96e762b2a26d2eb7252dafcbd3a60917e493fe42251",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/app/employee/email/setup/page.tsx",
+      "bytes": 20761,
+      "lines": 570,
+      "sha256": "25ef58a1481b99f32edd8a5e9cc643aac35ad45f689673cbea05cac06d764800",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/app/employee/inbox/page.tsx",
+      "bytes": 25261,
+      "lines": 665,
+      "sha256": "7d941be1178f1951970fbd51454fa73c0c014cdbd61092cdb18aa9f70d18ab15",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/app/employee/leaderboard/page.tsx",
+      "bytes": 21634,
+      "lines": 564,
+      "sha256": "3d25f30bda3c900b024c903c026a8ab86e2a9621902acf9ff820431593a1a206",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/app/employee/notary/page.tsx",
+      "bytes": 22433,
+      "lines": 565,
+      "sha256": "f81a23c2a4d17367e1c7a7e5d20d1a263e52e065458ad9c551447973d7209c81",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/app/employee/payouts/page.tsx",
+      "bytes": 15846,
+      "lines": 411,
+      "sha256": "517c09d736d2c9c87543860a8ce416a8e6695387bf16aca07895d0a097f25486",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/app/employee/training/page.tsx",
+      "bytes": 7125,
+      "lines": 182,
+      "sha256": "f4a7ecef0a18beefadd3b40f33d854f93a8c3371a69f5f745c5b44ec70ad0f56",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/app/employee/training/[id]/page.tsx",
+      "bytes": 14501,
+      "lines": 399,
+      "sha256": "0ebab5e5869dcbe5df46bf68970486769fbe77c12dc6606b9046b7cba7f53c7a",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/app/employee/trusts/page.tsx",
+      "bytes": 21255,
+      "lines": 547,
+      "sha256": "51caabd01cf840f1861313f021e86dd8a1b0df432f31748c84f2cd52d6a1901c",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/app/founder/layout.tsx",
+      "bytes": 293,
+      "lines": 16,
+      "sha256": "8c98a5368df3670d8d62269c73db01ae9f09e8711fce110c3d3abea90857bc1a",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/app/founder/ai-bots/page.tsx",
+      "bytes": 12742,
+      "lines": 356,
+      "sha256": "cbc9b8d43bcf577abb9019e47677524831240898309a135549fed80dab114f14",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/app/founder/alerts-chamber/page.tsx",
+      "bytes": 11065,
+      "lines": 310,
+      "sha256": "572f120d61c76929d70acfdfef03ca07859185634153c3fec913bbffec4a56ab",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/app/founder/analytics/page.tsx",
+      "bytes": 57706,
+      "lines": 1310,
+      "sha256": "e01d51ded21e6bba906b7614fc21b051672eefa5d5bbfddc3f37a27e05ab4007",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/app/founder/auctions/page.tsx",
+      "bytes": 35936,
+      "lines": 799,
+      "sha256": "76b707d57de047e7838d538253544760bffd14648bba1d886b85285f0bef7d62",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/app/founder/bots/page.tsx",
+      "bytes": 11549,
+      "lines": 285,
+      "sha256": "3770c9a66a5b6bf757c01007befe9cc4037db20d1ade294146047c952bfb69a8",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/app/founder/cases/page.tsx",
+      "bytes": 9782,
+      "lines": 270,
+      "sha256": "3c81cd1b32db878df7a7d3ec809ff83ef5260aeedcf2d2a148d917ff9c2e92af",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/app/founder/child-companies/page.tsx",
+      "bytes": 21439,
+      "lines": 548,
+      "sha256": "2320cd3e432492b1614fde360128ac4a10e162c69960b9d522bac298a6dca3d1",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/app/founder/command-center/page.tsx",
+      "bytes": 46463,
+      "lines": 1031,
+      "sha256": "dcd231916872857c11bdf743e61e7b74685fc48160f47b0558d3d6d879403529",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/app/founder/comms/page.tsx",
+      "bytes": 10727,
+      "lines": 291,
+      "sha256": "6dfba0d22ae01ef4dc9210003504147ce4317cef98cf4a42923df5b9a9bae8ff",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/app/founder/compliance/page.tsx",
+      "bytes": 15766,
+      "lines": 443,
+      "sha256": "0fb8c555a20ed9f88f513d8b51573950e09c83c01e2a3524c7c6e531921d27cb",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/app/founder/config/page.tsx",
+      "bytes": 24522,
+      "lines": 629,
+      "sha256": "8053da7d10852caa108f32fc21c17c5a2309f44a680792698e3fcc2a233d4fe7",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/app/founder/dashboard/page.tsx",
+      "bytes": 10546,
+      "lines": 307,
+      "sha256": "e54b0f7b0489f4a831d493bc9a9968a834823c73d53d4e38b30edee909e959e8",
+      "readingStatus": "CURRENT_AFFECTED_SOURCE_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/app/founder/deadlines/page.tsx",
+      "bytes": 12055,
+      "lines": 268,
+      "sha256": "06aed845035bf9c21d9e9fb05c6b395422d80c7a51d2803fe3cdb3d587eb173c",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/app/founder/documents/assignment/page.tsx",
+      "bytes": 13325,
+      "lines": 360,
+      "sha256": "21ed9a4ff6d28b09aaac8433d268f1133d182a2a606aff39740a492d5c828be8",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/app/founder/email-hosting/page.tsx",
+      "bytes": 19098,
+      "lines": 529,
+      "sha256": "bdd6d361d77d7a26293b968c0ed5c737d15ffe0dc092954760e80992ef420157",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/app/founder/emails/page.tsx",
+      "bytes": 13810,
+      "lines": 358,
+      "sha256": "1a2ee7ccd8e5d88d6934c2fce05353e4d5dcccde0f9bd11aad8ee4d8a07fee3f",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/app/founder/genealogy/page.tsx",
+      "bytes": 28092,
+      "lines": 709,
+      "sha256": "cbf900f1a6d5e58dcb81642c08cadd5f3234d2d5b2f8da7d2a2ceff71d998162",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/app/founder/hr/page.tsx",
+      "bytes": 37123,
+      "lines": 948,
+      "sha256": "81bfb607a83311f5faab3fc798a3bdade80b8a9c5759f11a756108a9ae21f6cc",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/app/founder/inbox/page.tsx",
+      "bytes": 24572,
+      "lines": 648,
+      "sha256": "5ae1486727bc3e936f7a2e69909d1abe5b1fea4ba75ac88d40d9af2bab055301",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/app/founder/inbox/compose/page.tsx",
+      "bytes": 13675,
+      "lines": 411,
+      "sha256": "6c3d9d81ed37a7c28c80aa95bb0a49bb549ab66264aca44bf71a442c8acbbacd",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/app/founder/ingestion/page.tsx",
+      "bytes": 14503,
+      "lines": 385,
+      "sha256": "1813822f2ef6ed51dad08d79fa5085ec544f5b8cdcbecfb56e58543af933df26",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/app/founder/ingestion/autopilot/page.tsx",
+      "bytes": 11906,
+      "lines": 323,
+      "sha256": "8a4785d90461a4c7e109ea7808a17aca80e3e85d141afa704e61f43867833ba2",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/app/founder/ingestion/sources/page.tsx",
+      "bytes": 14926,
+      "lines": 374,
+      "sha256": "080f8521e1f40c633d83a02e5b31a7aefc7edbcc233b6d16c7220422961f884c",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/app/founder/insights/page.tsx",
+      "bytes": 10811,
+      "lines": 289,
+      "sha256": "7508f63704571639867ba5168e3d15d6309e5b468f6b6744c79fdc14328ea458",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/app/founder/leaderboard/page.tsx",
+      "bytes": 155,
+      "lines": 5,
+      "sha256": "72ad90e649200238adde8d81e22745a2484e73c4834e9c02709f488a7cd7a75f",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/app/founder/ledger/page.tsx",
+      "bytes": 9152,
+      "lines": 256,
+      "sha256": "f9e9f62803e030f8239f38ca6ec05b84662d1c40c962f7e76ae90fd0d0fee5df",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/app/founder/marketplace/page.tsx",
+      "bytes": 16463,
+      "lines": 447,
+      "sha256": "3d9ac76a3610c1e1d939f67d24ec4246b57b93e1d69fcb9b6493ad86fd17d7d9",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/app/founder/nft/page.tsx",
+      "bytes": 11451,
+      "lines": 301,
+      "sha256": "40cc0de0354c1676d1eca698c7afb5299a3255e04cc71ac61365214e5fe5142d",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/app/founder/notary/page.tsx",
+      "bytes": 43503,
+      "lines": 1127,
+      "sha256": "518abf3cf1104cbe5e95ada11706d035763a28b9e2378f188a5abd4ffe7f4680",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/app/founder/office-table/page.tsx",
+      "bytes": 28277,
+      "lines": 720,
+      "sha256": "53cfb7e57b72261c05069249ab920e3aac8a60500874f0e48813ffe133905c8f",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/app/founder/ops/page.tsx",
+      "bytes": 14622,
+      "lines": 415,
+      "sha256": "e232fb56d3030a7e1d3123da0a04282b2785c8178e960175d4d7b0ac3b06b655",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/app/founder/ops/dashboard/page.tsx",
+      "bytes": 832,
+      "lines": 28,
+      "sha256": "2e2958af3795d44029ccb2675ca565a712c48ecaf3a3069d08c99406bcad7dd3",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/app/founder/payments/page.tsx",
+      "bytes": 28579,
+      "lines": 653,
+      "sha256": "def2b2c45e991c4c559d9519ad92be0bd193a9cff3a9646e7ab37c5da90db0cd",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/app/founder/payouts/page.tsx",
+      "bytes": 51373,
+      "lines": 1228,
+      "sha256": "13ef225335e892c09268f763dfc6772c0e375dc4990fc42ee1593a2200b6a2d3",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/app/founder/phone-bot/page.tsx",
+      "bytes": 13451,
+      "lines": 341,
+      "sha256": "11317c43f3e217efff16c2249bf41c6ab491edcf981639b444c1b2ab9f65db57",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/app/founder/pipeline/page.tsx",
+      "bytes": 236,
+      "lines": 12,
+      "sha256": "8b4484ac4f5a36f5d9f4c23b0799b611837284e9d6c42d31a31aa4ce47cd37ac",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/app/founder/retention/page.tsx",
+      "bytes": 21908,
+      "lines": 586,
+      "sha256": "c893844cf61f7a5932f53de24264a2925006007e1d9a9f8702bb81c06138098d",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/app/founder/skip-trace/page.tsx",
+      "bytes": 6845,
+      "lines": 87,
+      "sha256": "2f412b1e00ef77794f096d59fadd1530d6009968c0cef963a9e7287a35162946",
+      "readingStatus": "CURRENT_AFFECTED_SOURCE_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/app/founder/training/page.tsx",
+      "bytes": 8718,
+      "lines": 245,
+      "sha256": "7b4b06bf187baa148bbd125be2882c11bc85866315cb17197c3e7bcbae0a5455",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/app/founder/trusts/page.tsx",
+      "bytes": 27092,
+      "lines": 682,
+      "sha256": "eaaafd4ecff8b5386a1cd2a1a0c22ea422081560f943add62f5317766bc729ac",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/app/founder/users/page.tsx",
+      "bytes": 8288,
+      "lines": 246,
+      "sha256": "842062c913a21fd3bba6fea380947064d0c76ea15a27a9b072021a3ccede7426",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/app/founder/vr-simulation/page.tsx",
+      "bytes": 8550,
+      "lines": 217,
+      "sha256": "0d3213284306bf327c2ebd4542c5aba3d4f7e60260548c05c62273733a9b30d6",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/app/founder/worker-bots/page.tsx",
+      "bytes": 74087,
+      "lines": 1542,
+      "sha256": "847e42a8ab0ddcc315b9e6676ee51c7b886e4e050be6b1fa7a4a1c8298feb9d9",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/app/privacy/page.tsx",
+      "bytes": 6346,
+      "lines": 140,
+      "sha256": "8cb5e5532bb97253a22bd3b1c30d348a3ec0fa4749b8e3bd7b7c572c619f87e6",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/app/settings/page.tsx",
+      "bytes": 12565,
+      "lines": 310,
+      "sha256": "114cc412125e7996b00d3fcbf972c983d19b51e7feffad23f8b7ff77a51129d1",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/app/sign-portal/page.tsx",
+      "bytes": 23230,
+      "lines": 572,
+      "sha256": "dd3ddb69a6a1b425ddb0dc0319263e13a06938b86bc0c340d39442fed82522ff",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/app/terms/page.tsx",
+      "bytes": 5088,
+      "lines": 118,
+      "sha256": "cb9ebaf20d2f5e6f0658e2e4ceadb251cc2d14debcf9c966ef70dc6166718257",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/components/AdvancedLawyerBotV2.tsx",
+      "bytes": 17262,
+      "lines": 513,
+      "sha256": "3a5966c0fdc5a6d3efe3e704ddd42cc51d6ec871e8af09447f4868adf6e3f180",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/components/AiAgentButton.tsx",
+      "bytes": 12074,
+      "lines": 406,
+      "sha256": "e625e66a4f4aae72b41f2b037be513c925183eb1a0415b6dfb7cf6da9b1be6d1",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/components/AiRecommendationsCard.tsx",
+      "bytes": 7049,
+      "lines": 225,
+      "sha256": "ec79d265b4d91fc126a9881a9cd5609fbd47e4aa3de540e6321142897dfdbe75",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/components/AiSearchBar.tsx",
+      "bytes": 8446,
+      "lines": 257,
+      "sha256": "fd47afd175b610e664c1f565ad731bbb0669e958282aca2b89e7a214e8c9c753",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/components/BotAvatar3D.tsx",
+      "bytes": 5084,
+      "lines": 174,
+      "sha256": "192dbc12803d0c76be512bd1f3ecaa925f7a21ac26c24e1a1e6ac1044efe8c81",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/components/Calendar.tsx",
+      "bytes": 10346,
+      "lines": 298,
+      "sha256": "b51a251a8d94d7f346f5e0d023245dd74a45519201a867b1406b1bc856fdddca",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/components/CaseEditorRealTime.tsx",
+      "bytes": 7312,
+      "lines": 238,
+      "sha256": "5c8e82791a04f6066db5640bbbe7301cb61eac2ab30f512e7d36611f16c442d0",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/components/CaseTimeline.tsx",
+      "bytes": 5106,
+      "lines": 145,
+      "sha256": "9e46fc54f0b34d14ad42b69823bd6a4c4a2ea779fedd9704d1cf94c30dc4cfdf",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/components/CustomizableDashboard.tsx",
+      "bytes": 16251,
+      "lines": 543,
+      "sha256": "353a9636441947f1e92181776f081d9c3f555cd0b9fd772be8718ae79b204502",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/components/DashboardLayout.tsx",
+      "bytes": 2550,
+      "lines": 88,
+      "sha256": "72194fe3a97fa72c16b646d5c0a24bfa97c884ed1e13babf096681d703778850",
+      "readingStatus": "CURRENT_AFFECTED_SOURCE_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/components/DocumentUploader.tsx",
+      "bytes": 6531,
+      "lines": 202,
+      "sha256": "0c8ef11c89b3c5ad1b36f2187832a5694e660bbfdeb50bec90b84117536392e9",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/components/DocumentViewer.tsx",
+      "bytes": 4621,
+      "lines": 151,
+      "sha256": "45dcd72ca7da17969cad0927cd50173fe5d46143dbb07a108e632f1d27b83d28",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/components/EmailComposer.tsx",
+      "bytes": 15162,
+      "lines": 480,
+      "sha256": "7613f805728b31848d9d200ecd7de7c9db18ca657006faf4bb907eaca3503f63",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/components/ErrorBoundary.tsx",
+      "bytes": 3534,
+      "lines": 111,
+      "sha256": "7162c90610bbf8b9c5a15a824070bcc2b6cc68d83e7412f5ae135818f3a3af9e",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/components/ESignaturePad.tsx",
+      "bytes": 6025,
+      "lines": 204,
+      "sha256": "227eeb24119a2d2bac99f19528673364a74b726b42c50c370cc3660a1912857a",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/components/FeedbackButton.tsx",
+      "bytes": 9794,
+      "lines": 291,
+      "sha256": "9c413c7ebafab847398baa47b289ddcdf38796ef49041dcd1a2b8f1731428b99",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/components/GamifiedClientProgress.tsx",
+      "bytes": 9376,
+      "lines": 231,
+      "sha256": "965287e39d2351645d3d6e330cd9bf918cdc25855039f2bc8ff5e1b62917c7ea",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/components/GlobalSearch.tsx",
+      "bytes": 9434,
+      "lines": 267,
+      "sha256": "eecd7fbbcb4a0c31f498f5919ff8e654ca353462c50c066914d4e9ed31dc6704",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/components/GlobalSearchBar.tsx",
+      "bytes": 15024,
+      "lines": 408,
+      "sha256": "59033f34edb376db7b948f2992e8c1be74d83ec34e56ec0e7ffc43f17bc4208d",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/components/LanguageSwitcher.tsx",
+      "bytes": 1700,
+      "lines": 59,
+      "sha256": "9eae9e8ba9f6490af3ec5927f938345dcdcfae250ac2b13d8aa7c64fce5d6ff1",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/components/LeadPipelineKanban.tsx",
+      "bytes": 32064,
+      "lines": 1000,
+      "sha256": "d1b41acffbc2cc8ece81d988fbf381ddcd463479a1a1d7e61952a51e3182f0b2",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/components/LegalAuditorUI.tsx",
+      "bytes": 11751,
+      "lines": 310,
+      "sha256": "9f860e15b1d6722339faf7c289d8175aa7abd2dfac2efbdad691990b72733ae0",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/components/LitigationSimulator.tsx",
+      "bytes": 25345,
+      "lines": 675,
+      "sha256": "0619705368478b40d17cfba808012dd29c851641f4a5a0980bbbfd5a4e859d62",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/components/MGRLogo.tsx",
+      "bytes": 5657,
+      "lines": 188,
+      "sha256": "f3257ce7a869991b609eb875a2b1ba68b0998820f4a79f4df65f7b0d782e3c1d",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/components/Navbar.tsx",
+      "bytes": 3955,
+      "lines": 117,
+      "sha256": "175444fa2bc5f6829ddd90cc6ba2f2f3e177ceb76963eb4a89ac590aceedee44",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/components/NotificationBadge.tsx",
+      "bytes": 5645,
+      "lines": 147,
+      "sha256": "dba97f04e8e18eddc24edfd177df6ec23a811080e1d74f3720982a9a2a983cac",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/components/NotificationBell.tsx",
+      "bytes": 11110,
+      "lines": 322,
+      "sha256": "4e71f7c8904fba31d58e35748a562b49d893447f8de5a6b6a97a6d12a72825a0",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/components/OfflineHandler.tsx",
+      "bytes": 1425,
+      "lines": 54,
+      "sha256": "d06f825f0f9e2cad6d5700045830749755ff10dfba9dee8ecac6804a78aaf801",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/components/OnboardingTour.tsx",
+      "bytes": 8024,
+      "lines": 268,
+      "sha256": "6926bd67f83c26b81ffb90ac6bca892a1a1299233a0cafec9a81754e076c3c88",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/components/PayoutButton.tsx",
+      "bytes": 8037,
+      "lines": 246,
+      "sha256": "3ce49b382970f4bdc7a69a072a769a252acb1a88fdbd60a79a8656d0b12f8b1b",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/components/RealTimeCaseEditorV2.tsx",
+      "bytes": 19844,
+      "lines": 537,
+      "sha256": "32b520837b6f41bc5606361ff5b506636743345a916b0e8f4d53314f18152068",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/components/SendPortalLink.tsx",
+      "bytes": 11606,
+      "lines": 327,
+      "sha256": "c65c5e3ec5e89ff7947f5c699978349aae6dba412a1a5c60f46ef41b4a4f8c5f",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/components/Sidebar.tsx",
+      "bytes": 8837,
+      "lines": 228,
+      "sha256": "52eb75c71de950f01532c2fd4f9f62b99ffb20134b86f75f34c56e625f5215b1",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/components/SurplusForecaster.tsx",
+      "bytes": 10070,
+      "lines": 267,
+      "sha256": "fba05f1b8c537bcbe20197b9e4394dd2f6cfb5e76ed4c452b0dc4aa902f2a451",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/components/ThemeProvider.tsx",
+      "bytes": 350,
+      "lines": 10,
+      "sha256": "e86c5ef8e701a8fd54a34cc626b3b43e9109e1bdea07321ab5d7cceaa249497d",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/components/ThemeToggle.tsx",
+      "bytes": 1728,
+      "lines": 63,
+      "sha256": "d5ce61b1e543f16667845ff0053974b22e019d83ae6f783644b98f89ae9ffbdc",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/components/VoiceAiButton.tsx",
+      "bytes": 14437,
+      "lines": 398,
+      "sha256": "4cceb70f0a66998d12f9109398f037f8f80f225b610d13b808c6db55c131ef2f",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/components/VoiceBiometrics.tsx",
+      "bytes": 16590,
+      "lines": 466,
+      "sha256": "a581679d565ce215ea8305ffbed94ae6754da5186ff1d11e2694d4c7b82ff109",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/components/VoiceCaseCreator.tsx",
+      "bytes": 14886,
+      "lines": 467,
+      "sha256": "65f6f0d920a29e67b80bf32b0fb9863177b4d8ade0586e62ce154895b53cfa72",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/components/VoiceToDocumentV2.tsx",
+      "bytes": 25304,
+      "lines": 735,
+      "sha256": "39ce8f33ef45a8e3fd643dbc244703745d8e48f8521de146a97ab933b47100b9",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/components/VRClaimSimulation.tsx",
+      "bytes": 11011,
+      "lines": 314,
+      "sha256": "20de91066a427af47bad882aa96a67c82a394791d98f291ea5a94fa108078377",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/components/WorkflowEditor.tsx",
+      "bytes": 7509,
+      "lines": 269,
+      "sha256": "b12bd573b03e1176208abcc47fb4044ad50487619061335034360272bd83d49a",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/components/ui/alert.tsx",
+      "bytes": 1876,
+      "lines": 63,
+      "sha256": "a84f8d83d71b9688cf5c59459b1a3f7d474469dc73629d073ae850320a241c5e",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/components/ui/avatar.tsx",
+      "bytes": 1500,
+      "lines": 50,
+      "sha256": "30f7e3b16fb48ddd660708341f950273601432ca660cf9f90c17f65f4b07eba9",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/components/ui/badge.tsx",
+      "bytes": 1447,
+      "lines": 42,
+      "sha256": "fa83ca2d3733dad86d1daf0387c6e895111e1573e19d2ef2312a4e2ccdd40145",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/components/ui/button.tsx",
+      "bytes": 1900,
+      "lines": 56,
+      "sha256": "e3f77faa63e382f9c2243613635c96ed4bf98f1d02eb5cb67261a3c383959ffa",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/components/ui/card.tsx",
+      "bytes": 1969,
+      "lines": 79,
+      "sha256": "58caec826aa03e24da84034280adaafda6eb051efdad5345d0c5fb41526e978f",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/components/ui/charts.tsx",
+      "bytes": 7118,
+      "lines": 266,
+      "sha256": "a3e151e1d0bf328e427824f2bb4427798fe1d2fcd41ce5e617588711cf6f5186",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/components/ui/checkbox.tsx",
+      "bytes": 1106,
+      "lines": 30,
+      "sha256": "9c6d89e63e81bde807e91ba2eaa96dae7ce875a2aee445620193f46b245876e9",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/components/ui/confetti.tsx",
+      "bytes": 3066,
+      "lines": 112,
+      "sha256": "06d1bf135ddbf9cecf65140a869070a5bc3a453f3ead7983be738965c9e5d141",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/components/ui/dialog.tsx",
+      "bytes": 3990,
+      "lines": 122,
+      "sha256": "34f59c097b4df12a7398b4016d8c0380f190dac2306fd49d559cf1dd6849059d",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/components/ui/document-uploader.tsx",
+      "bytes": 5829,
+      "lines": 183,
+      "sha256": "9c2fe348e4e9241049e7186e9bc16239336daaf8c8a2b05228825caae6fc0ea0",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/components/ui/dropdown-menu.tsx",
+      "bytes": 7531,
+      "lines": 195,
+      "sha256": "f4bb691bb0eccea5c8b95bcfcb32af9d0bb7c1c8010b1cbc9e3d182392e690c9",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/components/ui/empty-state.tsx",
+      "bytes": 1377,
+      "lines": 54,
+      "sha256": "555ac6084d83d190bd5b4078db075923c4c580654085f772dea1d4e81a988ee5",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/components/ui/input.tsx",
+      "bytes": 853,
+      "lines": 25,
+      "sha256": "2be27f971fed6e8b5ab366dd48607699dd2396f59b3e3b2a0568eea88751d527",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/components/ui/label.tsx",
+      "bytes": 757,
+      "lines": 26,
+      "sha256": "0d51b34c3a175dd47c1286d231d088f88c73bc8a12d4252dd80930750a2150ea",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/components/ui/popover.tsx",
+      "bytes": 1349,
+      "lines": 34,
+      "sha256": "7ba74724221d0333d03410dbc7d8dfc3164483769c65a9698d25ff48ad3ae317",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/components/ui/progress.tsx",
+      "bytes": 1084,
+      "lines": 42,
+      "sha256": "117386b4af6e36935d46af57f0a2187407b868b592d90174287c63e5eb8eeeb7",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/components/ui/scroll-area.tsx",
+      "bytes": 1713,
+      "lines": 49,
+      "sha256": "2e2546ec61931d039f11aa900d868ba1ac74bec0023023592813431329e4a1ce",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/components/ui/select.tsx",
+      "bytes": 5804,
+      "lines": 157,
+      "sha256": "1c0a70bf4de34357cc0bb6df9d44d40000103f899c71c67d32e628c1c6945384",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/components/ui/separator.tsx",
+      "bytes": 806,
+      "lines": 31,
+      "sha256": "f4ab6ef96529efd0315d7f92afdf6b554a1157f9e6ae3d5abefad251b72e67ba",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/components/ui/skeleton.tsx",
+      "bytes": 1377,
+      "lines": 53,
+      "sha256": "7d39113a6abc2ff9b09579db74c1f63115c3c81f716d342417b5495beb78d55f",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/components/ui/switch.tsx",
+      "bytes": 1189,
+      "lines": 30,
+      "sha256": "8bc16c19eb13601722bb2fe343dca02deb13d2020396465e0b081b92746c0819",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/components/ui/table.tsx",
+      "bytes": 2899,
+      "lines": 117,
+      "sha256": "0e04bc3a36d1b6a5e666aab23628335d05dbfa9d3058da8019267966ab03ac2c",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/components/ui/tabs.tsx",
+      "bytes": 1962,
+      "lines": 55,
+      "sha256": "9493030349fe2243a160e233893302aa1e7b632c40f8db333671cb78dc55b7e9",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/components/ui/textarea.tsx",
+      "bytes": 800,
+      "lines": 24,
+      "sha256": "911d5b24f713f981b47c67409093ef1f92becadef140437e00af67e3ea3d9867",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/components/ui/tooltip.tsx",
+      "bytes": 1197,
+      "lines": 30,
+      "sha256": "81768df87852697dc29018ab6390db6eea1a73e441116192c736c0d9b4f5da3c",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/cypress/e2e/ai-features.cy.ts",
+      "bytes": 7365,
+      "lines": 215,
+      "sha256": "458d2c8f4fa7b86bc80f37216c2b940661ecd93dd4bb09847a6404f0ead4d47a",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/cypress/e2e/blockchain.cy.ts",
+      "bytes": 6095,
+      "lines": 181,
+      "sha256": "ac26a06eba66ffa0985975f6fce5e1cff7bb73f38c7e49b9e559684aad9eb71b",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/cypress/e2e/client-portal.cy.ts",
+      "bytes": 5318,
+      "lines": 158,
+      "sha256": "d2708140352c4b69008ac26696f2574556a709997e153d0cc9365a6368281aea",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/cypress/e2e/full-flow.cy.ts",
+      "bytes": 1679,
+      "lines": 54,
+      "sha256": "2bc134d151eda86c6fdf9755479c37fc82772c6bbedbf43e1b3fd55e2b741e62",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/cypress/e2e/payment-flow.cy.ts",
+      "bytes": 3209,
+      "lines": 98,
+      "sha256": "a8fd1502c21724f64f6a4fd00f43f0fbf085005733df4f151d0d2aad03eec946",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/hooks/useAuth.tsx",
+      "bytes": 5650,
+      "lines": 193,
+      "sha256": "c4ac161e9ff6a4f994405fe0f3f6119dd28c7ba0b3f621cf0ef4b2ae4fd0e9db",
+      "readingStatus": "CURRENT_AFFECTED_SOURCE_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/hooks/useDebounce.ts",
+      "bytes": 434,
+      "lines": 20,
+      "sha256": "a1c17c6a626a5a6a6ddb947e53f2870f03fdeb4c29a97dd8fe828eb7684595f6",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/hooks/useNotifications.ts",
+      "bytes": 3037,
+      "lines": 112,
+      "sha256": "c1f06269fd5c92de38171f0f8a4c068de04fe27d1bae11d0bd1ff93445d1a50f",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/hooks/useServiceWorker.ts",
+      "bytes": 6075,
+      "lines": 196,
+      "sha256": "333255dc0f037322f42387d5b5870b0a5dd508ecf4de38026c7302ba7555bffb",
+      "readingStatus": "PARTIAL_SEE_SCOPE",
+      "scope": "registration and initial methods; offline queue remainder unread"
+    },
+    {
+      "path": "frontend/lang/en.json",
+      "bytes": 6708,
+      "lines": 235,
+      "sha256": "6f0c3ddfd2650fbb8bdfae7f7131c85e5cf4d50e0289469542da66e2f0fc00f6",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/lang/es.json",
+      "bytes": 7301,
+      "lines": 235,
+      "sha256": "c4dca8ad8480d5dd3a908c4b339fc148ef04eddd8257acc4170189a4845ea070",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/lib/api.ts",
+      "bytes": 4064,
+      "lines": 136,
+      "sha256": "484549b09c9654da808ab019a3e92f62517b688b33db5a4f062531abb3da150c",
+      "readingStatus": "CURRENT_AFFECTED_SOURCE_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/lib/utils.ts",
+      "bytes": 2162,
+      "lines": 73,
+      "sha256": "7b3e6d3e93d205d03226521f8ac073158bb39a5e4ef775a47d90d1101f12dfa4",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/public/manifest.json",
+      "bytes": 711,
+      "lines": 27,
+      "sha256": "27bf8047a1f35087b934fb3a02d09cdca702bd511d491811e6f6d5c76a28e709",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/public/service-worker.js",
+      "bytes": 4870,
+      "lines": 186,
+      "sha256": "c5938909346689bc6539c95e55e8117ef674b2a229830a42209cccdeca27e7b9",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/public/sw.js",
+      "bytes": 7903,
+      "lines": 291,
+      "sha256": "659d52aa7778b1e1d94e5338c5323481111c7daa68e10f677e3f4a1ebd8f4acf",
+      "readingStatus": "CURRENT_AFFECTED_SOURCE_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/src/i18n.ts",
+      "bytes": 1852,
+      "lines": 71,
+      "sha256": "8dfecf16e4f9121da1dbf5899c2aac248b03f7fa1d7351ed53adf4c62317026a",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "frontend/types/index.ts",
+      "bytes": 2349,
+      "lines": 121,
+      "sha256": "e98d77952f260bcabd8dae4baa335ed74860dcdd8b9781f8573e674e781636ee",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "MGR-Beast-Pack/MGR-BEAST-PACK.md",
+      "bytes": 47378,
+      "lines": 2122,
+      "sha256": "5bce398eadd22d12ab164035fa0c94a29f484e03293573402a2fead9d80ffe6b",
+      "readingStatus": "PARTIAL_SEE_SCOPE",
+      "scope": "unchanged hash checked; full handbook contract read from activated equivalent skill"
+    },
+    {
+      "path": "MGR-Beast-Pack/templates/ARCHITECTURE-COMPLETENESS-CHECKLIST.md",
+      "bytes": 848,
+      "lines": 25,
+      "sha256": "6cdd67e931f5e6f7ca311d029fab29b2383d5ca183e138d8d4e04a446afdb7ab",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "MGR-Beast-Pack/templates/AUDIT-LEDGER-TEMPLATE.md",
+      "bytes": 460,
+      "lines": 40,
+      "sha256": "25ed5e9bb1720cf5dd5a8d18ef294d4b7520a37ccda851335e9750198c373437",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "MGR-Beast-Pack/templates/BUILD-QUEUE-TEMPLATE.md",
+      "bytes": 262,
+      "lines": 5,
+      "sha256": "8cbff575d1a05dd3767dc1ec892cbffe3a4377ab9d77e98df9eec85d47ecc27c",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "MGR-Beast-Pack/templates/CAPABILITY-MAP-TEMPLATE.md",
+      "bytes": 276,
+      "lines": 24,
+      "sha256": "95d6b14e65a4a5b45967e51206dfb26c8367d3cbf280704a622a894d5da17f94",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "MGR-Beast-Pack/templates/DEFECT-LEDGER-TEMPLATE.md",
+      "bytes": 203,
+      "lines": 5,
+      "sha256": "a0f5e6fa665e91bfdc3ba084ef2fc9283480881434b71c08182f6d928b82ea03",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "MGR-Beast-Pack/templates/RESEARCH-PACKET-TEMPLATE.md",
+      "bytes": 671,
+      "lines": 48,
+      "sha256": "39b5a4e2302d761bc90730d609af863ebf4de80b7ea761a454876accfb8ae3c1",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "MGR-Beast-Pack/templates/RESEARCH-QUEUE-TEMPLATE.md",
+      "bytes": 215,
+      "lines": 5,
+      "sha256": "48ee27076fff01df19d7581fb4980cdb90339f0261410bbdce7deab2904d4490",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "MGR-Beast-Pack/templates/SCORECARD-TEMPLATE.md",
+      "bytes": 559,
+      "lines": 29,
+      "sha256": "d2b05b55e0eecc29b308123437e9d6a993fb1418163da45f2fa5342658e4cc70",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "mobile-app/App.tsx",
+      "bytes": 6521,
+      "lines": 229,
+      "sha256": "6b4c0efa8eefb7931035a5b2a954fb65389f0bfb0347a62e939bb460bb80318e",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "mobile-app/package.json",
+      "bytes": 1018,
+      "lines": 36,
+      "sha256": "b7a7ccac33877f84d5ffc751684a543b25bbe48d5db8d7f2773f81687c9246ff",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "mobile-app/contexts/AuthContext.tsx",
+      "bytes": 4439,
+      "lines": 158,
+      "sha256": "d2d725b93984d7a1d1dde966a55610dd8374f90f1aafeaf532de001ac39f2777",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "mobile-app/lib/api.ts",
+      "bytes": 906,
+      "lines": 44,
+      "sha256": "4ebe595c74daf5ebef5fed213c509bdc1db918b6563e0597a071b760160df45f",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "mobile-app/screens/CaseDetailScreen.tsx",
+      "bytes": 22061,
+      "lines": 773,
+      "sha256": "6ad8d68c551026d0216d4028360aca3264f99841974f2315a2037a748f9022b5",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "mobile-app/screens/CasesScreen.tsx",
+      "bytes": 10784,
+      "lines": 404,
+      "sha256": "91754b27f162260ddcaa77a8e85d08f9fff690561171cd9925ccbf8cc46d64f2",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "mobile-app/screens/DashboardScreen.tsx",
+      "bytes": 14855,
+      "lines": 522,
+      "sha256": "6f5eb0d968676d9e4ba725e7563dee4c66f6700970ae2516a986f56cbd477dcf",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "mobile-app/screens/DocumentsScreen.tsx",
+      "bytes": 13874,
+      "lines": 506,
+      "sha256": "18a0c0e78b1655fc43fa16e7751712c7569e39d468e70203d83b772af5c832ed",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "mobile-app/screens/LoginScreen.tsx",
+      "bytes": 9194,
+      "lines": 354,
+      "sha256": "815788cab49514e16c59d84cd8e088c609224de86cdd462346002d8961934752",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "mobile-app/screens/ProfileScreen.tsx",
+      "bytes": 12944,
+      "lines": 432,
+      "sha256": "37b44f895b4ddd51991cddb0975abf4de6724ca368d5b7bccc9e7d8ea8b04f52",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "scripts/init-db.sql",
+      "bytes": 1336,
+      "lines": 33,
+      "sha256": "c867fa402a7106715ddbdd1888e29a12ba70215fb33b49381f7b32795cb66913",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    },
+    {
+      "path": "tests/loadTest.js",
+      "bytes": 9750,
+      "lines": 331,
+      "sha256": "961b6fe030a109c9a7c2bdbf01755dfc0b32cb30244a9ee5da223298615d30b3",
+      "readingStatus": "INVENTORIED_NOT_SEMANTICALLY_READ",
+      "scope": null
+    }
+  ]
+}

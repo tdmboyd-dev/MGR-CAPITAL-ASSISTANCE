@@ -1,0 +1,18 @@
+{
+  "scope": "Actual government query through MGR connector using a synthetic nonexistent parcel; no real owner records read or imported",
+  "passed": 1,
+  "checks": [
+    "Real official API accepted the bounded query and returned zero candidates without fabricated data"
+  ],
+  "result": {
+    "engine": "MGR_DIRECT_GOVERNMENT_PARCEL_RESEARCH",
+    "sourceUrl": "https://services9.arcgis.com/Gh9awoU677aKree0/arcgis/rest/services/Florida_Statewide_Cadastral/FeatureServer/0/query?f=json&where=CO_NO%3D11+AND+PARCEL_ID%3D%27MGR-SYNTHETIC-NO-MATCH-f754b48e-903b-4bf3-bbbc-ea47115bae76%27&outFields=OBJECTID%2CCO_NO%2CPARCEL_ID%2CASMNT_YR%2COWN_NAME%2COWN_ADDR1%2COWN_ADDR2%2COWN_CITY%2COWN_STATE%2COWN_ZIPCD%2CPHY_ADDR1%2CPHY_CITY%2CPHY_ZIPCD&returnGeometry=false&resultRecordCount=5",
+    "retrievedAt": "2026-10-29T08:34:48.170Z",
+    "sha256": "1fc423ae159c0a6192968e2e21dcdcc14f433100443c8a90144534292b03c808",
+    "candidates": [],
+    "truncated": false,
+    "identityVerified": false,
+    "recordsSaved": 0,
+    "limitation": "Public assessment data may be stale and is not proof of current title, surplus entitlement, identity or contact consent."
+  }
+}

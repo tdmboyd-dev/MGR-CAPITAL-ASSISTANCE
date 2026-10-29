@@ -1,3 +1,5 @@
+> Current status — October 29, 2026: this dated document contains historical claims and unverified service/pricing/setup assumptions. It is not current proof of completion. Read docs/full-build/CAPITAL-SYSTEM-REVIEW-2026-10-29.md and DATA-OWNERSHIP-RESEARCH-2026-10-29.md before using it. Whole-product completion remains unassessed.
+
 # API REQUIREMENTS — MGR CAPITAL ASSISTANCE
 
 ## Plain English Guide: What Needs API Keys and What Doesn't

@@ -1,0 +1,19 @@
+{
+  "date": "2026-10-29",
+  "limitedBrowserApi": {
+    "port": 17971,
+    "ownedPid": 32504,
+    "stopped": true
+  },
+  "frontend": {
+    "port": 17972,
+    "ownedPid": 44504,
+    "stopped": true
+  },
+  "syntheticBrowserAccount": "disabled after successful browser checks",
+  "browserTab": "agent-created test tab closed",
+  "database": "Owned capital_auth_lab retained with synthetic test evidence; no customer database modified",
+  "paidExternalEffects": 0,
+  "productionChanges": false,
+  "privateRuntime": "Outside Git and exports; existing owner-only runtime file preserved"
+}

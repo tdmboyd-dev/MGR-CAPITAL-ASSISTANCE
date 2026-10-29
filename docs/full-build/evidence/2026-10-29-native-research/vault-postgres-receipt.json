@@ -1,0 +1,32 @@
+{
+  "scope": "Actual generated Prisma/PostgreSQL, Express document router, real JWTs and actual Windows filesystem; synthetic cases/files only. No remote provider/signature/filing/payment/production proof.",
+  "checks": [
+    "Actual document router rejects anonymous access",
+    "Unassigned staff, foreign client and another company cannot upload or create metadata",
+    "HR, read-only compliance and team-lead identity-document restrictions enforced",
+    "Real multipart upload writes confined filesystem bytes and durable hash/operation metadata",
+    "Assigned staff, owner client, own-company admin, compliance and global founder download actual original bytes",
+    "Download matrix denies unrelated users, another tenant and lead access to identity originals",
+    "Client lists filter internal document types and omit storage paths and internal financial fields",
+    "Per-case list and view endpoints cannot bypass case ownership",
+    "Unrelated users cannot sign; even the owner cannot fabricate signature completion from a URL",
+    "Manual review remains own-company admin authority while deletion stays founder-only",
+    "Registered byte corruption is rejected; no unregistered fallback masks a failed hash",
+    "Legacy traversal record cannot read outside the confined adapter root",
+    "Actual audit failure blocks byte release and leaves uploaded target identifiable for reconciliation",
+    "Explicit authorized reconciliation verifies saved bytes and finishes a previously uncertain upload",
+    "Actual filesystem hard-link refusal preserves failed replica and primary registry plus document for retry",
+    "Explicit retry deletes actual replica and primary bytes, reconciles registries and preserves deletion audit",
+    "Case reassignment immediately revokes the previous employee document access",
+    "Domain and HTTP checks revalidate tenant and disabled-account authority",
+    "Assigned team lead retains permitted internal document access while case detail hides identity documents",
+    "Actual client case list excludes internal financial fields and internal document types",
+    "Actual client case detail cannot expose storage paths, credentials or founder fields",
+    "Actual case read and update reject another company administrator",
+    "Case search retains the authorized tenant and assignment filter",
+    "Case patch rejects nested ownership and tenant injection",
+    "Global financial statistics require global founder authority",
+    "Expired existing portal policy is enforced on public token readback"
+  ],
+  "passed": 26
+}

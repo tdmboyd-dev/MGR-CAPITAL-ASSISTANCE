@@ -30,15 +30,16 @@ import {
 } from "lucide-react";
 
 export default function FounderDashboard() {
-  const { data: stats, isLoading } = useQuery({
+  const { data: stats, isLoading, isError: metricsError } = useQuery({
     queryKey: ["dashboard-stats"],
     queryFn: async () => {
       const { data } = await api.get("/ops/metrics");
+      if(!data?.summary || typeof data.summary.totalCases!=="number")throw new Error("Metrics contract unavailable");
       return data;
     },
   });
 
-  const { data: insights } = useQuery({
+  const { data: insights, isError: insightsError } = useQuery({
     queryKey: ["insights-unread"],
     queryFn: async () => {
       const { data } = await api.get("/ops/insights?isRead=false&limit=5");
@@ -79,37 +80,37 @@ export default function FounderDashboard() {
   const statCards = [
     {
       title: "Total Cases",
-      value: stats?.totalCases || 0,
+      value: stats?.summary?.totalCases ?? "Unavailable",
       icon: FileText,
       color: "text-blue-500",
     },
     {
       title: "Active Cases",
-      value: stats?.activeCases || 0,
+      value: stats?.summary?.activeCases ?? "Unavailable",
       icon: TrendingUp,
       color: "text-green-500",
     },
     {
-      title: "Total Recovered",
-      value: formatCurrency(stats?.totalRecoveredCents || 0),
+      title: "Recorded Client Payouts",
+      value: typeof stats?.summary?.totalPayoutsCents === "number" ? formatCurrency(stats.summary.totalPayoutsCents) : "Unavailable",
       icon: DollarSign,
       color: "text-emerald-500",
     },
     {
       title: "Pending Payouts",
-      value: formatCurrency(stats?.pendingPayoutsCents || 0),
+      value: "Unavailable",
       icon: DollarSign,
       color: "text-yellow-500",
     },
     {
-      title: "Active Employees",
-      value: stats?.activeEmployees || 0,
+      title: "Employees",
+      value: stats?.summary?.employeeCount ?? "Unavailable",
       icon: Users,
       color: "text-purple-500",
     },
     {
       title: "Closed Won",
-      value: stats?.closedWon || 0,
+      value: "Unavailable",
       icon: CheckCircle,
       color: "text-green-500",
     },
@@ -124,6 +125,7 @@ export default function FounderDashboard() {
         </p>
       </div>
 
+      {metricsError && <p role="alert" className="rounded border border-red-500 p-3">Metrics are unavailable. Missing data is not a zero balance.</p>}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {statCards.map((stat) => (
           <Card key={stat.title}>
@@ -190,19 +192,7 @@ export default function FounderDashboard() {
             <CardDescription>Monthly recovered funds</CardDescription>
           </CardHeader>
           <CardContent>
-            <LineChartComponent
-              data={[
-                { name: "Jan", value: 45000 },
-                { name: "Feb", value: 52000 },
-                { name: "Mar", value: 48000 },
-                { name: "Apr", value: 61000 },
-                { name: "May", value: 55000 },
-                { name: "Jun", value: 67000 },
-              ]}
-              height={250}
-              color="#22c55e"
-              showArea
-            />
+            <p className="text-muted-foreground py-8">A verified monthly recovery series is not connected.</p>
           </CardContent>
         </Card>
 
@@ -212,17 +202,7 @@ export default function FounderDashboard() {
             <CardDescription>Current case breakdown</CardDescription>
           </CardHeader>
           <CardContent>
-            <DonutChartComponent
-              data={[
-                { name: "New", value: stats?.newCases || 12 },
-                { name: "In Progress", value: stats?.activeCases || 28 },
-                { name: "Awaiting Funds", value: stats?.awaitingFunds || 15 },
-                { name: "Paid", value: stats?.closedWon || 45 },
-              ]}
-              height={250}
-              centerLabel="Total"
-              centerValue={stats?.totalCases || 100}
-            />
+            <p className="text-muted-foreground py-8">The status distribution is not included in the current metrics response.</p>
           </CardContent>
         </Card>
       </div>
@@ -234,17 +214,7 @@ export default function FounderDashboard() {
             <CardDescription>Top performing jurisdictions</CardDescription>
           </CardHeader>
           <CardContent>
-            <BarChartComponent
-              data={[
-                { name: "TN", value: 24 },
-                { name: "GA", value: 18 },
-                { name: "FL", value: 15 },
-                { name: "TX", value: 12 },
-                { name: "NC", value: 9 },
-              ]}
-              height={250}
-              color="#8b5cf6"
-            />
+            <p className="text-muted-foreground py-8">Verified counts by jurisdiction are not connected.</p>
           </CardContent>
         </Card>
 
@@ -286,7 +256,7 @@ export default function FounderDashboard() {
               </div>
             ) : (
               <p className="text-muted-foreground text-center py-4">
-                No unread insights
+                {insightsError ? "Insights are unavailable." : "No unread insights"}
               </p>
             )}
           </CardContent>

@@ -1,3 +1,7 @@
+# Current Capital native-research handoff — October 29, 2026
+
+Read [system review and continuation](docs/full-build/CAPITAL-SYSTEM-REVIEW-2026-10-29.md), [data ownership research](docs/full-build/DATA-OWNERSHIP-RESEARCH-2026-10-29.md) and the persistent scorecard. Native research saves/reopens source evidence without paid tracing. The direct Florida parcel connector and public source discovery have executed evidence. Paid tracing is disabled by default. Full source audit, bulk warehouse, historical-owner/claimant accuracy, complete provider workflows and production remain open. The dated checkpoint below is historical.
+
 # Current Capital-only checkpoint — October 28, 2026
 
 Read [case/document repair](docs/full-build/VAULT-REPAIR-2026-10-28.md) and [scorecard](docs/full-build/SCORECARD.md). Case/document boundaries and upload/delete recovery are implemented and qualified by26 actual API/database/filesystem checks plus3 separate-process reopen checks. Prior13/14/9 scopes were rerun. Full UI/provider/production remains unverified. Next: browser intake journey, atomic case workflow and journaled provider migration; then honest voice behavior and signature integration. No customer or production schema changed. TaxSlayer monitor was deleted at owner direction.

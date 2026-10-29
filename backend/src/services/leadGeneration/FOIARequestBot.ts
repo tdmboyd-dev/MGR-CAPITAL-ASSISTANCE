@@ -52,7 +52,7 @@ Specifically, I am requesting:
 
 I prefer to receive these records in electronic format (Excel, CSV, or PDF) if available.
 
-Please advise if there are any fees associated with this request. I am willing to pay reasonable fees for copying and retrieval.
+Please provide an itemized estimate before any fee-incurring work. Do not incur fees or begin paid processing without separate written authorization.
 
 If you have any questions regarding this request, please contact me at [REPLY_EMAIL].
 
@@ -68,7 +68,7 @@ Phone: [COMPANY_PHONE]`,
 
 I am following up on my public records request submitted on [REQUEST_DATE] regarding tax sale surplus funds held by [COUNTY_NAME] County.
 
-I have not yet received a response to this request. Under [STATE_FOIA_STATUTE], I believe a response is due within [RESPONSE_DEADLINE] days.
+I have not yet received a response to this request. Please let us know the applicable response procedure and expected delivery date.
 
 Could you please provide an update on the status of this request?
 
@@ -103,7 +103,7 @@ FIELDS REQUESTED (if available):
 - Current Status
 
 FEE WAIVER REQUEST:
-If fees apply, please advise of the estimated cost before processing. We are a research organization and request a fee waiver if possible.
+If fees apply, please advise of the estimated cost before processing. Please identify any available fee waiver. Do not incur fees without separate written authorization.
 
 Please send records to: [REPLY_EMAIL]
 

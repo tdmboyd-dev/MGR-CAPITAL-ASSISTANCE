@@ -107,19 +107,9 @@ class AutoOutreachService {
           emailsFound: traceResult.emails?.length || 0,
         });
 
-        // Update client (User) with skip trace results
-        if (client && traceResult.phones?.[0]) {
-          await prisma.user.update({
-            where: { id: client.id },
-            data: { phone: String(traceResult.phones[0].number || traceResult.phones[0]) },
-          });
-        }
-        if (client && traceResult.emails?.[0]) {
-          await prisma.user.update({
-            where: { id: client.id },
-            data: { email: String(traceResult.emails[0].address || traceResult.emails[0]) },
-          });
-        }
+        await prisma.auditLog.create({data:{userId:actingUserId,tenantId:caseData.tenantId,action:"SKIP_TRACE_CANDIDATE_REVIEW_REQUIRED",entityType:"CASE",entityId:caseId,details:{provider:traceResult.provider??"unknown",candidateId:traceResult.id,contactCount:traceResult.phones.length+traceResult.emails.length,identityVerified:false}}});
+        // Candidates never overwrite the client's account email, phone, or consent.
+
       } catch (error: any) {
         actions.push({ type: "skip_trace", success: false, costCents: 0, details: error.message });
       }

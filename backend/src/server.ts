@@ -85,6 +85,7 @@ import paymentsRoutes from "./routes/payments.js";
 
 // Skip Tracing (Tracerfy)
 import skipTraceRoutes from "./routes/skipTrace.js";
+import claimantResearchRoutes from "./routes/claimantResearch.js";
 
 // State Deadlines
 import deadlinesRoutes from "./routes/deadlines.js";
@@ -319,6 +320,7 @@ app.use("/api/payments", paymentsRoutes);
 
 // Skip Tracing (Tracerfy API)
 app.use("/api/skip-trace", skipTraceRoutes);
+app.use("/api/research", claimantResearchRoutes);
 
 // State Deadlines & Compliance
 app.use("/api/deadlines", deadlinesRoutes);

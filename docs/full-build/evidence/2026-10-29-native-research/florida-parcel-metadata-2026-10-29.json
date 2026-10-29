@@ -1,0 +1,12 @@
+{
+  "id": "efa909d6b1c841d298b0a649e7f71cf2",
+  "title": "Florida Statewide Parcels",
+  "url": "https://services9.arcgis.com/Gh9awoU677aKree0/arcgis/rest/services/Florida_Statewide_Cadastral/FeatureServer",
+  "access": "public",
+  "modified": 1790795557000,
+  "size": 29276921856,
+  "type": "Feature Service",
+  "originalMetadataSHA256": "74bfaf5c99521e83efba3c57ba0ef54b6bb934d7e759999e28b4c7d29d0b8a85",
+  "source": "https://www.arcgis.com/sharing/rest/content/items/efa909d6b1c841d298b0a649e7f71cf2?f=json",
+  "publisherNoticeSummary": "Publisher disclaims accuracy/completeness; local appraisers maintain the records. Published notices flag possible exempt records and source-date limitations. Full notices must be reviewed at the source before production acquisition."
+}

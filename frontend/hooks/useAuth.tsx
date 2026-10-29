@@ -14,6 +14,7 @@ export interface User {
 }
 
 interface AuthState {
+  isHydrated: boolean;
   user: User | null;
   accessToken: string | null;
   theme: "light" | "dark";
@@ -45,6 +46,7 @@ const getInitialTheme = (): "light" | "dark" => {
 export const useAuthStore = create<AuthState>()(
   persist(
     (set, get) => ({
+      isHydrated: false,
       user: null,
       accessToken: null,
       theme: "dark",
@@ -129,6 +131,13 @@ const AuthContext = createContext<AuthState | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const store = useAuthStore();
+
+  useEffect(() => {
+    const ready=()=>useAuthStore.setState({isHydrated:true});
+    const unsubscribe=useAuthStore.persist.onFinishHydration(ready);
+    if(useAuthStore.persist.hasHydrated())ready();
+    return unsubscribe;
+  }, []);
 
   // Hydrate theme on mount
   useEffect(() => {

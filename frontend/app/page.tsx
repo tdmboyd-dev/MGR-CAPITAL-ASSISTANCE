@@ -6,9 +6,10 @@ import { useAuth } from "@/hooks/useAuth";
 
 export default function Home() {
   const router = useRouter();
-  const { user, accessToken } = useAuth();
+  const { user, accessToken, isHydrated } = useAuth();
 
   useEffect(() => {
+    if(!isHydrated)return;
     if (!accessToken) {
       router.replace("/auth/login");
       return;
@@ -33,7 +34,7 @@ export default function Home() {
           router.replace("/auth/login");
       }
     }
-  }, [user, accessToken, router]);
+  }, [user, accessToken, isHydrated, router]);
 
   return (
     <div className="flex h-screen items-center justify-center">

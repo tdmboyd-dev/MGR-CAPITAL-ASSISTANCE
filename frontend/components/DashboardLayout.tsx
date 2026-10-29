@@ -15,10 +15,11 @@ interface DashboardLayoutProps {
 
 export function DashboardLayout({ children, allowedRoles }: DashboardLayoutProps) {
   const router = useRouter();
-  const { user, accessToken } = useAuth();
+  const { user, accessToken, isHydrated } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
+    if(!isHydrated)return;
     if (!accessToken) {
       router.replace("/auth/login");
       return;
@@ -42,14 +43,14 @@ export function DashboardLayout({ children, allowedRoles }: DashboardLayoutProps
           router.replace("/auth/login");
       }
     }
-  }, [user, accessToken, router, allowedRoles]);
+  }, [user, accessToken, isHydrated, router, allowedRoles]);
 
   // Close sidebar on route change (mobile)
   useEffect(() => {
     setSidebarOpen(false);
   }, []);
 
-  if (!accessToken || !user) {
+  if (!isHydrated || !accessToken || !user) {
     return (
       <div className="flex h-screen items-center justify-center bg-background">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>

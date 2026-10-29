@@ -29,7 +29,7 @@ export class VoiceService {
   constructor() {
     this.ollamaUrl = process.env.OLLAMA_URL || "http://localhost:11434";
     logger.info('[VoiceService] Initialized with providers:', {
-      stt: DEEPGRAM_API_KEY ? 'Deepgram' : (OPENAI_API_KEY ? 'OpenAI Whisper' : 'Demo mode'),
+      stt: DEEPGRAM_API_KEY ? 'Deepgram' : (OPENAI_API_KEY ? 'OpenAI Whisper' : 'Unavailable'),
       tts: 'Browser Web Speech API (FREE)',
       ai: DEEPSEEK_API_KEY ? 'DeepSeek' : (GOOGLE_AI_KEY ? 'Gemini' : 'Ollama'),
     });
@@ -63,13 +63,7 @@ export class VoiceService {
         }
       }
 
-      // Fallback: Demo mode with helpful message
-      await new Promise((resolve) => setTimeout(resolve, 500));
-
-      return {
-        transcript: "Hello, how can I help you with your case today?",
-        confidence: 0.5, // Lower confidence for demo mode
-      };
+      throw new Error("Speech recognition is unavailable. No transcript was produced.");
     } catch (error: any) {
       logger.error("[VoiceService] STT Error:", { error: error?.message || error });
       throw new Error("Speech-to-text processing failed");
@@ -82,6 +76,7 @@ export class VoiceService {
   private async deepgramSTT(audioBuffer: Buffer): Promise<STTResult> {
     const response = await fetch('https://api.deepgram.com/v1/listen?model=nova-2&smart_format=true', {
       method: 'POST',
+      signal: AbortSignal.timeout(15000),
       headers: {
         'Authorization': `Token ${DEEPGRAM_API_KEY}`,
         'Content-Type': 'audio/webm',
@@ -96,7 +91,7 @@ export class VoiceService {
     const data: any = await response.json();
     return {
       transcript: data.results?.channels?.[0]?.alternatives?.[0]?.transcript || '',
-      confidence: data.results?.channels?.[0]?.alternatives?.[0]?.confidence || 0.9,
+      confidence: data.results?.channels?.[0]?.alternatives?.[0]?.confidence,
     };
   }
 
@@ -112,6 +107,7 @@ export class VoiceService {
 
     const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
       method: 'POST',
+      signal: AbortSignal.timeout(15000),
       headers: {
         'Authorization': `Bearer ${OPENAI_API_KEY}`,
       },
@@ -125,7 +121,7 @@ export class VoiceService {
     const data: any = await response.json();
     return {
       transcript: data.text || '',
-      confidence: 0.95,
+      // This response does not provide calibrated transcription confidence.
     };
   }
 
@@ -164,6 +160,7 @@ Respond naturally and concisely as if speaking. Keep responses under 100 words f
       try {
         const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
           method: 'POST',
+      signal: AbortSignal.timeout(15000),
           headers: {
             'Authorization': `Bearer ${DEEPSEEK_API_KEY}`,
             'Content-Type': 'application/json',
@@ -190,6 +187,7 @@ Respond naturally and concisely as if speaking. Keep responses under 100 words f
           `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GOOGLE_AI_KEY}`,
           {
             method: 'POST',
+      signal: AbortSignal.timeout(15000),
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               contents: [{ parts: [{ text: systemPrompt }] }],
@@ -210,6 +208,7 @@ Respond naturally and concisely as if speaking. Keep responses under 100 words f
     try {
       const response = await fetch(`${this.ollamaUrl}/api/generate`, {
         method: "POST",
+        signal: AbortSignal.timeout(15000),
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           model: process.env.OLLAMA_MODEL || "llama3.2",
@@ -227,7 +226,7 @@ Respond naturally and concisely as if speaking. Keep responses under 100 words f
     }
 
     // Final fallback
-    return "I'm here to help with your surplus recovery case. Please tell me what you need assistance with.";
+    throw new Error("Voice reasoning is unavailable. No AI answer was produced.");
   }
 
   /**
@@ -242,13 +241,13 @@ Respond naturally and concisely as if speaking. Keep responses under 100 words f
       aiProvider = 'gemini';
     } else {
       try {
-        const response = await fetch(`${this.ollamaUrl}/api/tags`, { method: "GET" });
+        const response = await fetch(`${this.ollamaUrl}/api/tags`, { method: "GET", signal: AbortSignal.timeout(5000) });
         if (response.ok) aiProvider = 'ollama';
       } catch { }
     }
 
     return {
-      stt: DEEPGRAM_API_KEY ? 'deepgram' : (OPENAI_API_KEY ? 'whisper' : 'demo'),
+      stt: DEEPGRAM_API_KEY ? 'deepgram' : (OPENAI_API_KEY ? 'whisper' : 'unavailable'),
       tts: 'browser', // Always browser-based (FREE)
       ai: aiProvider,
     };

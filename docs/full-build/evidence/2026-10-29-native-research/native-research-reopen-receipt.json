@@ -1,0 +1,7 @@
+{
+  "passed": 1,
+  "checks": [
+    "Independent Node process reopens the saved native evidence and preserves unverified identity state"
+  ],
+  "scope": "Actual PostgreSQL; synthetic research records"
+}

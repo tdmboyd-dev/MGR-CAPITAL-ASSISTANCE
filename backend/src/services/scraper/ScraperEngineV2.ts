@@ -12,6 +12,7 @@
  * FOUNDER-ONLY OPS LAYER COMPONENT
  */
 
+import {parsePublicMoney,publicColumnField} from './PublicRecordParsing.js';
 import puppeteer, { Browser, Page, LaunchOptions } from 'puppeteer';
 import crypto from 'crypto';
 import {
@@ -105,8 +106,6 @@ class ScraperEngineV2 {
         '--disable-accelerated-2d-canvas',
         '--disable-gpu',
         '--window-size=1920,1080',
-        '--disable-web-security',
-        '--disable-features=IsolateOrigins,site-per-process',
         '--disable-blink-features=AutomationControlled',
       ],
       defaultViewport: {
@@ -247,11 +246,12 @@ class ScraperEngineV2 {
             logger.info(`[ScraperEngineV2] Fetching: ${url}`);
 
             // Navigate to the page
-            await page.goto(url, {
+            const response = await page.goto(url, {
               waitUntil: config.requiresJs ? 'networkidle2' : 'domcontentloaded',
               timeout: this.defaultBrowserConfig.timeout,
             });
 
+            if(!response || response.status()>=400)throw new Error("Source page access failed");
             // Wait for specific selector if configured
             if (config.waitForSelector) {
               try {
@@ -307,6 +307,7 @@ class ScraperEngineV2 {
         await page.close();
       }
 
+      if(pagesScraped===0)throw new Error("No source page was successfully retrieved");
       // Get content hash
       const contentHash = crypto
         .createHash('sha256')
@@ -430,64 +431,7 @@ class ScraperEngineV2 {
       rawData,
     };
 
-    // Map common column names
-    const columnMappings: Record<string, keyof ScrapedRecord> = {
-      'owner': 'ownerName',
-      'owner name': 'ownerName',
-      'property owner': 'ownerName',
-      'name': 'ownerName',
-      'taxpayer': 'ownerName',
-      'address': 'propertyAddress',
-      'property address': 'propertyAddress',
-      'situs': 'propertyAddress',
-      'location': 'propertyAddress',
-      'parcel': 'parcelNumber',
-      'parcel number': 'parcelNumber',
-      'parcel id': 'parcelNumber',
-      'apn': 'parcelNumber',
-      'pin': 'parcelNumber',
-      'tax id': 'parcelNumber',
-      'sale date': 'saleDate',
-      'auction date': 'auctionDate',
-      'date': 'saleDate',
-      'sale amount': 'saleAmount',
-      'bid': 'saleAmount',
-      'amount': 'surplusAmount',
-      'surplus': 'surplusAmount',
-      'surplus amount': 'surplusAmount',
-      'excess': 'surplusAmount',
-      'excess proceeds': 'surplusAmount',
-      'overage': 'surplusAmount',
-      'city': 'city',
-      'zip': 'zipCode',
-      'zip code': 'zipCode',
-      'case': 'caseNumber',
-      'case number': 'caseNumber',
-      'document': 'documentNumber',
-      'doc number': 'documentNumber',
-    };
-
-    // Try to match headers to record fields
-    headers.forEach((header, i) => {
-      const lowerHeader = header.toLowerCase().trim();
-      const value = row[i];
-
-      if (!value) return;
-
-      for (const [key, field] of Object.entries(columnMappings)) {
-        if (lowerHeader.includes(key)) {
-          if (field === 'saleAmount' || field === 'surplusAmount') {
-            const amount = this.parseAmount(value);
-            if (amount !== null) {
-              (record as any)[field] = amount;
-            }
-          } else {
-            (record as any)[field] = value;
-          }
-          break;
-        }
-      }
-    });
+    headers.forEach((header,i)=>{const field=publicColumnField(header),value=row[i];if(!field||!value)return;if(field==='saleAmount'||field==='surplusAmount'){const n=parsePublicMoney(value);if(n!==null)(record as any)[field]=n;}else (record as any)[field]=value;});
 
     // Return null if no useful data extracted
     if (!record.ownerName && !record.propertyAddress && !record.parcelNumber && !record.surplusAmount) {
@@ -501,11 +445,7 @@ class ScraperEngineV2 {
    * Parse amount string to cents
    */
   private parseAmount(value: string): number | null {
-    if (!value) return null;
-    const cleaned = value.replace(/[$,\s]/g, '');
-    const amount = parseFloat(cleaned);
-    if (isNaN(amount)) return null;
-    return Math.round(amount * 100);
+    return parsePublicMoney(value);
   }
 
   /**
@@ -620,7 +560,7 @@ class ScraperEngineV2 {
               ownerName: item.owner || item.ownerName || item.name,
               propertyAddress: item.address || item.propertyAddress,
               parcelNumber: item.parcel || item.parcelNumber || item.apn,
-              surplusAmount: this.parseAmount(String(item.surplus || item.amount || '')) || undefined,
+              surplusAmount: this.parseAmount(String(item.surplus ?? item.surplusAmount ?? '')) || undefined,
             });
           }
         }
@@ -668,9 +608,9 @@ class ScraperEngineV2 {
     }
 
     // Extract amounts
-    const amountMatch = text.match(/\$[\s]*([\d,]+\.?\d*)/);
+    const amountMatch = text.match(/(?:surplus|excess proceeds|excess funds)[:\s]+\$?([^\s;]+)/i);
     if (amountMatch) {
-      record.surplusAmount = this.parseAmount(amountMatch[1]) || undefined;
+      record.surplusAmount = this.parseAmount(amountMatch[1]) ?? undefined;
     }
 
     // Return null if no useful data

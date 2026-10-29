@@ -1,5 +1,22 @@
 # Capital Assistance evidence scorecard
 
+## October 29 native-research and ownership continuation
+
+| Defined scope | Current evidence | Remaining |
+|---|---|---|
+| Native evidence API/database |14/14 actual checks passed |Bulk source warehouse and actual claimant accuracy |
+| Native process reopening |1/1 passed |Exhaustive crash recovery |
+| Native/vendor/source/parser/voice boundaries |27/27 controlled checks passed |Positive real-provider/voice qualification |
+| PaymentService truth |7/7 actual service/PostgreSQL checks passed |Other financial services, actual settlement and refund ledger |
+| Direct Florida source |1/1 live synthetic no-match query; actual public aggregate count/schema recorded |Positive record accuracy and bulk ingestion |
+| Source probes |3 of4 fetched pages;1 unconfirmed;0 records imported |Extraction, freshness and acquisition rights |
+| Browser research |Actual login/save/reload/date/error/refresh observed |Other routes and comprehensive breakpoints |
+| Compilation |Backend build and full frontend typecheck passed in recorded runs |Production Next build and deployment |
+| Regressions |26/3/14/13/9 previous named scopes rerun successfully |Excluded scope remains open |
+| Whole Capital product |Unassessed |Remaining semantic source reading and complete recovery-business acceptance |
+
+Named percentages equal passed checks divided by that specific set, never whole-product completion. Read CAPITAL-SYSTEM-REVIEW-2026-10-29.md and DATA-OWNERSHIP-RESEARCH-2026-10-29.md. Original master and owner decisions are preserved. Native research is primary; paid tracing is disabled. Earlier scorecard snapshots follow.
+
 Updated October 28, 2026. Whole product completion:Unassessed.
 
 | Defined scope | Before | Current | Evidence | Remaining |

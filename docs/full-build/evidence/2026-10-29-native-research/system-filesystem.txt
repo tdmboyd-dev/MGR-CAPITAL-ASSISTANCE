@@ -1,0 +1,17 @@
+✔ actual nested upload, URL escaping, read, reopen, list and delete preserve expected bytes (1468.1745ms)
+✔ relative Windows keys remain compatible and atomic replacement leaves no visible staging file (3061.9434ms)
+✔ all file operations reject lexical, absolute, encoded, device and alternate-stream escape keys (110.3388ms)
+✔ actual Windows junction at a child directory denies every outside operation (822.5509ms)
+✔ configured root and an ancestor junction cannot be used for writes, health or reads (913.9696ms)
+✔ hard-linked files cannot be read, replaced, listed as ordinary files or deleted (778.0416ms)
+✔ health and usage execute actual writes and report actual persisted size (4081.9027ms)
+✔ missing files, directories and invalid runtime arguments fail without exposing absolute paths (2404.717ms)
+✔ capacity must be a positive safe integer; values are reporting configuration, not an enforced disk quota (1.3388ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 16102.0581

@@ -1,0 +1,19 @@
+{
+  "scope": "Actual manual CUA browser interactions with synthetic account and real frontend/auth/research/PostgreSQL; no UI response fixtures",
+  "observations": [
+    "Actual password login",
+    "Protected native research remains open after hydration/reload",
+    "Load saved dossier",
+    "Save source evidence",
+    "Full reload and reopened evidence persists",
+    "October1 source date displays October1 in Chicago",
+    "Expired access refresh then actual missing-case response",
+    "Unavailable metrics do not invent balances or charts"
+  ],
+  "screenshots": [
+    "Capital-Native-Research-Browser-Proof-2026-10-29.png",
+    "Capital-Native-Research-Saved-Evidence-2026-10-29.png",
+    "Capital-Dashboard-Honest-Error-2026-10-29.png"
+  ],
+  "limits": "Default mobile-width viewport observed; other routes, complete desktop/responsive and provider production acceptance remain open"
+}

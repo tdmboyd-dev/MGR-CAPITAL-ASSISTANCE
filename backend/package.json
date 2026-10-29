@@ -18,7 +18,11 @@
     "test:auth-boundary": "node --test tests/auth-current-boundary.test.cjs tests/transport-boundary.test.cjs",
     "test:auth-postgres": "node --import tsx tests/auth-postgres-acceptance.ts",
     "test:vault-postgres": "node --import tsx tests/vault-postgres-acceptance.ts",
-    "test:vault-reopen": "node --import tsx tests/vault-reopen-acceptance.ts"
+    "test:vault-reopen": "node --import tsx tests/vault-reopen-acceptance.ts",
+    "test:native-boundary": "node --import tsx --test tests/native-research-boundary.test.ts tests/voice-truth-boundary.test.ts",
+    "test:native-postgres": "node --import tsx tests/native-research-postgres-acceptance.ts",
+    "test:native-reopen": "node --import tsx tests/native-research-reopen.ts",
+    "test:payment-truth": "node --import tsx tests/payment-truth-postgres.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
