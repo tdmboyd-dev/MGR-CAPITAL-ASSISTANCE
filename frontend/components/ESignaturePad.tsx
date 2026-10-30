@@ -58,7 +58,7 @@ export function ESignaturePad({
 
       // Get the first page
       const page = pdfDoc.getPages()[0];
-      const { width, height } = page.getSize();
+      const { width } = page.getSize();
 
       // Embed the signature image
       const pngImageBytes = await fetch(signatureDataUrl).then((r) =>

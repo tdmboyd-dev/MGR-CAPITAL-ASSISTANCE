@@ -11,6 +11,8 @@ CardTitle,
 } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { SkeletonList } from "@/components/ui/skeleton";
+import { caseListSchema } from "@/lib/caseRecords";
+import { useAuth } from "@/hooks/useAuth";
 import { api } from "@/lib/api";
 import { formatCurrency,formatDate } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
@@ -46,23 +48,27 @@ const STATUS_DISPLAY: Record<string, { label: string; color: string; bgColor: st
 };
 
 export default function ClientCasesPage() {
-  const { data, isLoading } = useQuery({
-    queryKey: ["client-cases"],
-    queryFn: async () => {
-      const { data } = await api.get("/cases/my-cases");
-      return data;
+  const { user } = useAuth();
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: ["client-cases", user?.id],
+    enabled: Boolean(user),
+    queryFn: async ({ signal }) => {
+      const { data } = await api.get<unknown>("/cases/my-cases", { signal });
+      return caseListSchema.parse(data);
     },
   });
 
   const cases = data?.data || [];
   const activeCases = cases.filter(
-    (c: any) => !["CLOSED_WON", "CLOSED_LOST", "PAID", "REJECTED"].includes(c.status)
+    (c) => !["CLOSED_WON", "CLOSED_LOST", "PAID", "REJECTED"].includes(c.status)
   );
-  const completedCases = cases.filter((c: any) => c.status === "PAID" || c.status === "CLOSED_WON");
+  const completedCases = cases.filter((c) => c.status === "PAID" || c.status === "CLOSED_WON");
   const totalRecovered = completedCases.reduce(
-    (sum: number, c: any) => sum + (c.actualRecoveryCents || c.estimatedRecoveryCents || 0),
+    (sum: number, c) => sum + (c.actualRecoveryCents ?? 0),
     0
   );
+
+  if (error) return <div role="alert" className="space-y-3 p-6"><p>Cases could not be loaded. Your saved cases have not been removed.</p><button onClick={() => { void refetch(); }} className="underline">Retry</button></div>;
 
   return (
     <div className="space-y-6">
@@ -153,7 +159,7 @@ export default function ClientCasesPage() {
               <SkeletonList items={5} />
             ) : cases.length > 0 ? (
               <div className="space-y-4">
-                {cases.map((caseItem: any, index: number) => {
+                {cases.map((caseItem, index: number) => {
                   const statusInfo = STATUS_DISPLAY[caseItem.status] || {
                     label: caseItem.status,
                     color: "text-gray-600",
@@ -238,7 +244,7 @@ export default function ClientCasesPage() {
                             <div className="mt-4 p-3 rounded-lg bg-orange-500/10 border border-orange-500/20">
                               <p className="text-sm text-orange-700 dark:text-orange-400 flex items-center gap-2">
                                 <TrendingUp className="h-4 w-4" />
-                                Your claim has been approved! Funds are being processed
+                                Your case is marked as awaiting funds. Contact your team for the current payment evidence.
                               </p>
                             </div>
                           )}

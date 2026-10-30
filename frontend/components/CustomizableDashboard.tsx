@@ -35,7 +35,10 @@ TrendingUp,
 Unlock,
 Users,
 } from "lucide-react";
-import { useCallback,useEffect,useState } from "react";
+import { useStoredString, writeStoredString } from "@/hooks/useStoredString";
+import { useHydrated } from "@/hooks/useHydrated";
+import { z } from "zod";
+import { useCallback,useMemo,useState } from "react";
 import { Layout,Responsive,WidthProvider } from "react-grid-layout";
 
 // Import styles for react-grid-layout
@@ -102,7 +105,7 @@ function CasesWidget() {
         <p className="text-sm text-muted-foreground text-center py-4">No recent cases</p>
       ) : (
         <div className="space-y-2">
-          {cases.slice(0, 5).map((c: any) => (
+          {cases.slice(0, 5).map((c: {id:string; caseCode?:string; status:string}) => (
             <div
               key={c.id}
               className="flex items-center justify-between p-2 rounded-lg bg-muted/50"
@@ -141,7 +144,7 @@ function AlertsWidget() {
         </div>
       ) : (
         <div className="space-y-2">
-          {alerts.slice(0, 5).map((alert: any) => (
+          {alerts.slice(0, 5).map((alert: {id:string; severity:string; message:string; type:string}) => (
             <div
               key={alert.id}
               className={`p-2 rounded-lg border-l-4 ${
@@ -181,19 +184,19 @@ function EmployeesWidget() {
         <p className="text-sm text-muted-foreground text-center py-4">No employees</p>
       ) : (
         <div className="space-y-2">
-          {employees.slice(0, 5).map((emp: any) => (
+          {employees.slice(0, 5).map((emp: {id:string; name:string; email:string; employeeTier?:string}) => (
             <div
               key={emp.id}
               className="flex items-center justify-between p-2 rounded-lg bg-muted/50"
             >
               <div>
                 <p className="text-sm font-medium">
-                  {emp.firstName} {emp.lastName}
+                  {emp.name}
                 </p>
                 <p className="text-xs text-muted-foreground">{emp.email}</p>
               </div>
               <Badge variant="secondary" className="text-xs">
-                {emp.tier?.replace("TIER_", "T")}
+                {emp.employeeTier?.replace("TIER_", "T")}
               </Badge>
             </div>
           ))}
@@ -258,7 +261,7 @@ function BotStatusWidget() {
   const bots = data?.data || [];
   const avgSuccess =
     bots.length > 0
-      ? Math.round(bots.reduce((sum: number, b: any) => sum + b.successRate, 0) / bots.length)
+      ? Math.round(bots.reduce((sum: number, b: {successRate:number}) => sum + b.successRate, 0) / bots.length)
       : 0;
 
   return (
@@ -284,7 +287,7 @@ function NotificationsWidget() {
 
   if (isLoading) return <Skeleton className="h-full w-full" />;
 
-  const notifications = data?.data || [];
+  const notifications = data?.notifications || [];
   const unreadCount = data?.unreadCount || 0;
 
   return (
@@ -297,9 +300,9 @@ function NotificationsWidget() {
         <p className="text-sm text-muted-foreground text-center py-4">All caught up!</p>
       ) : (
         <div className="space-y-2">
-          {notifications.slice(0, 5).map((n: any) => (
+          {notifications.slice(0, 5).map((n: {id:string; message:string; createdAt:string}) => (
             <div key={n.id} className="p-2 rounded-lg bg-muted/50 border-l-2 border-primary">
-              <p className="text-sm truncate">{n.content}</p>
+              <p className="text-sm truncate">{n.message}</p>
               <p className="text-xs text-muted-foreground">
                 {new Date(n.createdAt).toLocaleDateString()}
               </p>
@@ -417,38 +420,31 @@ export function CustomizableDashboard({
   storageKey = "mgr-dashboard-layout",
 }: CustomizableDashboardProps) {
   const { user } = useAuth();
-  const [layouts, setLayouts] = useState<{ [key: string]: Layout[] }>(DEFAULT_LAYOUTS);
+  const layoutKey = `${storageKey}-${user?.id ?? 'signed-out'}-${user?.role ?? 'none'}`;
+  const savedLayout = useStoredString(user ? layoutKey : null);
+  const legacyLayout = useStoredString(user ? `${storageKey}-${user.role}` : null);
+  const rawLayout = savedLayout ?? legacyLayout;
+  const layouts = useMemo(() => {
+    const item = z.object({ i: z.string(), x: z.number().nonnegative(), y: z.number().nonnegative(), w: z.number().positive(), h: z.number().positive() });
+    try { const parsed = z.record(z.string(), z.array(item).max(100)).safeParse(JSON.parse(rawLayout ?? '{}')); return parsed.success && Object.keys(parsed.data).length ? parsed.data : DEFAULT_LAYOUTS; }
+    catch { return DEFAULT_LAYOUTS; }
+  }, [rawLayout]);
   const [isLocked, setIsLocked] = useState(true);
-  const [mounted, setMounted] = useState(false);
-
-  // Load saved layout from localStorage
-  useEffect(() => {
-    setMounted(true);
-    const savedLayout = localStorage.getItem(`${storageKey}-${user?.role}`);
-    if (savedLayout) {
-      try {
-        setLayouts(JSON.parse(savedLayout));
-      } catch (e) {
-        console.error("Failed to parse saved layout:", e);
-      }
-    }
-  }, [storageKey, user?.role]);
+  const mounted = useHydrated();
 
   // Save layout changes
   const handleLayoutChange = useCallback(
     (_currentLayout: Layout[], allLayouts: { [key: string]: Layout[] }) => {
       if (!isLocked && mounted) {
-        setLayouts(allLayouts);
-        localStorage.setItem(`${storageKey}-${user?.role}`, JSON.stringify(allLayouts));
+        writeStoredString(layoutKey, JSON.stringify(allLayouts));
       }
     },
-    [isLocked, mounted, storageKey, user?.role]
+    [isLocked, mounted, layoutKey]
   );
 
   // Reset to default layout
   const resetLayout = () => {
-    setLayouts(DEFAULT_LAYOUTS);
-    localStorage.removeItem(`${storageKey}-${user?.role}`);
+    writeStoredString(layoutKey, null);
   };
 
   if (!mounted) {

@@ -11,10 +11,14 @@ import { asyncHandler, Errors } from "../middleware/errorHandler.js";
 import { bankingService } from "../services/BankingService.js";
 import { employeeService } from "../services/EmployeeService.js";
 
+import { getOwnEmployeeEarnings,employeeEarningsSummary } from "../services/EmployeeEarningsView.js";
 const router = Router();
 // Global finance queries are not tenant scoped. Own employee views retain their existing boundary.
 router.use(authMiddleware, async (req: AuthRequest, res, next) => {
-  if (req.path === "/my" || req.path === "/my/summary") return next();
+  res.setHeader('Cache-Control','private, no-store');
+  if (req.path === "/my" || req.path === "/my/summary") {
+    try { const {currentActor}=await import('../services/CaseDocumentAccess.js');const actor=await currentActor(prisma,req.user!.id);if(!['EMPLOYEE','TEAM_LEAD','FOUNDER'].includes(actor.role))return res.status(403).json({success:false,error:'Own earnings access required'});req.user={...req.user!,role:actor.role};return next(); }catch {return res.status(403).json({success:false,error:'Account unavailable'});}
+  }
   try {
     const { currentActor } = await import("../services/CaseDocumentAccess.js");
     const actor = await currentActor(prisma, req.user!.id);
@@ -386,58 +390,12 @@ router.get("/anomalies", authMiddleware, roleGuard(["ADMIN"]), async (_req: Requ
 
 /**
  * GET /api/payouts/my - Get own payouts (EMPLOYEE)
- * Shows DISPLAYED amounts, not actual
+ * Shows the current account's actual payable allocation; no bank settlement is inferred.
  */
 router.get("/my", authMiddleware, roleGuard(["EMPLOYEE"]), async (req: AuthRequest, res: Response) => {
   try {
-    const payouts = await prisma.ledgerEntry.findMany({
-      where: {
-        userId: req.user!.id,
-        type: "EMPLOYEE_COMMISSION"
-      },
-      include: {
-        case: {
-          select: {
-            internalCode: true,
-            propertyAddress: true,
-            county: true,
-            state: true
-          }
-        }
-      },
-      orderBy: { createdAt: "desc" }
-    });
-
-    // Return DISPLAYED amounts ONLY (shadow accounting)
-    // CRITICAL: NEVER fall back to amountCents — that's the actual amount
-    // Use nullish coalescing (??) with 0 to prevent leaking actual amounts
-    const displayedPayouts = payouts.map(p => ({
-      id: p.id,
-      caseCode: p.case?.internalCode,
-      property: p.case?.propertyAddress,
-      location: `${p.case?.county}, ${p.case?.state}`,
-      amountCents: p.displayedAmountCents ?? 0, // ONLY displayed, never actual
-      status: p.status,
-      date: p.createdAt
-    }));
-
-    // Calculate totals with DISPLAYED amounts only
-    const totalEarnedCents = payouts
-      .filter(p => p.status === "COMPLETED")
-      .reduce((sum, p) => sum + (p.displayedAmountCents ?? 0), 0);
-
-    const pendingCents = payouts
-      .filter(p => p.status === "PENDING")
-      .reduce((sum, p) => sum + (p.displayedAmountCents ?? 0), 0);
-
-    res.json({
-      success: true,
-      data: {
-        totalEarnedCents,
-        pendingCents,
-        payouts: displayedPayouts
-      }
-    });
+    const view=await getOwnEmployeeEarnings(req.user!.id);
+    res.json({success:true,data:{...employeeEarningsSummary(view),totalEarnedCents:view.recordedCompletedCents,payouts:view.rows.map(row=>({id:row.id,caseCode:row.case.internalCode,property:row.case.propertyAddress,location:`${row.case.county}, ${row.case.state}`,amountCents:row.payableAmountCents,status:row.reconciliationRequired?'RECONCILIATION_REQUIRED':row.status,date:row.createdAt,reconciliationRequired:row.reconciliationRequired,legacyDisplayAdjusted:row.legacyDisplayAdjusted}))}});
   } catch (error: any) {
     console.error("Payout error:", error);
     res.status(500).json({ success: false, error: "An error occurred. Please try again." });
@@ -446,24 +404,12 @@ router.get("/my", authMiddleware, roleGuard(["EMPLOYEE"]), async (req: AuthReque
 
 /**
  * GET /api/payouts/my/summary - Get earnings summary (EMPLOYEE)
- * CRITICAL: Only return DISPLAYED amounts — shadow accounting
+ * Actual payable amounts; internal company margins are excluded.
  */
 router.get("/my/summary", authMiddleware, roleGuard(["EMPLOYEE"]), async (req: AuthRequest, res: Response) => {
   try {
-    // Get earnings from service (includes both displayed and actual)
-    const earnings = await bankingService.getEmployeeEarnings(req.user!.id);
-
-    // CRITICAL: Only return displayed amounts, NEVER actual amounts
-    // This enforces shadow accounting — employees see inflated numbers
-    res.json({
-      success: true,
-      data: {
-        lifetimeEarningsCents: earnings.displayedLifetimeCents,
-        thisMonthCents: earnings.displayedMonthCents,
-        pendingCents: earnings.displayedPendingCents
-        // actualLifetimeCents and actualMonthCents are NEVER exposed
-      }
-    });
+    const view=await getOwnEmployeeEarnings(req.user!.id);
+    res.json({success:true,data:employeeEarningsSummary(view)});
   } catch (error: any) {
     res.status(500).json({ success: false, error: "Failed to load earnings" });
   }

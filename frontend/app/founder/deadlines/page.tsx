@@ -1,4 +1,6 @@
 'use client'
+interface UpcomingDeadline { caseId:string; internalCode:string; clientName:string; state:string; county:string; isUrgent:boolean; daysRemaining:number; claimBy:string; }
+
 
 import { Alert,AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
@@ -92,11 +94,11 @@ export default function DeadlineTracker() {
       </div>
 
       {/* Urgent Deadlines Alert */}
-      {upcomingCases.filter((c: any) => c.daysRemaining <= 30).length > 0 && (
+      {upcomingCases.filter((c: UpcomingDeadline) => c.daysRemaining <= 30).length > 0 && (
         <Alert variant="destructive">
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription>
-            {upcomingCases.filter((c: any) => c.daysRemaining <= 30).length} cases have deadlines within 30 days!
+            {upcomingCases.filter((c: UpcomingDeadline) => c.daysRemaining <= 30).length} cases have deadlines within 30 days!
           </AlertDescription>
         </Alert>
       )}
@@ -226,7 +228,7 @@ export default function DeadlineTracker() {
         <CardContent>
           <div className="space-y-3">
             {upcomingCases.length > 0 ? (
-              upcomingCases.map((c: any, i: number) => (
+              upcomingCases.map((c: UpcomingDeadline, i: number) => (
                 <motion.div
                   key={c.caseId}
                   initial={{ opacity: 0, y: 10 }}

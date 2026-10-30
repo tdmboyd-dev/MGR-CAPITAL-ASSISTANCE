@@ -72,7 +72,6 @@ export default function AdminUsersPage() {
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState<string>("all");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [editingUser, setEditingUser] = useState<User | null>(null);
   const [newUser, setNewUser] = useState({
     email: "",
     name: "",
@@ -80,7 +79,7 @@ export default function AdminUsersPage() {
     role: "EMPLOYEE",
   });
 
-  const { data: users, isLoading, refetch } = useQuery<User[]>({
+  const { data: users, isLoading, isError, refetch } = useQuery<User[]>({
     queryKey: ["admin-users"],
     queryFn: () => api.get("/admin/users").then((r) => r.data),
   });
@@ -96,16 +95,6 @@ export default function AdminUsersPage() {
     onError: () => toast.error("Failed to create user"),
   });
 
-  const updateRoleMutation = useMutation({
-    mutationFn: ({ id, role }: { id: string; role: string }) =>
-      api.patch(`/admin/users/${id}/role`, { role }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin-users"] });
-      toast.success("Role updated");
-    },
-    onError: () => toast.error("Failed to update role"),
-  });
-
   const toggleActiveMutation = useMutation({
     mutationFn: ({ id, isActive }: { id: string; isActive: boolean }) =>
       api.patch(`/admin/users/${id}`, { isActive }),
@@ -115,6 +104,8 @@ export default function AdminUsersPage() {
     },
     onError: () => toast.error("Failed to update user"),
   });
+
+  if(isError)return <div role="alert" className="space-y-4 p-6"><h1 className="text-2xl font-bold">User administration is unavailable</h1><p>The user-management API could not be loaded. No empty directory or successful update is inferred.</p><Button onClick={()=>refetch()}>Retry</Button></div>;
 
   const filteredUsers = users?.filter((user) => {
     const matchesSearch =
@@ -261,7 +252,7 @@ export default function AdminUsersPage() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => setEditingUser(user)}>
+                          <DropdownMenuItem disabled title="Role editing has no qualified API endpoint">
                             <Edit className="h-4 w-4 mr-2" />
                             Edit
                           </DropdownMenuItem>

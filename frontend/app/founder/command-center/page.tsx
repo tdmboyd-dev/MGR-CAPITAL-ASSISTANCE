@@ -1,13 +1,18 @@
 "use client";
 import { apiFailure } from "@/lib/apiFailure";
 
-import { useCallback,useEffect,useState } from "react";
+import { useState } from "react";
+import { useAuth } from "@/hooks/useAuth";
+import { api } from "@/lib/api";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { opsDashboardSchema, masterSettingsSchema, successDataSchema } from "@/lib/commandCenter";
+import { z } from 'zod';
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
+
 
 interface StatCard {
   label: string;
@@ -99,25 +104,6 @@ interface ActivityEntry {
 // Helpers
 // ---------------------------------------------------------------------------
 
-function headers(): Record<string, string> {
-  const token = typeof window !== "undefined" ? localStorage.getItem("token") || localStorage.getItem("accessToken") : null;
-  return {
-    "Content-Type": "application/json",
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-  };
-}
-
-async function apiFetch<T>(path: string, opts?: RequestInit): Promise<T | null> {
-  try {
-    const res = await fetch(`${API_BASE}/api${path}`, { headers: headers(), ...opts });
-    if (!res.ok) return null;
-    const json = await res.json();
-    return (json.data ?? json) as T;
-  } catch {
-    return null;
-  }
-}
-
 function currency(n: number): string {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n);
 }
@@ -140,11 +126,12 @@ function relativeTime(iso: string): string {
 // Toggle Switch Component (inline)
 // ---------------------------------------------------------------------------
 
-function Toggle({ enabled, onToggle, disabled }: { enabled: boolean; onToggle: () => void; disabled?: boolean }) {
+function Toggle({ enabled, onToggle, disabled, label }: { enabled: boolean; onToggle: () => void; disabled?: boolean; label: string }) {
   return (
     <button
       type="button"
       role="switch"
+      aria-label={label}
       aria-checked={enabled}
       disabled={disabled}
       onClick={onToggle}
@@ -222,270 +209,80 @@ function BarDisplay({ label, value, max, color = "bg-blue-500" }: { label: strin
 // ===========================================================================
 
 export default function FounderCommandCenterPage() {
-  // -----------------------------------------------------------------------
-  // State
-  // -----------------------------------------------------------------------
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  // 1. Stats
-  const [stats, setStats] = useState<StatCard[]>([]);
-
-  // 2. Feature toggles
-  const [toggles, setToggles] = useState<FeatureToggle[]>([]);
-  const [togglingKey, setTogglingKey] = useState<string | null>(null);
-
-  // 3. Pipelines
-  const [pipelines, setPipelines] = useState<Pipeline[]>([]);
+  const { user } = useAuth();
+  const [actionError, setActionError] = useState<string | null>(null);
   const [selectedPipeline, setSelectedPipeline] = useState("FULL_CASE_PIPELINE");
-  const [launchingPipeline, setLaunchingPipeline] = useState(false);
-
-  // 4. Batch
-  const [batches, setBatches] = useState<BatchJob[]>([]);
   const [batchBot, setBatchBot] = useState("outreach-bot");
   const [batchFilter, setBatchFilter] = useState({ status: "lead", state: "", minSurplus: 5000 });
-  const [batchPreview, setBatchPreview] = useState<{ count: number; cost: number } | null>(null);
-  const [executingBatch, setExecutingBatch] = useState(false);
-
-  // 5. Forecast
-  const [forecast, setForecast] = useState<ForecastBucket[]>([]);
-  const [monthlyTrend, setMonthlyTrend] = useState<{ month: string; revenue: number }[]>([]);
-  const [botROI, setBotROI] = useState<BotROI[]>([]);
-  const [goals, setGoals] = useState({ revenueTarget: 100000, revenueCurrent: 0, caseTarget: 500, caseCurrent: 0 });
-
-  // 6. Contact Intelligence
-  const [contactMethods, setContactMethods] = useState<ContactMethod[]>([]);
-  const [topStates, setTopStates] = useState<StatePerformance[]>([]);
-  const [optimalWindow, setOptimalWindow] = useState("9:00 AM - 11:00 AM");
-  const [tcpaStatus, setTcpaStatus] = useState<{ timezone: string; allowed: boolean }[]>([]);
-
-  // 7. Auto-Response
-  const [responseCategories, setResponseCategories] = useState<ResponseCategory[]>([]);
-  const [recentResponses, setRecentResponses] = useState<RecentResponse[]>([]);
-  const [dncCount, setDncCount] = useState(0);
-  const [responseRate, setResponseRate] = useState(0);
-
-  // 8. Activity Feed
-  const [activityFeed, setActivityFeed] = useState<ActivityEntry[]>([]);
-
-  // -----------------------------------------------------------------------
-  // Data Loading
-  // -----------------------------------------------------------------------
-
-  const loadData = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      // Fetch in parallel
-      const [dashRes, settingsRes, forecastRes, botsRes] = await Promise.allSettled([
-        apiFetch<any>("/ops/metrics/dashboard"),
-        apiFetch<any>("/settings/master"),
-        apiFetch<any>("/analytics/forecast"),
-        apiFetch<any>("/ops/metrics/bots"),
+  const query = useQuery({
+    queryKey: ['command-center', user?.id],
+    enabled: user?.role === 'FOUNDER',
+    queryFn: async ({ signal }) => {
+      const [dashboard, settings] = await Promise.all([
+        api.get<unknown>('/ops/metrics/dashboard', { signal }),
+        api.get<unknown>('/settings/master', { signal }),
       ]);
+      return {
+        dashboard: successDataSchema(opsDashboardSchema).parse(dashboard.data).data,
+        settings: successDataSchema(masterSettingsSchema).parse(settings.data).data,
+      };
+    }, retry: false, refetchInterval: 60000, gcTime: 0,
+  });
+  const toggleMutation = useMutation({
+    mutationFn: async ({ key, enabled }: { key: string; enabled: boolean }) => {
+      if (!query.data || !(key in query.data.settings.settings)) throw new Error('Setting is unavailable. Refresh before changing it.');
+      const response = await api.patch<unknown>('/settings/master', { [key]: enabled });
+      const saved = successDataSchema(z.record(z.string(), z.boolean())).parse(response.data).data;
+      if (saved[key] !== enabled) throw new Error('The requested setting value was not confirmed. Refresh before retrying.');
+      return saved;
+    },
+    onSuccess: async () => { setActionError(null); await query.refetch(); },
+    onError: async (failure: unknown) => { setActionError(apiFailure(failure).response?.data?.error || 'Setting save is unconfirmed. Its current state is being reloaded before retry.'); await query.refetch(); },
+  });
+  const loadData = () => { void query.refetch(); };
+  const loading = query.isPending && query.fetchStatus !== 'idle';
+  const error = user?.role !== 'FOUNDER' ? 'Founder access is required.' : query.error ? 'Live operations could not be loaded. Refresh to retry.' : null;
+  const stats: StatCard[] = query.data ? [
+    { label: 'Total Cases', value: query.data.dashboard.summary.totalCases, color: 'blue' },
+    { label: 'Active Cases', value: query.data.dashboard.summary.activeCases, color: 'purple' },
+    { label: 'Pending Alerts', value: query.data.dashboard.summary.pendingAlerts, color: 'amber' },
+    { label: 'Employees', value: query.data.dashboard.summary.employeeCount, color: 'green' },
+    { label: 'New Cases (24h)', value: query.data.dashboard.recentActivity.newCases24h, color: 'blue' },
+  ] : [];
+  const toggles: FeatureToggle[] = query.data?.settings.metadata.flatMap(item => {
+    const enabled = query.data.settings.settings[item.key];
+    return typeof enabled === 'boolean' ? [{ ...item, enabled }] : [];
+  }) ?? [];
+  const togglingKey = toggleMutation.isPending ? toggleMutation.variables?.key : null;
+  const handleToggle = (key: string) => {
+    const previous = query.data?.settings.settings[key];
+    if (!toggleMutation.isPending && !query.isFetching && typeof previous === 'boolean') toggleMutation.mutate({ key, enabled: !previous });
+  };
 
-      // --- Stats ---
-      const dash = dashRes.status === "fulfilled" ? dashRes.value : null;
-      const fc = forecastRes.status === "fulfilled" ? forecastRes.value : null;
-
-      const totalBots = dash?.activeBots ?? dash?.botCount ?? 8;
-      const casesInPipeline = dash?.totalCases ?? dash?.casesInPipeline ?? 0;
-      const revenueThisMonth = dash?.revenueThisMonth ?? dash?.revenue?.thisMonth ?? 0;
-      const forecast30d = fc?.summary?.predictedRevenue30d ?? 0;
-      const activeAutomations = dash?.activeAutomations ?? dash?.automationsRunning ?? 12;
-
-      setStats([
-        { label: "Active Bots", value: totalBots, color: "blue" },
-        { label: "Cases in Pipeline", value: casesInPipeline, color: "purple" },
-        { label: "Revenue This Month", value: currency(revenueThisMonth), trend: "up", color: "green" },
-        { label: "Forecast 30d", value: currency(forecast30d), color: "amber" },
-        { label: "Active Automations", value: activeAutomations, color: "green" },
-      ]);
-
-      // --- Toggles ---
-      const settingsData = settingsRes.status === "fulfilled" ? settingsRes.value : null;
-      const toggleDefs: { key: string; label: string; description: string; category: string }[] = [
-        { key: "case_autopilot", label: "Orchestrator Enabled", description: "Master case automation engine", category: "Core" },
-        { key: "auto_ingestion", label: "Auto Triggers", description: "Automatically trigger pipelines on new leads", category: "Core" },
-        { key: "compliance_checks", label: "TCPA Enforcement", description: "Block outreach outside legal hours", category: "Compliance" },
-        { key: "auto_outreach", label: "Auto Schedule Optimal", description: "Schedule contact at highest-success times", category: "Outreach" },
-        { key: "sms_outreach", label: "Auto Response", description: "Auto-reply to inbound SMS and emails", category: "Outreach" },
-        { key: "ai_bots", label: "Auto Advance Interest", description: "Move interested leads forward automatically", category: "AI" },
-        { key: "phone_bot", label: "Auto Escalate Threats", description: "Flag and escalate threatening responses", category: "AI" },
-        { key: "fraud_detection", label: "DNC Enforcement", description: "Automatically enforce Do-Not-Call lists", category: "Compliance" },
-        { key: "skip_trace", label: "Revenue Forecaster", description: "AI-powered revenue prediction engine", category: "Analytics" },
-        { key: "voice_ai", label: "Smart Contact Intelligence", description: "AI-optimized outreach timing and method", category: "AI" },
-      ];
-
-      const settings = settingsData?.settings ?? settingsData ?? {};
-      setToggles(
-        toggleDefs.map((td) => ({
-          ...td,
-          enabled: settings[td.key] !== undefined ? Boolean(settings[td.key]) : true,
-        }))
-      );
-
-      // --- Forecast ---
-      if (fc) {
-        setForecast([
-          { label: "30 Day", revenue: fc.summary?.predictedRevenue30d ?? 0, cases: fc.summary?.predictedCases30d ?? 0, confidence: 85 },
-          { label: "60 Day", revenue: (fc.summary?.predictedRevenue30d ?? 0) * 1.8, cases: (fc.summary?.predictedCases30d ?? 0) * 1.7, confidence: 70 },
-          { label: "90 Day", revenue: (fc.summary?.predictedRevenue30d ?? 0) * 2.5, cases: (fc.summary?.predictedCases30d ?? 0) * 2.3, confidence: 55 },
-        ]);
-
-        const hist = (fc.historical ?? []).slice(-180);
-        const monthly: Record<string, number> = {};
-        hist.forEach((p: any) => {
-          const m = p.date?.substring(0, 7);
-          if (m) monthly[m] = (monthly[m] || 0) + (p.revenue || 0);
-        });
-        setMonthlyTrend(Object.entries(monthly).slice(-6).map(([month, revenue]) => ({ month, revenue: revenue as number })));
-      }
-
-      // --- Bot ROI ---
-      const bots = botsRes.status === "fulfilled" ? botsRes.value : null;
-      if (Array.isArray(bots)) {
-        setBotROI(
-          bots.slice(0, 8).map((b: any) => ({
-            botName: b.botName || b.name || "Unknown",
-            cost: b.totalCostCents ? b.totalCostCents / 100 : Math.round(Math.random() * 500 + 100),
-            revenue: b.totalRevenue ?? Math.round(Math.random() * 5000 + 1000),
-            roi: b.roi ?? 0,
-          }))
-        );
-      }
-
-      // --- Goals ---
-      setGoals({
-        revenueTarget: 100000,
-        revenueCurrent: revenueThisMonth,
-        caseTarget: 500,
-        caseCurrent: casesInPipeline,
-      });
-
-      // --- Contact Intelligence (populate from dashboard or defaults) ---
-      setContactMethods([
-        { method: "SMS", successRate: dash?.smsSuccessRate ?? 34, total: dash?.smsSent ?? 0 },
-        { method: "Call", successRate: dash?.callSuccessRate ?? 18, total: dash?.callsMade ?? 0 },
-        { method: "Email", successRate: dash?.emailSuccessRate ?? 12, total: dash?.emailsSent ?? 0 },
-      ]);
-      setTopStates(
-        (dash?.topStates ?? [
-          { state: "TX", successRate: 42, totalOutreach: 1200 },
-          { state: "FL", successRate: 38, totalOutreach: 980 },
-          { state: "CA", successRate: 35, totalOutreach: 870 },
-          { state: "GA", successRate: 33, totalOutreach: 650 },
-          { state: "OH", successRate: 31, totalOutreach: 540 },
-        ]).slice(0, 5)
-      );
-      setOptimalWindow(dash?.optimalContactWindow ?? "9:00 AM - 11:00 AM ET");
-      setTcpaStatus(
-        dash?.tcpaStatus ?? [
-          { timezone: "Eastern", allowed: true },
-          { timezone: "Central", allowed: true },
-          { timezone: "Mountain", allowed: true },
-          { timezone: "Pacific", allowed: false },
-          { timezone: "Hawaii", allowed: false },
-        ]
-      );
-
-      // --- Auto-Response ---
-      setResponseCategories(
-        dash?.responseCategories ?? [
-          { category: "Interested", count: 124, percentage: 28 },
-          { category: "Not Interested", count: 198, percentage: 44 },
-          { category: "Wrong Number", count: 56, percentage: 12 },
-          { category: "Already Filed", count: 34, percentage: 8 },
-          { category: "Callback Requested", count: 36, percentage: 8 },
-        ]
-      );
-      setRecentResponses(dash?.recentResponses ?? []);
-      setDncCount(dash?.dncCount ?? 0);
-      setResponseRate(dash?.responseRate ?? 0);
-
-      // --- Pipelines ---
-      setPipelines(dash?.activePipelines ?? []);
-
-      // --- Batches ---
-      setBatches(dash?.batchJobs ?? []);
-
-      // --- Activity Feed ---
-      setActivityFeed(
-        (dash?.recentActivity ?? []).slice(0, 50).map((a: any, i: number) => ({
-          id: a.id ?? `act-${i}`,
-          timestamp: a.timestamp ?? a.createdAt ?? new Date().toISOString(),
-          botName: a.botName ?? a.bot ?? "system",
-          action: a.action ?? a.description ?? "Processed case",
-          caseRef: a.caseRef ?? a.caseNumber ?? "-",
-          cost: a.cost ?? 0,
-          botType: a.botType ?? "research",
-        }))
-      );
-    } catch (errUnknown: unknown) {
-      const err = apiFailure(errUnknown);
-      setError(err?.message || "Failed to load command center data");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadData();
-    const interval = setInterval(loadData, 60000); // Refresh every 60s
-    return () => clearInterval(interval);
-  }, [loadData]);
-
-  // -----------------------------------------------------------------------
-  // Handlers
-  // -----------------------------------------------------------------------
-
-  async function handleToggle(key: string) {
-    setTogglingKey(key);
-    const result = await apiFetch<any>(`/settings/master/${key}/toggle`, { method: "POST" });
-    if (result) {
-      setToggles((prev) => prev.map((t) => (t.key === key ? { ...t, enabled: result.enabled ?? !t.enabled } : t)));
-    }
-    setTogglingKey(null);
-  }
-
-  async function handleLaunchPipeline() {
-    setLaunchingPipeline(true);
-    const result = await apiFetch<any>("/ops/pipelines/launch", {
-      method: "POST",
-      body: JSON.stringify({ pipeline: selectedPipeline }),
-    });
-    if (result) {
-      setPipelines((prev) => [
-        { id: result.id ?? `pl-${Date.now()}`, name: selectedPipeline, status: "running", startedAt: new Date().toISOString(), stepsTotal: result.stepsTotal ?? 5, stepsCompleted: 0 },
-        ...prev,
-      ]);
-    }
-    setLaunchingPipeline(false);
-  }
-
-  async function handleBatchPreview() {
-    const result = await apiFetch<any>("/ops/batch/preview", {
-      method: "POST",
-      body: JSON.stringify({ bot: batchBot, filters: batchFilter }),
-    });
-    setBatchPreview(result ? { count: result.matchedCases ?? 0, cost: result.estimatedCost ?? 0 } : { count: 0, cost: 0 });
-  }
-
-  async function handleBatchExecute() {
-    setExecutingBatch(true);
-    const result = await apiFetch<any>("/ops/batch/execute", {
-      method: "POST",
-      body: JSON.stringify({ bot: batchBot, filters: batchFilter }),
-    });
-    if (result) {
-      setBatches((prev) => [
-        { id: result.id ?? `b-${Date.now()}`, botName: batchBot, status: "running", matchedCases: batchPreview?.count ?? 0, processedCases: 0, estimatedCost: batchPreview?.cost ?? 0, startedAt: new Date().toISOString() },
-        ...prev,
-      ]);
-      setBatchPreview(null);
-    }
-    setExecutingBatch(false);
-  }
+  // The server has no qualified launch/preview route or these dashboard metrics.
+  // Keep the planned panels visible without fabricating business results or job receipts.
+  const unavailable = () => setActionError('This operation has no qualified server workflow yet. No job was submitted.');
+  const handleLaunchPipeline = unavailable;
+  const handleBatchPreview = unavailable;
+  const handleBatchExecute = unavailable;
+  const launchingPipeline = true;
+  const executingBatch = true;
+  const [batchPreview] = useState<{ count: number; cost: number } | null>(null);
+  const pipelines: Pipeline[] = [];
+  const batches: BatchJob[] = [];
+  const forecast: ForecastBucket[] = [];
+  const monthlyTrend: { month: string; revenue: number }[] = [];
+  const botROI: BotROI[] = [];
+  const goals = { revenueTarget: 100000, revenueCurrent: 0, caseTarget: 500, caseCurrent: 0 };
+  const contactMethods: ContactMethod[] = [];
+  const topStates: StatePerformance[] = [];
+  const optimalWindow = 'Not established from actual outreach';
+  const tcpaStatus: { timezone: string; allowed: boolean }[] = [];
+  const responseCategories: ResponseCategory[] = [];
+  const recentResponses: RecentResponse[] = [];
+  const dncCount = 'Unavailable';
+  const responseRate: number | null = null;
+  const activityFeed: ActivityEntry[] = [];
 
   // -----------------------------------------------------------------------
   // Render helpers
@@ -574,6 +371,11 @@ export default function FounderCommandCenterPage() {
         </button>
       </div>
 
+      <div role="status" className="rounded-xl border border-amber-700 bg-amber-950/30 p-4 text-sm text-amber-200">
+        Operations counts and feature settings below come from the server. Enabled settings do not prove a service is connected.
+        Forecast, ROI, contact performance, response analytics and pipeline/batch controls await qualified integrations; no sample figures are shown.
+      </div>
+      {actionError && <p role="alert" className="text-red-300">{actionError}</p>}
       {/* ================================================================= */}
       {/* 1. TOP STATS BAR                                                  */}
       {/* ================================================================= */}
@@ -607,7 +409,7 @@ export default function FounderCommandCenterPage() {
                 <p className="text-sm font-semibold text-white truncate">{t.label}</p>
                 <p className="mt-0.5 text-xs text-gray-400 line-clamp-2">{t.description}</p>
               </div>
-              <Toggle enabled={t.enabled} onToggle={() => handleToggle(t.key)} disabled={togglingKey === t.key} />
+              <Toggle label={t.label} enabled={t.enabled} onToggle={() => handleToggle(t.key)} disabled={query.isFetching || toggleMutation.isPending || togglingKey === t.key} />
             </div>
           ))}
         </div>
@@ -636,7 +438,7 @@ export default function FounderCommandCenterPage() {
                 disabled={launchingPipeline}
                 className="whitespace-nowrap rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 transition"
               >
-                {launchingPipeline ? "Launching..." : "Launch Pipeline"}
+                Pipeline integration pending
               </button>
             </div>
 
@@ -660,7 +462,7 @@ export default function FounderCommandCenterPage() {
                 ))}
               </div>
             ) : (
-              <p className="text-center text-sm text-gray-500 py-4">No active pipelines. Launch one above.</p>
+              <p className="text-center text-sm text-gray-500 py-4">Pipeline execution is unavailable from this screen. No running jobs are inferred.</p>
             )}
           </div>
         </Section>
@@ -719,7 +521,7 @@ export default function FounderCommandCenterPage() {
 
             {/* Preview + Execute */}
             <div className="flex items-center gap-2">
-              <button onClick={handleBatchPreview} className="rounded-lg bg-gray-700 px-4 py-2 text-sm text-white hover:bg-gray-600 transition">
+              <button disabled onClick={handleBatchPreview} className="rounded-lg bg-gray-700 px-4 py-2 text-sm text-white hover:bg-gray-600 transition">
                 Preview
               </button>
               <button
@@ -727,11 +529,11 @@ export default function FounderCommandCenterPage() {
                 disabled={executingBatch || !batchPreview}
                 className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 transition"
               >
-                {executingBatch ? "Executing..." : "Execute Batch"}
+                Batch integration pending
               </button>
               {batchPreview && (
                 <span className="text-sm text-gray-300">
-                  {batchPreview.count} cases &middot; est. {currency(batchPreview.cost)}
+                  {batchPreview?.count} cases &middot; est. {currency(batchPreview?.cost ?? 0)}
                 </span>
               )}
             </div>
@@ -829,37 +631,7 @@ export default function FounderCommandCenterPage() {
             </div>
           )}
 
-          {/* Goal Tracking */}
-          <div className="grid gap-3 md:grid-cols-2">
-            <div className="rounded-lg border border-gray-800 bg-gray-800/50 p-4">
-              <p className="text-xs font-medium uppercase text-gray-500">Monthly Revenue Goal</p>
-              <div className="mt-2 flex items-center justify-between text-sm">
-                <span className="text-gray-300">{currency(goals.revenueCurrent)}</span>
-                <span className="text-gray-500">/ {currency(goals.revenueTarget)}</span>
-              </div>
-              <div className="mt-1 h-3 rounded-full bg-gray-700 overflow-hidden">
-                <div
-                  className="h-full rounded-full bg-green-500 transition-all"
-                  style={{ width: `${Math.min((goals.revenueCurrent / goals.revenueTarget) * 100, 100)}%` }}
-                />
-              </div>
-              <p className="mt-1 text-xs text-gray-500">{pct((goals.revenueCurrent / goals.revenueTarget) * 100)} achieved</p>
-            </div>
-            <div className="rounded-lg border border-gray-800 bg-gray-800/50 p-4">
-              <p className="text-xs font-medium uppercase text-gray-500">Monthly Case Target</p>
-              <div className="mt-2 flex items-center justify-between text-sm">
-                <span className="text-gray-300">{goals.caseCurrent}</span>
-                <span className="text-gray-500">/ {goals.caseTarget}</span>
-              </div>
-              <div className="mt-1 h-3 rounded-full bg-gray-700 overflow-hidden">
-                <div
-                  className="h-full rounded-full bg-blue-500 transition-all"
-                  style={{ width: `${Math.min((goals.caseCurrent / goals.caseTarget) * 100, 100)}%` }}
-                />
-              </div>
-              <p className="mt-1 text-xs text-gray-500">{pct((goals.caseCurrent / goals.caseTarget) * 100)} achieved</p>
-            </div>
-          </div>
+          <p className="text-sm text-gray-400">Planning defaults: {currency(goals.revenueTarget)} monthly revenue; {goals.caseTarget} cases. Actual goal progress is unavailable.</p>
         </div>
       </Section>
 
@@ -983,11 +755,11 @@ export default function FounderCommandCenterPage() {
               <div className="rounded-lg border border-gray-800 bg-gray-800/50 p-3 text-center">
                 <p className="text-xs text-gray-500">DNC List</p>
                 <p className="text-xl font-bold text-red-400">{dncCount.toLocaleString()}</p>
-                <button className="mt-1 text-xs text-blue-400 hover:underline">View DNC</button>
+                <p className="mt-1 text-xs text-gray-400">DNC records integration pending</p>
               </div>
               <div className="rounded-lg border border-gray-800 bg-gray-800/50 p-3 text-center">
                 <p className="text-xs text-gray-500">Response Rate</p>
-                <p className="text-xl font-bold text-green-400">{pct(responseRate)}</p>
+                <p className="text-xl font-bold text-green-400">{responseRate === null ? "Unavailable" : pct(responseRate)}</p>
                 <p className="mt-1 text-xs text-gray-500">last 7 days</p>
               </div>
             </div>

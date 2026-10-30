@@ -224,7 +224,7 @@ export default function FounderDashboard() {
           <CardContent>
             {insights?.data?.length > 0 ? (
               <div className="space-y-3">
-                {insights.data.map((insight: any) => (
+                {insights.data.map((insight: { id:string; priority:string; title:string; message:string }) => (
                   <div
                     key={insight.id}
                     className="flex items-start gap-3 p-3 rounded-lg bg-muted"

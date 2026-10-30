@@ -14,7 +14,6 @@ interface BotAvatar3DProps {
 
 function LawyerBot({
   speaking,
-  text = "",
   profanityMode = false,
 }: BotAvatar3DProps) {
   const groupRef = useRef<THREE.Group>(null!);

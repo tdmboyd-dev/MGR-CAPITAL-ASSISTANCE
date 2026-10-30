@@ -10,6 +10,8 @@ CardHeader,
 CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { caseListSchema } from "@/lib/caseRecords";
+import { useAuth } from "@/hooks/useAuth";
 import { api } from "@/lib/api";
 import { formatDate } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
@@ -54,9 +56,11 @@ export default function AdminCasesPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
 
-  const { data, isLoading } = useQuery({
-    queryKey: ["admin-cases", page, search, statusFilter],
-    queryFn: async () => {
+  const { user } = useAuth();
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: ["admin-cases", user?.id, page, search, statusFilter],
+    enabled: Boolean(user),
+    queryFn: async ({ signal }) => {
       const params = new URLSearchParams({
         page: page.toString(),
         pageSize: "20",
@@ -64,8 +68,8 @@ export default function AdminCasesPage() {
       if (search) params.append("search", search);
       if (statusFilter) params.append("status", statusFilter);
 
-      const { data } = await api.get(`/cases?${params}`);
-      return data;
+      const { data } = await api.get<unknown>(`/cases?${params}`, { signal });
+      return caseListSchema.parse(data);
     },
   });
 
@@ -80,12 +84,14 @@ export default function AdminCasesPage() {
   const cases = data?.data || [];
   const totalCases = data?.total || 0;
   const activeCases = cases.filter(
-    (c: any) => !["CLOSED", "PAID"].includes(c.status)
+    (c) => !["CLOSED", "PAID"].includes(c.status)
   ).length;
   const pendingDocs = cases.filter(
-    (c: any) => c.status === "DOCS_PENDING"
+    (c) => c.status === "DOCS_PENDING"
   ).length;
-  const filedCases = cases.filter((c: any) => c.status === "FILED").length;
+  const filedCases = cases.filter((c) => c.status === "FILED").length;
+
+  if (error) return <div role="alert" className="space-y-3 p-6"><p>Cases could not be loaded. Your saved cases have not been removed.</p><button onClick={() => { void refetch(); }} className="underline">Retry</button></div>;
 
   return (
     <div className="space-y-6">
@@ -210,7 +216,7 @@ export default function AdminCasesPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {cases.map((caseItem: any) => (
+                  {cases.map((caseItem) => (
                     <tr
                       key={caseItem.id}
                       className="border-b hover:bg-muted/50 transition-colors cursor-pointer"
@@ -253,7 +259,7 @@ export default function AdminCasesPage() {
           )}
 
           {/* Pagination */}
-          {data?.totalPages > 1 && (
+          {(data?.totalPages ?? 0) > 1 && (
             <div className="flex items-center justify-between mt-4 pt-4 border-t">
               <p className="text-sm text-muted-foreground">
                 Showing {(page - 1) * 20 + 1} to{" "}
@@ -273,9 +279,9 @@ export default function AdminCasesPage() {
                   variant="outline"
                   size="sm"
                   onClick={() =>
-                    setPage((p) => Math.min(data.totalPages, p + 1))
+                    setPage((p) => Math.min((data?.totalPages ?? 1), p + 1))
                   }
-                  disabled={page === data.totalPages}
+                  disabled={page === (data?.totalPages ?? 1)}
                 >
                   Next
                   <ChevronRight className="h-4 w-4" />

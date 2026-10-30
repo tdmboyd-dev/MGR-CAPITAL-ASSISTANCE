@@ -1,4 +1,6 @@
 "use client";
+interface UploadResult { error?:string; filesProcessed?:number; totalRecordsParsed?:number; totalCasesCreated?:number; perFile?:{fileName:string; recordsParsed:number; casesCreated:number; errors:string[]}[]; }
+
 import { apiFailure } from "@/lib/apiFailure";
 
 import { Badge } from "@/components/ui/badge";
@@ -12,7 +14,7 @@ CardTitle,
 } from "@/components/ui/card";
 import { api } from "@/lib/api";
 import { formatDate } from "@/lib/utils";
-import { useQuery,useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import {
 ArrowRight,
 CheckCircle,
@@ -55,9 +57,8 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export default function FounderIngestionPage() {
-  const queryClient = useQueryClient();
   const [dragActive, setDragActive] = useState(false);
-  const [uploadResult, setUploadResult] = useState<any>(null);
+  const [uploadResult, setUploadResult] = useState<UploadResult | null>(null);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -309,7 +310,7 @@ export default function FounderIngestionPage() {
                   <p className="font-medium text-green-700">
                     Upload complete: {uploadResult.filesProcessed} file(s), {uploadResult.totalRecordsParsed} records parsed, {uploadResult.totalCasesCreated} cases created
                   </p>
-                  {uploadResult.perFile?.map((f: any, i: number) => (
+                  {uploadResult.perFile?.map((f, i) => (
                     <p key={i} className="text-sm text-green-600 mt-1">
                       {f.fileName}: {f.recordsParsed} records, {f.casesCreated} cases
                       {f.errors?.length > 0 && <span className="text-red-600 ml-2">({f.errors.length} errors)</span>}

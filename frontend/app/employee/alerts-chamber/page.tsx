@@ -51,6 +51,8 @@ function getPriorityColor(priority: string) {
   }
 }
 
+const EMPTY_MESSAGES: ChatMessage[] = [];
+
 export default function KidBuddyPage() {
   const queryClient = useQueryClient();
   const [input, setInput] = useState("");
@@ -76,7 +78,7 @@ export default function KidBuddyPage() {
     enabled: statusData?.provisioned === true,
   });
 
-  const messages: ChatMessage[] = historyData?.data || [];
+  const messages: ChatMessage[] = historyData?.data || EMPTY_MESSAGES;
   const isProvisioned = statusData?.provisioned === true;
   const companyName = statusData?.companyName || "Your Company";
 

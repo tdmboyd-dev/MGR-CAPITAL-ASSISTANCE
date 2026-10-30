@@ -7,7 +7,7 @@ export default defineConfig({
     viewportHeight: 800,
     video: true,
     screenshotOnRunFailure: true,
-    setupNodeEvents(on, config) {
+    setupNodeEvents() {
       // plugins
     },
   },

@@ -1,7 +1,13 @@
-import { ChatRoomType, UserRole } from "@prisma/client";
+import { ChatRoomType, UserRole, Prisma, type ChatRoom } from "@prisma/client";
 import bcrypt from "bcrypt";
 import prisma from "../lib/prisma.js";
+import { currentActor, type Actor } from "./CaseDocumentAccess.js";
+import { AppError } from "../middleware/errorHandler.js";
 
+export function safeRoom(room:ChatRoom){const {password,...publicRoom}=room;void password;return publicRoom;}
+const denied=()=>new AppError('Not authorized',403,'Not authorized to access this communication.');
+const scope=(actor:Actor):Prisma.ChatRoomWhereInput=>actor.role==='FOUNDER'&&actor.tenantId===null?{}:{tenantId:actor.tenantId};
+async function staff(id:string){const actor=await currentActor(prisma,id);if(actor.role==='CLIENT')throw denied();return actor;}
 export interface CreateRoomInput {
   name: string;
   type: ChatRoomType;
@@ -18,378 +24,97 @@ export interface SendMessageInput {
   isEncrypted?: boolean;
 }
 
+
 export class CommsService {
-  /**
-   * Get all rooms accessible to a user
-   */
-  async getRooms(userId: string, userRole: UserRole) {
-    // Founder can see all rooms
-    if (userRole === "FOUNDER") {
-      return prisma.chatRoom.findMany({
-        where: { isActive: true },
-        orderBy: { createdAt: "asc" },
-      });
-    }
-
-    // Employees can see company + team rooms (not private unless they created it)
-    return prisma.chatRoom.findMany({
-      where: {
-        isActive: true,
-        OR: [
-          { type: "COMPANY" },
-          { type: "TEAM" },
-          { type: "PRIVATE", teamLeaderId: userId },
-        ],
-      },
-      orderBy: { createdAt: "asc" },
-    });
+  private lastReadCache:Map<string,Date>=new Map();
+  private async visibleRoom(roomId:string,userId:string){
+    const actor=await staff(userId);
+    const room=await prisma.chatRoom.findFirst({where:{AND:[{id:roomId,isActive:true},scope(actor)]}});
+    if(!room)throw denied();return {actor,room};
   }
-
-  /**
-   * Get a specific room
-   */
-  async getRoom(roomId: string) {
-    return prisma.chatRoom.findUnique({
-      where: { id: roomId },
-    });
+  async getRooms(userId:string,_userRole:UserRole){
+    const actor=await staff(userId);
+    const self=await prisma.user.findUniqueOrThrow({where:{id:userId},select:{teamLeaderId:true}});
+    const managers=['FOUNDER','ADMIN'].includes(actor.role);
+    const visibility:Prisma.ChatRoomWhereInput=managers?{}:{OR:[{type:'COMPANY'},{type:'TEAM',teamLeaderId:{in:[userId,...(self.teamLeaderId?[self.teamLeaderId]:[])]}},{type:'PRIVATE',teamLeaderId:userId}]};
+    const rows=await prisma.chatRoom.findMany({where:{AND:[{isActive:true},scope(actor),visibility]},orderBy:{createdAt:'asc'}});
+    return rows.map(safeRoom);
   }
-
-  /**
-   * Create a new chat room
-   */
-  async createRoom(input: CreateRoomInput, creatorId: string) {
-    let hashedPassword: string | undefined;
-
-    if (input.locked && input.password) {
-      hashedPassword = await bcrypt.hash(input.password, 10);
-    }
-
-    return prisma.chatRoom.create({
-      data: {
-        name: input.name,
-        type: input.type,
-        description: input.description,
-        locked: input.locked || false,
-        password: hashedPassword,
-        teamLeaderId: input.teamLeaderId || creatorId,
-      },
-    });
+  async getRoom(roomId:string){const room=await prisma.chatRoom.findUnique({where:{id:roomId}});return room?safeRoom(room):null;}
+  async createRoom(input:CreateRoomInput,creatorId:string){
+    const actor=await staff(creatorId);if(!['FOUNDER','ADMIN'].includes(actor.role))throw denied();
+    if(input.teamLeaderId&&input.teamLeaderId!==creatorId)throw new AppError('Invalid owner',400,'Room owner must be the creating account.');
+    if(input.locked&&(!input.password||input.password.length<8))throw new AppError('Password required',400,'Protected rooms require at least eight password characters.');
+    const room=await prisma.$transaction(async tx=>{
+      const room=await tx.chatRoom.create({data:{name:input.name,type:input.type,description:input.description,tenantId:actor.tenantId,locked:Boolean(input.locked),password:input.locked?await bcrypt.hash(input.password!,10):null,teamLeaderId:creatorId}});
+      await tx.auditLog.create({data:{userId:creatorId,tenantId:actor.tenantId,action:'CHAT_ROOM_CREATED',entityType:'CHAT_ROOM',entityId:room.id}});return room;
+    });return safeRoom(room);
   }
-
-  /**
-   * Update a room
-   */
-  async updateRoom(
-    roomId: string,
-    updates: Partial<CreateRoomInput>,
-    userId: string,
-    userRole: UserRole
-  ) {
-    const room = await this.getRoom(roomId);
-    if (!room) {
-      throw new Error("Room not found");
-    }
-
-    // Only founder or room owner can update
-    if (userRole !== "FOUNDER" && room.teamLeaderId !== userId) {
-      throw new Error("Not authorized to update this room");
-    }
-
-    let hashedPassword: string | undefined;
-    if (updates.locked && updates.password) {
-      hashedPassword = await bcrypt.hash(updates.password, 10);
-    }
-
-    return prisma.chatRoom.update({
-      where: { id: roomId },
-      data: {
-        name: updates.name,
-        type: updates.type,
-        description: updates.description,
-        locked: updates.locked,
-        password: hashedPassword,
-      },
-    });
+  async updateRoom(roomId:string,updates:Partial<CreateRoomInput>,userId:string,_userRole:UserRole){
+    const {actor,room}=await this.visibleRoom(roomId,userId);
+    if(actor.role!=='FOUNDER'&&room.teamLeaderId!==userId)throw denied();
+    const locked=updates.locked??room.locked;
+    if(locked&&!updates.password&&!room.password)throw new AppError('Password required',400,'Protected rooms require a password.');
+    if(updates.password&&updates.password.length<8)throw new AppError('Invalid password',400,'Use at least eight password characters.');
+    const saved=await prisma.$transaction(async tx=>{
+      const saved=await tx.chatRoom.update({where:{id:roomId},data:{name:updates.name,type:updates.type,description:updates.description,locked,password:!locked?null:updates.password?await bcrypt.hash(updates.password,10):undefined}});
+      await tx.auditLog.create({data:{userId,tenantId:room.tenantId,action:'CHAT_ROOM_UPDATED',entityType:'CHAT_ROOM',entityId:roomId}});return saved;
+    });return safeRoom(saved);
   }
-
-  /**
-   * Delete (deactivate) a room
-   */
-  async deleteRoom(roomId: string, userId: string, userRole: UserRole) {
-    const room = await this.getRoom(roomId);
-    if (!room) {
-      throw new Error("Room not found");
-    }
-
-    // Only founder or room owner can delete
-    if (userRole !== "FOUNDER" && room.teamLeaderId !== userId) {
-      throw new Error("Not authorized to delete this room");
-    }
-
-    return prisma.chatRoom.update({
-      where: { id: roomId },
-      data: { isActive: false },
-    });
+  async deleteRoom(roomId:string,userId:string,_userRole:UserRole){
+    const {actor,room}=await this.visibleRoom(roomId,userId);if(actor.role!=='FOUNDER'&&room.teamLeaderId!==userId)throw denied();
+    const saved=await prisma.$transaction(async tx=>{
+      const saved=await tx.chatRoom.update({where:{id:roomId},data:{isActive:false}});
+      await tx.auditLog.create({data:{userId,tenantId:room.tenantId,action:'CHAT_ROOM_DEACTIVATED',entityType:'CHAT_ROOM',entityId:roomId}});return saved;
+    });return safeRoom(saved);
   }
-
-  /**
-   * Check if user can access a room
-   */
-  async canAccessRoom(
-    roomId: string,
-    userId: string,
-    userRole: UserRole,
-    password?: string
-  ): Promise<boolean> {
-    const room = await this.getRoom(roomId);
-    if (!room || !room.isActive) {
-      return false;
+  async canAccessRoom(roomId:string,userId:string,_userRole:UserRole,password?:string):Promise<boolean>{
+    let resolved:Awaited<ReturnType<CommsService['visibleRoom']>>;
+    try{resolved=await this.visibleRoom(roomId,userId);}catch(error){if(error instanceof AppError&&error.statusCode===403)return false;throw error;}
+    const {actor,room}=resolved;
+    if(actor.role==='FOUNDER'||room.teamLeaderId===userId)return true;
+    if(room.type==='TEAM'){
+      const self=await prisma.user.findUniqueOrThrow({where:{id:userId},select:{teamLeaderId:true}});
+      if(!room.teamLeaderId||self.teamLeaderId!==room.teamLeaderId)return false;
     }
-
-    // Founder can access any room
-    if (userRole === "FOUNDER") {
-      return true;
-    }
-
-    // Company rooms are open to all
-    if (room.type === "COMPANY") {
-      return true;
-    }
-
-    // Team rooms are open to all employees
-    if (room.type === "TEAM") {
-      return true;
-    }
-
-    // Private rooms require ownership or password
-    if (room.type === "PRIVATE") {
-      if (room.teamLeaderId === userId) {
-        return true;
-      }
-
-      if (room.locked && room.password && password) {
-        return bcrypt.compare(password, room.password);
-      }
-
-      return false;
-    }
-
-    return false;
+    if(room.locked)return Boolean(room.password&&password&&await bcrypt.compare(password,room.password));
+    return room.type!=='PRIVATE';
   }
-
-  /**
-   * Get messages for a room
-   */
-  async getMessages(
-    roomId: string,
-    userId: string,
-    userRole: UserRole,
-    limit = 50,
-    before?: Date
-  ) {
-    // Check access
-    const canAccess = await this.canAccessRoom(roomId, userId, userRole);
-    if (!canAccess) {
-      throw new Error("Not authorized to view this room");
-    }
-
-    const where: any = {
-      roomId,
-      isDeleted: false,
-    };
-
-    if (before) {
-      where.createdAt = { lt: before };
-    }
-
-    return prisma.chatMessage.findMany({
-      where,
-      include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            role: true,
-          },
-        },
-      },
-      orderBy: { createdAt: "asc" },
-      take: limit,
-    });
+  async getMessages(roomId:string,userId:string,userRole:UserRole,limit=50,before?:Date){
+    if(!Number.isInteger(limit)||limit<1||limit>100||before&&Number.isNaN(before.getTime()))throw new AppError('Invalid pagination',400,'Use a limit from 1 to 100 and a valid timestamp.');
+    if(!await this.canAccessRoom(roomId,userId,userRole))throw denied();
+    const rows=await prisma.chatMessage.findMany({where:{roomId,isDeleted:false,...(before?{createdAt:{lt:before}}:{})},include:{user:{select:{id:true,name:true,email:true,role:true}}},orderBy:[{createdAt:'desc'},{id:'desc'}],take:limit});
+    return rows.reverse();
   }
-
-  /**
-   * Send a message
-   */
-  async sendMessage(input: SendMessageInput) {
-    return prisma.chatMessage.create({
-      data: {
-        roomId: input.roomId,
-        userId: input.userId,
-        content: input.content,
-        isEncrypted: input.isEncrypted || false,
-      },
-      include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            role: true,
-          },
-        },
-      },
-    });
+  async sendMessage(input:SendMessageInput){
+    const actor=await staff(input.userId);if(!await this.canAccessRoom(input.roomId,input.userId,actor.role))throw denied();
+    if(input.isEncrypted)throw new AppError('Encryption unavailable',400,'End-to-end encrypted messaging is not implemented.');
+    if(!input.content.trim()||input.content.length>5000)throw new AppError('Invalid message',400,'Message must contain 1 to 5000 characters.');
+    return prisma.chatMessage.create({data:{roomId:input.roomId,userId:input.userId,content:input.content,isEncrypted:false},include:{user:{select:{id:true,name:true,email:true,role:true}}}});
   }
-
-  /**
-   * Edit a message
-   */
-  async editMessage(
-    messageId: string,
-    userId: string,
-    userRole: UserRole,
-    newContent: string
-  ) {
-    const message = await prisma.chatMessage.findUnique({
-      where: { id: messageId },
-    });
-
-    if (!message) {
-      throw new Error("Message not found");
-    }
-
-    // Only message author or founder can edit
-    if (message.userId !== userId && userRole !== "FOUNDER") {
-      throw new Error("Not authorized to edit this message");
-    }
-
-    return prisma.chatMessage.update({
-      where: { id: messageId },
-      data: {
-        content: newContent,
-        isEdited: true,
-        editedAt: new Date(),
-      },
-    });
+  async editMessage(messageId:string,userId:string,_userRole:UserRole,newContent:string){
+    const actor=await staff(userId);const message=await prisma.chatMessage.findUnique({where:{id:messageId}});
+    if(!message||message.isDeleted||!await this.canAccessRoom(message.roomId,userId,actor.role)||message.userId!==userId&&actor.role!=='FOUNDER')throw denied();
+    if(!newContent.trim()||newContent.length>5000)throw new AppError('Invalid message',400,'Message must contain 1 to 5000 characters.');
+    return prisma.chatMessage.update({where:{id:messageId},data:{content:newContent,isEdited:true,editedAt:new Date()}});
   }
-
-  /**
-   * Delete (soft) a message
-   */
-  async deleteMessage(messageId: string, userId: string, userRole: UserRole) {
-    const message = await prisma.chatMessage.findUnique({
-      where: { id: messageId },
-    });
-
-    if (!message) {
-      throw new Error("Message not found");
-    }
-
-    // Only message author or founder can delete
-    if (message.userId !== userId && userRole !== "FOUNDER") {
-      throw new Error("Not authorized to delete this message");
-    }
-
-    return prisma.chatMessage.update({
-      where: { id: messageId },
-      data: {
-        isDeleted: true,
-        deletedAt: new Date(),
-      },
-    });
+  async deleteMessage(messageId:string,userId:string,_userRole:UserRole){
+    const actor=await staff(userId);const message=await prisma.chatMessage.findUnique({where:{id:messageId}});
+    if(!message||!await this.canAccessRoom(message.roomId,userId,actor.role)||message.userId!==userId&&actor.role!=='FOUNDER')throw denied();
+    return prisma.chatMessage.update({where:{id:messageId},data:{isDeleted:true,deletedAt:new Date()}});
   }
-
-  /**
-   * Get unread message count for a user
-   * Tracks last-read timestamps per user per room using in-memory cache
-   */
-  private lastReadCache: Map<string, Date> = new Map();
-
-  async getUnreadCount(userId: string, roomId?: string): Promise<number> {
-    try {
-      const cacheKey = `${userId}:${roomId || 'all'}`;
-      const lastRead = this.lastReadCache.get(cacheKey) || new Date(0);
-
-      if (roomId) {
-        // Count unread in specific room
-        const count = await prisma.chatMessage.count({
-          where: {
-            roomId,
-            userId: { not: userId }, // Don't count own messages
-            createdAt: { gt: lastRead },
-            deletedAt: null,
-          },
-        });
-        return count;
-      }
-
-      // Count unread across all accessible rooms
-      const rooms = await this.getRooms(userId, 'EMPLOYEE');
-      let total = 0;
-
-      for (const room of rooms) {
-        const roomKey = `${userId}:${room.id}`;
-        const roomLastRead = this.lastReadCache.get(roomKey) || new Date(0);
-
-        const count = await prisma.chatMessage.count({
-          where: {
-            roomId: room.id,
-            userId: { not: userId },
-            createdAt: { gt: roomLastRead },
-            deletedAt: null,
-          },
-        });
-        total += count;
-      }
-
-      return total;
-    } catch (error) {
-      console.error('Error getting unread count:', error);
-      return 0;
-    }
+  // Read cursors remain process-local; durable per-user read receipts are unfinished.
+  async getUnreadCount(userId:string,roomId?:string):Promise<number>{
+    const actor=await staff(userId);const rooms=roomId?[{id:roomId}]:await this.getRooms(userId,actor.role);let total=0;
+    for(const room of rooms){if(!await this.canAccessRoom(room.id,userId,actor.role)){if(roomId)throw denied();continue;}
+      total+=await prisma.chatMessage.count({where:{roomId:room.id,userId:{not:userId},isDeleted:false,createdAt:{gt:this.lastReadCache.get(`${userId}:${room.id}`)||new Date(0)}}});
+    }return total;
   }
-
-  /**
-   * Mark messages as read for a user in a room
-   */
-  async markAsRead(userId: string, roomId: string): Promise<void> {
-    const cacheKey = `${userId}:${roomId}`;
-    this.lastReadCache.set(cacheKey, new Date());
-  }
-
-  /**
-   * Seed default rooms
-   */
-  async seedDefaultRooms() {
-    const existingRooms = await prisma.chatRoom.count();
-    if (existingRooms > 0) {
-      return;
-    }
-
-    await prisma.chatRoom.createMany({
-      data: [
-        {
-          name: "General",
-          type: "COMPANY",
-          description: "Company-wide announcements and discussions",
-        },
-        {
-          name: "Team Chat",
-          type: "TEAM",
-          description: "Team collaboration and updates",
-        },
-        {
-          name: "Random",
-          type: "COMPANY",
-          description: "Off-topic conversations",
-        },
-      ],
-    });
-
-    console.log("Default chat rooms seeded");
+  async markAsRead(userId:string,roomId:string):Promise<void>{const actor=await staff(userId);if(!await this.canAccessRoom(roomId,userId,actor.role))throw denied();this.lastReadCache.set(`${userId}:${roomId}`,new Date());}
+  async seedDefaultRooms(creatorId:string){
+    const actor=await staff(creatorId);if(actor.role!=='FOUNDER')throw denied();
+    if(await prisma.chatRoom.count({where:{tenantId:actor.tenantId}}))return;
+    for(const [name,type,description] of [['General','COMPANY','Company announcements and discussions'],['Team Chat','TEAM','Team collaboration'],['Random','COMPANY','Off-topic conversations']] as const)await this.createRoom({name,type,description},creatorId);
   }
 }
-
-export const commsService = new CommsService();
+export const commsService=new CommsService();

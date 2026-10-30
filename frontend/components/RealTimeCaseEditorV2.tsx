@@ -1,5 +1,6 @@
 'use client'
 
+import { cursorPresenceSchema } from '@/lib/collaborationRecords'
 import { Alert,AlertDescription } from '@/components/ui/alert'
 import { Avatar,AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
@@ -61,7 +62,12 @@ function nameToColor(name: string): string {
   return colors[Math.abs(hash) % colors.length]
 }
 
-export default function RealTimeCaseEditorV2({ caseId, onSave }: Props) {
+export default function RealTimeCaseEditorV2(props: Props) {
+  const { user } = useAuth()
+  return <EditorSession key={`${props.caseId}:${user?.id ?? 'anonymous'}`} {...props} />
+}
+
+function EditorSession({ caseId, onSave }: Props) {
   const { user } = useAuth()
   const ydocRef = useRef<Y.Doc | null>(null)
   const providerRef = useRef<WebsocketProvider | null>(null)
@@ -131,8 +137,11 @@ export default function RealTimeCaseEditorV2({ caseId, onSave }: Props) {
       const newCursors = new Map<number, CursorData>()
       const users: string[] = []
 
-      states.forEach((state: any, clientId: number) => {
-        if (clientId !== awareness.clientID && state?.user && state?.cursor) {
+      states.forEach((value: unknown, clientId: number) => {
+        const parsed = cursorPresenceSchema.safeParse(value)
+        if (!parsed.success) return
+        const state = parsed.data
+        if (clientId !== awareness.clientID) {
           users.push(state.user.name)
           newCursors.set(clientId, {
             name: state.user.name,
@@ -165,8 +174,6 @@ export default function RealTimeCaseEditorV2({ caseId, onSave }: Props) {
       }
     })
 
-    // Load initial content
-    setContent(ytext.toString())
 
     return () => {
       provider.destroy()
@@ -236,7 +243,7 @@ export default function RealTimeCaseEditorV2({ caseId, onSave }: Props) {
       await onSave(content)
       setLastSaved(new Date())
       toast.success('Saved successfully')
-    } catch (error) {
+    } catch {
       toast.error('Failed to save')
     } finally {
       setSaving(false)
@@ -251,10 +258,7 @@ export default function RealTimeCaseEditorV2({ caseId, onSave }: Props) {
 
   // Calculate cursor position in textarea
   const getCursorStyle = (cursor: CursorData): React.CSSProperties => {
-    if (!textareaRef.current) return {}
-
-    const textarea = textareaRef.current
-    const lineHeight = parseInt(getComputedStyle(textarea).lineHeight) || 20
+    const lineHeight = 20
     const charWidth = 8.4 // Approximate for monospace
 
     const lines = content.substring(0, cursor.position).split('\n')
@@ -438,7 +442,7 @@ export default function RealTimeCaseEditorV2({ caseId, onSave }: Props) {
                 onSelect={handleSelect}
                 onKeyUp={handleSelect}
                 onMouseUp={handleSelect}
-                className="w-full min-h-[400px] p-4 font-mono text-sm resize-none focus:outline-none bg-white dark:bg-slate-950 dark:text-slate-100"
+                className="w-full min-h-[400px] p-4 font-mono text-sm leading-5 resize-none focus:outline-none bg-white dark:bg-slate-950 dark:text-slate-100"
                 placeholder="Start typing your case notes... Changes sync in real-time with other editors."
                 aria-label="Collaborative text editor"
               />
@@ -446,7 +450,6 @@ export default function RealTimeCaseEditorV2({ caseId, onSave }: Props) {
               {/* Remote cursors */}
               <AnimatePresence>
                 {Array.from(cursors.entries()).map(([clientId, cursor]) => {
-                  const hasSelection = cursor.selectionEnd > cursor.selectionStart
                   const style = getCursorStyle(cursor)
 
                   return (

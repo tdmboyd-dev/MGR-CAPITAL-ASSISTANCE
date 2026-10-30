@@ -68,6 +68,8 @@ function getPriorityColor(priority: string) {
   }
 }
 
+const EMPTY_MESSAGES: ChatMessage[] = [];
+
 export default function AlertsChamberPage() {
   const queryClient = useQueryClient();
   const [input, setInput] = useState("");
@@ -83,7 +85,7 @@ export default function AlertsChamberPage() {
     },
   });
 
-  const messages: ChatMessage[] = historyData?.data || [];
+  const messages: ChatMessage[] = historyData?.data || EMPTY_MESSAGES;
 
   // Send message mutation
   const sendMessage = useMutation({

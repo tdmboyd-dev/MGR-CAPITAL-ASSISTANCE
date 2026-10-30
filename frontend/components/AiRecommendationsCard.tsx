@@ -20,23 +20,16 @@ Phone,
 RefreshCw,
 Sparkles,
 } from "lucide-react";
-import { useEffect,useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useAuth } from "@/hooks/useAuth";
+import { api } from "@/lib/api";
+import { z } from "zod";
 
-interface AiRecommendation {
-  id: string;
-  type: "action" | "training" | "follow_up" | "priority";
-  title: string;
-  description: string;
-  confidence: number;
-  reasoning: string;
-  suggestedAction?: string;
-}
-
-interface CaseRecommendations {
-  caseId: string;
-  recommendations: AiRecommendation[];
-  generatedAt: string;
-}
+const recommendationSchema = z.object({ caseId: z.string(), generatedAt: z.string(), recommendations: z.array(z.object({
+  id: z.string(), type: z.enum(['action', 'training', 'follow_up', 'priority']), title: z.string(), description: z.string(),
+  confidence: z.number().finite().min(0).max(1), reasoning: z.string(), suggestedAction: z.string().optional(),
+})) });
+type AiRecommendation = z.infer<typeof recommendationSchema>['recommendations'][number];
 
 const typeConfig = {
   action: {
@@ -67,39 +60,20 @@ interface AiRecommendationsCardProps {
 }
 
 export function AiRecommendationsCard({ caseId, onActionClick }: AiRecommendationsCardProps) {
-  const [data, setData] = useState<CaseRecommendations | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-
-  const fetchRecommendations = async () => {
-    try {
-      setIsRefreshing(true);
-      const res = await fetch(`/api/ai/recommendations/case/${caseId}`, {
-        credentials: "include",
-      });
-
-      if (!res.ok) {
-        throw new Error("Failed to fetch recommendations");
-      }
-
-      const json = await res.json();
-      setData(json);
-      setError(null);
-    } catch (err) {
-      setError("Unable to load AI recommendations");
-      console.error("AI recommendations error:", err);
-    } finally {
-      setIsLoading(false);
-      setIsRefreshing(false);
-    }
-  };
-
-  useEffect(() => {
-    if (caseId) {
-      fetchRecommendations();
-    }
-  }, [caseId]);
+  const { user } = useAuth();
+  const query = useQuery({
+    queryKey: ['case-recommendations', user?.id, caseId],
+    enabled: Boolean(user && caseId),
+    queryFn: async ({ signal }) => {
+      const response = await api.get<unknown>(`/ai/recommendations/case/${encodeURIComponent(caseId)}`, { signal });
+      const data = recommendationSchema.parse(response.data);
+      if (data.caseId !== caseId) throw new Error('Recommendation case mismatch');
+      return data;
+    }, retry: false, gcTime: 0,
+  });
+  const { data, isLoading, isFetching: isRefreshing } = query;
+  const error = query.isError ? 'Unable to load AI recommendations' : null;
+  const fetchRecommendations = () => { void query.refetch(); };
 
   if (isLoading) {
     return (
@@ -168,7 +142,7 @@ export function AiRecommendationsCard({ caseId, onActionClick }: AiRecommendatio
       <CardContent>
         {recommendations.length === 0 ? (
           <p className="text-muted-foreground text-sm text-center py-4">
-            No recommendations at this time. Case is on track.
+            No recommendations were returned. This does not confirm that the case is on track.
           </p>
         ) : (
           <div className="space-y-3">

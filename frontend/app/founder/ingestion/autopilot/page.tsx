@@ -73,7 +73,7 @@ const STATUS_COLORS: Record<string, string> = {
 export default function AutopilotDashboardPage() {
   const queryClient = useQueryClient();
 
-  const { data: statusData, isLoading: statusLoading } = useQuery<AutopilotStatus>({
+  const { data: statusData } = useQuery<AutopilotStatus>({
     queryKey: ["autopilot-status"],
     queryFn: async () => {
       try {

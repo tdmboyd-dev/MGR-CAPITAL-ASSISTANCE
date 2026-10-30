@@ -161,5 +161,47 @@
         "next": "Owner-approved county inquiry or authorized alternative; draft in HANDOFF"
       }
     ]
+  },
+  "frontendReliability20261030": {
+    "currentAuthority": "HANDOFF.md",
+    "ownerDecision": "Actual payable employee dollars, internal margins private; original payout percentages retained",
+    "features": [
+      {
+        "id": "CAP-LINT-01",
+        "feature": "Whole frontend lint",
+        "status": "VERIFIED_LOCAL",
+        "evidence": "evidence/2026-10-30-frontend-reliability/lint-history.json"
+      },
+      {
+        "id": "CAP-FINANCE-EMPLOYEE-01",
+        "feature": "Actual payable accounting and reconciliation",
+        "status": "VERIFIED_LOCAL",
+        "checks": "19/19DB/HTTP; optimized browser navigation/reopen; no external payment proof"
+      },
+      {
+        "id": "CAP-SEARCH-01",
+        "feature": "Scoped real search and current authority",
+        "status": "VERIFIED_LOCAL",
+        "evidence": "evidence/2026-10-30-frontend-reliability/frontend-lint-http-receipt.json"
+      },
+      {
+        "id": "CAP-COMMS-01",
+        "feature": "Company/team room boundaries and hash redaction",
+        "status": "VERIFIED_LOCAL",
+        "remaining": "Protected admission UI, durable read cursors, complete role/browser matrix"
+      },
+      {
+        "id": "CAP-UI-TRUTH-01",
+        "feature": "No sample payment/fleet/workflow/forecast success",
+        "status": "IMPLEMENTED_AND_NAMED_LOCAL_CHECKS",
+        "remaining": "Real worker/provider/device execution qualifications"
+      },
+      {
+        "id": "CAP-AUDIT-01",
+        "feature": "Remaining whole semantic audit",
+        "status": "OPEN",
+        "next": "Current handoff ordered engineering queue"
+      }
+    ]
   }
 }

@@ -1,4 +1,6 @@
 'use client'
+interface NftRecord { id:string; caseId?:string; mintedAt:string; amount?:number; mintAddress?:string; }
+
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -56,7 +58,7 @@ export default function NFTMintingDashboard() {
       setMinted(data.data)
       toast.success('NFT minted successfully!')
       refetchNFTs()
-    } catch (err) {
+    } catch {
       toast.error('Failed to mint NFT')
     } finally {
       setLoading(false)
@@ -121,7 +123,7 @@ export default function NFTMintingDashboard() {
               <div>
                 <p className="text-sm text-muted-foreground">Total Value</p>
                 <p className="text-3xl font-bold text-blue-600">
-                  ${(nfts?.data?.reduce((sum: number, n: any) => sum + (n.amount || 0), 0) || 0).toLocaleString()}
+                  ${(nfts?.data?.reduce((sum: number, n: NftRecord) => sum + (n.amount || 0), 0) || 0).toLocaleString()}
                 </p>
               </div>
             </div>
@@ -262,7 +264,7 @@ export default function NFTMintingDashboard() {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {(nfts?.data || []).map((nft: any, i: number) => (
+            {(nfts?.data || []).map((nft: NftRecord, i: number) => (
               <motion.div
                 key={nft.id}
                 initial={{ opacity: 0, x: -10 }}

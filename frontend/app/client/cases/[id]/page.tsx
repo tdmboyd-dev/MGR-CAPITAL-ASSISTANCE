@@ -13,6 +13,7 @@ CardTitle,
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { api } from "@/lib/api";
+import type { CaseDocumentRecord } from "@/lib/caseRecords";
 import { formatCurrency,formatDate,formatDateTime } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { AnimatePresence,motion } from "framer-motion";
@@ -562,7 +563,7 @@ export default function ClientCaseDetailPage() {
                 {/* Document List */}
                 {documents.length > 0 ? (
                   <div className="space-y-3">
-                    {(showAllDocuments ? documents : documents.slice(0, 3)).map((doc: any) => (
+                    {(showAllDocuments ? documents : documents.slice(0, 3)).map((doc: CaseDocumentRecord) => (
                       <div
                         key={doc.id}
                         className="flex items-center justify-between p-4 rounded-lg border bg-card hover:bg-muted/50 transition-colors"

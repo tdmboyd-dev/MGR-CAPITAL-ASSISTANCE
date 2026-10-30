@@ -1,0 +1,13 @@
+{
+  "scope": "Actual service/PostgreSQL; synthetic amounts and records only; no bank/payment provider called",
+  "checks": [
+    "Missing stripe provider produces no successful or processing payment",
+    "Missing paypal provider produces no successful or processing payment",
+    "Missing ach provider produces no successful or processing payment",
+    "No synthetic provider payment rows were written to PostgreSQL",
+    "Invalid monetary inputs rejected before database or provider work",
+    "Manual check stays pending; no fabricated refund receipt or refunded state",
+    "Unverified callback cannot settle payment"
+  ],
+  "passed": 7
+}

@@ -14,6 +14,7 @@ CardTitle,
 import { DocumentUploader } from "@/components/ui/document-uploader";
 import { Skeleton } from "@/components/ui/skeleton";
 import { api } from "@/lib/api";
+import type { CaseDocumentRecord } from "@/lib/caseRecords";
 import { formatCurrency,formatDate,formatDateTime } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -306,7 +307,7 @@ export default function CaseDetailPage() {
 
               {caseInfo.documents?.length > 0 ? (
                 <div className="space-y-2">
-                  {caseInfo.documents.map((doc: any) => (
+                  {caseInfo.documents.map((doc: CaseDocumentRecord) => (
                     <div
                       key={doc.id}
                       className="flex items-center justify-between p-3 rounded-lg border bg-card"

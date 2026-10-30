@@ -90,7 +90,7 @@ function ResetPasswordForm() {
           result.message || "Password reset link is invalid or has expired. Please request a new one."
         );
       }
-    } catch (err) {
+    } catch {
       setErrorMessage("Something went wrong. Please try again later.");
     } finally {
       setIsLoading(false);

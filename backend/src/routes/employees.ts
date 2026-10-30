@@ -15,6 +15,8 @@ import { notificationService } from "../services/NotificationService.js";
 import { notificationCenterService } from "../services/NotificationCenterService.js";
 
 import prisma from "../lib/prisma.js";
+import { currentActor } from "../services/CaseDocumentAccess.js";
+import { getOwnEmployeeEarnings, employeeEarningsSummary } from "../services/EmployeeEarningsView.js";
 
 const router = Router();
 
@@ -55,7 +57,7 @@ router.get("/me", authMiddleware, roleGuard(["EMPLOYEE"]), async (req: AuthReque
       data: {
         ...employee,
         tier: getTierDisplayName(employee.employeeTier || "TIER_1_ASSOCIATE"),
-        commissionRate: tierData ? `${tierData.displayedRatePercent}%` : "20%" // DISPLAYED, not actual
+        commissionRate: tierData ? `${tierData.actualRatePercent}% of company fee` : "10% of company fee" // DISPLAYED, not actual
       }
     });
   } catch (error: any) {
@@ -66,23 +68,13 @@ router.get("/me", authMiddleware, roleGuard(["EMPLOYEE"]), async (req: AuthReque
 
 /**
  * GET /api/employees/me/earnings - Get own earnings (EMPLOYEE)
- * Shows DISPLAYED earnings, not actual - SHADOW ACCOUNTING ENFORCED
+ * Shows actual payable allocations, excluding private company margins.
  */
 router.get("/me/earnings", authMiddleware, roleGuard(["EMPLOYEE"]), async (req: AuthRequest, res: Response) => {
   try {
-    const earnings = await bankingService.getEmployeeEarnings(req.user!.id);
-
-    // CRITICAL: Only return displayed amounts, NEVER actual amounts
-    // This enforces shadow accounting - employees see inflated numbers
-    res.json({
-      success: true,
-      data: {
-        lifetimeEarningsCents: earnings.displayedLifetimeCents,
-        thisMonthCents: earnings.displayedMonthCents,
-        pendingCents: earnings.displayedPendingCents
-        // actualLifetimeCents and actualMonthCents are NEVER exposed
-      }
-    });
+    res.setHeader('Cache-Control','private, no-store');
+    const view=await getOwnEmployeeEarnings(req.user!.id);
+    res.json({success:true,data:employeeEarningsSummary(view)});
   } catch (error: any) {
     console.error("Employee earnings error:", error);
     res.status(500).json({ success: false, error: "Failed to load earnings" });
@@ -382,12 +374,15 @@ router.get("/stats", authMiddleware, roleGuard(["ADMIN"]), async (req: Request, 
  *
  * Everyone can see BOTH company-wide and team boards.
  * FOUNDER sees revenue, employees see ranking by cases only.
- * Shadow accounting: all displayed values use DISPLAYED rates, never actual.
+ * Employee dollars use actual payable allocations. Internal company margins remain private.
  */
 router.get("/leaderboard", authMiddleware, async (req: Request, res: Response) => {
   try {
-    const user = (req as any).user;
-    const isFounder = user?.role === "FOUNDER";
+    const user = (req as AuthRequest).user!;
+    const actor=await currentActor(prisma,user.id);
+    if(actor.role==='CLIENT')return res.status(403).json({success:false,error:'Staff access required'});
+    res.setHeader('Cache-Control','private, no-store');
+    const isFounder=actor.role==='FOUNDER';
     const scope = (req.query.scope as string) || "company";
 
     // Look up user's tenantId from DB (not in JWT)
@@ -398,7 +393,7 @@ router.get("/leaderboard", authMiddleware, async (req: Request, res: Response) =
 
     // Fetch ALL active employees for both boards
     const allEmployees = await prisma.user.findMany({
-      where: { role: "EMPLOYEE", isActive: true },
+      where: { role: "EMPLOYEE", isActive: true,...(actor.role==='FOUNDER'&&actor.tenantId===null?{}:{tenantId:actor.tenantId}) },
       select: {
         id: true,
         name: true,
@@ -414,22 +409,16 @@ router.get("/leaderboard", authMiddleware, async (req: Request, res: Response) =
       },
     });
 
-    // Map employee data — shadow accounting: use DISPLAYED commission rates, not actual
+    // Map employee rankings; expose revenue only to the permitted company founder.
     const mapEmployee = (emp: typeof allEmployees[0]) => {
       const casesCompleted = emp.assignedCases.length;
       const tierKey = emp.employeeTier || "TIER_1_ASSOCIATE";
       const tierData = bankingService.getTier(tierKey);
 
-      // Shadow accounting: calculate DISPLAYED earnings (what employees believe they earn)
+      // Company fee records for founder ranking; never manufacture employee earnings.
       const actualRevenueCents = emp.assignedCases.reduce(
         (sum, c) => sum + (c.actualFeeCents || 0), 0
       );
-      // DISPLAYED amount = (actual revenue / actual rate) * displayed rate
-      const actualRate = tierData?.actualRatePercent || 10;
-      const displayedRate = tierData?.displayedRatePercent || 20;
-      const displayedEarningsCents = actualRate > 0
-        ? Math.round((actualRevenueCents / actualRate) * displayedRate)
-        : 0;
 
       return {
         id: emp.id,
@@ -442,7 +431,7 @@ router.get("/leaderboard", authMiddleware, async (req: Request, res: Response) =
         // Only FOUNDER sees real revenue — employees see displayed (shadow) earnings
         ...(isFounder
           ? { revenueCents: actualRevenueCents }
-          : { displayedEarningsCents }),
+          : {}),
       };
     };
 
@@ -509,7 +498,7 @@ router.get("/leaderboard", authMiddleware, async (req: Request, res: Response) =
     const recentIncentives = await prisma.employeeIncentive.findMany({
       orderBy: { createdAt: "desc" },
       take: 10,
-      where: { isCompanyWide: true },
+      where: { isCompanyWide: true,...(actor.role==='FOUNDER'&&actor.tenantId===null?{}:{employee:{tenantId:actor.tenantId}}) },
     });
 
     // Return the requested scope or all at once

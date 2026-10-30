@@ -26,7 +26,7 @@ User,
 Users,
 X,
 } from "lucide-react";
-import { useEffect,useRef,useState } from "react";
+import { useRef,useState } from "react";
 import { toast } from "sonner";
 
 interface Email {
@@ -57,7 +57,12 @@ interface EmailComposerProps {
   defaultFrom?: string;  // Employee's email address for sending
 }
 
-export function EmailComposer({
+export function EmailComposer(props: EmailComposerProps) {
+  if (!props.open) return null;
+  return <EmailComposerSession key={`${props.mode}:${props.originalEmail?.id ?? 'new'}`} {...props} />;
+}
+
+function EmailComposerSession({
   open,
   onClose,
   onSend,
@@ -69,57 +74,25 @@ export function EmailComposer({
   const [isMaximized, setIsMaximized] = useState(false);
 
   // Form state
-  const [to, setTo] = useState("");
+  const [to, setTo] = useState(mode === "reply" ? originalEmail?.from ?? "" : "");
   const [cc, setCc] = useState("");
   const [bcc, setBcc] = useState("");
-  const [subject, setSubject] = useState("");
-  const [body, setBody] = useState("");
+  const [subject, setSubject] = useState(() => {
+    if (!originalEmail || mode === 'new') return '';
+    const prefix = mode === 'reply' ? 'Re:' : 'Fwd:';
+    return originalEmail.subject.startsWith(prefix) ? originalEmail.subject : `${prefix} ${originalEmail.subject}`;
+  });
+  const [body, setBody] = useState(() => {
+    if (!originalEmail || mode === 'new') return '';
+    const plain = originalEmail.body?.replace(/<[^>]*>/g, '') ?? '';
+    const sender = originalEmail.fromName || originalEmail.from;
+    const date = new Date(originalEmail.createdAt).toLocaleString();
+    return mode === 'reply' ? `\n\n---\nOn ${date}, ${sender} wrote:\n\n${plain}`
+      : `\n\n---\nForwarded message:\nFrom: ${sender}\nDate: ${date}\nSubject: ${originalEmail.subject}\n\n${plain}`;
+  });
   const [showCc, setShowCc] = useState(false);
   const [showBcc, setShowBcc] = useState(false);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
-
-  // Initialize form based on mode and original email
-  useEffect(() => {
-    if (open) {
-      if (mode === "reply" && originalEmail) {
-        setTo(originalEmail.from);
-        setSubject(
-          originalEmail.subject.startsWith("Re:")
-            ? originalEmail.subject
-            : `Re: ${originalEmail.subject}`
-        );
-        setBody(
-          `\n\n---\nOn ${new Date(originalEmail.createdAt).toLocaleString()}, ${
-            originalEmail.fromName || originalEmail.from
-          } wrote:\n\n${originalEmail.body?.replace(/<[^>]*>/g, "") || ""}`
-        );
-      } else if (mode === "forward" && originalEmail) {
-        setTo("");
-        setSubject(
-          originalEmail.subject.startsWith("Fwd:")
-            ? originalEmail.subject
-            : `Fwd: ${originalEmail.subject}`
-        );
-        setBody(
-          `\n\n---\nForwarded message:\nFrom: ${
-            originalEmail.fromName || originalEmail.from
-          }\nDate: ${new Date(originalEmail.createdAt).toLocaleString()}\nSubject: ${
-            originalEmail.subject
-          }\n\n${originalEmail.body?.replace(/<[^>]*>/g, "") || ""}`
-        );
-      } else {
-        // New email - reset everything
-        setTo("");
-        setSubject("");
-        setBody("");
-      }
-      setCc("");
-      setBcc("");
-      setShowCc(false);
-      setShowBcc(false);
-      setAttachments([]);
-    }
-  }, [open, mode, originalEmail]);
 
   // Send email mutation
   const sendMutation = useMutation({

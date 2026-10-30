@@ -1,0 +1,28 @@
+{
+  "executed": [
+    "Actual founder login and nonexistent keyword search returned0saved results, no samples",
+    "Explicit activity_tracking false survived reload, restoredtrue survived reload",
+    "Original Pipeline navigation redirects to saved recovery pipeline,194items retained after reload",
+    "Payment screen loaded actual pending synthetic lab records without demo fraud scores",
+    "Worker fleet loaded actual0stored bots, no sample workers created",
+    "Shared theme tokens repaired; actual light/dark control and dark reload verified",
+    "Employee navigation My Earnings shows saved1234cents instead of legacy2468cents and survives reload",
+    "Optimized local Next build actual login -> My Earnings -> reload -> same1234cents -> logout passed"
+  ],
+  "proof": "Chrome on loopback17972, actual local API17971/PostgreSQL18588, synthetic founder/employee and payroll; real historical public-source warehouse retained",
+  "notProven": [
+    "Bank transfer",
+    "Provider settlement",
+    "Deployment",
+    "Owner production acceptance",
+    "Mobile/all-role visual matrix"
+  ],
+  "retainedDevelopmentError": "Restarting/recompiling the live development app left a Next HMR router-before-initialization error. A clean navigation recovered. The optimized local build journey added no new console error; historical error retained, not erased.",
+  "screenshots": [
+    "real-recovery-pipeline.png",
+    "actual-worker-fleet.png",
+    "payment-dark-theme-final.png",
+    "employee-payable-reopened.png",
+    "employee-optimized-build-reopened.png"
+  ]
+}

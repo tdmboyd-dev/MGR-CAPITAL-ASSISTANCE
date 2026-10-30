@@ -28,25 +28,9 @@ interface AuthState {
   clearError: () => void;
 }
 
-const getInitialTheme = (): "light" | "dark" => {
-  if (typeof window !== "undefined") {
-    const saved = localStorage.getItem("auth-storage");
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        if (parsed.state?.theme) return parsed.state.theme;
-      } catch {}
-    }
-    return window.matchMedia("(prefers-color-scheme: dark)").matches
-      ? "dark"
-      : "light";
-  }
-  return "dark";
-};
-
 export const useAuthStore = create<AuthState>()(
   persist(
-    (set, get) => ({
+    (set) => ({
       isHydrated: false,
       user: null,
       accessToken: null,
@@ -56,9 +40,7 @@ export const useAuthStore = create<AuthState>()(
 
       setTheme: (theme) => {
         set({ theme });
-        if (typeof document !== "undefined") {
-          document.documentElement.setAttribute("data-theme", theme);
-        }
+
       },
 
       login: async (email: string, password: string) => {
@@ -150,11 +132,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return unsubscribe;
   }, []);
 
-  // Hydrate theme on mount
-  useEffect(() => {
-    const theme = store.theme || getInitialTheme();
-    document.documentElement.setAttribute("data-theme", theme);
-  }, []);
+  // next-themes owns the DOM theme. Legacy account preferences must not race it.
 
   // Background validation — don't block UI if user is already cached
   useEffect(() => {
@@ -163,9 +141,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // If user is already hydrated from Zustand persist, validate in background
     // If user is null (first visit or cleared), fetch and set user
+    let disposed = false;
+    const controller = new AbortController();
     const validate = async () => {
       try {
-        const { data } = await api.get("/auth/me");
+        const { data } = await api.get("/auth/me", { signal: controller.signal });
+        if (disposed || localStorage.getItem("accessToken") !== token) return;
         if (data.success) {
           useAuthStore.setState({ user: data.user });
         } else {
@@ -173,6 +154,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           useAuthStore.setState({ user: null, accessToken: null });
         }
       } catch {
+        if (disposed || localStorage.getItem("accessToken") !== token) return;
         // Only clear auth if we don't have a cached user (avoid logout on network blip)
         if (!useAuthStore.getState().user) {
           localStorage.removeItem("accessToken");
@@ -183,12 +165,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // If no cached user, fetch immediately
     // If cached user exists, validate after a short delay (non-blocking)
-    if (!store.user) {
-      validate();
-    } else {
-      const timer = setTimeout(validate, 2000);
-      return () => clearTimeout(timer);
-    }
+    const timer = useAuthStore.getState().user ? setTimeout(validate, 2000) : undefined;
+    if (!timer) void validate();
+    return () => { disposed = true; controller.abort(); if (timer) clearTimeout(timer); };
   }, []);
 
   return <AuthContext.Provider value={store}>{children}</AuthContext.Provider>;

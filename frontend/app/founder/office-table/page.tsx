@@ -99,7 +99,6 @@ export default function OfficeTablePage() {
   const [activeTab, setActiveTab] = useState("overview");
   const [reportDialogOpen, setReportDialogOpen] = useState(false);
   const [selectedViolation, setSelectedViolation] = useState<Violation | null>(null);
-  const [selectedBan, setSelectedBan] = useState<BanRecord | null>(null);
 
   // Report violation form state
   const [reportForm, setReportForm] = useState({
@@ -212,7 +211,6 @@ export default function OfficeTablePage() {
     },
     onSuccess: (_, variables) => {
       toast.success(variables.approved ? "Appeal approved, ban lifted" : "Appeal denied");
-      setSelectedBan(null);
       queryClient.invalidateQueries({ queryKey: ["office-table-summary"] });
       queryClient.invalidateQueries({ queryKey: ["active-bans"] });
       queryClient.invalidateQueries({ queryKey: ["appealed-bans"] });
@@ -410,7 +408,7 @@ export default function OfficeTablePage() {
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-5 gap-4">
-                  {Object.entries(severityLabels).map(([severity, label]) => (
+                  {Object.keys(severityLabels).map((severity) => (
                     <div
                       key={severity}
                       className={`p-4 rounded-lg text-center ${severityColors[severity]}`}
@@ -628,9 +626,9 @@ export default function OfficeTablePage() {
                 </SelectTrigger>
                 <SelectContent>
                   {config?.violationTypes &&
-                    Object.entries(config.violationTypes).map(([key, value]: [string, any]) => (
+                    Object.entries(config.violationTypes).map(([key, value]) => (
                       <SelectItem key={key} value={key}>
-                        {value.name}
+                        {typeof value === "object" && value !== null && "name" in value && typeof value.name === "string" ? value.name : key}
                       </SelectItem>
                     ))}
                 </SelectContent>

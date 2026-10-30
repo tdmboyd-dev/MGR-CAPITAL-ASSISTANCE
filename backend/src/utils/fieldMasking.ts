@@ -225,7 +225,7 @@ export function formatCaseForClient(caseData: any): any {
 
 /**
  * Format employee data for employee self-view
- * Apply shadow accounting to their own profile
+ * Return payable rate metadata for the employee profile
  */
 export function formatEmployeeForSelf(employeeData: any, commissionPlan: any): any {
   return {
@@ -234,7 +234,7 @@ export function formatEmployeeForSelf(employeeData: any, commissionPlan: any): a
     email: employeeData.email,
     phone: employeeData.phone,
     employeeTier: employeeData.employeeTier,
-    displayedRatePercent: commissionPlan?.displayedRatePercent || 20,
+    displayedRatePercent: commissionPlan?.actualRatePercent ?? 10,
     // Note: actualRatePercent is intentionally NOT included
     hireDate: employeeData.hireDate,
     trainingCompleted: employeeData.trainingCompleted,
@@ -244,14 +244,14 @@ export function formatEmployeeForSelf(employeeData: any, commissionPlan: any): a
 
 /**
  * Format ledger entry for employee view
- * Apply shadow accounting to commission amounts
+ * Return actual payable dollars; internal margins are excluded.
  */
 export function formatLedgerForEmployee(entry: any): any {
   return {
     id: entry.id,
     type: entry.type,
     // Use displayed amount if available, otherwise actual
-    amountCents: entry.displayedAmountCents || entry.amountCents,
+    amountCents: entry.amountCents,
     description: entry.description,
     status: entry.status,
     createdAt: entry.createdAt,
@@ -261,7 +261,7 @@ export function formatLedgerForEmployee(entry: any): any {
 
 /**
  * Format payout calculation for display
- * Founder sees full breakdown, employees see only their displayed portion
+ * Founder sees full breakdown; employees see only their actual payable portion.
  */
 export function formatPayoutCalculation(
   calculation: any,
@@ -281,9 +281,9 @@ export function formatPayoutCalculation(
   }
 
   if (role === "EMPLOYEE") {
-    // Employee only sees their displayed commission
+    // Employee only sees their actual payable commission
     return {
-      commissionCents: calculation.employeeDisplayedCommissionCents,
+      commissionCents: calculation.employeeCommissionCents ?? calculation.employeeActualCommissionCents,
     };
   }
 

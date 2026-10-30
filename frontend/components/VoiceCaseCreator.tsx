@@ -134,7 +134,7 @@ export default function VoiceCaseCreator() {
       setInterimTranscript("");
       setExtractedData(null);
       toast.success("Listening... Speak now");
-    } catch (error) {
+    } catch {
       requestedListening.current = false;
       setListening(false);
       toast.error("Failed to start voice recognition");

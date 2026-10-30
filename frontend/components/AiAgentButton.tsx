@@ -114,7 +114,7 @@ export function AiAgentButton({
   const [result, setResult] = useState<AgentResult | null>(null);
   const [copied, setCopied] = useState(false);
   const [followUpInput, setFollowUpInput] = useState("");
-  const [conversationHistory, setConversationHistory] = useState<any[]>([]);
+  const [conversationHistory, setConversationHistory] = useState<unknown[]>([]);
 
   const config = taskConfig[task];
   const Icon = config.icon;
@@ -168,7 +168,7 @@ export function AiAgentButton({
       setResult(agentResult);
       setConversationHistory(data.conversationHistory || []);
       onComplete?.(agentResult);
-    } catch (error) {
+    } catch {
       toast.error("AI Agent failed. Please try again.");
       setResult({
         success: false,
@@ -212,7 +212,7 @@ export function AiAgentButton({
       });
       setConversationHistory(data.conversationHistory || []);
       setFollowUpInput("");
-    } catch (error) {
+    } catch {
       toast.error("Failed to continue conversation");
     } finally {
       setIsLoading(false);

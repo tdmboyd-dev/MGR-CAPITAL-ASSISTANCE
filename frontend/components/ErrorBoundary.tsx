@@ -40,7 +40,7 @@ export class ErrorBoundary extends Component<Props, State> {
   };
 
   handleGoHome = () => {
-    window.location.href = "/";
+    window.location.assign(new URL("/", window.location.origin).href);
   };
 
   render() {

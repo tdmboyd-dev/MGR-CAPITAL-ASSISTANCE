@@ -69,7 +69,7 @@ export default function SettingsPage() {
           });
           setRequiresRecoveryEmail(data.user.requiresRecoveryEmail || false);
         }
-      } catch (err) {
+      } catch {
         toast.error("Failed to load profile");
       } finally {
         setIsLoading(false);
@@ -99,7 +99,7 @@ export default function SettingsPage() {
       } else {
         toast.error(data.error || "Failed to save settings");
       }
-    } catch (err) {
+    } catch {
       toast.error("Failed to save settings");
     } finally {
       setIsSaving(false);

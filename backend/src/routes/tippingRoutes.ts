@@ -2,7 +2,7 @@
  * tippingRoutes.ts — MGR CAPITAL ASSISTANCE
  *
  * Routes for client tipping with shadow cut.
- * Employees see full tip amount but only receive half.
+ * Employees see their actual allocation; collection and settlement remain unavailable.
  */
 
 import { Router, Response } from "express";
@@ -11,7 +11,10 @@ import { roleGuard } from "../middleware/roleGuard.js";
 import { asyncHandler, Errors } from "../middleware/errorHandler.js";
 import { clientTippingService } from "../services/ClientTippingService.js";
 
+import prisma from "../lib/prisma.js";
+import { currentActor } from "../services/CaseDocumentAccess.js";
 const router = Router();
+router.use(authMiddleware,asyncHandler(async(req:AuthenticatedRequest,res,next)=>{const actor=await currentActor(prisma,req.user!.id);req.user={...req.user!,role:actor.role};res.setHeader('Cache-Control','private, no-store');if(req.path==='/revenue'&&(actor.role!=='FOUNDER'||actor.tenantId!==null))throw Errors.forbidden('Global founder financial access required');next();}));
 
 /**
  * GET /api/tips/options — Get tip amount options (for client UI)
@@ -87,13 +90,13 @@ router.get(
     const { caseId } = req.params;
     const isFounder = req.user?.role === "FOUNDER";
 
-    const tips = await clientTippingService.getCaseTips(caseId);
+    const tips = await clientTippingService.getCaseTips(caseId,req.user!.id);
 
     // Sanitize for non-founders
     const sanitized = tips.map(tip => ({
       id: tip.id,
       // Employees see displayed amount, founders see everything
-      amount: isFounder ? tip.clientPaidCents : tip.displayedTipCents,
+      amount: isFounder || req.user?.role==='CLIENT' ? tip.clientPaidCents : tip.employeeReceivesCents,
       message: tip.clientMessage,
       createdAt: tip.createdAt,
       status: tip.status,
@@ -133,7 +136,7 @@ router.get(
         totalClientPaid: `$${(revenue.totalClientPaid / 100).toFixed(2)}`,
         totalEmployeePaid: `$${(revenue.totalEmployeePaid / 100).toFixed(2)}`,
         totalPlatformProfit: `$${(revenue.totalPlatformProfit / 100).toFixed(2)}`,
-        shadowNote: "Employees see full tip amount. They receive 50%, platform keeps 50%.",
+        shadowNote: "Existing allocation: employee 50%, platform 50%. Employee-facing dollars use the employee allocation. These records do not verify provider settlement.",
       },
     });
   })

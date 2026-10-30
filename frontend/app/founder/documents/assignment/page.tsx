@@ -11,7 +11,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { AnimatePresence,motion } from 'framer-motion'
 import { Download,Eye,FileText,Loader2,RefreshCw,Shield } from 'lucide-react'
 import { useRef,useState } from 'react'
-import { useForm } from 'react-hook-form'
+import { useForm, useWatch } from 'react-hook-form'
 import { toast } from 'sonner'
 import { z } from 'zod'
 
@@ -59,6 +59,9 @@ export default function AssignmentEditor() {
       notaryRequired: false,
     },
   })
+
+  const selectedState = useWatch({ control: form.control, name: 'state' })
+  const notaryRequired = useWatch({ control: form.control, name: 'notaryRequired' })
 
   // Signature pad handling
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -133,7 +136,7 @@ export default function AssignmentEditor() {
       setBlockchainTxId(result.data?.blockchainTxId)
 
       toast.success('Assignment document generated successfully!')
-    } catch (err) {
+    } catch {
       toast.error('Failed to generate document')
     } finally {
       setLoading(false)
@@ -168,7 +171,7 @@ export default function AssignmentEditor() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          <form onSubmit={(event) => { void form.handleSubmit(onSubmit)(event); }} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <Label htmlFor="assignor">Assignor (Property Owner) *</Label>
@@ -202,7 +205,7 @@ export default function AssignmentEditor() {
               <div>
                 <Label htmlFor="state">State *</Label>
                 <Select
-                  value={form.watch('state')}
+                  value={selectedState}
                   onValueChange={(v) => form.setValue('state', v)}
                 >
                   <SelectTrigger className="mt-1">
@@ -252,7 +255,7 @@ export default function AssignmentEditor() {
               <div className="flex items-center gap-2 pt-6">
                 <Checkbox
                   id="notaryRequired"
-                  checked={form.watch('notaryRequired')}
+                  checked={notaryRequired}
                   onCheckedChange={(checked) => form.setValue('notaryRequired', checked as boolean)}
                 />
                 <Label htmlFor="notaryRequired" className="cursor-pointer">

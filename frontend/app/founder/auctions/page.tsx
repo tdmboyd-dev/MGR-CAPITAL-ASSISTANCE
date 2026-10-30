@@ -30,7 +30,6 @@ XCircle,
 Zap
 } from 'lucide-react';
 import { useState } from 'react';
-import useWebSocket from 'react-use-websocket';
 import { toast } from 'sonner';
 
 interface Bid {
@@ -65,80 +64,13 @@ interface Auction {
   imageUrl?: string
 }
 
-const DEMO_AUCTIONS: Auction[] = [
-  {
-    id: 'auction_demo_1',
-    claimId: 'CLAIM-001',
-    nftMintAddress: 'SOLANA_MINT_ABC123',
-    title: 'Texas Property Surplus - Dallas County',
-    description: 'Premium surplus claim from tax sale property in Dallas County. Verified ownership chain, ready for collection.',
-    surplusAmount: 45000,
-    minimumBid: 5000,
-    currentBid: 12500,
-    currentBidder: 'wallet_xyz123',
-    startTime: new Date(Date.now() - 24 * 60 * 60 * 1000),
-    endTime: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
-    status: 'active',
-    fractions: 100,
-    fractionsRemaining: 65,
-    pricePerFraction: 125,
-    bids: [
-      { id: 'bid_1', bidderAddress: 'wallet_xyz123', bidderName: 'Alice', amount: 12500, fractionCount: 10, timestamp: new Date(), status: 'confirmed' },
-      { id: 'bid_2', bidderAddress: 'wallet_abc456', bidderName: 'Bob', amount: 10000, fractionCount: 8, timestamp: new Date(Date.now() - 3600000), status: 'outbid' },
-    ],
-    propertyAddress: '1234 Oak Lane, Dallas, TX 75201',
-    state: 'TX'
-  },
-  {
-    id: 'auction_demo_2',
-    claimId: 'CLAIM-002',
-    nftMintAddress: 'SOLANA_MINT_DEF456',
-    title: 'Florida Surplus - Miami-Dade',
-    description: 'High-value surplus claim with confirmed heir documentation. Ready for immediate payout.',
-    surplusAmount: 78000,
-    minimumBid: 10000,
-    currentBid: 0,
-    startTime: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000),
-    endTime: new Date(Date.now() + 9 * 24 * 60 * 60 * 1000),
-    status: 'upcoming',
-    fractions: 100,
-    fractionsRemaining: 100,
-    pricePerFraction: 100,
-    bids: [],
-    propertyAddress: '567 Beach Blvd, Miami, FL 33139',
-    state: 'FL'
-  },
-  {
-    id: 'auction_demo_3',
-    claimId: 'CLAIM-003',
-    nftMintAddress: 'SOLANA_MINT_GHI789',
-    title: 'California Surplus - Los Angeles',
-    description: 'Premium LA County surplus with verified documentation and clear title.',
-    surplusAmount: 125000,
-    minimumBid: 15000,
-    currentBid: 32000,
-    currentBidder: 'wallet_def789',
-    startTime: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
-    endTime: new Date(Date.now() - 2 * 60 * 60 * 1000),
-    status: 'ended',
-    fractions: 100,
-    fractionsRemaining: 0,
-    pricePerFraction: 320,
-    bids: [
-      { id: 'bid_3', bidderAddress: 'wallet_def789', bidderName: 'Charlie', amount: 32000, fractionCount: 100, timestamp: new Date(), status: 'won' },
-    ],
-    propertyAddress: '890 Sunset Blvd, Los Angeles, CA 90028',
-    state: 'CA'
-  }
-]
-
 export default function AuctionsPage() {
   const [selectedAuction, setSelectedAuction] = useState<Auction | null>(null)
   const [bidAmount, setBidAmount] = useState('')
   const [fractionsToBuy, setFractionsToBuy] = useState(1)
   const [showNewAuctionDialog, setShowNewAuctionDialog] = useState(false)
-  const [walletConnected, setWalletConnected] = useState(false)
-  const [walletAddress, setWalletAddress] = useState('')
+  const walletConnected = false
+  const walletAddress = ''
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [newAuction, setNewAuction] = useState({
     claimId: '',
@@ -178,31 +110,16 @@ export default function AuctionsPage() {
     }
   })
 
-  // Fetch auctions
-  const { data: auctions = DEMO_AUCTIONS, isLoading, refetch } = useQuery<Auction[]>({
+  // Only saved records belong in this view. A provider failure is not demo inventory.
+  const { data: auctions = [], isLoading, isError, refetch } = useQuery<Auction[]>({
     queryKey: ['auctions', statusFilter],
     queryFn: async () => {
-      try {
-        const { data } = await api.get('/auctions', { params: { status: statusFilter !== 'all' ? statusFilter : undefined } })
-        return Array.isArray(data) ? data : data?.data || DEMO_AUCTIONS
-      } catch {
-        return DEMO_AUCTIONS
-      }
+      const { data } = await api.get('/auctions', { params: { status: statusFilter !== 'all' ? statusFilter : undefined } });
+      const rows=Array.isArray(data)?data:data?.data;
+      if(!Array.isArray(rows))throw Error('Invalid auction response');
+      return rows;
     }
-  })
-
-  // WebSocket for real-time updates
-  const { lastMessage } = useWebSocket('ws://localhost:4001/auctions', {
-    onMessage: (msg) => {
-      const data = JSON.parse(msg.data)
-      if (data.type === 'bid:placed' || data.type === 'auction:extended') {
-        refetch()
-        toast.info('Auction updated!')
-      }
-    },
-    shouldReconnect: () => true,
-    reconnectInterval: 3000,
-  })
+  });
 
   // Place bid mutation
   const bidMutation = useMutation({
@@ -245,11 +162,8 @@ export default function AuctionsPage() {
   })
 
   const connectWallet = () => {
-    // Mock wallet connection
-    setWalletAddress('7xKX...9bR4')
-    setWalletConnected(true)
-    toast.success('Wallet connected!')
-  }
+    toast.error('Wallet signing and transaction confirmation are not connected. Purchases, bids and creation remain disabled.');
+  };
 
   const formatTimeRemaining = (endTime: Date) => {
     const now = new Date()
@@ -290,6 +204,9 @@ export default function AuctionsPage() {
       className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50 to-pink-50 dark:from-slate-950 dark:via-purple-950 dark:to-pink-950 p-8"
     >
       <div className="max-w-7xl mx-auto space-y-8">
+        <p className="rounded-lg border p-4">Saved auction inventory only. Wallet signing, claim transfer rights and transaction settlement are not qualified; no purchase or bid can be submitted here.</p>
+        {isLoading && <p role="status">Loading saved auctions…</p>}
+        {isError && <p role="alert">Auction records could not be loaded. This screen has no sample fallback. Use Refresh to retry.</p>}
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>

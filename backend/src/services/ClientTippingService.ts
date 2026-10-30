@@ -1,26 +1,17 @@
-/**
- * ClientTippingService.ts — MGR CAPITAL ASSISTANCE
- *
- * CLIENT TIPPING SYSTEM WITH SHADOW CUT
- *
- * When clients tip employees:
- * - Employee sees: "Client tipped you $50!"
- * - Employee gets: $25 (50% shadow cut)
- * - Platform keeps: $25
- *
- * The employee NEVER knows the platform takes half.
- * They think they got the full tip.
+/** Client tip projections. Existing 50% allocation policy is preserved.
+ * Employee displays use their actual allocation. Collection and settlement require qualified integration.
  */
-
-import { logger } from "../utils/logger.js";
 import prisma from "../lib/prisma.js";
+import { AppError } from "../middleware/errorHandler.js";
+import { currentActor,requireCase } from "./CaseDocumentAccess.js";
+import type { Prisma } from "@prisma/client";
 
 // =============================================================================
 // CONFIGURATION
 // =============================================================================
 
-// Shadow cut percentage - platform takes this before employee sees anything
-const SHADOW_CUT_PERCENT = 50;
+// Existing platform allocation policy; no collection or payout is executed here.
+export const SHADOW_CUT_PERCENT = 50;
 
 // Tip amounts offered to clients (in cents)
 const TIP_OPTIONS = [
@@ -45,7 +36,7 @@ export interface ClientTip {
   clientPaidCents: number;
 
   // Shadow accounting
-  displayedTipCents: number;    // What employee SEES ("You received a $50 tip!")
+  displayedTipCents: number;    // Legacy display field; employee projections use employeeReceivesCents
   employeeReceivesCents: number; // What employee GETS (after shadow cut)
   platformProfitCents: number;   // What platform keeps (hidden)
 
@@ -59,7 +50,7 @@ export interface ClientTip {
 }
 
 export interface TipStats {
-  totalTipsReceived: number;      // What employee sees
+  totalTipsReceived: number;      // Actual employee allocation; not proof of external payment
   totalTipsPaidOut: number;       // What employee got
   tipCount: number;
   averageTip: number;
@@ -96,79 +87,23 @@ class ClientTippingService {
     amountCents: number;
     message?: string;
   }): Promise<ClientTip> {
-    const { caseId, clientId, employeeId, amountCents, message } = data;
-
-    if (amountCents < 100) {
-      throw new Error('Minimum tip is $1');
-    }
-
-    // SHADOW ACCOUNTING
-    // What employee SEES: The full tip amount
-    // "Congratulations! You received a $50 tip from your client!"
-    const displayedTip = amountCents;
-
-    // What employee GETS: After 50% shadow cut
-    const shadowCut = Math.round(amountCents * (SHADOW_CUT_PERCENT / 100));
-    const employeeReceives = amountCents - shadowCut;
-
-    // Platform profit = shadow cut
-    const platformProfit = shadowCut;
-
-    // Create tip record
-    const tipId = `tip_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-
-    const tip: ClientTip = {
-      id: tipId,
-      caseId,
-      clientId,
-      employeeId,
-      clientPaidCents: amountCents,
-      displayedTipCents: displayedTip,
-      employeeReceivesCents: employeeReceives,
-      platformProfitCents: platformProfit,
-      status: 'pending',
-      clientMessage: message,
-      createdAt: new Date(),
-    };
-
-    // Store in database
-    await (prisma as any).clientTip?.create({
-      data: {
-        id: tipId,
-        caseId,
-        clientId,
-        employeeId,
-        clientPaidCents: amountCents,
-        displayedTipCents: displayedTip,
-        employeeReceivesCents: employeeReceives,
-        platformProfitCents: platformProfit,
-        status: 'pending',
-        clientMessage: message,
-      },
-    }).catch(() => {
-      logger.info('ClientTip table not found, tip stored in memory', { tipId });
-    });
-
-    logger.info('Client tip processed', {
-      tipId,
-      caseId,
-      clientPaid: amountCents,
-      employeeSees: displayedTip,
-      employeeGets: employeeReceives,
-      platformProfit,
-    });
-
-    return tip;
+    if(!Number.isSafeInteger(data.amountCents)||data.amountCents<100||data.amountCents>2147483647)throw new AppError('Invalid tip',400,'Enter a tip of at least one dollar in integer cents.');
+    const {actor,record}=await requireCase(prisma,data.clientId,data.caseId);
+    if(actor.role!=='CLIENT'||record.clientId!==data.clientId||record.assignedEmployeeId!==data.employeeId)throw new AppError('Forbidden',403,'Tip recipient must be the assigned employee on your own case.');
+    // No qualified collection/settlement integration exists. Never create a record saying money was paid.
+    throw new AppError('Tip collection unavailable',503,'Tip collection is not connected. Nothing was charged or paid.');
   }
 
   /**
    * Get tip stats for an employee
-   * SHADOW: Employee only sees displayed amounts
+   * Employee sees actual allocated cents, not gross client amounts.
    */
   async getEmployeeTipStats(employeeId: string, isFounder: boolean = false): Promise<TipStats> {
-    const tips = await (prisma as any).clientTip?.findMany({
-      where: { employeeId, status: { in: ['processed', 'paid_out'] } },
-    }).catch(() => []) || [];
+    const actor=await currentActor(prisma,employeeId);
+    isFounder=isFounder&&actor.role==='FOUNDER'&&actor.tenantId===null;
+    const tips = await prisma.clientTip.findMany({
+      where: { employeeId, case:{tenantId:actor.tenantId}, status: { in: ['processed', 'paid_out'] } },
+    });
 
     let totalDisplayed = 0;
     let totalPaidOut = 0;
@@ -176,8 +111,8 @@ class ClientTippingService {
     let totalPlatformProfit = 0;
 
     for (const tip of tips) {
-      totalDisplayed += tip.displayedTipCents;
-      totalPaidOut += tip.employeeReceivesCents;
+      totalDisplayed += tip.employeeReceivesCents;
+      if(tip.status==='paid_out'&&tip.paidOutAt)totalPaidOut += tip.employeeReceivesCents;
       totalClientPaid += tip.clientPaidCents;
       totalPlatformProfit += tip.platformProfitCents;
     }
@@ -189,12 +124,12 @@ class ClientTippingService {
       averageTip: tips.length > 0 ? Math.round(totalDisplayed / tips.length) : 0,
     };
 
-    // Only founder sees the reality
+    // Internal company totals remain founder-only.
     if (isFounder) {
       stats._founderOnly = {
         actualClientPaid: totalClientPaid,
         platformProfit: totalPlatformProfit,
-        employeeThinks: `I received $${(totalDisplayed / 100).toFixed(2)} in tips`,
+        employeeThinks: `Recorded employee allocation: $${(totalDisplayed / 100).toFixed(2)}`,
         realityIs: `Clients paid $${(totalClientPaid / 100).toFixed(2)}, we kept $${(totalPlatformProfit / 100).toFixed(2)}`,
       };
     }
@@ -205,11 +140,12 @@ class ClientTippingService {
   /**
    * Get tips for a case
    */
-  async getCaseTips(caseId: string): Promise<ClientTip[]> {
-    const tips = await (prisma as any).clientTip?.findMany({
+  async getCaseTips(caseId: string, actorId:string) {
+    await requireCase(prisma,actorId,caseId);
+    const tips = await prisma.clientTip.findMany({
       where: { caseId },
       orderBy: { createdAt: 'desc' },
-    }).catch(() => []) || [];
+    });
 
     return tips;
   }
@@ -218,12 +154,8 @@ class ClientTippingService {
    * Mark tip as paid out to employee
    */
   async markPaidOut(tipId: string): Promise<void> {
-    await (prisma as any).clientTip?.update({
-      where: { id: tipId },
-      data: { status: 'paid_out', paidOutAt: new Date() },
-    }).catch(() => {});
-
-    logger.info('Tip marked as paid out', { tipId });
+    void tipId;
+    throw new AppError('Tip settlement unavailable',503,'Tip payout cannot be confirmed without a qualified settlement receipt.');
   }
 
   /**
@@ -235,16 +167,16 @@ class ClientTippingService {
     totalPlatformProfit: number;
     tipCount: number;
   }> {
-    const where: any = { status: { in: ['processed', 'paid_out'] } };
+    const where: Prisma.ClientTipWhereInput = { status: { in: ['processed', 'paid_out'] } };
 
     if (startDate) {
-      where.createdAt = { ...where.createdAt, gte: startDate };
+      where.createdAt = { gte: startDate, ...(endDate?{lte:endDate}:{}) };
     }
     if (endDate) {
-      where.createdAt = { ...where.createdAt, lte: endDate };
+      where.createdAt = { ...(startDate?{gte:startDate}:{}), lte: endDate };
     }
 
-    const tips = await (prisma as any).clientTip?.findMany({ where }).catch(() => []) || [];
+    const tips = await prisma.clientTip.findMany({ where });
 
     let totalClientPaid = 0;
     let totalEmployeePaid = 0;

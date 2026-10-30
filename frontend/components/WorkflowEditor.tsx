@@ -124,32 +124,16 @@ const initialEdges: Edge[] = [
   },
 ];
 
-const triggerOptions = [
-  { value: "case_created", label: "Case Created" },
-  { value: "status_changed", label: "Status Changed" },
-  { value: "document_uploaded", label: "Document Uploaded" },
-  { value: "payment_received", label: "Payment Received" },
-  { value: "deadline_approaching", label: "Deadline Approaching" },
-];
-
-const actionOptions = [
-  { value: "send_email", label: "Send Email" },
-  { value: "send_sms", label: "Send SMS" },
-  { value: "assign_employee", label: "Assign Employee" },
-  { value: "update_status", label: "Update Status" },
-  { value: "create_task", label: "Create Task" },
-  { value: "notify_founder", label: "Notify Founder" },
-];
-
 interface WorkflowEditorProps {
   workflowId?: string;
-  onSave?: (nodes: Node[], edges: Edge[]) => void;
+  onSave?: (nodes: Node[], edges: Edge[]) => Promise<void>;
 }
 
 export function WorkflowEditor({ workflowId, onSave }: WorkflowEditorProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const [selectedNodeType, setSelectedNodeType] = useState<string>("action");
+  const [saving, setSaving] = useState(false);
 
   const onConnect = useCallback(
     (params: Connection) =>
@@ -180,17 +164,15 @@ export function WorkflowEditor({ workflowId, onSave }: WorkflowEditorProps) {
     toast.success("Node added");
   };
 
-  const handleSave = () => {
-    onSave?.(nodes, edges);
-    toast.success("Workflow saved");
-  };
-
-  const handleRun = () => {
-    toast.info("Workflow test started");
-    // Simulate running workflow
-    setTimeout(() => {
-      toast.success("Workflow executed successfully");
-    }, 2000);
+  const handleSave = async () => {
+    if (!onSave || workflowId || saving) return;
+    setSaving(true);
+    try {
+      await onSave(nodes, edges);
+      toast.success("Draft saved by the connected storage handler");
+    } catch {
+      toast.error("Draft could not be saved. The canvas is still available to retry.");
+    } finally { setSaving(false); }
   };
 
   const handleClear = () => {
@@ -199,11 +181,13 @@ export function WorkflowEditor({ workflowId, onSave }: WorkflowEditorProps) {
     toast.info("Canvas cleared");
   };
 
+  if (workflowId) return <Card><CardHeader><CardTitle>Existing workflow unavailable</CardTitle></CardHeader><CardContent role="alert">This editor has no connected workflow loader. It cannot load or overwrite workflow {workflowId}.</CardContent></Card>;
+
   return (
     <Card className="h-[700px]">
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
-          <CardTitle>Workflow Editor</CardTitle>
+          <CardTitle>Workflow Draft — execution not connected</CardTitle>
           <div className="flex items-center gap-2">
             <Select value={selectedNodeType} onValueChange={setSelectedNodeType}>
               <SelectTrigger className="w-32">
@@ -223,13 +207,13 @@ export function WorkflowEditor({ workflowId, onSave }: WorkflowEditorProps) {
               <Trash2 className="h-4 w-4 mr-1" />
               Clear
             </Button>
-            <Button size="sm" variant="outline" onClick={handleRun}>
+            <Button size="sm" variant="outline" disabled title="Execution requires a qualified workflow runner and saved receipt">
               <Play className="h-4 w-4 mr-1" />
               Test
             </Button>
-            <Button size="sm" onClick={handleSave}>
+            <Button size="sm" onClick={handleSave} disabled={!onSave || saving} title={!onSave ? "No storage handler connected" : undefined}>
               <Save className="h-4 w-4 mr-1" />
-              Save
+              {saving ? "Saving…" : "Save draft"}
             </Button>
           </div>
         </div>

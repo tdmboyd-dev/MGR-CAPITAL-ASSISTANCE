@@ -1,5 +1,7 @@
 "use client";
 
+import { collaboratorSchema } from "@/lib/collaborationRecords";
+import { z } from "zod";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card,CardContent,CardHeader,CardTitle } from "@/components/ui/card";
@@ -7,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Circle,Save,Users,Wifi,WifiOff } from "lucide-react";
-import { useCallback,useEffect,useState } from "react";
+import { useCallback,useEffect,useRef,useState } from "react";
 import { toast } from "sonner";
 import { WebsocketProvider } from "y-websocket";
 import * as Y from "yjs";
@@ -34,13 +36,16 @@ const COLORS = [
   "#ec4899",
 ];
 
-export default function CaseEditorRealTime({
+export default function CaseEditorRealTime(props: Props) {
+  return <CaseEditorSession key={`${props.caseId}:${props.userId ?? 'anonymous'}`} {...props} />;
+}
+
+function CaseEditorSession({
   caseId,
   userId = "anonymous",
   userName = "Anonymous",
 }: Props) {
-  const [doc, setDoc] = useState<Y.Doc | null>(null);
-  const [provider, setProvider] = useState<WebsocketProvider | null>(null);
+  const docRef = useRef<Y.Doc | null>(null);
   const [connected, setConnected] = useState(false);
   const [collaborators, setCollaborators] = useState<Collaborator[]>([]);
 
@@ -75,8 +80,10 @@ export default function CaseEditorRealTime({
     wsProvider.awareness.on("change", () => {
       const states = Array.from(wsProvider.awareness.getStates().values());
       const users = states
-        .map((state: any) => state.user)
-        .filter((user: any) => user && user.id !== userId);
+        .flatMap((state: unknown) => {
+          const parsed = z.object({ user: collaboratorSchema }).safeParse(state);
+          return parsed.success && parsed.data.user.id !== userId ? [parsed.data.user] : [];
+        });
       setCollaborators(users);
     });
 
@@ -90,10 +97,10 @@ export default function CaseEditorRealTime({
     yDescription.observe(() => setDescription(yDescription.toString()));
     yNotes.observe(() => setNotes(yNotes.toString()));
 
-    setDoc(ydoc);
-    setProvider(wsProvider);
+    docRef.current = ydoc;
 
     return () => {
+      docRef.current = null;
       wsProvider.destroy();
       ydoc.destroy();
     };
@@ -101,6 +108,7 @@ export default function CaseEditorRealTime({
 
   const updateField = useCallback(
     (fieldName: string, value: string) => {
+      const doc = docRef.current;
       if (!doc) return;
 
       const yText = doc.getText(fieldName);
@@ -109,7 +117,7 @@ export default function CaseEditorRealTime({
         yText.insert(0, value);
       });
     },
-    [doc]
+    []
   );
 
   const handleSave = async () => {
@@ -125,7 +133,7 @@ export default function CaseEditorRealTime({
       } else {
         toast.error("Failed to save case");
       }
-    } catch (error) {
+    } catch {
       toast.error("Network error");
     }
   };

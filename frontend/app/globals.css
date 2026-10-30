@@ -1,55 +1,56 @@
+/* Color tokens are HSL channels because Tailwind and charts consume hsl(var(--token)). */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-  --card: #ffffff;
-  --card-foreground: #171717;
-  --primary: #3b82f6;
-  --primary-foreground: #ffffff;
-  --secondary: #f3f4f6;
-  --secondary-foreground: #374151;
-  --muted: #f3f4f6;
-  --muted-foreground: #6b7280;
-  --accent: #e5e7eb;
-  --accent-foreground: #374151;
-  --destructive: #ef4444;
-  --destructive-foreground: #ffffff;
-  --border: #e5e7eb;
-  --input: #e5e7eb;
-  --ring: #3b82f6;
+  --background: 0.0000 0.0000% 100.0000%;
+  --foreground: 0.0000 0.0000% 9.0196%;
+  --card: 0.0000 0.0000% 100.0000%;
+  --card-foreground: 0.0000 0.0000% 9.0196%;
+  --primary: 217.2193 91.2195% 59.8039%;
+  --primary-foreground: 0.0000 0.0000% 100.0000%;
+  --secondary: 220.0000 14.2857% 95.8824%;
+  --secondary-foreground: 216.9231 19.1176% 26.6667%;
+  --muted: 220.0000 14.2857% 95.8824%;
+  --muted-foreground: 220.0000 8.9362% 46.0784%;
+  --accent: 220.0000 13.0435% 90.9804%;
+  --accent-foreground: 216.9231 19.1176% 26.6667%;
+  --destructive: 0.0000 84.2365% 60.1961%;
+  --destructive-foreground: 0.0000 0.0000% 100.0000%;
+  --border: 220.0000 13.0435% 90.9804%;
+  --input: 220.0000 13.0435% 90.9804%;
+  --ring: 217.2193 91.2195% 59.8039%;
   --radius: 0.5rem;
 }
 
-[data-theme="dark"] {
-  --background: #030712;
-  --foreground: #f9fafb;
-  --card: #1f2937;
-  --card-foreground: #f9fafb;
-  --primary: #3b82f6;
-  --primary-foreground: #030712;
-  --secondary: #1f2937;
-  --secondary-foreground: #f9fafb;
-  --muted: #374151;
-  --muted-foreground: #9ca3af;
-  --accent: #374151;
-  --accent-foreground: #f9fafb;
-  --destructive: #b91c1c;
-  --destructive-foreground: #f9fafb;
-  --border: #374151;
-  --input: #374151;
-  --ring: #93c5fd;
+.dark {
+  --background: 224.0000 71.4286% 4.1176%;
+  --foreground: 210.0000 20.0000% 98.0392%;
+  --card: 215.0000 27.9070% 16.8627%;
+  --card-foreground: 210.0000 20.0000% 98.0392%;
+  --primary: 217.2193 91.2195% 59.8039%;
+  --primary-foreground: 224.0000 71.4286% 4.1176%;
+  --secondary: 215.0000 27.9070% 16.8627%;
+  --secondary-foreground: 210.0000 20.0000% 98.0392%;
+  --muted: 216.9231 19.1176% 26.6667%;
+  --muted-foreground: 217.8947 10.6145% 64.9020%;
+  --accent: 216.9231 19.1176% 26.6667%;
+  --accent-foreground: 210.0000 20.0000% 98.0392%;
+  --destructive: 0.0000 73.7089% 41.7647%;
+  --destructive-foreground: 210.0000 20.0000% 98.0392%;
+  --border: 216.9231 19.1176% 26.6667%;
+  --input: 216.9231 19.1176% 26.6667%;
+  --ring: 211.6981 96.3636% 78.4314%;
 }
 
 * {
-  border-color: var(--border);
+  border-color: hsl(var(--border));
 }
 
 body {
-  background-color: var(--background);
-  color: var(--foreground);
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
   font-family: 'Inter', sans-serif;
 }
 

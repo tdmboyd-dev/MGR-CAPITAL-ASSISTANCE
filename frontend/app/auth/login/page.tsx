@@ -76,7 +76,7 @@ export default function LoginPage() {
           description: error || "Invalid credentials. Please try again.",
         });
       }
-    } catch (err) {
+    } catch {
       toast.error("Login failed", {
         description: "An unexpected error occurred. Please try again.",
       });

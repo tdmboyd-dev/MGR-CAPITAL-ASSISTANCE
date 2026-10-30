@@ -1,0 +1,13 @@
+{
+  "warehouseWorkItems": 194,
+  "activityTrackingRestored": true,
+  "rawSyntheticLedger": {
+    "amountCents": 1234,
+    "legacyDisplayCents": 2468,
+    "status": "PENDING",
+    "isPaid": false
+  },
+  "exactSyntheticBrowserAccountsDisabled": 6,
+  "refreshTokensRevoked": 3,
+  "scope": "Separate process database corroboration; no historical ledger rewrite, provider charge or bank transfer"
+}

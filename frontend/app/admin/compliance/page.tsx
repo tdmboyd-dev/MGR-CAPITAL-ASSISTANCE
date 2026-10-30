@@ -131,7 +131,7 @@ export default function AdminCompliancePage() {
   });
 
   // Fetch case compliance
-  const { data: casesData, isLoading: casesLoading } = useQuery<{ cases: CaseComplianceRecord[]; summary: any }>({
+  const { data: casesData, isLoading: casesLoading } = useQuery<{ cases: CaseComplianceRecord[]; summary: unknown }>({
     queryKey: ["compliance-cases"],
     queryFn: async () => {
       const { data } = await api.get("/compliance/cases");
@@ -140,7 +140,7 @@ export default function AdminCompliancePage() {
   });
 
   // Fetch employee compliance
-  const { data: employeesData, isLoading: employeesLoading } = useQuery<{ employees: EmployeeComplianceRecord[]; summary: any }>({
+  const { data: employeesData, isLoading: employeesLoading } = useQuery<{ employees: EmployeeComplianceRecord[]; summary: unknown }>({
     queryKey: ["compliance-employees"],
     queryFn: async () => {
       const { data } = await api.get("/compliance/employees");

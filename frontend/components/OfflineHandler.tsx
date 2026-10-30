@@ -2,16 +2,17 @@
 
 import { useServiceWorker } from "@/hooks/useServiceWorker";
 import { Wifi,WifiOff } from "lucide-react";
-import { useEffect,useState } from "react";
+import { useOnlineStatus } from "@/hooks/useOnlineStatus";
+import { useEffect } from "react";
 import { toast } from "sonner";
 
 export function OfflineHandler() {
   useServiceWorker();
-  const [isOnline, setIsOnline] = useState(true);
+  const isOnline = useOnlineStatus();
 
   useEffect(() => {
     const handleOnline = () => {
-      setIsOnline(true);
+      toast.dismiss("offline-toast");
       toast.success("You're back online", {
         icon: <Wifi className="h-4 w-4" />,
         duration: 3000,
@@ -19,7 +20,7 @@ export function OfflineHandler() {
     };
 
     const handleOffline = () => {
-      setIsOnline(false);
+
       toast.error("You're offline. Some features may not work.", {
         icon: <WifiOff className="h-4 w-4" />,
         duration: Infinity,
@@ -27,7 +28,7 @@ export function OfflineHandler() {
       });
     };
 
-    setIsOnline(navigator.onLine);
+
 
     window.addEventListener("online", handleOnline);
     window.addEventListener("offline", handleOffline);

@@ -12,6 +12,8 @@ CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { SkeletonTable } from "@/components/ui/skeleton";
+import { caseListSchema, type CaseRecord } from "@/lib/caseRecords";
+import { useAuth } from "@/hooks/useAuth";
 import { api } from "@/lib/api";
 import { formatCurrency,formatDate } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
@@ -32,15 +34,17 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export default function FounderCasesPage() {
+  const { user } = useAuth();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [stateFilter, setStateFilter] = useState("");
-  const [portalLinkCase, setPortalLinkCase] = useState<any>(null);
+  const [portalLinkCase, setPortalLinkCase] = useState<CaseRecord | null>(null);
 
-  const { data, isLoading } = useQuery({
-    queryKey: ["cases", page, search, statusFilter, stateFilter],
-    queryFn: async () => {
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: ["cases", user?.id, page, search, statusFilter, stateFilter],
+    enabled: Boolean(user),
+    queryFn: async ({ signal }) => {
       const params = new URLSearchParams({
         page: page.toString(),
         pageSize: "20",
@@ -49,8 +53,8 @@ export default function FounderCasesPage() {
       if (statusFilter) params.append("status", statusFilter);
       if (stateFilter) params.append("state", stateFilter);
 
-      const { data } = await api.get(`/cases?${params}`);
-      return data;
+      const { data } = await api.get<unknown>(`/cases?${params}`, { signal });
+      return caseListSchema.parse(data);
     },
   });
 
@@ -65,6 +69,8 @@ export default function FounderCasesPage() {
     "CLOSED",
     "REJECTED",
   ];
+
+  if (error) return <div role="alert" className="p-6"><p>Cases could not be loaded. Saved cases have not been removed.</p><Button onClick={() => { void refetch(); }}>Retry</Button></div>;
 
   return (
     <div className="space-y-6">
@@ -135,7 +141,7 @@ export default function FounderCasesPage() {
         <CardContent>
           {isLoading ? (
             <SkeletonTable rows={10} />
-          ) : data?.data?.length > 0 ? (
+          ) : (data?.data?.length ?? 0) > 0 ? (
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
@@ -152,7 +158,7 @@ export default function FounderCasesPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {data.data.map((caseItem: any) => (
+                  {data?.data.map((caseItem) => (
                     <tr
                       key={caseItem.id}
                       className="border-b hover:bg-muted/50 transition-colors"
@@ -216,11 +222,11 @@ export default function FounderCasesPage() {
           )}
 
           {/* Pagination */}
-          {data?.totalPages > 1 && (
+          {(data?.totalPages ?? 0) > 1 && (
             <div className="flex items-center justify-between mt-4 pt-4 border-t">
               <p className="text-sm text-muted-foreground">
                 Showing {(page - 1) * 20 + 1} to{" "}
-                {Math.min(page * 20, data.total)} of {data.total} cases
+                {Math.min(page * 20, (data?.total ?? 0))} of {(data?.total ?? 0)} cases
               </p>
               <div className="flex gap-2">
                 <Button
@@ -235,8 +241,8 @@ export default function FounderCasesPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setPage((p) => Math.min(data.totalPages, p + 1))}
-                  disabled={page === data.totalPages}
+                  onClick={() => setPage((p) => Math.min((data?.totalPages ?? 1), p + 1))}
+                  disabled={page === (data?.totalPages ?? 1)}
                 >
                   Next
                   <ChevronRight className="h-4 w-4" />
@@ -253,9 +259,9 @@ export default function FounderCasesPage() {
           <div className="w-full max-w-lg">
             <SendPortalLink
               caseId={portalLinkCase.id}
-              clientName={portalLinkCase.client?.name}
-              clientEmail={portalLinkCase.client?.email}
-              clientPhone={portalLinkCase.client?.phone}
+              clientName={portalLinkCase.client?.name ?? undefined}
+              clientEmail={portalLinkCase.client?.email ?? undefined}
+              clientPhone={portalLinkCase.client?.phone ?? undefined}
               onClose={() => setPortalLinkCase(null)}
             />
           </div>

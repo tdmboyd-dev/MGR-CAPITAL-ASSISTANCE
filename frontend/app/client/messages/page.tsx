@@ -19,8 +19,9 @@ SelectTrigger,
 SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { useAuth } from "@/hooks/useAuth";
+import "@/hooks/useAuth";
 import { api } from "@/lib/api";
+import type { CaseRecord } from "@/lib/caseRecords";
 import { formatDate,formatDateTime } from "@/lib/utils";
 import { useMutation,useQuery,useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence,motion } from "framer-motion";
@@ -39,7 +40,7 @@ Send,
 Shield
 } from "lucide-react";
 import Link from "next/link";
-import { useEffect,useRef,useState } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 
 // Message categories for clients
@@ -68,12 +69,10 @@ interface Message {
 }
 
 export default function ClientMessagesPage() {
-  const { user } = useAuth();
   const queryClient = useQueryClient();
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
   const [showCompose, setShowCompose] = useState(false);
   const [newMessage, setNewMessage] = useState({ subject: "", body: "", caseId: "" });
-  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Fetch messages
   const { data: messagesData, isLoading: messagesLoading } = useQuery({
@@ -125,12 +124,10 @@ export default function ClientMessagesPage() {
     },
   });
 
-  // Mark as read when selecting a message
-  useEffect(() => {
-    if (selectedMessage && !selectedMessage.isRead) {
-      markAsReadMutation.mutate(selectedMessage.id);
-    }
-  }, [selectedMessage?.id]);
+  const selectMessage = (message: Message | null) => {
+    setSelectedMessage(message);
+    if (message && !message.isRead && !markAsReadMutation.isPending) markAsReadMutation.mutate(message.id);
+  };
 
   const messages = messagesData?.data || [];
   const cases = casesData?.data || [];
@@ -253,7 +250,7 @@ export default function ClientMessagesPage() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="">General Inquiry</SelectItem>
-                        {cases.map((c: any) => (
+                        {cases.map((c: CaseRecord) => (
                           <SelectItem key={c.id} value={c.id}>
                             {c.propertyAddress || `${c.county}, ${c.state}`} - #{c.caseCode || c.id.slice(0, 8)}
                           </SelectItem>
@@ -339,7 +336,7 @@ export default function ClientMessagesPage() {
                     return (
                       <button
                         key={message.id}
-                        onClick={() => setSelectedMessage(message)}
+                        onClick={() => selectMessage(message)}
                         className={`w-full text-left px-4 py-4 hover:bg-muted/50 transition-colors ${
                           selectedMessage?.id === message.id ? "bg-muted" : ""
                         } ${!message.isRead ? "bg-blue-50 dark:bg-blue-950/20" : ""}`}

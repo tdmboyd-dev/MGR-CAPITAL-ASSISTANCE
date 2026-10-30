@@ -300,7 +300,7 @@ export default function NickelPayoutsPage() {
         })
         if (!response.ok) throw new Error('Failed to fetch')
         return response.json()
-      } catch (error) {
+      } catch {
         return getDemoPayouts()
       }
     },
@@ -510,24 +510,6 @@ Bank: ${p.founder.bankName || 'N/A'} | Routing: ${p.founder.routingNumber || 'N/
       }
       return b
     }))
-  }
-
-  // Get icon for tab
-  const getTabIcon = (type: PayoutType) => {
-    switch (type) {
-      case 'client': return <User className="w-4 h-4" />
-      case 'employee': return <Briefcase className="w-4 h-4" />
-      case 'founder': return <Crown className="w-4 h-4" />
-    }
-  }
-
-  // Get color for tab
-  const getTabColor = (type: PayoutType) => {
-    switch (type) {
-      case 'client': return 'text-blue-600 bg-blue-100'
-      case 'employee': return 'text-green-600 bg-green-100'
-      case 'founder': return 'text-purple-600 bg-purple-100'
-    }
   }
 
   return (

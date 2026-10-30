@@ -120,15 +120,6 @@ export default function FounderTrustsPage() {
     },
   });
 
-  // Fetch plans for revenue calculation
-  const { data: plansData } = useQuery({
-    queryKey: ["trust-plans"],
-    queryFn: async () => {
-      const { data } = await api.get("/trusts/plans");
-      return data;
-    },
-  });
-
   // Activate trust mutation
   const activateMutation = useMutation({
     mutationFn: async (enrollmentId: string) => {
@@ -149,7 +140,6 @@ export default function FounderTrustsPage() {
 
   const enrollments: TrustEnrollment[] = enrollmentsData?.data || [];
   const interest: FounderInterest | null = interestData?.data || null;
-  const plans = plansData?.data || [];
 
   const isLoading = enrollmentsLoading || interestLoading;
 

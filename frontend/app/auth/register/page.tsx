@@ -95,7 +95,7 @@ export default function RegisterPage() {
           description: result.message || "Please try again.",
         });
       }
-    } catch (err) {
+    } catch {
       toast.error("Registration failed", {
         description: "An unexpected error occurred. Please try again.",
       });

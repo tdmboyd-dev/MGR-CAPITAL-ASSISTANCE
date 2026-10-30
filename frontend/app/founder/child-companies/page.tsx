@@ -1,4 +1,6 @@
 "use client";
+interface CompanyRecord { id:string; name:string; slug:string; owner?:{name:string}; ownerName?:string; status:string; plan:string; employeeCount?:number; totalRevenueCents?:number; founderCutCents?:number; createdAt?:string; }
+
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -82,9 +84,9 @@ function computeBreakdown(caseValue: number, cumulativeRevenue: number) {
 export default function FounderChildCompaniesPage() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
-  const [selectedCompany, setSelectedCompany] = useState<any>(null);
+  const [selectedCompany, setSelectedCompany] = useState<CompanyRecord | null>(null);
 
-  const { data: stats, isLoading: statsLoading } = useQuery({
+  const { data: stats } = useQuery({
     queryKey: ["child-company-stats"],
     queryFn: async () => {
       const { data } = await api.get("/child-companies/stats");
@@ -218,7 +220,7 @@ export default function FounderChildCompaniesPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {data.data.map((company: any) => (
+                  {data.data.map((company: CompanyRecord) => (
                     <tr
                       key={company.id}
                       className="border-b hover:bg-muted/50 transition-colors"

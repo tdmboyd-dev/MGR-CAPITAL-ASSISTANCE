@@ -11,6 +11,7 @@ CardTitle,
 } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { useAuth } from "@/hooks/useAuth";
+import { caseListSchema } from "@/lib/caseRecords";
 import { api } from "@/lib/api";
 import { formatCurrency,formatDate } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
@@ -69,7 +70,7 @@ const STATUS_DISPLAY: Record<string, { label: string; color: string; progress: n
     label: "Almost There",
     color: "bg-orange-500",
     progress: 80,
-    message: "Your claim has been approved! Funds are being processed."
+    message: "Your case is marked as awaiting funds. Ask your team for the current payment evidence."
   },
   PAID: {
     label: "Funds Recovered",
@@ -121,19 +122,12 @@ const getNextActions = (status: string) => {
 export default function ClientDashboard() {
   const { user } = useAuth();
 
-  const { data: cases, isLoading } = useQuery({
-    queryKey: ["client-cases"],
-    queryFn: async () => {
-      const { data } = await api.get("/cases/my-cases");
-      return data;
-    },
-  });
-
-  const { data: notifications } = useQuery({
-    queryKey: ["client-notifications-count"],
-    queryFn: async () => {
-      const { data } = await api.get("/notifications?unread=true&limit=5");
-      return data;
+  const { data: cases, isLoading, error, refetch } = useQuery({
+    queryKey: ["client-cases", user?.id],
+    enabled: Boolean(user),
+    queryFn: async ({ signal }) => {
+      const { data } = await api.get<unknown>("/cases/my-cases", { signal });
+      return caseListSchema.parse(data);
     },
   });
 
@@ -150,19 +144,21 @@ export default function ClientDashboard() {
 
   const caseList = cases?.data || [];
   const activeCases = caseList.filter(
-    (c: any) => !["CLOSED_WON", "CLOSED_LOST"].includes(c.status)
+    (c) => !["CLOSED", "CLOSED_WON", "CLOSED_LOST", "PAID", "REJECTED"].includes(c.status)
   );
   const completedCases = caseList.filter(
-    (c: any) => c.status === "CLOSED_WON" || c.status === "PAID"
+    (c) => c.status === "CLOSED_WON" || c.status === "PAID"
   );
+  const recoveryRecorded = completedCases.every(c => typeof c.actualRecoveryCents === "number");
   const totalRecovered = completedCases.reduce(
-    (sum: number, c: any) => sum + (c.actualRecoveryCents || 0),
+    (sum: number, c) => sum + (c.actualRecoveryCents || 0),
     0
   );
 
   // Find urgent actions across all cases
-  const urgentCases = caseList.filter((c: any) => c.status === "DOCS_PENDING");
-  const unreadNotifications = notifications?.data?.filter((n: any) => !n.read) || [];
+  const urgentCases = caseList.filter((c) => c.status === "DOCS_PENDING");
+
+  if (error) return <div role="alert" className="p-6"><p>Your cases could not be loaded. This does not mean you have no cases.</p><Button onClick={() => { void refetch(); }}>Retry</Button></div>;
 
   return (
     <div className="space-y-8">
@@ -290,7 +286,7 @@ export default function ClientDashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-emerald-700 dark:text-emerald-300">
-              {formatCurrency(totalRecovered || 0)}
+              {recoveryRecorded ? formatCurrency(totalRecovered) : "Not available"}
             </div>
             <p className="text-xs text-emerald-600/70 dark:text-emerald-400/70 mt-1">
               Total recovered for you
@@ -328,8 +324,8 @@ export default function ClientDashboard() {
           <CardContent>
             {activeCases.length > 0 ? (
               <div className="space-y-6">
-                {activeCases.slice(0, 3).map((caseItem: any, index: number) => {
-                  const statusInfo = STATUS_DISPLAY[caseItem.status] || STATUS_DISPLAY.NEW;
+                {activeCases.slice(0, 3).map((caseItem, index: number) => {
+                  const statusInfo = STATUS_DISPLAY[caseItem.status] || { label: caseItem.status, color: "bg-gray-500", progress: 0, message: "Ask your team for the next confirmed step." };
                   const actions = getNextActions(caseItem.status);
 
                   return (

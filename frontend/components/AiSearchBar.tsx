@@ -10,25 +10,17 @@ import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Briefcase,FileText,Loader2,MessageSquare,Search,X } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { useAuth } from "@/hooks/useAuth";
+import { useDebounce } from "@/hooks/useDebounce";
+import { globalSearchSchema, searchResultDisplay, searchResultLink } from "@/lib/globalSearch";
+import { api } from "@/lib/api";
 import { useRouter } from "next/navigation";
 import { useCallback,useEffect,useRef,useState } from "react";
 
 interface SearchResult {
-  id: string;
-  type: "cases" | "docs" | "comms";
-  title: string;
-  snippet: string;
-  score: number;
-  metadata: Record<string, unknown>;
-}
-
-interface SearchResponse {
-  success: boolean;
-  query: string;
-  type: string;
-  results: SearchResult[];
-  totalCount: number;
-  processingTimeMs: number;
+ id:string; type:'cases'|'docs'|'comms'; title:string; snippet:string;
+ score:number; metadata:Record<string,unknown>;
 }
 
 const typeIcons = {
@@ -45,10 +37,9 @@ const typeColors = {
 
 export function AiSearchBar() {
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<SearchResult[]>([]);
-  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const { user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+
   const [selectedType, setSelectedType] = useState<"all" | "cases" | "docs" | "comms">("all");
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -65,62 +56,32 @@ export function AiSearchBar() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Debounced search
-  useEffect(() => {
-    if (query.length < 2) {
-      setResults([]);
-      setSuggestions([]);
-      return;
-    }
-
-    const timeoutId = setTimeout(async () => {
-      setIsLoading(true);
-      try {
-        // Fetch suggestions
-        const suggestRes = await fetch(
-          `/api/ai/search/suggestions?query=${encodeURIComponent(query)}`,
-          { credentials: "include" }
-        );
-        if (suggestRes.ok) {
-          const data = await suggestRes.json();
-          setSuggestions(data.suggestions || []);
-        }
-
-        // Fetch search results
-        const searchRes = await fetch(
-          `/api/ai/search?query=${encodeURIComponent(query)}&type=${selectedType}&limit=8`,
-          { credentials: "include" }
-        );
-        if (searchRes.ok) {
-          const data: SearchResponse = await searchRes.json();
-          setResults(data.results);
-        }
-      } catch (error) {
-        console.error("Search error:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    }, 300);
-
-    return () => clearTimeout(timeoutId);
-  }, [query, selectedType]);
+  const debouncedQuery = useDebounce(query, 300);
+  const search = useQuery({
+    queryKey: ['semantic-search', user?.id, selectedType, debouncedQuery],
+    enabled: Boolean(user) && isOpen && debouncedQuery.trim().length >= 2,
+    queryFn: async ({ signal }) => {
+      const types = { all: 'case,document,communication', cases: 'case', docs: 'document', comms: 'communication' }[selectedType];
+      const response = await api.get<unknown>('/search/global', { params: { query: debouncedQuery, types, limit: 8 }, signal });
+      const parsed = globalSearchSchema.parse(response.data);
+      return { results: parsed.results.flatMap(result => {
+        if (result.type === 'user') return [];
+        const display = searchResultDisplay(result);
+        const link = searchResultLink(result, user?.role ?? '');
+        return link ? [{ id: result.id, type: result.type === 'case' ? 'cases' as const : result.type === 'document' ? 'docs' as const : 'comms' as const, title: display.title, snippet: display.subtitle, score: result.score / 100, metadata: { link } }] : [];
+      }) };
+    }, retry: false, gcTime: 0,
+  });
+  const results: SearchResult[] = query === debouncedQuery && query.trim().length >= 2 ? search.data?.results ?? [] : [];
+  const suggestions: string[] = [];
+  const isLoading = search.isFetching || query !== debouncedQuery;
 
   const handleResultClick = useCallback((result: SearchResult) => {
     setIsOpen(false);
     setQuery("");
 
-    // Navigate based on result type
-    switch (result.type) {
-      case "cases":
-        router.push(`/employee/cases/${result.id}`);
-        break;
-      case "docs":
-        router.push(`/employee/documents?id=${result.id}`);
-        break;
-      case "comms":
-        router.push(`/employee/comms?highlight=${result.id}`);
-        break;
-    }
+    const link = result.metadata.link;
+    if (typeof link === 'string' && link.startsWith('/') && !link.startsWith('//') && !link.includes('\\')) router.push(link);
   }, [router]);
 
   const handleSuggestionClick = (suggestion: string) => {
@@ -130,8 +91,7 @@ export function AiSearchBar() {
 
   const clearSearch = () => {
     setQuery("");
-    setResults([]);
-    setSuggestions([]);
+
     inputRef.current?.focus();
   };
 
@@ -143,7 +103,7 @@ export function AiSearchBar() {
         <Input
           ref={inputRef}
           type="text"
-          placeholder="AI Search: cases, documents, communications..."
+          placeholder="Search cases, documents, communications..."
           value={query}
           onChange={(e) => {
             setQuery(e.target.value);
@@ -187,6 +147,7 @@ export function AiSearchBar() {
       {/* Results Dropdown */}
       {isOpen && (query.length >= 2 || suggestions.length > 0) && (
         <Card className="absolute z-50 w-full mt-1 max-h-96 overflow-auto shadow-lg">
+          {search.isError && <p role="alert" className="p-4 text-destructive">Search is unavailable. Please retry.</p>}
           {/* Suggestions */}
           {suggestions.length > 0 && (
             <div className="p-2 border-b">
@@ -242,7 +203,7 @@ export function AiSearchBar() {
                 );
               })}
             </div>
-          ) : query.length >= 2 && !isLoading ? (
+          ) : query.length >= 2 && !isLoading && !search.isError ? (
             <div className="p-4 text-center text-muted-foreground">
               No results found for &quot;{query}&quot;
             </div>

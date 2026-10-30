@@ -13,12 +13,14 @@ import { useDebounce } from "@/hooks/useDebounce";
 import { api } from "@/lib/api";
 import { AnimatePresence,motion } from "framer-motion";
 import { Briefcase,FileText,Loader2,Search,Settings,Users,X } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { globalSearchSchema, searchResultDisplay, searchResultLink } from "@/lib/globalSearch";
 import { useRouter } from "next/navigation";
-import { useCallback,useEffect,useRef,useState } from "react";
+import { useEffect,useRef,useState } from "react";
 
 interface SearchResult {
   id: string;
-  type: "case" | "client" | "document" | "employee" | "setting";
+  type: "case" | "client" | "document" | "employee" | "setting" | "communication";
   title: string;
   subtitle?: string;
   link: string;
@@ -42,11 +44,10 @@ const typeColors: Record<string, string> = {
 
 export function GlobalSearch() {
   const router = useRouter();
-  const { user, accessToken } = useAuth();
+  const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<SearchResult[]>([]);
-  const [loading, setLoading] = useState(false);
+
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -65,76 +66,42 @@ export function GlobalSearch() {
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, []);
 
-  // Focus input when dialog opens
-  useEffect(() => {
-    if (open) {
-      setTimeout(() => inputRef.current?.focus(), 100);
-    } else {
-      setQuery("");
-      setResults([]);
-      setSelectedIndex(0);
-    }
-  }, [open]);
-
-  // Search when query changes
-  useEffect(() => {
-    if (!debouncedQuery || debouncedQuery.length < 2) {
-      setResults([]);
-      return;
-    }
-
-    const search = async () => {
-      setLoading(true);
-      try {
-        const { data } = await api.get(`/search?q=${encodeURIComponent(debouncedQuery)}`);
-        setResults(data.results || []);
-        setSelectedIndex(0);
-      } catch (error) {
-        console.error("Search error:", error);
-        // Fallback to mock results for demo
-        setResults([
-          {
-            id: "1",
-            type: "case",
-            title: `Case matching "${debouncedQuery}"`,
-            subtitle: "TN-001234",
-            link: "/founder/cases/1",
-          },
-          {
-            id: "2",
-            type: "client",
-            title: `Client matching "${debouncedQuery}"`,
-            subtitle: "john@example.com",
-            link: "/founder/clients/2",
-          },
-        ]);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    search();
-  }, [debouncedQuery]);
+  const { data, isFetching: loading, error } = useQuery({
+    queryKey: ['global-search', user?.id, user?.role, debouncedQuery],
+    enabled: open && Boolean(user) && debouncedQuery.trim().length >= 2,
+    queryFn: async ({ signal }) => {
+      const response = await api.get<unknown>('/search/global', { params: { query: debouncedQuery, limit: 20 }, signal });
+      return globalSearchSchema.parse(response.data);
+    },
+    retry: false,
+    gcTime: 0,
+  });
+  const results: SearchResult[] = query === debouncedQuery && query.trim().length >= 2
+    ? (data?.results ?? []).flatMap(result => {
+        const link = searchResultLink(result, user?.role ?? '');
+        return link ? [{ id: result.id, type: result.type === 'user' ? 'employee' : result.type, ...searchResultDisplay(result), link }] : [];
+      }) : [];
+  const changeOpen = (next: boolean) => {
+    setOpen(next);
+    if (!next) { setQuery(''); setSelectedIndex(0); }
+  };
 
   // Keyboard navigation
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
+  const handleKeyDown = (e: React.KeyboardEvent) => {
       if (e.key === "ArrowDown") {
         e.preventDefault();
-        setSelectedIndex((prev) => Math.min(prev + 1, results.length - 1));
+        setSelectedIndex((prev) => Math.max(0, Math.min(prev + 1, results.length - 1)));
       } else if (e.key === "ArrowUp") {
         e.preventDefault();
         setSelectedIndex((prev) => Math.max(prev - 1, 0));
       } else if (e.key === "Enter" && results[selectedIndex]) {
         e.preventDefault();
         router.push(results[selectedIndex].link);
-        setOpen(false);
+        changeOpen(false);
       } else if (e.key === "Escape") {
-        setOpen(false);
+        changeOpen(false);
       }
-    },
-    [results, selectedIndex, router]
-  );
+    };
 
   if (!user) return null;
 
@@ -155,7 +122,7 @@ export function GlobalSearch() {
       </Button>
 
       {/* Search Dialog */}
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog open={open} onOpenChange={changeOpen}>
         <DialogContent className="sm:max-w-xl p-0 gap-0 overflow-hidden">
           <DialogHeader className="sr-only">
             <DialogTitle>Search</DialogTitle>
@@ -166,8 +133,9 @@ export function GlobalSearch() {
             <Search className="h-5 w-5 text-muted-foreground" />
             <Input
               ref={inputRef}
+              autoFocus
               value={query}
-              onChange={(e) => setQuery(e.target.value)}
+              onChange={(e) => { setQuery(e.target.value); setSelectedIndex(0); }}
               onKeyDown={handleKeyDown}
               placeholder="Search cases, clients, documents..."
               className="h-14 border-0 focus-visible:ring-0 focus-visible:ring-offset-0 text-base"
@@ -186,7 +154,7 @@ export function GlobalSearch() {
 
           {/* Results */}
           <div className="max-h-[60vh] overflow-y-auto p-2">
-            {loading ? (
+            {error ? <p role="alert" className="p-4 text-destructive">Search is unavailable. Please retry; no results were invented.</p> : loading || query !== debouncedQuery ? (
               <div className="flex items-center justify-center py-8">
                 <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
               </div>
@@ -212,7 +180,7 @@ export function GlobalSearch() {
                         }`}
                         onClick={() => {
                           router.push(result.link);
-                          setOpen(false);
+                          changeOpen(false);
                         }}
                         onMouseEnter={() => setSelectedIndex(index)}
                       >

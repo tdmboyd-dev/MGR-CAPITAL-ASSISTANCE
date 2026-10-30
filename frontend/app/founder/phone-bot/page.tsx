@@ -87,11 +87,11 @@ export default function PhoneBotDashboard() {
           if (tData.data?.status === 'completed' || tData.data?.status === 'failed') {
             clearInterval(interval)
           }
-        } catch (e) {
+        } catch {
           // Continue polling
         }
       }, 3000)
-    } catch (err) {
+    } catch {
       toast.error('Failed to start call')
     } finally {
       setLoading(false)
@@ -107,7 +107,7 @@ export default function PhoneBotDashboard() {
       })
       setCallStatus('ended')
       toast.success('Call ended')
-    } catch (err) {
+    } catch {
       toast.error('Failed to end call')
     }
   }
@@ -307,7 +307,7 @@ export default function PhoneBotDashboard() {
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            {(callLogs?.data || []).slice(0, 10).map((log: any, i: number) => (
+            {(callLogs?.data || []).slice(0, 10).map((log: { id:string; direction:string; createdAt:string; status:string }, i: number) => (
               <motion.div
                 key={log.id}
                 initial={{ opacity: 0, x: -10 }}

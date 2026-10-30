@@ -61,7 +61,7 @@ export default function ForgotPasswordPage() {
         // Still show success to prevent email enumeration
         setIsSubmitted(true);
       }
-    } catch (err) {
+    } catch {
       toast.error("Request failed", {
         description: "Please try again later.",
       });

@@ -11,21 +11,27 @@ CardTitle,
 } from "@/components/ui/card";
 import { SkeletonList } from "@/components/ui/skeleton";
 import { api } from "@/lib/api";
+import { useAuth } from "@/hooks/useAuth";
+import { trainingModulesSchema,trainingProgressSchema } from "@/lib/trainingRecords";
 import { useQuery } from "@tanstack/react-query";
 import { BookOpen,CheckCircle,Clock,Lock,Play } from "lucide-react";
 import Link from "next/link";
 
 export default function EmployeeTrainingPage() {
-  const { data, isLoading } = useQuery({
-    queryKey: ["training-modules"],
-    queryFn: async () => {
-      const { data } = await api.get("/training");
-      return data;
+  const { user } = useAuth();
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ["training-modules",user?.id],
+    queryFn: async ({signal}) => {
+      const [modulesResponse,progressResponse] = await Promise.all([api.get<unknown>("/training",{signal}),api.get<unknown>("/training/progress",{signal})]);
+      const modules=trainingModulesSchema.parse(modulesResponse.data).data;
+      const progress=trainingProgressSchema.parse(progressResponse.data).data;
+      return {data:modules.map(module=>{const saved=progress.find(row=>row.moduleId===module.id);if(!saved)throw Error('Training progress missing');return {...module,locked:saved.status==='LOCKED',completed:saved.status==='COMPLETED',progress:saved.progress};})};
     },
   });
 
+  if(isError)return <p role="alert">Training modules or saved progress could not be loaded. Reload to retry.</p>;
   const modules = data?.data || [];
-  const completedCount = modules.filter((m: any) => m.completed).length;
+  const completedCount = modules.filter((m) => m.completed).length;
   const totalCount = modules.length;
   const progressPercent = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
 
@@ -74,7 +80,7 @@ export default function EmployeeTrainingPage() {
             <SkeletonList items={5} />
           ) : modules.length > 0 ? (
             <div className="space-y-3">
-              {modules.map((module: any, index: number) => {
+              {modules.map((module, index) => {
                 const isLocked = module.locked;
                 const isCompleted = module.completed;
                 const isInProgress = module.progress > 0 && !isCompleted;
@@ -123,9 +129,9 @@ export default function EmployeeTrainingPage() {
                               In Progress
                             </Badge>
                           )}
-                          {module.required && (
+                          {module.hasQuiz && (
                             <Badge variant="outline" className="text-xs">
-                              Required
+                              Quiz
                             </Badge>
                           )}
                         </div>
@@ -135,7 +141,7 @@ export default function EmployeeTrainingPage() {
                         <div className="flex items-center gap-4 text-xs text-muted-foreground mt-2">
                           <span className="flex items-center gap-1">
                             <Clock className="h-3 w-3" />
-                            {module.duration || 15} min
+                            Duration not supplied
                           </span>
                           {module.progress > 0 && !isCompleted && (
                             <span>{module.progress}% complete</span>

@@ -10,7 +10,9 @@ DialogTitle,
 import { useAuth } from "@/hooks/useAuth";
 import { AnimatePresence,motion } from "framer-motion";
 import { ChevronDown,ChevronUp,History,Loader2,Mic,MicOff,Volume2 } from "lucide-react";
-import { useEffect,useRef,useState } from "react";
+import { useStoredString, writeStoredString } from "@/hooks/useStoredString";
+import { z } from "zod";
+import { useMemo,useRef,useState } from "react";
 import { toast } from "sonner";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
@@ -31,26 +33,17 @@ export function VoiceAiButton() {
   const [loading, setLoading] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
-  const [history, setHistory] = useState<VoiceInteraction[]>([]);
+  const rawHistory = useStoredString(user ? `voice-history-${user.id}` : null);
+  const history = useMemo<VoiceInteraction[]>(() => {
+    try {
+      const parsed = z.array(z.object({ id: z.string(), timestamp: z.string().datetime(), transcript: z.string(), response: z.string() })).max(10).safeParse(JSON.parse(rawHistory ?? '[]'));
+      return parsed.success ? parsed.data.map(item => ({ ...item, timestamp: new Date(item.timestamp) })) : [];
+    } catch { return []; }
+  }, [rawHistory]);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const audioRef = useRef<HTMLAudioElement | null>(null);
-
-  // Load history from localStorage on mount
-  useEffect(() => {
-    if (user) {
-      const savedHistory = localStorage.getItem(`voice-history-${user.id}`);
-      if (savedHistory) {
-        try {
-          const parsed = JSON.parse(savedHistory);
-          setHistory(parsed.map((h: any) => ({ ...h, timestamp: new Date(h.timestamp) })));
-        } catch (e) {
-          console.error("Failed to parse voice history:", e);
-        }
-      }
-    }
-  }, [user]);
 
   // Save history to localStorage
   const saveToHistory = (newTranscript: string, newResponse: string) => {
@@ -62,10 +55,10 @@ export function VoiceAiButton() {
     };
 
     const updatedHistory = [newInteraction, ...history].slice(0, 10); // Keep last 10
-    setHistory(updatedHistory);
+
 
     if (user) {
-      localStorage.setItem(`voice-history-${user.id}`, JSON.stringify(updatedHistory));
+      writeStoredString(`voice-history-${user.id}`, JSON.stringify(updatedHistory));
     }
   };
 
@@ -94,7 +87,7 @@ export function VoiceAiButton() {
       toast.info("Recording... Speak now", {
         description: "Click the button again to stop recording.",
       });
-    } catch (err) {
+    } catch {
       toast.error("Microphone access denied", {
         description: "Please allow microphone access to use voice features.",
       });

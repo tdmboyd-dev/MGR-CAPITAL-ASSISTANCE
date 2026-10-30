@@ -48,7 +48,8 @@ XCircle,
 } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
-import { useForm } from "react-hook-form";
+import { useRouter } from "next/navigation";
+import { useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 import * as z from "zod";
 
@@ -76,6 +77,7 @@ type CompanySettingsFormValues = z.infer<typeof companySettingsSchema>;
 type BrandingFormValues = z.infer<typeof brandingSchema>;
 
 export default function ChildCompanySettingsPage() {
+  const router = useRouter();
   const queryClient = useQueryClient();
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -125,6 +127,9 @@ export default function ChildCompanySettingsPage() {
         }
       : undefined,
   });
+
+  const primaryColor = useWatch({ control: brandingForm.control, name: "primaryColor" });
+  const secondaryColor = useWatch({ control: brandingForm.control, name: "secondaryColor" });
 
   // Update Settings Mutation
   const updateSettingsMutation = useMutation({
@@ -185,7 +190,7 @@ export default function ChildCompanySettingsPage() {
       toast.success("Company deleted");
       setDeleteDialogOpen(false);
       // Redirect to main child company page
-      window.location.href = "/employee/child-company";
+      router.push("/employee/child-company");
     },
     onError: (errorUnknown: unknown) => {
       const error = apiFailure(errorUnknown);
@@ -433,7 +438,7 @@ export default function ChildCompanySettingsPage() {
                   <div className="flex items-center gap-2">
                     <input
                       type="color"
-                      value={brandingForm.watch("primaryColor")}
+                      value={primaryColor}
                       onChange={(e) => brandingForm.setValue("primaryColor", e.target.value)}
                       disabled={!canEditBranding}
                       className="w-10 h-10 rounded cursor-pointer border disabled:opacity-50 disabled:cursor-not-allowed"
@@ -457,7 +462,7 @@ export default function ChildCompanySettingsPage() {
                   <div className="flex items-center gap-2">
                     <input
                       type="color"
-                      value={brandingForm.watch("secondaryColor")}
+                      value={secondaryColor}
                       onChange={(e) => brandingForm.setValue("secondaryColor", e.target.value)}
                       disabled={!canEditBranding}
                       className="w-10 h-10 rounded cursor-pointer border disabled:opacity-50 disabled:cursor-not-allowed"
@@ -482,19 +487,19 @@ export default function ChildCompanySettingsPage() {
                 <Label>Brand Preview</Label>
                 <div
                   className="p-6 rounded-lg border"
-                  style={{ backgroundColor: brandingForm.watch("primaryColor") + "10" }}
+                  style={{ backgroundColor: primaryColor + "10" }}
                 >
                   <div className="flex items-center gap-3 mb-4">
                     <div
                       className="w-10 h-10 rounded-lg flex items-center justify-center"
-                      style={{ backgroundColor: brandingForm.watch("primaryColor") }}
+                      style={{ backgroundColor: primaryColor }}
                     >
                       <Building2 className="h-6 w-6 text-white" />
                     </div>
                     <div>
                       <p
                         className="font-bold text-lg"
-                        style={{ color: brandingForm.watch("primaryColor") }}
+                        style={{ color: primaryColor }}
                       >
                         {company.name}
                       </p>
@@ -506,13 +511,13 @@ export default function ChildCompanySettingsPage() {
                   <div className="flex gap-2">
                     <div
                       className="px-4 py-2 rounded text-white text-sm font-medium"
-                      style={{ backgroundColor: brandingForm.watch("primaryColor") }}
+                      style={{ backgroundColor: primaryColor }}
                     >
                       Primary
                     </div>
                     <div
                       className="px-4 py-2 rounded text-white text-sm font-medium"
-                      style={{ backgroundColor: brandingForm.watch("secondaryColor") }}
+                      style={{ backgroundColor: secondaryColor }}
                     >
                       Secondary
                     </div>

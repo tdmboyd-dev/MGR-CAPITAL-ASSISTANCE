@@ -42,7 +42,7 @@ StarOff,
 Trash2,
 User
 } from "lucide-react";
-import { useEffect,useState } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 
 interface Email {
@@ -92,7 +92,7 @@ export default function EmployeeInboxPage() {
     queryFn: async () => {
       const { data } = await api.get("/email-hosting/accounts");
       // Return the first active email account
-      return data.data?.find((acc: any) => acc.status === "ACTIVE");
+      return data.data?.find((acc: {status:string}) => acc.status === "ACTIVE");
     },
   });
 
@@ -190,13 +190,6 @@ export default function EmployeeInboxPage() {
     },
   });
 
-  // Auto-mark as read when selecting an email
-  useEffect(() => {
-    if (selectedEmail && !selectedEmail.isRead) {
-      markReadMutation.mutate({ id: selectedEmail.id, isRead: true });
-    }
-  }, [selectedEmail?.id]);
-
   const getUnreadCount = (folderId: string): number => {
     const folder = folderCounts?.find((f) => f.folder === folderId);
     return folder?.unread || 0;
@@ -204,6 +197,7 @@ export default function EmployeeInboxPage() {
 
   const handleSelectEmail = (email: Email) => {
     setSelectedEmail(email);
+    if (!email.isRead && !markReadMutation.isPending) markReadMutation.mutate({ id: email.id, isRead: true });
   };
 
   const handleReply = () => {

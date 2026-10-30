@@ -13,6 +13,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs,TabsContent,TabsList,TabsTrigger } from "@/components/ui/tabs";
+import { z } from "zod";
+import Link from "next/link";
 import { api } from "@/lib/api";
 import { useMutation,useQuery,useQueryClient } from "@tanstack/react-query";
 import {
@@ -26,12 +28,6 @@ Settings,
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-
-interface ConfigSection {
-  key: string;
-  value: any;
-  description?: string;
-}
 
 const DEFAULT_CONFIGS = {
   training: {
@@ -68,33 +64,37 @@ const DEFAULT_CONFIGS = {
   },
 };
 
+type ConfigSections = typeof DEFAULT_CONFIGS;
+type ConfigKey = keyof ConfigSections;
+const configSchema = z.object({
+  training: z.object({ passingScorePercent: z.number().int().min(0).max(100), maxQuizAttempts: z.number().int().min(1).max(10), moduleExpirationDays: z.number().int().nonnegative(), autoAssignOnHire: z.boolean(), requireQuizForCompletion: z.boolean(), tierProgressionEnabled: z.boolean() }),
+  ingestion: z.object({ autoProcessEnabled: z.boolean(), highValueThresholdCents: z.number().int().nonnegative(), duplicateCheckEnabled: z.boolean(), maxBatchSize: z.number().int().min(100).max(10000), retryFailedRecords: z.boolean(), notifyOnHighValue: z.boolean() }),
+  ops: z.object({ alertEmailEnabled: z.boolean(), alertEmailRecipients: z.string(), volatilityThreshold: z.number().min(0).max(100), metricsRetentionDays: z.number().int().min(30), focusFeedMaxItems: z.number().int().min(5).max(100), heatmapRefreshMinutes: z.number().int().min(5).max(120) }),
+  system: z.object({ maintenanceMode: z.boolean(), maxFileUploadMB: z.number().int().min(1).max(500), sessionTimeoutMinutes: z.number().int().min(5).max(480), auditLogRetentionDays: z.number().int().min(90), twoFactorRequired: z.boolean(), passwordMinLength: z.number().int().min(8).max(32) }),
+});
+
 export default function FounderConfigPage() {
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState("training");
-  const [formData, setFormData] = useState<Record<string, any>>({});
-  const [hasChanges, setHasChanges] = useState(false);
+  const [formData, setFormData] = useState<Partial<ConfigSections>>({});
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, error } = useQuery({
     queryKey: ["founder-config"],
-    queryFn: async () => {
-      try {
-        const { data } = await api.get("/settings/founder-config");
-        return data.data || {};
-      } catch {
-        return {};
-      }
-    },
+    queryFn: async ({ signal }) => {
+      const response = await api.get<unknown>('/settings/founder-config', { signal });
+      return z.object({ success: z.literal(true), data: configSchema.partial() }).parse(response.data).data;
+    }, retry: false,
   });
 
   const saveMutation = useMutation({
-    mutationFn: async ({ key, value }: { key: string; value: any }) => {
-      const { data } = await api.patch(`/settings/founder-config/${key}`, { value });
-      return data;
+    mutationFn: async ({ key, value }: { key: ConfigKey; value: ConfigSections[ConfigKey] }) => {
+      const validated = configSchema.shape[key].parse(value);
+      const { data } = await api.patch<unknown>(`/settings/founder-config/${key}`, { value: validated });
+      return z.object({ success: z.literal(true) }).parse(data);
     },
     onSuccess: () => {
       toast.success("Configuration saved successfully");
       queryClient.invalidateQueries({ queryKey: ["founder-config"] });
-      setHasChanges(false);
     },
     onError: (errorUnknown: unknown) => {
       const error = apiFailure(errorUnknown);
@@ -102,35 +102,22 @@ export default function FounderConfigPage() {
     },
   });
 
-  const getConfig = (section: string) => {
-    const saved = data?.[section] || {};
-    const defaults = DEFAULT_CONFIGS[section as keyof typeof DEFAULT_CONFIGS] || {};
-    return { ...defaults, ...saved, ...formData[section] };
+  const getConfig = <S extends ConfigKey>(section: S): ConfigSections[S] => ({ ...DEFAULT_CONFIGS[section], ...data?.[section], ...formData[section] });
+  const updateConfig = <S extends ConfigKey, F extends keyof ConfigSections[S]>(section: S, field: F, value: ConfigSections[S][F]) => {
+    setFormData(previous => ({ ...previous, [section]: { ...getConfig(section), [field]: value } }));
   };
 
-  const updateConfig = (section: string, field: string, value: any) => {
-    setFormData((prev) => ({
-      ...prev,
-      [section]: {
-        ...prev[section],
-        [field]: value,
-      },
-    }));
-    setHasChanges(true);
-  };
-
-  const handleSave = (section: string) => {
+  const handleSave = (section: ConfigKey) => {
     const config = getConfig(section);
     saveMutation.mutate({ key: section, value: config });
   };
 
-  const handleReset = (section: string) => {
+  const handleReset = (section: ConfigKey) => {
     setFormData((prev) => {
       const newData = { ...prev };
       delete newData[section];
       return newData;
     });
-    setHasChanges(false);
   };
 
   if (isLoading) {
@@ -141,6 +128,8 @@ export default function FounderConfigPage() {
       </div>
     );
   }
+
+  if (error) return <div role="alert" className="space-y-4 p-6"><h1 className="text-2xl font-bold">Operational configuration is unavailable</h1><p>This screen&apos;s configuration API has not been qualified. Defaults are not proof that security or automation settings are enforced. No configuration was saved.</p><Link href="/founder/command-center" className="underline">Open saved feature settings in Command Center</Link></div>;
 
   return (
     <div className="space-y-6">

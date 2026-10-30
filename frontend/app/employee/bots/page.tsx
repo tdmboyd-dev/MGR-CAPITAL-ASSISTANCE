@@ -8,10 +8,10 @@ CardHeader,
 CardTitle,
 } from "@/components/ui/card";
 import { useAuth } from "@/hooks/useAuth";
+import { botMineSchema } from "@/lib/botRecords";
 import { api } from "@/lib/api";
 import { useMutation,useQuery,useQueryClient } from "@tanstack/react-query";
 import { Activity,Bot,CheckCircle,DollarSign,XCircle,Zap } from "lucide-react";
-import { useState } from "react";
 
 const TIER_LABELS: Record<string, { label: string; price: string; color: string }> = {
   STARTER: { label: "Starter", price: "$50/mo", color: "text-blue-500" },
@@ -36,21 +36,13 @@ const BOT_LABELS: Record<string, { name: string; icon: string; description: stri
 export default function EmployeeBotsPage() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const [upgradeTarget, setUpgradeTarget] = useState<string | null>(null);
 
-  const { data: subscriptionData, isLoading } = useQuery({
-    queryKey: ["bot-subscription"],
-    queryFn: async () => {
-      const { data } = await api.get("/bot-subscriptions/mine");
-      return data;
-    },
-  });
-
-  const { data: tiers } = useQuery({
-    queryKey: ["bot-tiers"],
-    queryFn: async () => {
-      const { data } = await api.get("/bot-subscriptions/tiers");
-      return data;
+  const { data: subscriptionData, isLoading, error } = useQuery({
+    queryKey: ["bot-subscription", user?.id],
+    enabled: Boolean(user),
+    queryFn: async ({ signal }) => {
+      const { data } = await api.get<unknown>("/bot-subscriptions/mine", { signal });
+      return botMineSchema.parse(data);
     },
   });
 
@@ -60,8 +52,7 @@ export default function EmployeeBotsPage() {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["bot-subscription"] });
-      setUpgradeTarget(null);
+      queryClient.invalidateQueries({ queryKey: ["bot-subscription", user?.id] });
     },
   });
 
@@ -71,8 +62,7 @@ export default function EmployeeBotsPage() {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["bot-subscription"] });
-      setUpgradeTarget(null);
+      queryClient.invalidateQueries({ queryKey: ["bot-subscription", user?.id] });
     },
   });
 
@@ -84,10 +74,12 @@ export default function EmployeeBotsPage() {
     );
   }
 
+  if (error) return <p role="alert">Your bot subscription could not be loaded. Reload to retry; no inactive plan or zero usage was inferred.</p>;
+
   const subscription = subscriptionData?.subscription;
   const usage = subscriptionData?.usage;
-  const enabledBots = (subscription?.enabledBots || []) as string[];
-  const tierInfo = TIER_LABELS[subscription?.tier] || TIER_LABELS.STARTER;
+  const enabledBots = subscription?.enabledBots || [];
+  const tierInfo = TIER_LABELS[subscription?.tier ?? ""] || TIER_LABELS.STARTER;
 
   return (
     <div className="space-y-6">
@@ -110,7 +102,7 @@ export default function EmployeeBotsPage() {
             </span>
           </CardTitle>
           <CardDescription>
-            {subscription?.isActive ? "Active" : "Inactive"} since {subscription?.startDate ? new Date(subscription.startDate).toLocaleDateString() : "N/A"}
+            {subscription?.isActive ? "Active" : "Inactive"} since {subscription?.createdAt ? new Date(subscription.createdAt).toLocaleDateString() : "N/A"}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -224,7 +216,7 @@ export default function EmployeeBotsPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {Object.entries(usage.byBot as Record<string, any>).map(([botName, data]: [string, any]) => (
+              {Object.entries(usage.byBot).map(([botName, data]) => (
                 <div key={botName} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
                   <div>
                     <div className="font-medium">
@@ -253,7 +245,7 @@ export default function EmployeeBotsPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              {(usage.recentActivity as any[]).slice(0, 10).map((activity: any, i: number) => (
+              {usage.recentActivity.slice(0, 10).map((activity, i) => (
                 <div key={i} className="flex items-center justify-between py-2 border-b last:border-0">
                   <div className="flex items-center gap-2">
                     <span>{BOT_LABELS[activity.botName]?.icon || "🤖"}</span>

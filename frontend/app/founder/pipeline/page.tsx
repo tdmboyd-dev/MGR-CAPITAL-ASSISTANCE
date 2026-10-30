@@ -1,11 +1,5 @@
-"use client";
-
-import LeadPipelineKanban from "@/components/LeadPipelineKanban";
+import { redirect } from 'next/navigation';
 
 export default function PipelinePage() {
-  return (
-    <div className="h-[calc(100vh-100px)]">
-      <LeadPipelineKanban />
-    </div>
-  );
+  redirect('/founder/recovery-pipeline');
 }

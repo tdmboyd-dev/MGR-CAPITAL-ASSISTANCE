@@ -195,7 +195,7 @@
 ```env
 JWT_SECRET=your-secure-random-string-32-chars
 JWT_REFRESH_SECRET=another-secure-random-string-32
-ENCRYPTION_KEY=32-character-encryption-key-here
+ENCRYPTION_KEY=<securely-provisioned-value>
 ```
 
 Generate with:
@@ -271,7 +271,7 @@ DATABASE_URL=postgresql://user:pass@localhost:5432/mgr_capital
 # ============================================
 JWT_SECRET=generate-32-char-random-string
 JWT_REFRESH_SECRET=generate-32-char-random-string-2
-ENCRYPTION_KEY=generate-32-char-for-encryption
+ENCRYPTION_KEY=<securely-provisioned-value>
 
 # ============================================
 # AI PROVIDERS (pick one or more)

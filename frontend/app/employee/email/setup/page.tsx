@@ -27,7 +27,7 @@ Shield,
 } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
 
@@ -72,7 +72,7 @@ export default function EmailSetupPage() {
   const {
     register,
     handleSubmit,
-    watch,
+    control,
     formState: { errors },
   } = useForm<EmailFormData>({
     resolver: zodResolver(emailSchema),
@@ -82,8 +82,8 @@ export default function EmailSetupPage() {
     },
   });
 
-  const localPart = watch("localPart");
-  const domain = watch("domain");
+  const localPart = useWatch({ control, name: "localPart" });
+  const domain = useWatch({ control, name: "domain" });
   const fullEmail = localPart && domain ? `${localPart}@${domain}` : "";
 
   const checkAvailability = useMutation({

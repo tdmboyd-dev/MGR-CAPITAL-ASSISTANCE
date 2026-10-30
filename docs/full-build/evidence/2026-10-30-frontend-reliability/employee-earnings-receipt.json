@@ -1,0 +1,25 @@
+{
+  "passed": 19,
+  "checks": [
+    "Actual database includes both commission types plus override and excludes foreign-company allocations",
+    "Actual own-payout HTTP shows payable100 not legacy display200, failed/cancelled payable0 and no internal rates",
+    "Payout history and summary share one accounting projection without claiming settlement",
+    "Employee earnings route and legacy service compatibility return the same actual dollars",
+    "Tier2 actual20percent rate is preserved and its company-fee basis is explicit",
+    "All five preserved payout tiers balance and both calculation services display actual allocations",
+    "Ambiguous legacy/native duplicates are excluded for reconciliation without rewriting history",
+    "Conflicting paid flags and missing completion records cannot appear as normal payable entries",
+    "Invalid amounts require review and genuine zero never falls back to inflated display money",
+    "New actual database payout plan stores identical payable and display cents and submits no funds",
+    "Plan reuse is idempotent and changed ledger money is rejected for reconciliation",
+    "Legacy writer reuses the audited plan and free-text references cannot mark it paid",
+    "Preserved team-leader override is allocated once, included in own earnings and balances the complete plan",
+    "Changed team-leader tier invalidates existing plan instead of silently changing money",
+    "Anonymous, client and other employee cannot read this employee payroll",
+    "Employee leaderboard cannot enumerate another company payroll or infer inflated earnings",
+    "Unqualified tip collection reports unavailable, charges nothing and creates no fictional payment record",
+    "Previously issued employee token cannot bypass current payroll role",
+    "All194real-source research work files survive accounting repairs"
+  ],
+  "proof": "Actual isolated PostgreSQL and HTTP; synthetic payroll/cases only; no external payment, tax, legal or production qualification"
+}

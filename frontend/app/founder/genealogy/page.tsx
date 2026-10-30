@@ -73,10 +73,9 @@ const US_STATES = [
 
 export default function GenealogyPage() {
   const svgRef = useRef<SVGSVGElement>(null)
-  const [selectedTree, setSelectedTree] = useState<GenealogyTree | null>(null)
+  const [chosenTree, setSelectedTree] = useState<GenealogyTree | null>(null)
   const [selectedMember, setSelectedMember] = useState<FamilyMember | null>(null)
   const [showNewTreeDialog, setShowNewTreeDialog] = useState(false)
-  const [showAddMemberDialog, setShowAddMemberDialog] = useState(false)
   const [newTreeForm, setNewTreeForm] = useState({
     caseId: '',
     decedentName: '',
@@ -85,13 +84,6 @@ export default function GenealogyPage() {
     knownRelatives: '',
     lastKnownAddress: ''
   })
-  const [newMemberForm, setNewMemberForm] = useState({
-    name: '',
-    relationship: '',
-    isDeceased: false,
-    isHeir: false
-  })
-
   // Fetch trees list
   const { data: trees, isLoading } = useQuery({
     queryKey: ['genealogy-trees'],
@@ -198,6 +190,8 @@ export default function GenealogyPage() {
     }
   })
 
+  const selectedTree = chosenTree ?? trees?.[0] ?? null;
+
   // D3.js tree visualization
   const renderTree = useCallback((tree: GenealogyTree) => {
     if (!svgRef.current) return
@@ -215,14 +209,14 @@ export default function GenealogyPage() {
       .attr('transform', `translate(${margin.left},${margin.top})`)
 
     // Convert tree data to D3 hierarchy
-    const root = d3.hierarchy(tree.rootMember, d => d.children)
+    const hierarchy = d3.hierarchy(tree.rootMember, d => d.children)
 
     // Create tree layout
     const treeLayout = d3.tree<FamilyMember>()
       .size([width - margin.left - margin.right, height - margin.top - margin.bottom - 100])
       .separation((a, b) => (a.parent === b.parent ? 1.5 : 2))
 
-    treeLayout(root)
+    const root = treeLayout(hierarchy)
 
     // Draw links
     g.selectAll('.link')
@@ -230,10 +224,9 @@ export default function GenealogyPage() {
       .enter()
       .append('path')
       .attr('class', 'link')
-      .attr('d', (d3.linkVertical()
-        .x((d: any) => d.x)
-        .y((d: any) => d.y)
-      ) as any)
+      .attr('d', d3.linkVertical<d3.HierarchyPointLink<FamilyMember>, d3.HierarchyPointNode<FamilyMember>>()
+        .x(d => d.x)
+        .y(d => d.y))
       .attr('fill', 'none')
       .attr('stroke', '#94a3b8')
       .attr('stroke-width', 2)
@@ -325,13 +318,6 @@ export default function GenealogyPage() {
       renderTree(selectedTree)
     }
   }, [selectedTree, renderTree])
-
-  // Auto-select first tree
-  useEffect(() => {
-    if (trees && trees.length > 0 && !selectedTree) {
-      setSelectedTree(trees[0])
-    }
-  }, [trees, selectedTree])
 
   const getStatusIcon = (status: string) => {
     switch (status) {

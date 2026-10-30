@@ -11,6 +11,7 @@ CardTitle,
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/useAuth";
 import { api } from "@/lib/api";
+import { chatRoomsSchema, chatMessagesSchema } from "@/lib/commsRecords";
 import { formatDateTime } from "@/lib/utils";
 import { useMutation,useQuery,useQueryClient } from "@tanstack/react-query";
 import { Hash,Lock,MessageSquare,Send,Users } from "lucide-react";
@@ -24,19 +25,19 @@ export default function EmployeeCommsPage() {
   const [message, setMessage] = useState("");
 
   const { data: rooms, isLoading: roomsLoading } = useQuery({
-    queryKey: ["chat-rooms"],
+    queryKey: ["chat-rooms",user?.id],
     queryFn: async () => {
-      const { data } = await api.get("/comms/rooms");
-      return data;
+      const { data } = await api.get<unknown>("/comms/rooms");
+      return chatRoomsSchema.parse(data);
     },
   });
 
   const { data: messages, isLoading: messagesLoading } = useQuery({
-    queryKey: ["chat-messages", selectedRoom],
+    queryKey: ["chat-messages", selectedRoom,user?.id],
     queryFn: async () => {
-      if (!selectedRoom) return { data: [] };
+      if (!selectedRoom) return { success: true as const, data: [] };
       const { data } = await api.get(`/comms/messages?roomId=${selectedRoom}`);
-      return data;
+      return chatMessagesSchema.parse(data);
     },
     enabled: !!selectedRoom,
     refetchInterval: 5000,
@@ -52,7 +53,7 @@ export default function EmployeeCommsPage() {
     },
     onSuccess: () => {
       setMessage("");
-      queryClient.invalidateQueries({ queryKey: ["chat-messages", selectedRoom] });
+      queryClient.invalidateQueries({ queryKey: ["chat-messages", selectedRoom,user?.id] });
     },
     onError: () => {
       toast.error("Failed to send message");
@@ -72,7 +73,7 @@ export default function EmployeeCommsPage() {
   };
 
   const getRoomIcon = (type: string) => {
-    switch (type) {
+    switch (type.toLowerCase()) {
       case "company":
         return <Users className="h-4 w-4" />;
       case "team":
@@ -100,8 +101,8 @@ export default function EmployeeCommsPage() {
               <div className="flex items-center justify-center py-4">
                 <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
               </div>
-            ) : rooms?.data?.length > 0 ? (
-              rooms.data.map((room: any) => (
+            ) : rooms && rooms.data.length > 0 ? (
+              rooms.data.map((room) => (
                 <button
                   key={room.id}
                   onClick={() => setSelectedRoom(room.id)}
@@ -130,10 +131,10 @@ export default function EmployeeCommsPage() {
             <>
               <CardHeader className="pb-2 border-b">
                 <CardTitle className="text-lg">
-                  {rooms?.data?.find((r: any) => r.id === selectedRoom)?.name || "Chat"}
+                  {rooms?.data?.find((r) => r.id === selectedRoom)?.name || "Chat"}
                 </CardTitle>
                 <CardDescription>
-                  {rooms?.data?.find((r: any) => r.id === selectedRoom)?.type} room
+                  {rooms?.data?.find((r) => r.id === selectedRoom)?.type} room
                 </CardDescription>
               </CardHeader>
               <CardContent className="flex-1 overflow-y-auto p-4 space-y-4">
@@ -141,8 +142,8 @@ export default function EmployeeCommsPage() {
                   <div className="flex items-center justify-center py-4">
                     <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
                   </div>
-                ) : messages?.data?.length > 0 ? (
-                  messages.data.map((msg: any) => (
+                ) : messages && messages.data.length > 0 ? (
+                  messages.data.map((msg) => (
                     <div
                       key={msg.id}
                       className={`flex flex-col ${

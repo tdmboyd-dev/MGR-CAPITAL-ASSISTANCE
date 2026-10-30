@@ -110,9 +110,9 @@ export default function TrainingModulePage() {
     );
   }
 
-  const module = data?.data;
+  const trainingModule = data?.data;
 
-  if (!module) {
+  if (!trainingModule) {
     return (
       <div className="text-center py-12">
         <BookOpen className="h-12 w-12 mx-auto mb-4 opacity-50" />
@@ -133,13 +133,13 @@ export default function TrainingModulePage() {
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <div>
-          <h1 className="text-3xl font-bold">{module.title}</h1>
+          <h1 className="text-3xl font-bold">{trainingModule.title}</h1>
           <div className="flex items-center gap-4 text-muted-foreground">
             <span className="flex items-center gap-1">
               <Clock className="h-4 w-4" />
-              {module.duration || 15} minutes
+              {trainingModule.duration || 15} minutes
             </span>
-            {module.completed && (
+            {trainingModule.completed && (
               <span className="flex items-center gap-1 text-green-500">
                 <CheckCircle className="h-4 w-4" />
                 Completed
@@ -155,9 +155,9 @@ export default function TrainingModulePage() {
           <Card>
             <CardContent className="pt-6">
               <div className="aspect-video bg-muted rounded-lg flex items-center justify-center">
-                {module.videoUrl ? (
+                {trainingModule.videoUrl ? (
                   <video
-                    src={module.videoUrl}
+                    src={trainingModule.videoUrl}
                     controls
                     className="w-full h-full rounded-lg"
                   />
@@ -177,12 +177,12 @@ export default function TrainingModulePage() {
           <Card>
             <CardHeader>
               <CardTitle>Module Content</CardTitle>
-              <CardDescription>{module.description}</CardDescription>
+              <CardDescription>{trainingModule.description}</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="prose prose-sm dark:prose-invert max-w-none">
-                {module.content ? (
-                  <div dangerouslySetInnerHTML={{ __html: sanitizeHtml(module.content) }} />
+                {trainingModule.content ? (
+                  <div dangerouslySetInnerHTML={{ __html: sanitizeHtml(trainingModule.content) }} />
                 ) : (
                   <p className="text-muted-foreground">
                     This module covers important concepts for surplus recovery
@@ -193,7 +193,7 @@ export default function TrainingModulePage() {
               </div>
 
               <div className="mt-6 pt-6 border-t flex justify-end">
-                {module.hasQuiz ? (
+                {trainingModule.hasQuiz ? (
                   <Button onClick={() => setShowQuiz(true)}>
                     <Award className="h-4 w-4 mr-2" />
                     Take Quiz
@@ -201,9 +201,9 @@ export default function TrainingModulePage() {
                 ) : (
                   <Button
                     onClick={() => completeMutation.mutate()}
-                    disabled={completeMutation.isPending || module.completed}
+                    disabled={completeMutation.isPending || trainingModule.completed}
                   >
-                    {module.completed ? (
+                    {trainingModule.completed ? (
                       <>
                         <CheckCircle className="h-4 w-4 mr-2" />
                         Already Completed
@@ -229,8 +229,8 @@ export default function TrainingModulePage() {
               Module Quiz
             </CardTitle>
             <CardDescription>
-              Answer the following questions to complete this module.
-              You need {module.passingScore || 80}% to pass.
+              Answer the following questions to complete this trainingModule.
+              You need {trainingModule.passingScore || 80}% to pass.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -323,9 +323,9 @@ export default function TrainingModulePage() {
                   )}
                 </div>
               </div>
-            ) : module.questions?.length > 0 ? (
+            ) : trainingModule.questions?.length > 0 ? (
               <div className="space-y-6">
-                {module.questions.map((q: any, index: number) => (
+                {trainingModule.questions.map((q: { question:string; options:string[] }, index: number) => (
                   <div key={index} className="p-4 rounded-lg border">
                     <p className="font-medium mb-3">
                       {index + 1}. {q.question}
@@ -368,7 +368,7 @@ export default function TrainingModulePage() {
                     onClick={() => quizMutation.mutate()}
                     disabled={
                       quizMutation.isPending ||
-                      Object.keys(quizAnswers).length < (module.questions?.length || 0)
+                      Object.keys(quizAnswers).length < (trainingModule.questions?.length || 0)
                     }
                   >
                     {quizMutation.isPending ? "Submitting..." : "Submit Quiz"}
@@ -378,7 +378,7 @@ export default function TrainingModulePage() {
             ) : (
               <div className="text-center py-8">
                 <p className="text-muted-foreground mb-4">
-                  No quiz questions available for this module.
+                  No quiz questions available for this trainingModule.
                 </p>
                 <Button
                   onClick={() => completeMutation.mutate()}

@@ -9,6 +9,8 @@ CardHeader,
 CardTitle,
 } from "@/components/ui/card";
 import { SkeletonList } from "@/components/ui/skeleton";
+import { caseListSchema } from "@/lib/caseRecords";
+import { useAuth } from "@/hooks/useAuth";
 import { api } from "@/lib/api";
 import { formatCurrency,formatDate } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
@@ -28,13 +30,17 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export default function EmployeeCasesPage() {
-  const { data, isLoading } = useQuery({
-    queryKey: ["my-cases"],
-    queryFn: async () => {
-      const { data } = await api.get("/cases");
-      return data;
+  const { user } = useAuth();
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: ["employee-cases", user?.id],
+    enabled: Boolean(user),
+    queryFn: async ({ signal }) => {
+      const { data } = await api.get<unknown>("/cases/my", { signal });
+      return caseListSchema.parse(data);
     },
   });
+
+  if (error) return <div role="alert" className="space-y-3 p-6"><p>Cases could not be loaded. Your saved cases have not been removed.</p><button onClick={() => { void refetch(); }} className="underline">Retry</button></div>;
 
   return (
     <div className="space-y-6">
@@ -53,7 +59,7 @@ export default function EmployeeCasesPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{data?.total || 0}</div>
+            <div className="text-2xl font-bold">{data?.count ?? data?.data.length ?? 0}</div>
           </CardContent>
         </Card>
         <Card>
@@ -64,7 +70,7 @@ export default function EmployeeCasesPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {data?.data?.filter((c: any) => !["CLOSED", "REJECTED", "PAID"].includes(c.status)).length || 0}
+              {data?.data?.filter((c) => !["CLOSED", "REJECTED", "PAID"].includes(c.status)).length || 0}
             </div>
           </CardContent>
         </Card>
@@ -76,7 +82,7 @@ export default function EmployeeCasesPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {data?.data?.filter((c: any) => c.status === "PAID").length || 0}
+              {data?.data?.filter((c) => c.status === "PAID").length || 0}
             </div>
           </CardContent>
         </Card>
@@ -90,9 +96,9 @@ export default function EmployeeCasesPage() {
         <CardContent>
           {isLoading ? (
             <SkeletonList items={5} />
-          ) : data?.data?.length > 0 ? (
+          ) : (data?.data?.length ?? 0) > 0 ? (
             <div className="space-y-3">
-              {data.data.map((caseItem: any) => (
+              {data?.data.map((caseItem) => (
                 <Link
                   key={caseItem.id}
                   href={`/employee/cases/${caseItem.id}`}

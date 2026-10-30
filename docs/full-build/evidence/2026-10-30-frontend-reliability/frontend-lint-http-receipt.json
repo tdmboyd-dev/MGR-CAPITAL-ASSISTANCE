@@ -1,0 +1,24 @@
+{
+  "passed": 17,
+  "checks": [
+    "Anonymous actual search HTTP denied",
+    "Real PostgreSQL search isolates root, company founder, assigned staff and client results",
+    "Actual company admin directory excludes the other company",
+    "Assigned staff cannot infer founder-only notes through keyword matches",
+    "Malformed search filters and unbounded result limits rejected by HTTP",
+    "Company founder cannot read global cross-user query history",
+    "Company founder/admin cannot reach global metrics, global settings, worker fleet or global finances",
+    "Global founder can read actual operations, settings, worker and financial contracts",
+    "Unqualified payment write remains unavailable and never reports success",
+    "Existing real-source warehouse work remains present",
+    "Room creation binds current company, saves audit and never returns password hash",
+    "Foreign company and client cannot list or read staff conversations",
+    "Same-company staff message persists; foreign founder cannot overwrite it",
+    "Protected company rooms reject missing password and deny unadmitted staff access",
+    "Message pagination rejects invalid limits and timestamps",
+    "Stale founder token cannot bypass current staff role for communications",
+    "Previously issued founder token cannot bypass current database role"
+  ],
+  "warehouseWorkItems": 194,
+  "proof": "Actual loopback HTTP and isolated PostgreSQL; synthetic authorization records; no provider action, production or customer outcome"
+}

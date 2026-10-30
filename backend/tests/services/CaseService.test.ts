@@ -110,12 +110,9 @@ describe("CaseService", () => {
       expect(founderShare).toBe(3300000); // Full $33,000
     });
 
-    it("should calculate shadow rate (2x) for employee display", () => {
-      const actualCommission = 660000; // $6,600
-      const shadowRate = actualCommission * 2;
-
-      expect(shadowRate).toBe(1320000); // $13,200 (displayed to employee)
-    });
+    // The obsolete 2x display arithmetic assertion was retired after the owner's
+    // actual-payable decision. employee-earnings-postgres.ts exercises the real
+    // calculator, persisted allocations, employee API and reconciliation paths.
   });
 
   // ===========================================================================

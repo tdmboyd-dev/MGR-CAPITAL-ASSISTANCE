@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { LogOut,Menu,Moon,Sun,X } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useTheme } from "next-themes";
+import { useHydrated } from "@/hooks/useHydrated";
 
 interface NavbarProps {
   onMenuToggle?: () => void;
@@ -15,7 +17,10 @@ interface NavbarProps {
 }
 
 export function Navbar({ onMenuToggle, isSidebarOpen }: NavbarProps) {
-  const { theme, setTheme, user, logout } = useAuth();
+  const { user, logout } = useAuth();
+  const { resolvedTheme, setTheme } = useTheme();
+  const hydrated = useHydrated();
+  const theme = hydrated ? resolvedTheme : undefined;
   const router = useRouter();
 
   const handleLogout = async () => {

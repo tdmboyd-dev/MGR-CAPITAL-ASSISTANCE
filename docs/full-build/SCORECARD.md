@@ -1,5 +1,22 @@
 # Capital Assistance — evidence-based scorecard
 
+## October30 frontend reliability and payable accounting
+
+| Product feature / defined checks | Actual evidence | Remaining boundary |
+|---|---|---|
+| Whole frontend eslint acceptance |1/1command passed;0errors/0warnings from155/98fresh baseline |Semantic review is separate and unfinished; rules/exclusions retained |
+| Search/record/scenario contracts |18/18focused implementation-boundary checks |Mocked dependencies; no external provider proof |
+| Actual search/settings/fleet/payment/chat boundaries |17/17HTTP+PostgreSQL checks |Synthetic actors, local store; full role/browser matrix excluded |
+| Actual payable accounting |19/19DB/HTTP/calculation/reconciliation checks |Internal margins private; actual payout percentages retained; no bank settlement |
+| Employee My Earnings |Actual navigation/save-state reopening passed in optimized local build |Synthetic employee shows1234cents instead of legacy2468; deployment/owner production acceptance excluded |
+| Settings / research preservation |False/reload, restoredtrue/reload,194saved work files reopened; separate DB corroboration |No outside claim status or current balances certified |
+| Final builds |Backend TypeScript and optimized Next99generation entries passed |Loopback API build target; rebuild for deployment |
+| Existing regression suite |202passed,16skipped,0failed;8suites |One obsolete literal2x display assertion retired; no test-volume completion percentage |
+| Distributable source credential scan |Default pinned scan0current findings after removing6old documentation patterns |Provider rotation and history exposure remain owner account actions; private seal ZIP excluded |
+| Whole Capital product / national coverage |Unassessed |Current HANDOFF next queue remains authoritative |
+
+Evidence: evidence/2026-10-30-frontend-reliability/. The current handoff separates repairs, verification, engineering gaps and outside access requirements. Historical scope snapshots follow.
+
 ## October30 Shelby acquisition and held research continuation
 
 | Defined acceptance scope | Passed / applicable | Limits |

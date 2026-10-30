@@ -42,7 +42,7 @@ Star,
 StarOff,
 Trash2
 } from "lucide-react";
-import { useEffect,useState } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 
 interface Email {
@@ -181,13 +181,6 @@ export default function FounderInboxPage() {
     },
   });
 
-  // Auto-mark as read when selecting an email
-  useEffect(() => {
-    if (selectedEmail && !selectedEmail.isRead) {
-      markReadMutation.mutate({ id: selectedEmail.id, isRead: true });
-    }
-  }, [selectedEmail?.id]);
-
   const getUnreadCount = (folderId: string): number => {
     const folder = folderCounts?.find((f) => f.folder === folderId);
     return folder?.unread || 0;
@@ -195,6 +188,7 @@ export default function FounderInboxPage() {
 
   const handleSelectEmail = (email: Email) => {
     setSelectedEmail(email);
+    if (!email.isRead && !markReadMutation.isPending) markReadMutation.mutate({ id: email.id, isRead: true });
   };
 
   const handleReply = () => {

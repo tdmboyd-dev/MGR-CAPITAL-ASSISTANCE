@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input'
 import * as tf from '@tensorflow/tfjs'
 import { motion } from 'framer-motion'
 import { AlertTriangle,Brain,Clock,DollarSign,Loader2,Scale,TrendingUp } from 'lucide-react'
-import { useCallback,useEffect,useState } from 'react'
+import { useCallback,useState } from 'react'
 import { Bar,BarChart,ResponsiveContainer,Tooltip,XAxis,YAxis } from 'recharts'
 import { toast } from 'sonner'
 
@@ -124,7 +124,7 @@ const STATE_FACTORS: Record<string, { difficulty: number; avgDuration: number }>
 
 export default function LitigationSimulator() {
   const [model, setModel] = useState<tf.LayersModel | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
   const [simulating, setSimulating] = useState(false)
   const [modelAccuracy, setModelAccuracy] = useState(0)
   const [inputs, setInputs] = useState<SimulationInputs>({
@@ -143,6 +143,7 @@ export default function LitigationSimulator() {
    * Build and train the prediction model
    */
   const buildAndTrainModel = useCallback(async () => {
+    setLoading(true)
     try {
       // Create model
       const m = tf.sequential()
@@ -208,10 +209,6 @@ export default function LitigationSimulator() {
       toast.error('Failed to train prediction model')
     }
   }, [])
-
-  useEffect(() => {
-    buildAndTrainModel()
-  }, [buildAndTrainModel])
 
   /**
    * Encode inputs for the model
@@ -294,7 +291,7 @@ export default function LitigationSimulator() {
   /**
    * Generate recommendation
    */
-  const generateRecommendation = (winProb: number, risks: string[]): string => {
+  const generateRecommendation = (winProb: number): string => {
     if (winProb >= 80) {
       return 'Strong case. Recommend proceeding with claim filing immediately.'
     } else if (winProb >= 60) {
@@ -349,7 +346,7 @@ export default function LitigationSimulator() {
 
       // Get risk factors and recommendation
       const riskFactors = identifyRiskFactors(inputs)
-      const recommendation = generateRecommendation(winProbability, riskFactors)
+      const recommendation = generateRecommendation(winProbability)
 
       setPrediction({
         winProbability,
@@ -400,6 +397,7 @@ export default function LitigationSimulator() {
       className="space-y-6"
     >
       {/* Input Form */}
+      <Card><CardContent className="p-4 space-y-3"><p>This experimental simulator uses synthetic examples. Its numbers are not validated legal odds, costs or case recommendations.</p><Button onClick={() => { void buildAndTrainModel(); }} disabled={loading || Boolean(model)}>Initialize experimental model</Button></CardContent></Card>
       <Card className="bg-gradient-to-br from-slate-900 to-slate-800 border-slate-700">
         <CardHeader>
           <CardTitle className="text-white flex items-center gap-2">
@@ -407,10 +405,10 @@ export default function LitigationSimulator() {
             Predictive Litigation Simulator
           </CardTitle>
           <CardDescription className="text-slate-400">
-            ML-powered case outcome prediction trained on surplus recovery patterns
+            Experimental model trained on hand-written synthetic examples
             {modelAccuracy > 0 && (
               <span className="ml-2 text-blue-400">
-                (Model accuracy: {modelAccuracy.toFixed(1)}%)
+                (Synthetic validation fit: {modelAccuracy.toFixed(1)}%)
               </span>
             )}
           </CardDescription>
@@ -419,7 +417,7 @@ export default function LitigationSimulator() {
           {loading ? (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="h-8 w-8 animate-spin text-blue-400" />
-              <span className="ml-3 text-slate-300">Training ML model on case data...</span>
+              <span className="ml-3 text-slate-300">Training experimental model on synthetic examples...</span>
             </div>
           ) : (
             <>

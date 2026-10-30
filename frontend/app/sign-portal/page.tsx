@@ -2,6 +2,8 @@
 import { apiFailure } from "@/lib/apiFailure";
 
 import axios from "axios";
+import { useQuery } from "@tanstack/react-query";
+import { z } from "zod";
 import { AnimatePresence,motion } from "framer-motion";
 import {
 AlertCircle,
@@ -18,20 +20,16 @@ Shield,
 XCircle
 } from "lucide-react";
 import { useSearchParams } from "next/navigation";
-import { Suspense,useEffect,useRef,useState } from "react";
+import { Suspense,useRef,useState } from "react";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
-interface PortalData {
-  clientName: string;
-  propertyAddress: string;
-  county: string;
-  state: string;
-  status: { title: string; description: string };
-  steps: { id: string; title: string; description: string; completed: boolean }[];
-  currentStep: number;
-  documents: { id: string; type: string; needsSignature: boolean; signed: boolean }[];
-}
+const portalSchema = z.object({ success: z.literal(true), data: z.object({
+  clientName: z.string(), propertyAddress: z.string(), county: z.string(), state: z.string(),
+  status: z.object({ title: z.string(), description: z.string() }),
+  steps: z.array(z.object({ id: z.string(), title: z.string(), description: z.string(), completed: z.boolean() })),
+  currentStep: z.number().int(), documents: z.array(z.object({ id: z.string(), type: z.string(), needsSignature: z.boolean(), signed: z.boolean() })),
+}) });
 
 export default function SignPortalPage() {
   return (
@@ -51,14 +49,28 @@ export default function SignPortalPage() {
 function SignPortalInner() {
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
+  return <SignPortalSession key={token ?? "missing"} token={token} />;
+}
 
-  const [portalData, setPortalData] = useState<PortalData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [expired, setExpired] = useState(false);
-  const [currentStep, setCurrentStep] = useState(0);
+function SignPortalSession({ token }: { token: string | null }) {
+
+  const portalQuery = useQuery({
+    queryKey: ['public-signing-portal', token], enabled: Boolean(token), gcTime: 0, retry: false,
+    queryFn: async ({ signal }) => {
+      const response = await axios.get<unknown>(`${API_URL}/api/clients/portal/${encodeURIComponent(token ?? '')}`, { signal });
+      return portalSchema.parse(response.data).data;
+    },
+  });
+  const portalData = portalQuery.data;
+  const loading = Boolean(token) && portalQuery.isPending;
+  const failure = portalQuery.error ? apiFailure(portalQuery.error) : null;
+  const expired = failure?.response?.status === 410;
+  const error = !token ? 'No portal token provided. Please use the link sent to you.'
+    : failure ? expired ? 'This portal link has expired.' : 'Your portal could not be loaded. Check your link or retry.' : null;
+  const currentStep = Math.max(0, portalData?.currentStep ?? 0);
   const [signing, setSigning] = useState(false);
-  const [signedDocs, setSignedDocs] = useState<Set<string>>(new Set());
+  const [localSignedDocs, setSignedDocs] = useState<Set<string>>(new Set());
+  const signedDocs = new Set([...localSignedDocs, ...(portalData?.documents.filter(doc => doc.signed).map(doc => doc.id) ?? [])]);
   const [allDone, setAllDone] = useState(false);
 
   // Signature canvas
@@ -67,54 +79,9 @@ function SignPortalInner() {
   const [hasSignature, setHasSignature] = useState(false);
   const [activeDocId, setActiveDocId] = useState<string | null>(null);
 
-  // Contact info form
-  const [contactForm, setContactForm] = useState({
-    name: "",
-    phone: "",
-    email: "",
-  });
-
   // Message form
   const [messageText, setMessageText] = useState("");
   const [messageSent, setMessageSent] = useState(false);
-
-  useEffect(() => {
-    if (!token) {
-      setError("No portal token provided. Please use the link sent to you.");
-      setLoading(false);
-      return;
-    }
-    fetchPortalData();
-  }, [token]);
-
-  const fetchPortalData = async () => {
-    try {
-      const { data } = await axios.get(`${API_URL}/api/clients/portal/${token}`);
-      if (data.success) {
-        setPortalData(data.data);
-        setContactForm({ name: data.data.clientName || "", phone: "", email: "" });
-        setCurrentStep(data.data.currentStep >= 0 ? data.data.currentStep : 0);
-        // Mark already-signed docs
-        const alreadySigned = new Set<string>();
-        data.data.documents.forEach((d: any) => {
-          if (d.signed) alreadySigned.add(d.id);
-        });
-        setSignedDocs(alreadySigned);
-      }
-    } catch (errUnknown: unknown) {
-      const err = apiFailure(errUnknown);
-      if (err.response?.status === 410) {
-        setExpired(true);
-        setError(err.response.data?.error || "This portal link has expired.");
-      } else if (err.response?.status === 404) {
-        setError("We couldn't find your case. Please check your link or contact us.");
-      } else {
-        setError("Something went wrong. Please try again later.");
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
 
   // Canvas drawing functions
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {

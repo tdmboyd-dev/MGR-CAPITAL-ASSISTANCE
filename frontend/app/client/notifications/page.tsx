@@ -9,9 +9,8 @@ CardDescription,
 CardHeader,
 CardTitle,
 } from "@/components/ui/card";
-import { api } from "@/lib/api";
+import { useNotifications, type NotificationRecord } from "@/hooks/useNotifications";
 import { formatDateTime } from "@/lib/utils";
-import { useMutation,useQuery,useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import {
 AlertCircle,
@@ -112,42 +111,13 @@ const NOTIFICATION_CONFIG: Record<string, { icon: import("lucide-react").LucideI
 };
 
 export default function ClientNotificationsPage() {
-  const queryClient = useQueryClient();
-
-  const { data: notifications, isLoading } = useQuery({
-    queryKey: ["client-notifications"],
-    queryFn: async () => {
-      const { data } = await api.get("/notifications");
-      return data;
-    },
-  });
-
-  const markAsReadMutation = useMutation({
-    mutationFn: async (notificationId: string) => {
-      const { data } = await api.patch(`/notifications/${notificationId}/read`);
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["client-notifications"] });
-    },
-    onError: () => {
-      toast.error("Failed to mark notification as read");
-    },
-  });
-
-  const markAllAsReadMutation = useMutation({
-    mutationFn: async () => {
-      const { data } = await api.patch("/notifications/mark-read");
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["client-notifications"] });
-      toast.success("All notifications marked as read");
-    },
-    onError: () => {
-      toast.error("Failed to mark notifications as read");
-    },
-  });
+  const { notifications: notificationList, isLoading, isPending, error, markAsRead, markAllAsRead } = useNotifications();
+  const markAsReadMutation = {
+    isPending, mutate: (id: string) => { void markAsRead(id).then(ok => { if (!ok) toast.error('Notification read state was not saved'); }); },
+  };
+  const markAllAsReadMutation = {
+    isPending, mutate: () => { void markAllAsRead().then(ok => { if (ok) toast.success('All notifications marked as read'); else toast.error('Notification read state was not saved'); }); },
+  };
 
   if (isLoading) {
     return (
@@ -160,28 +130,27 @@ export default function ClientNotificationsPage() {
     );
   }
 
-  const notificationList = notifications?.data || [];
-  const unreadCount = notificationList.filter((n: any) => !n.read).length;
-  const actionRequired = notificationList.filter((n: any) =>
-    n.type === "ACTION_REQUIRED" || n.type === "action_required" || n.type === "DOCUMENTS"
+  const unreadCount = notificationList.filter((n) => !n.isRead).length;
+  const actionRequired = notificationList.filter((n) =>
+    n.category === "ACTION_REQUIRED" || n.category === "action_required" || n.category === "DOCUMENTS"
   );
 
   const getNotificationConfig = (type: string) => {
     return NOTIFICATION_CONFIG[type] || NOTIFICATION_CONFIG.default;
   };
 
-  const getNotificationLink = (notification: any) => {
-    if (notification.caseId) {
-      return `/client/cases/${notification.caseId}`;
-    }
-    if (notification.type?.toLowerCase().includes("document")) {
+  const getNotificationLink = (notification: NotificationRecord) => {
+    if (notification.link?.startsWith('/client/') && !/[\\\r\n]/.test(notification.link)) return notification.link;
+    if (notification.category?.toLowerCase().includes("document")) {
       return "/client/documents";
     }
-    if (notification.type?.toLowerCase().includes("message")) {
+    if (notification.category?.toLowerCase().includes("message")) {
       return "/client/messages";
     }
     return "/client/dashboard";
   };
+
+  if (error) return <div role="alert" className="p-6">{error}. Reload to retry; no empty result was substituted.</div>;
 
   return (
     <div className="space-y-6">
@@ -194,7 +163,7 @@ export default function ClientNotificationsPage() {
         <div>
           <h1 className="text-3xl font-bold">Updates & Notifications</h1>
           <p className="text-muted-foreground">
-            Stay informed about your case progress
+            Your latest 20 updates about case progress
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -217,7 +186,7 @@ export default function ClientNotificationsPage() {
       </motion.div>
 
       {/* Action Required Alert */}
-      {actionRequired.length > 0 && actionRequired.some((n: any) => !n.read) && (
+      {actionRequired.length > 0 && actionRequired.some((n) => !n.isRead) && (
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -308,8 +277,8 @@ export default function ClientNotificationsPage() {
       >
         {notificationList.length > 0 ? (
           <div className="space-y-3">
-            {notificationList.map((notification: any, index: number) => {
-              const config = getNotificationConfig(notification.type);
+            {notificationList.map((notification, index: number) => {
+              const config = getNotificationConfig(notification.category);
               const NotificationIcon = config.icon;
               const link = getNotificationLink(notification);
 
@@ -322,7 +291,7 @@ export default function ClientNotificationsPage() {
                 >
                   <Card
                     className={`transition-all hover:shadow-md ${
-                      !notification.read
+                      !notification.isRead
                         ? "border-l-4 border-l-blue-500 bg-blue-500/5"
                         : ""
                     }`}
@@ -339,15 +308,15 @@ export default function ClientNotificationsPage() {
                                 <Badge className={`${config.bgColor} ${config.color} border-0`}>
                                   {config.label}
                                 </Badge>
-                                {!notification.read && (
+                                {!notification.isRead && (
                                   <span className="text-xs text-blue-600 font-medium">New</span>
                                 )}
                               </div>
-                              <p className={`font-medium ${!notification.read ? "text-foreground" : "text-muted-foreground"}`}>
+                              <p className={`font-medium ${!notification.isRead ? "text-foreground" : "text-muted-foreground"}`}>
                                 {notification.title || "Update"}
                               </p>
                               <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
-                                {notification.message || notification.body || ""}
+                                {notification.message}
                               </p>
                               <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
                                 <Clock className="h-3 w-3" />
@@ -355,7 +324,7 @@ export default function ClientNotificationsPage() {
                               </p>
                             </div>
                             <div className="flex flex-col items-end gap-2">
-                              {!notification.read && (
+                              {!notification.isRead && (
                                 <Button
                                   variant="ghost"
                                   size="sm"

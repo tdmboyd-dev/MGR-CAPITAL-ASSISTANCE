@@ -106,7 +106,6 @@ export default function VoiceToDocumentV2() {
 
   const recognitionRef = useRef<BrowserSpeechRecognition | null>(null);
   const requestedListening = useRef(false)
-  const audioLevelRef = useRef<number>(0)
 
   // Check speech recognition support
   useEffect(() => {
@@ -184,7 +183,7 @@ export default function VoiceToDocumentV2() {
       toast.success('Listening... Dictate your document', {
         description: 'Say "new paragraph" to start a new paragraph',
       })
-    } catch (error) {
+    } catch {
       requestedListening.current = false
       setListening(false)
       toast.error('Failed to start voice recognition')

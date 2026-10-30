@@ -10,9 +10,17 @@ import { roleGuard } from "../middleware/roleGuard.js";
 import { asyncHandler, Errors } from "../middleware/errorHandler.js";
 import { workerBotEngine } from "../services/WorkerBotEngine.js";
 import { workerBotSpawner } from "../services/WorkerBotSpawner.js";
+import prisma from '../lib/prisma.js';
+import { currentActor, accessFailure } from '../services/CaseDocumentAccess.js';
 
 const router = Router();
-const founderOnly = [authMiddleware, roleGuard(["FOUNDER"])];
+router.use(authMiddleware, (req: AuthenticatedRequest, res, next) => {
+  void currentActor(prisma, req.user!.id).then(actor => {
+    if (actor.role !== 'FOUNDER' || actor.tenantId !== null) return res.status(403).json({ success: false, error: 'Global founder fleet access required' });
+    next();
+  }).catch(error => accessFailure(res, error, 'Fleet authority unavailable'));
+});
+const founderOnly = [roleGuard(["FOUNDER"])];
 
 // ============================================
 // FLEET MANAGEMENT

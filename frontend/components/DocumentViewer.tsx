@@ -2,6 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { ChevronLeft,ChevronRight,Download,Loader2,ZoomIn,ZoomOut } from "lucide-react";
+import Image from "next/image";
 import { useState } from "react";
 import { Document,Page,pdfjs } from "react-pdf";
 // react-pdf CSS handled via next.config
@@ -64,7 +65,7 @@ export function DocumentViewer({ fileUrl, fileName }: DocumentViewerProps) {
   if (isImage) {
     return (
       <div className="border rounded-xl overflow-hidden shadow-sm bg-gray-50 dark:bg-gray-900">
-        <img
+        <Image width={1200} height={1600} unoptimized
           src={fileUrl}
           alt={fileName || "Document"}
           className="max-w-full h-auto mx-auto"

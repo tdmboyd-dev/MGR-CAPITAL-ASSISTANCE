@@ -1,15 +1,16 @@
 // ============================================
 // BANKING AI SERVICE — MGR CAPITAL ASSISTANCE
-// Production-ready payout and ledger system
+// Pending allocation and accounting views; external settlement remains unqualified
 // Shadow accounting for employee commission display
 // ============================================
 
 import { EmployeeTier, LedgerEntryType } from "@prisma/client";
 import prisma from "../lib/prisma.js";
+import { getOwnEmployeeEarnings } from "./EmployeeEarningsView.js";
 
 // ============================================
 // COMMISSION TIERS — Shadow Accounting
-// Employees see DISPLAYED rate, actually get ACTUAL rate
+// Actual rates determine payable money; legacy display rates are separate tier metadata.
 // ============================================
 
 interface CommissionTierData {
@@ -87,7 +88,7 @@ export interface PayoutBreakdown {
 
   // Employee commission (actual)
   employeeCommissionCents: number;
-  employeeDisplayedCommissionCents: number; // What they see
+  employeeDisplayedCommissionCents: number; // Employee-facing payable cents
 
   // Override (if team leader)
   overrideCommissionCents: number;
@@ -121,7 +122,7 @@ export class BankingService {
    * Get all tiers (FOUNDER ONLY)
    */
   getAllTiers(): CommissionTierData[] {
-    return COMMISSION_TIERS;
+    return COMMISSION_TIERS.map(tier=>({...tier}));
   }
 
   /**
@@ -137,7 +138,7 @@ export class BankingService {
     if (!tierData) {
       return {
         name: "Associate",
-        commissionRate: "20%",
+        commissionRate: "10% of company fee",
         nextTier: "Tier 2 — Specialist",
         requirementsForNext: "Complete 10 cases"
       };
@@ -162,7 +163,7 @@ export class BankingService {
 
     return {
       name: tierData.displayName,
-      commissionRate: `${tierData.displayedRatePercent}%`,  // DISPLAYED rate
+      commissionRate: `${tierData.actualRatePercent}% of company fee`,
       nextTier: nextTier?.displayName || null,
       requirementsForNext
     };
@@ -203,10 +204,8 @@ export class BankingService {
       (companyFeeCents * tierData.actualRatePercent) / 100
     );
 
-    // Calculate what employee THINKS they're getting (for display only)
-    const employeeDisplayedCommissionCents = Math.round(
-      (companyFeeCents * tierData.displayedRatePercent) / 100
-    );
+    // Employee-facing money is the actual payable allocation. Tier display scores remain separate.
+    const employeeDisplayedCommissionCents = employeeCommissionCents;
 
     // Calculate override for team leader (if applicable)
     let overrideCommissionCents = 0;
@@ -248,19 +247,15 @@ export class BankingService {
 
   /**
    * Calculate displayed earnings for employee (EMPLOYEE SAFE)
-   * Shows inflated numbers based on displayed rate
+   * Shows actual payable dollars; legacy tier display points never multiply money.
    */
   calculateDisplayedEarnings(params: {
     companyFeeCents: number;
     employeeTier: EmployeeTier;
   }): number {
-    const tierData = this.getTier(params.employeeTier);
-    if (!tierData) return 0;
-
-    // Return what they THINK they're earning
-    return Math.round(
-      (params.companyFeeCents * tierData.displayedRatePercent) / 100
-    );
+    if(!Number.isSafeInteger(params.companyFeeCents)||params.companyFeeCents<0||params.companyFeeCents>2147483647)throw new Error('Invalid fee cents');
+    const tierData=this.getTier(params.employeeTier);if(!tierData)throw new Error('Invalid employee tier');
+    return Math.round(params.companyFeeCents*tierData.actualRatePercent/100);
   }
 
   // ----------------------------------------
@@ -268,7 +263,7 @@ export class BankingService {
   // ----------------------------------------
 
   /**
-   * Create ledger entries for a completed case (FOUNDER ONLY)
+   * Legacy entrypoint delegates to the audited pending planner (FOUNDER ONLY)
    */
   async createPayoutLedgerEntries(params: {
     caseId: string;
@@ -278,77 +273,11 @@ export class BankingService {
     clientId: string;
     payout: PayoutBreakdown;
   }): Promise<void> {
-    const { caseId, employeeId, teamLeaderId, founderId, clientId, payout } = params;
-
-    const tierData = this.getTier(await this.getEmployeeTier(employeeId));
-
-    const entries = [];
-
-    // Employee commission entry
-    entries.push({
-      caseId,
-      userId: employeeId,
-      type: "COMMISSION" as LedgerEntryType,
-      amountCents: payout.employeeCommissionCents,
-      description: `Commission for case`,
-      tierAtTime: tierData?.tier,
-      displayedRate: tierData?.displayedRatePercent,
-      actualRate: tierData?.actualRatePercent
-    });
-
-    // Override entry (if applicable)
-    if (teamLeaderId && payout.overrideCommissionCents > 0) {
-      entries.push({
-        caseId,
-        userId: teamLeaderId,
-        type: "OVERRIDE" as LedgerEntryType,
-        amountCents: payout.overrideCommissionCents,
-        description: `Override commission for team member case`,
-        tierAtTime: null,
-        displayedRate: null,
-        actualRate: null
-      });
-    }
-
-    // Founder share entry
-    entries.push({
-      caseId,
-      userId: founderId,
-      type: "FOUNDER_SHARE" as LedgerEntryType,
-      amountCents: payout.founderShareCents,
-      description: `Founder share from case`,
-      tierAtTime: null,
-      displayedRate: null,
-      actualRate: null
-    });
-
-    // Client payout entry
-    entries.push({
-      caseId,
-      userId: clientId,
-      type: "CLIENT_PAYOUT" as LedgerEntryType,
-      amountCents: payout.clientPayoutCents,
-      description: `Client payout from surplus funds`,
-      tierAtTime: null,
-      displayedRate: null,
-      actualRate: null
-    });
-
-    // Create all entries
-    await prisma.ledgerEntry.createMany({
-      data: entries
-    });
-  }
-
-  /**
-   * Get employee's current tier
-   */
-  private async getEmployeeTier(employeeId: string): Promise<EmployeeTier> {
-    const employee = await prisma.user.findUnique({
-      where: { id: employeeId },
-      select: { employeeTier: true }
-    });
-    return employee?.employeeTier || "TIER_1_ASSOCIATE";
+    const {caseId,employeeId,teamLeaderId,founderId,clientId,payout}=params;
+    const record=await prisma.case.findUnique({where:{id:caseId},include:{assignedEmployee:{select:{teamLeaderId:true}}}});
+    if(!record||record.clientId!==clientId||record.assignedEmployeeId!==employeeId||(teamLeaderId&&record.assignedEmployee?.teamLeaderId!==teamLeaderId))throw new Error('Allocation identities do not match the current case');
+    const {planCasePayout}=await import('./PayoutPlanningService.js');
+    await planCasePayout(founderId,caseId,payout.surplusAmountCents);
   }
 
   // ----------------------------------------
@@ -356,7 +285,7 @@ export class BankingService {
   // ----------------------------------------
 
   /**
-   * Get employee earnings (DISPLAYED amounts)
+   * Get employee actual payable allocations; legacy property names retained
    */
   async getEmployeeEarnings(employeeId: string): Promise<{
     displayedLifetimeCents: number;
@@ -365,48 +294,9 @@ export class BankingService {
     actualLifetimeCents: number;  // FOUNDER ONLY
     actualMonthCents: number;     // FOUNDER ONLY
   }> {
-    const now = new Date();
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-
-    const entries = await prisma.ledgerEntry.findMany({
-      where: {
-        userId: employeeId,
-        type: "COMMISSION"
-      }
-    });
-
-    let displayedLifetime = 0;
-    let displayedMonth = 0;
-    let displayedPending = 0;
-    let actualLifetime = 0;
-    let actualMonth = 0;
-
-    for (const entry of entries) {
-      // Calculate displayed amount
-      const displayedAmount = entry.displayedRate && entry.actualRate
-        ? Math.round((entry.amountCents * entry.displayedRate) / entry.actualRate)
-        : entry.amountCents;
-
-      displayedLifetime += displayedAmount;
-      actualLifetime += entry.amountCents;
-
-      if (entry.createdAt >= startOfMonth) {
-        displayedMonth += displayedAmount;
-        actualMonth += entry.amountCents;
-      }
-
-      if (!entry.isPaid) {
-        displayedPending += displayedAmount;
-      }
-    }
-
-    return {
-      displayedLifetimeCents: displayedLifetime,
-      displayedMonthCents: displayedMonth,
-      displayedPendingCents: displayedPending,
-      actualLifetimeCents: actualLifetime,
-      actualMonthCents: actualMonth
-    };
+    const view=await getOwnEmployeeEarnings(employeeId);
+    // Legacy property names retained for callers; all dollar fields use actual allocations.
+    return {displayedLifetimeCents:view.lifetimeEarningsCents,displayedMonthCents:view.thisMonthCents,displayedPendingCents:view.pendingCents,actualLifetimeCents:view.lifetimeEarningsCents,actualMonthCents:view.thisMonthCents};
   }
 
   /**
@@ -596,15 +486,8 @@ export class BankingService {
     paymentMethod: string,
     paymentRef: string
   ): Promise<void> {
-    await prisma.ledgerEntry.updateMany({
-      where: { id: { in: entryIds } },
-      data: {
-        isPaid: true,
-        paidAt: new Date(),
-        paymentMethod,
-        paymentRef
-      }
-    });
+    void entryIds;void paymentMethod;void paymentRef;
+    throw new Error('Settlement cannot be recorded from a free-text reference. Qualified provider reconciliation is required.');
   }
 }
 

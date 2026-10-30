@@ -8,113 +8,79 @@
  * with real-time suggestions and results modal.
  */
 
+import { useAuth } from "@/hooks/useAuth";
+import { useDebounce } from "@/hooks/useDebounce";
+import { useQuery } from "@tanstack/react-query";
+import { globalSearchSchema, searchResultDisplay, searchResultLink, type SearchResult } from "@/lib/globalSearch";
+import { z } from "zod";
 import api from "@/lib/api";
 import { AnimatePresence,motion } from "framer-motion";
 import { Briefcase,FileText,Loader2,MessageSquare,Search,User,X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback,useEffect,useRef,useState } from "react";
 
-interface SearchResult {
-  type: "case" | "user" | "document" | "communication";
-  id: string;
-  matchedField: string;
-  score: number;
-  // Case fields
-  caseCode?: string;
-  status?: string;
-  ownerName?: string;
-  propertyAddress?: string;
-  // User fields
-  email?: string;
-  firstName?: string;
-  lastName?: string;
-  role?: string;
-  // Document fields
-  fileName?: string;
-  documentType?: string;
-  caseId?: string;
-  // Communication fields
-  subject?: string;
-  preview?: string;
-  direction?: string;
-}
-
-interface SearchResponse {
-  success: boolean;
-  query: string;
-  totalResults: number;
-  results: SearchResult[];
-  breakdown: {
-    cases: number;
-    users: number;
-    documents: number;
-    communications: number;
-  };
-  searchTime: number;
-}
-
-interface Suggestion {
-  type: string;
-  text: string;
-  subtext: string;
-  link: string;
-}
-
 export function GlobalSearchBar() {
+  const { user } = useAuth();
+  return <SearchSession key={`${user?.id ?? 'anonymous'}:${user?.role ?? 'none'}`} />;
+}
+
+function SearchSession() {
+  const { user } = useAuth();
   const [query, setQuery] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [results, setResults] = useState<SearchResponse | null>(null);
-  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
+  const [results, setResults] = useState<z.infer<typeof globalSearchSchema> | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(-1);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
+  const requestRef = useRef<AbortController | null>(null);
+  useEffect(() => () => { requestRef.current?.abort(); }, []);
 
-  // Debounced search for suggestions
-  useEffect(() => {
-    if (query.length < 2) {
-      setSuggestions([]);
-      setShowSuggestions(false);
-      return;
-    }
-
-    const timer = setTimeout(async () => {
-      try {
-        const res = await api.get(`/search/suggestions?query=${encodeURIComponent(query)}`);
-        if (res.data.success) {
-          setSuggestions(res.data.suggestions);
-          setShowSuggestions(true);
-        }
-      } catch (error) {
-        console.error("Suggestions error:", error);
-      }
-    }, 200);
-
-    return () => clearTimeout(timer);
-  }, [query]);
+  const debouncedQuery = useDebounce(query, 200);
+  const suggestionQuery = useQuery({
+    queryKey: ['search-suggestions', user?.id, user?.role, debouncedQuery],
+    enabled: Boolean(user) && debouncedQuery.trim().length >= 2,
+    queryFn: async ({ signal }) => {
+      const response = await api.get<unknown>('/search/global', { params: { query: debouncedQuery, limit: 5 }, signal });
+      return globalSearchSchema.parse(response.data).results.flatMap(result => {
+        const link = searchResultLink(result, user?.role ?? '');
+        const display = searchResultDisplay(result);
+        return link ? [{ type: result.type, text: display.title, subtext: display.subtitle, link }] : [];
+      });
+    }, retry: false, gcTime: 0,
+  });
+  const suggestions = query === debouncedQuery && query.trim().length >= 2 ? suggestionQuery.data ?? [] : [];
 
   // Full search
   const performSearch = useCallback(async () => {
-    if (!query.trim()) return;
-
+    if (query.trim().length < 2 || !user) return;
+    requestRef.current?.abort();
+    const controller = new AbortController();
+    requestRef.current = controller;
     setIsLoading(true);
+    setError(null);
     setShowSuggestions(false);
 
     try {
-      const res = await api.get(`/search/global?query=${encodeURIComponent(query)}`);
-      if (res.data.success) {
-        setResults(res.data);
+      const res = await api.get<unknown>(`/search/global?query=${encodeURIComponent(query)}`, { signal: controller.signal });
+      const parsed = globalSearchSchema.parse(res.data);
+      if (parsed.success && !controller.signal.aborted) {
+        setResults(parsed);
         setIsOpen(true);
       }
     } catch (error) {
+      if (controller.signal.aborted) return;
       console.error("Search error:", error);
+      setResults(null);
+      setError("Search is unavailable. Please try again.");
     } finally {
-      setIsLoading(false);
+      if (requestRef.current === controller) setIsLoading(false);
     }
-  }, [query]);
+  }, [query, user]);
 
   // Keyboard navigation
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -139,27 +105,14 @@ export function GlobalSearchBar() {
 
   // Navigate to result
   const navigateToResult = (link: string) => {
+    if (!link.startsWith("/") || link.startsWith("//") || link.includes("\\")) { setError("The search result has an unsupported destination."); return; }
     router.push(link);
     setIsOpen(false);
     setQuery("");
     setShowSuggestions(false);
   };
 
-  // Get result link
-  const getResultLink = (result: SearchResult): string => {
-    switch (result.type) {
-      case "case":
-        return `/cases/${result.id}`;
-      case "user":
-        return `/users/${result.id}`;
-      case "document":
-        return `/cases/${result.caseId}/documents/${result.id}`;
-      case "communication":
-        return `/cases/${result.caseId}/communications`;
-      default:
-        return "#";
-    }
-  };
+  const getResultLink = (result: SearchResult): string | null => searchResultLink(result, user?.role ?? '');
 
   // Get result icon
   const getResultIcon = (type: string) => {
@@ -177,33 +130,7 @@ export function GlobalSearchBar() {
     }
   };
 
-  // Format result display
-  const formatResult = (result: SearchResult): { title: string; subtitle: string } => {
-    switch (result.type) {
-      case "case":
-        return {
-          title: result.caseCode || "Case",
-          subtitle: result.ownerName || result.propertyAddress || result.status || "",
-        };
-      case "user":
-        return {
-          title: `${result.firstName || ""} ${result.lastName || ""}`.trim() || result.email || "User",
-          subtitle: result.role || "",
-        };
-      case "document":
-        return {
-          title: result.fileName || "Document",
-          subtitle: `${result.documentType} • Case: ${result.caseCode || result.caseId}`,
-        };
-      case "communication":
-        return {
-          title: result.subject || "Communication",
-          subtitle: result.preview || "",
-        };
-      default:
-        return { title: "Result", subtitle: "" };
-    }
-  };
+  const formatResult = searchResultDisplay;
 
   // Click outside to close
   useEffect(() => {
@@ -227,7 +154,7 @@ export function GlobalSearchBar() {
             ref={inputRef}
             type="text"
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => { requestRef.current?.abort(); setIsLoading(false); setQuery(e.target.value); setSelectedIndex(-1); setShowSuggestions(true); }}
             onKeyDown={handleKeyDown}
             onFocus={() => query.length >= 2 && setShowSuggestions(true)}
             placeholder="Search cases, users, documents..."
@@ -240,7 +167,7 @@ export function GlobalSearchBar() {
               onClick={() => {
                 setQuery("");
                 setResults(null);
-                setSuggestions([]);
+                setShowSuggestions(false);
               }}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
             >
@@ -288,6 +215,7 @@ export function GlobalSearchBar() {
         </AnimatePresence>
       </div>
 
+      {error && <p role="alert" className="text-sm text-red-500">{error}</p>}
       {/* Results Modal */}
       <AnimatePresence>
         {isOpen && results && (
@@ -370,7 +298,8 @@ export function GlobalSearchBar() {
                     return (
                       <button
                         key={`${result.type}-${result.id}`}
-                        onClick={() => navigateToResult(getResultLink(result))}
+                        disabled={!getResultLink(result)}
+                        onClick={() => { const link = getResultLink(result); if (link) navigateToResult(link); }}
                         className="w-full px-4 py-3 flex items-start gap-3 text-left hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
                       >
                         <span className="mt-1 text-gray-400">{getResultIcon(result.type)}</span>

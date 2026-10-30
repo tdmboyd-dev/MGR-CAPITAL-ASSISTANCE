@@ -78,7 +78,6 @@ const TYPE_OPTIONS = [
 export default function SourceManagerPage() {
   const queryClient = useQueryClient();
   const [showAdd, setShowAdd] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
   const [filterState, setFilterState] = useState("");
   const [filterType, setFilterType] = useState("");
   const [filterActive, setFilterActive] = useState<string>("");
@@ -143,7 +142,6 @@ export default function SourceManagerPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["ingestion-sources"] });
-      setEditingId(null);
     },
   });
 

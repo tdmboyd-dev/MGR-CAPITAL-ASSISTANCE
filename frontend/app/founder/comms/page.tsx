@@ -11,6 +11,7 @@ CardTitle,
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/useAuth";
 import { api } from "@/lib/api";
+import { chatRoomsSchema, chatMessagesSchema } from "@/lib/commsRecords";
 import { formatDateTime } from "@/lib/utils";
 import { useMutation,useQuery,useQueryClient } from "@tanstack/react-query";
 import { Hash,Lock,MessageSquare,Plus,Send,Settings,Users } from "lucide-react";
@@ -23,22 +24,22 @@ export default function FounderCommsPage() {
   const [selectedRoom, setSelectedRoom] = useState<string | null>(null);
   const [message, setMessage] = useState("");
   const [showCreateRoom, setShowCreateRoom] = useState(false);
-  const [newRoom, setNewRoom] = useState({ name: "", type: "team", locked: false });
+  const [newRoom, setNewRoom] = useState({ name: "", type: "TEAM", locked: false, password: "" });
 
   const { data: rooms, isLoading: roomsLoading } = useQuery({
-    queryKey: ["chat-rooms"],
+    queryKey: ["chat-rooms",user?.id],
     queryFn: async () => {
-      const { data } = await api.get("/comms/rooms");
-      return data;
+      const { data } = await api.get<unknown>("/comms/rooms");
+      return chatRoomsSchema.parse(data);
     },
   });
 
   const { data: messages, isLoading: messagesLoading } = useQuery({
-    queryKey: ["chat-messages", selectedRoom],
+    queryKey: ["chat-messages", selectedRoom,user?.id],
     queryFn: async () => {
-      if (!selectedRoom) return { data: [] };
+      if (!selectedRoom) return { success: true as const, data: [] };
       const { data } = await api.get(`/comms/messages?roomId=${selectedRoom}`);
-      return data;
+      return chatMessagesSchema.parse(data);
     },
     enabled: !!selectedRoom,
     refetchInterval: 5000,
@@ -54,7 +55,7 @@ export default function FounderCommsPage() {
     },
     onSuccess: () => {
       setMessage("");
-      queryClient.invalidateQueries({ queryKey: ["chat-messages", selectedRoom] });
+      queryClient.invalidateQueries({ queryKey: ["chat-messages", selectedRoom,user?.id] });
     },
     onError: () => {
       toast.error("Failed to send message");
@@ -63,13 +64,13 @@ export default function FounderCommsPage() {
 
   const createRoom = useMutation({
     mutationFn: async (roomData: typeof newRoom) => {
-      const { data } = await api.post("/comms/rooms", roomData);
+      const { data } = await api.post("/comms/rooms", {...roomData,password:roomData.locked?roomData.password:undefined});
       return data;
     },
     onSuccess: () => {
       setShowCreateRoom(false);
-      setNewRoom({ name: "", type: "team", locked: false });
-      queryClient.invalidateQueries({ queryKey: ["chat-rooms"] });
+      setNewRoom({ name: "", type: "TEAM", locked: false, password: "" });
+      queryClient.invalidateQueries({ queryKey: ["chat-rooms",user?.id] });
       toast.success("Room created successfully");
     },
     onError: () => {
@@ -91,11 +92,12 @@ export default function FounderCommsPage() {
 
   const handleCreateRoom = () => {
     if (!newRoom.name.trim()) return;
+    if(newRoom.locked && newRoom.password.length < 8){toast.error("Use at least 8 characters for a protected room.");return;}
     createRoom.mutate(newRoom);
   };
 
   const getRoomIcon = (type: string) => {
-    switch (type) {
+    switch (type.toLowerCase()) {
       case "company":
         return <Users className="h-4 w-4" />;
       case "team":
@@ -142,9 +144,9 @@ export default function FounderCommsPage() {
                 value={newRoom.type}
                 onChange={(e) => setNewRoom({ ...newRoom, type: e.target.value })}
               >
-                <option value="company">Company (All employees)</option>
-                <option value="team">Team</option>
-                <option value="private">Private</option>
+                <option value="COMPANY">Company (All employees)</option>
+                <option value="TEAM">Team</option>
+                <option value="PRIVATE">Private</option>
               </select>
             </div>
             <div className="flex items-center gap-2">
@@ -158,6 +160,7 @@ export default function FounderCommsPage() {
                 Password protected
               </label>
             </div>
+            {newRoom.locked && <Input type="password" autoComplete="new-password" aria-label="Room password" value={newRoom.password} onChange={e=>setNewRoom({...newRoom,password:e.target.value})} />}
             <div className="flex gap-2">
               <Button onClick={handleCreateRoom} disabled={createRoom.isPending}>
                 Create
@@ -184,8 +187,8 @@ export default function FounderCommsPage() {
               <div className="flex items-center justify-center py-4">
                 <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
               </div>
-            ) : rooms?.data?.length > 0 ? (
-              rooms.data.map((room: any) => (
+            ) : rooms && rooms.data.length > 0 ? (
+              rooms.data.map((room) => (
                 <button
                   key={room.id}
                   onClick={() => setSelectedRoom(room.id)}
@@ -214,10 +217,10 @@ export default function FounderCommsPage() {
             <>
               <CardHeader className="pb-2 border-b">
                 <CardTitle className="text-lg">
-                  {rooms?.data?.find((r: any) => r.id === selectedRoom)?.name || "Chat"}
+                  {rooms?.data?.find((r) => r.id === selectedRoom)?.name || "Chat"}
                 </CardTitle>
                 <CardDescription>
-                  {rooms?.data?.find((r: any) => r.id === selectedRoom)?.type} room
+                  {rooms?.data?.find((r) => r.id === selectedRoom)?.type} room
                   {" - Founder View (All messages visible)"}
                 </CardDescription>
               </CardHeader>
@@ -226,8 +229,8 @@ export default function FounderCommsPage() {
                   <div className="flex items-center justify-center py-4">
                     <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
                   </div>
-                ) : messages?.data?.length > 0 ? (
-                  messages.data.map((msg: any) => (
+                ) : messages && messages.data.length > 0 ? (
+                  messages.data.map((msg) => (
                     <div
                       key={msg.id}
                       className={`flex flex-col ${

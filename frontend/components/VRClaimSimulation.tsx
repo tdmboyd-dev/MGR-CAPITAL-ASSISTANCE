@@ -189,8 +189,7 @@ export default function VRClaimSimulation({
     // Check for WebXR support
     if ('xr' in navigator) {
       try {
-        // @ts-ignore
-        const xr = navigator.xr
+        const xr = (navigator as Navigator & { xr?: XRSystem }).xr
         if (xr) {
           const vrSupported = await xr.isSessionSupported('immersive-vr')
           const arSupported = await xr.isSessionSupported('immersive-ar')

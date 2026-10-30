@@ -17,32 +17,23 @@ SelectItem,
 SelectTrigger,
 SelectValue,
 } from "@/components/ui/select";
+import { documentListSchema, type DocumentRecord } from "@/lib/documentRecords";
+import { caseListSchema } from "@/lib/caseRecords";
+import { useAuth } from "@/hooks/useAuth";
 import { api } from "@/lib/api";
 import { formatDate } from "@/lib/utils";
 import { useQuery,useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence,motion } from "framer-motion";
-import {
-AlertCircle,
-CheckCircle,
-Clock,
-Download,
-Eye,
-FileText,
-Heart,
-Loader2,
-Mail,
-Phone,
-Search,
-Shield,
-Upload,
-XCircle
-} from "lucide-react";
+import { AlertCircle, CheckCircle, Clock, Download, FileText, Heart, Loader2, Mail, Phone, Search, Shield, Upload, XCircle } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { toast } from "sonner";
 
 // Client-friendly document type labels
 const DOC_TYPE_LABELS: Record<string, string> = {
+  CLIENT_SERVICE_AGREEMENT: "Service agreement",
+  LIMITED_POA: "Limited power of attorney",
+  CLIENT_ID: "Identification",
   CONTRACT: "Agreement",
   ID: "Identification",
   TAX: "Tax Document",
@@ -63,27 +54,46 @@ const DOC_STATUS_CONFIG: Record<string, { label: string; color: string; bgColor:
 };
 
 export default function ClientDocumentsPage() {
+  const { user } = useAuth();
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const queryClient = useQueryClient();
   const [showUploader, setShowUploader] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [selectedCase, setSelectedCase] = useState<string>("all");
 
-  const { data: documents, isLoading } = useQuery({
-    queryKey: ["client-documents"],
-    queryFn: async () => {
-      const { data } = await api.get("/documents/my-documents");
-      return data;
+  const { data: documents, isLoading, error, refetch } = useQuery({
+    queryKey: ["client-documents", user?.id],
+    enabled: Boolean(user),
+    queryFn: async ({ signal }) => {
+      const { data } = await api.get<unknown>("/documents/my-documents", { signal });
+      return documentListSchema.parse(data);
     },
   });
 
   const { data: cases } = useQuery({
-    queryKey: ["client-cases-list"],
-    queryFn: async () => {
-      const { data } = await api.get("/cases/my-cases");
-      return data;
+    queryKey: ["client-cases-list", user?.id],
+    enabled: Boolean(user),
+    queryFn: async ({ signal }) => {
+      const { data } = await api.get<unknown>("/cases/my-cases", { signal });
+      return caseListSchema.parse(data);
     },
   });
+
+  const download = async (doc: DocumentRecord) => {
+    if (downloadingId) return;
+    setDownloadingId(doc.id);
+    try {
+      const response = await api.get<Blob>(`/documents/${encodeURIComponent(doc.id)}/download`, { responseType: 'blob' });
+      const href = URL.createObjectURL(response.data);
+      const link = document.createElement('a');
+      link.href = href; link.download = doc.fileName; document.body.appendChild(link); link.click(); link.remove();
+      setTimeout(() => URL.revokeObjectURL(href), 30000);
+    } catch { toast.error('Document download could not be confirmed. Your file was not removed.'); }
+    finally { setDownloadingId(null); }
+  };
+
+  if (error) return <div role="alert" className="p-6"><p>Documents could not be loaded. Your saved documents have not been removed.</p><Button onClick={() => { void refetch(); }}>Retry</Button></div>;
 
   if (isLoading) {
     return (
@@ -100,23 +110,23 @@ export default function ClientDocumentsPage() {
   const caseList = cases?.data || [];
 
   // Filter documents
-  const filteredDocs = docList.filter((doc: any) => {
+  const filteredDocs = docList.filter((doc) => {
     const matchesSearch = !searchQuery ||
-      (doc.name || doc.fileName || doc.type || "").toLowerCase().includes(searchQuery.toLowerCase());
+      (doc.fileName || doc.type || "").toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = filterStatus === "all" || doc.status === filterStatus;
     const matchesCase = selectedCase === "all" || doc.caseId === selectedCase;
     return matchesSearch && matchesStatus && matchesCase;
   });
 
-  const pendingSignature = docList.filter((d: any) => d.needsSignature && !d.signed);
-  const approvedDocs = docList.filter((d: any) => d.status === "APPROVED" || d.status === "SIGNED");
-  const pendingDocs = docList.filter((d: any) => d.status === "PENDING" || d.status === "UPLOADED");
+  const pendingSignature = docList.filter((d) => d.needsSignature && !d.signed);
+  const approvedDocs = docList.filter((d) => d.status === "APPROVED" || d.status === "SIGNED");
+  const pendingDocs = docList.filter((d) => d.status === "PENDING" || d.status === "UPLOADED");
 
-  const getStatusConfig = (doc: any) => {
+  const getStatusConfig = (doc: DocumentRecord) => {
     if (doc.needsSignature && !doc.signed) {
       return DOC_STATUS_CONFIG.NEEDS_SIGNATURE;
     }
-    return DOC_STATUS_CONFIG[doc.status] || DOC_STATUS_CONFIG.UPLOADED;
+    return DOC_STATUS_CONFIG[doc.status] || { ...DOC_STATUS_CONFIG.PENDING, label: doc.status };
   };
 
   return (
@@ -163,19 +173,9 @@ export default function ClientDocumentsPage() {
                 </div>
                 <Button
                   className="bg-orange-500 hover:bg-orange-600 text-white"
-                  onClick={() => {
-                    // Find the first document that needs signature
-                    const docToSign = pendingSignature[0];
-                    if (docToSign?.filePath) {
-                      window.open(docToSign.filePath, "_blank");
-                    } else {
-                      toast.info("Please check your email for signing links", {
-                        description: "We've sent the documents to your email address for secure signing."
-                      });
-                    }
-                  }}
+                  disabled title="Signing workflow qualification is pending"
                 >
-                  Review & Sign
+                  Signing setup pending
                 </Button>
               </div>
             </CardContent>
@@ -265,7 +265,7 @@ export default function ClientDocumentsPage() {
                           <SelectValue placeholder="Select a case" />
                         </SelectTrigger>
                         <SelectContent>
-                          {caseList.map((c: any) => (
+                          {caseList.map((c) => (
                             <SelectItem key={c.id} value={c.id}>
                               {c.propertyAddress || `${c.county}, ${c.state}`} - #{c.caseCode || c.id.slice(0, 8)}
                             </SelectItem>
@@ -278,7 +278,7 @@ export default function ClientDocumentsPage() {
                         caseId={selectedCase}
                         onUploadSuccess={() => {
                           setShowUploader(false);
-                          queryClient.invalidateQueries({ queryKey: ["client-documents"] });
+                          queryClient.invalidateQueries({ queryKey: ["client-documents", user?.id] });
                           toast.success("Document uploaded successfully!");
                         }}
                       />
@@ -343,7 +343,7 @@ export default function ClientDocumentsPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Cases</SelectItem>
-                    {caseList.map((c: any) => (
+                    {caseList.map((c) => (
                       <SelectItem key={c.id} value={c.id}>
                         {c.propertyAddress || `${c.county}, ${c.state}`}
                       </SelectItem>
@@ -364,7 +364,7 @@ export default function ClientDocumentsPage() {
       >
         {filteredDocs.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredDocs.map((doc: any, index: number) => {
+            {filteredDocs.map((doc, index: number) => {
               const statusConfig = getStatusConfig(doc);
               const StatusIcon = statusConfig.icon;
 
@@ -384,7 +384,7 @@ export default function ClientDocumentsPage() {
                           </div>
                           <div>
                             <p className="font-medium text-sm line-clamp-1">
-                              {doc.name || doc.fileName || doc.originalName || "Document"}
+                              {doc.fileName || "Document"}
                             </p>
                             <p className="text-xs text-muted-foreground">
                               {DOC_TYPE_LABELS[doc.type] || doc.type || "Document"}
@@ -404,57 +404,12 @@ export default function ClientDocumentsPage() {
                       {/* Meta Info */}
                       <div className="space-y-2 text-sm text-muted-foreground mb-4">
                         <p>Uploaded: {doc.createdAt ? formatDate(doc.createdAt) : "N/A"}</p>
-                        {doc.case && (
-                          <p className="line-clamp-1">
-                            Case: {doc.case.propertyAddress || `${doc.case.county}, ${doc.case.state}`}
-                          </p>
-                        )}
                       </div>
 
                       {/* Actions */}
                       <div className="flex gap-2">
-                        {doc.filePath && (
-                          <>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="flex-1"
-                              onClick={() => window.open(doc.filePath, "_blank")}
-                            >
-                              <Eye className="h-4 w-4 mr-2" />
-                              View
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                const link = document.createElement("a");
-                                link.href = doc.filePath;
-                                link.download = doc.fileName || "document";
-                                link.click();
-                              }}
-                            >
-                              <Download className="h-4 w-4" />
-                            </Button>
-                          </>
-                        )}
-                        {doc.needsSignature && !doc.signed && (
-                          <Button
-                            size="sm"
-                            className="flex-1 bg-orange-500 hover:bg-orange-600"
-                            onClick={() => {
-                              if (doc.filePath) {
-                                window.open(doc.filePath, "_blank");
-                              } else {
-                                toast.info("Check your email for the signing link", {
-                                  description: "We've sent this document to your email for secure signing."
-                                });
-                              }
-                            }}
-                          >
-                            Sign Now
-                          </Button>
-                        )}
+                        <Button variant="outline" size="sm" className="flex-1" disabled={Boolean(downloadingId)} onClick={() => { void download(doc); }}><Download className="mr-2 h-4 w-4" />{downloadingId === doc.id ? 'Downloading…' : 'Download copy'}</Button>
+                        {doc.needsSignature && !doc.signed && <Button size="sm" disabled title="Signing workflow qualification is pending">Signing setup pending</Button>}
                       </div>
                     </CardContent>
                   </Card>

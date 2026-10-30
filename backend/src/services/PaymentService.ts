@@ -838,7 +838,7 @@ export class PaymentService {
       return { totalRecovered, pending, refunded, trend, byMethod };
     } catch (error: any) {
       logger.error('Failed to get payment metrics', { error: error.message });
-      return { totalRecovered: 0, pending: 0, refunded: 0, trend: [], byMethod: [] };
+      throw error;
     }
   }
 
@@ -865,7 +865,7 @@ export class PaymentService {
       }));
     } catch (error: any) {
       logger.error('Failed to list payments', { error: error.message });
-      return [];
+      throw error;
     }
   }
 

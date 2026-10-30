@@ -135,7 +135,7 @@ export default function LeaderboardPage() {
 
   // Send incentive mutation
   const sendIncentive = useMutation({
-    mutationFn: async (payload: any) => {
+    mutationFn: async (payload: { employeeId: string; type: string; title: string; message?: string; bonusCents: number; isCompanyWide:boolean }) => {
       const { data } = await api.post("/employees/incentive", payload);
       return data;
     },

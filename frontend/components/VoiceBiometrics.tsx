@@ -5,6 +5,8 @@ import { Card,CardContent,CardDescription,CardHeader,CardTitle } from '@/compone
 import { Progress } from '@/components/ui/progress'
 import { motion } from 'framer-motion'
 import { AlertCircle,CheckCircle,Loader2,Mic,Shield,UserCheck,Volume2 } from 'lucide-react'
+import { useStoredString, writeStoredString } from '@/hooks/useStoredString'
+import { z } from 'zod'
 import { useCallback,useEffect,useRef,useState } from 'react'
 import { toast } from 'sonner'
 
@@ -25,15 +27,19 @@ const MFCC_CONFIG = {
 }
 
 /**
- * Real Voice Biometrics with MFCC Feature Extraction
+ * Experimental local audio comparison; never identity or action authority
  *
  * How it works:
  * 1. Records 5 seconds of audio
- * 2. Extracts MFCC (Mel-frequency cepstral coefficients) features
+ * 2. Extracts approximate audio features; no validated speaker model features
  * 3. Compares against stored voiceprint using cosine similarity
  * 4. Returns confidence score
  */
-export default function VoiceBiometrics({ userId, onVerified }: VoiceBiometricsProps) {
+export default function VoiceBiometrics(props: VoiceBiometricsProps) {
+  return <VoiceSampleSession key={props.userId ?? 'default'} {...props} />
+}
+
+function VoiceSampleSession({ userId, onVerified }: VoiceBiometricsProps) {
   const [recording, setRecording] = useState(false)
   const [processing, setProcessing] = useState(false)
   const [verified, setVerified] = useState<boolean | null>(null)
@@ -41,7 +47,9 @@ export default function VoiceBiometrics({ userId, onVerified }: VoiceBiometricsP
   const [progress, setProgress] = useState(0)
   const [audioLevel, setAudioLevel] = useState(0)
   const [enrollmentMode, setEnrollmentMode] = useState(false)
-  const [hasVoiceprint, setHasVoiceprint] = useState(false)
+  const storageKey = `voiceprint_${userId || 'default'}`
+  const rawVoiceprint = useStoredString(storageKey)
+  const hasVoiceprint = Boolean(rawVoiceprint)
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const audioContextRef = useRef<AudioContext | null>(null)
@@ -49,14 +57,18 @@ export default function VoiceBiometrics({ userId, onVerified }: VoiceBiometricsP
   const animationFrameRef = useRef<number | null>(null)
   const chunksRef = useRef<Blob[]>([])
 
-  // Check if user has enrolled voiceprint
-  useEffect(() => {
-    const stored = localStorage.getItem(`voiceprint_${userId || 'default'}`)
-    setHasVoiceprint(!!stored)
-  }, [userId])
+  const streamRef = useRef<MediaStream | null>(null)
+  const recordTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const disposedRef = useRef(false)
 
   useEffect(() => {
+    disposedRef.current = false
     return () => {
+      disposedRef.current = true
+      if (recordTimerRef.current) clearInterval(recordTimerRef.current)
+      if (mediaRecorderRef.current) mediaRecorderRef.current.onstop = null
+      if (mediaRecorderRef.current?.state === 'recording') mediaRecorderRef.current.stop()
+      streamRef.current?.getTracks().forEach(track => track.stop())
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current)
       }
@@ -68,11 +80,11 @@ export default function VoiceBiometrics({ userId, onVerified }: VoiceBiometricsP
 
   /**
    * Extract MFCC features from audio buffer
-   * Real implementation using Web Audio API
+   * Approximate local features without a validated speaker-verification model
    */
   const extractMFCC = useCallback(async (audioBuffer: AudioBuffer): Promise<number[]> => {
     const channelData = audioBuffer.getChannelData(0)
-    const sampleRate = audioBuffer.sampleRate
+    if (channelData.length < MFCC_CONFIG.windowSize) throw new Error('Audio sample is too short')
 
     // Resample to target sample rate if needed
     const resampledData = channelData // In production, resample to 16kHz
@@ -176,7 +188,9 @@ export default function VoiceBiometrics({ userId, onVerified }: VoiceBiometricsP
   /**
    * Start recording audio
    */
-  const startRecording = async () => {
+  const startRecording = async (isEnrollment = false) => {
+    if (recording || processing) return
+    setEnrollmentMode(isEnrollment)
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
@@ -187,6 +201,8 @@ export default function VoiceBiometrics({ userId, onVerified }: VoiceBiometricsP
         }
       })
 
+      if (disposedRef.current) { stream.getTracks().forEach(track => track.stop()); return }
+      streamRef.current = stream
       // Set up audio context for visualization
       audioContextRef.current = new AudioContext({ sampleRate: MFCC_CONFIG.sampleRate })
       analyserRef.current = audioContextRef.current.createAnalyser()
@@ -197,12 +213,12 @@ export default function VoiceBiometrics({ userId, onVerified }: VoiceBiometricsP
       // Visualize audio level
       const dataArray = new Uint8Array(analyserRef.current.frequencyBinCount)
       const updateLevel = () => {
-        if (analyserRef.current && recording) {
+        if (analyserRef.current && mediaRecorderRef.current?.state === 'recording') {
           analyserRef.current.getByteFrequencyData(dataArray)
           const average = dataArray.reduce((a, b) => a + b) / dataArray.length
           setAudioLevel(average)
         }
-        if (recording) {
+        if (mediaRecorderRef.current?.state === 'recording') {
           animationFrameRef.current = requestAnimationFrame(updateLevel)
         }
       }
@@ -224,7 +240,7 @@ export default function VoiceBiometrics({ userId, onVerified }: VoiceBiometricsP
         stream.getTracks().forEach(track => track.stop())
 
         const blob = new Blob(chunksRef.current, { type: 'audio/webm' })
-        await processVoiceSample(blob)
+        if (!disposedRef.current) await processVoiceSample(blob, isEnrollment)
       }
 
       mediaRecorderRef.current.start(100) // Collect data every 100ms
@@ -245,6 +261,7 @@ export default function VoiceBiometrics({ userId, onVerified }: VoiceBiometricsP
           setRecording(false)
         }
       }, 100)
+      recordTimerRef.current = interval
 
     } catch (error) {
       console.error('Microphone access error:', error)
@@ -255,36 +272,38 @@ export default function VoiceBiometrics({ userId, onVerified }: VoiceBiometricsP
   /**
    * Process recorded voice sample
    */
-  const processVoiceSample = async (blob: Blob) => {
+  const processVoiceSample = async (blob: Blob, isEnrollment: boolean) => {
     setProcessing(true)
 
+    let audioContext: AudioContext | null = null
     try {
       // Convert blob to audio buffer
       const arrayBuffer = await blob.arrayBuffer()
-      const audioContext = new AudioContext({ sampleRate: MFCC_CONFIG.sampleRate })
+      audioContext = new AudioContext({ sampleRate: MFCC_CONFIG.sampleRate })
       const audioBuffer = await audioContext.decodeAudioData(arrayBuffer)
 
       // Extract MFCC features
       const features = await extractMFCC(audioBuffer)
 
-      if (enrollmentMode) {
+      if (disposedRef.current) return
+      if (!features.every(Number.isFinite)) throw new Error("Invalid audio features")
+      if (isEnrollment) {
         // Store voiceprint
-        localStorage.setItem(`voiceprint_${userId || 'default'}`, JSON.stringify(features))
-        setHasVoiceprint(true)
+        writeStoredString(storageKey, JSON.stringify(features))
         setEnrollmentMode(false)
         toast.success('Voice enrolled successfully!')
-        setVerified(true)
-        setConfidence(100)
+        setVerified(null)
+        setConfidence(0)
       } else {
         // Verify against stored voiceprint
-        const storedVoiceprint = localStorage.getItem(`voiceprint_${userId || 'default'}`)
+        const storedVoiceprint = localStorage.getItem(storageKey)
 
         if (!storedVoiceprint) {
           toast.error('No voiceprint enrolled. Please enroll first.')
           setVerified(false)
           setConfidence(0)
         } else {
-          const storedFeatures = JSON.parse(storedVoiceprint)
+          const storedFeatures = z.array(z.number().finite()).length(24).parse(JSON.parse(storedVoiceprint))
           const similarity = cosineSimilarity(features, storedFeatures)
           const confidenceScore = Math.max(0, Math.min(100, similarity * 100))
 
@@ -292,23 +311,27 @@ export default function VoiceBiometrics({ userId, onVerified }: VoiceBiometricsP
           const isVerified = confidenceScore >= 70 // 70% threshold
           setVerified(isVerified)
 
-          onVerified?.(isVerified, confidenceScore)
+          // A client-controlled sample comparison cannot establish identity.
+          onVerified?.(false, confidenceScore)
 
           if (isVerified) {
-            toast.success(`Identity verified! Confidence: ${confidenceScore.toFixed(1)}%`)
+            toast.info(`Experimental sample similarity: ${confidenceScore.toFixed(1)}%. Identity is not verified.`)
           } else {
             toast.error(`Verification failed. Confidence: ${confidenceScore.toFixed(1)}%`)
           }
         }
       }
 
-      audioContext.close()
+
     } catch (error) {
       console.error('Voice processing error:', error)
       toast.error('Failed to process voice sample')
-      setVerified(false)
+      if (!disposedRef.current) setVerified(false)
+    } finally {
+      await audioContext?.close()
     }
 
+    if (disposedRef.current) return
     setProcessing(false)
     setProgress(0)
     setAudioLevel(0)
@@ -318,8 +341,7 @@ export default function VoiceBiometrics({ userId, onVerified }: VoiceBiometricsP
    * Start enrollment mode
    */
   const startEnrollment = () => {
-    setEnrollmentMode(true)
-    startRecording()
+    void startRecording(true)
   }
 
   return (
@@ -332,11 +354,11 @@ export default function VoiceBiometrics({ userId, onVerified }: VoiceBiometricsP
         <CardHeader>
           <CardTitle className="text-white flex items-center gap-2">
             <Shield className="h-5 w-5 text-purple-400" />
-            Voice Biometrics Verification
+            Experimental Voice Sample Comparison
           </CardTitle>
           <CardDescription className="text-slate-400">
             {hasVoiceprint
-              ? 'Voiceprint enrolled. Ready to verify identity.'
+              ? 'Sample stored locally. This is not identity verification.'
               : 'No voiceprint found. Please enroll your voice first.'}
           </CardDescription>
         </CardHeader>
@@ -355,7 +377,7 @@ export default function VoiceBiometrics({ userId, onVerified }: VoiceBiometricsP
                       key={i}
                       className="w-2 bg-purple-500 rounded-full"
                       animate={{
-                        height: Math.max(8, (audioLevel / 255) * 64 * (0.5 + Math.random() * 0.5))
+                        height: Math.max(8, (audioLevel / 255) * 64 * (0.5 + (i % 5) / 10))
                       }}
                       transition={{ duration: 0.05 }}
                     />
@@ -367,14 +389,14 @@ export default function VoiceBiometrics({ userId, onVerified }: VoiceBiometricsP
             {!recording && !processing && (
               <div className="text-slate-500 flex items-center gap-2">
                 <Volume2 className="h-5 w-5" />
-                <span>{enrollmentMode ? 'Click to enroll voice' : 'Click to verify identity'}</span>
+                <span>{enrollmentMode ? 'Click to enroll voice' : 'Click to compare a sample'}</span>
               </div>
             )}
 
             {processing && (
               <div className="flex items-center gap-3 text-purple-400">
                 <Loader2 className="h-6 w-6 animate-spin" />
-                <span>Extracting MFCC features...</span>
+                <span>Comparing experimental audio features...</span>
               </div>
             )}
           </div>
@@ -393,12 +415,12 @@ export default function VoiceBiometrics({ userId, onVerified }: VoiceBiometricsP
           {/* Action Buttons */}
           <div className="flex gap-3">
             <Button
-              onClick={startRecording}
+              onClick={() => { void startRecording(false) }}
               disabled={recording || processing || !hasVoiceprint}
               className={`flex-1 ${recording ? 'bg-red-600' : 'bg-purple-600 hover:bg-purple-700'}`}
             >
               <Mic className={`h-4 w-4 mr-2 ${recording ? 'animate-pulse' : ''}`} />
-              {recording ? 'Recording (5s)' : 'Verify Identity'}
+              {recording ? 'Recording (5s)' : 'Compare Sample'}
             </Button>
 
             <Button
@@ -433,10 +455,10 @@ export default function VoiceBiometrics({ userId, onVerified }: VoiceBiometricsP
                   <p className={`font-medium ${verified ? 'text-green-300' : 'text-red-300'}`}>
                     {enrollmentMode
                       ? 'Voice Enrolled Successfully'
-                      : verified ? 'Identity Verified' : 'Verification Failed'}
+                      : verified ? 'Sample Similarity Threshold Reached' : 'Sample Did Not Match'}
                   </p>
                   <p className={`text-sm ${verified ? 'text-green-400/70' : 'text-red-400/70'}`}>
-                    Confidence: {confidence.toFixed(1)}%
+                    Sample similarity: {confidence.toFixed(1)}%
                   </p>
                 </div>
                 {!enrollmentMode && (
@@ -453,9 +475,9 @@ export default function VoiceBiometrics({ userId, onVerified }: VoiceBiometricsP
             <p className="font-medium mb-2">How Voice Biometrics Works:</p>
             <ul className="list-disc ml-4 space-y-1">
               <li>Records 5 seconds of your voice</li>
-              <li>Extracts MFCC (Mel-frequency cepstral coefficients)</li>
+              <li>Extracts approximate audio features; no validated speaker model</li>
               <li>Compares against stored voiceprint using cosine similarity</li>
-              <li>Requires 70%+ confidence for verification</li>
+              <li>A sample match cannot authorize identity checks, signatures or payments</li>
             </ul>
           </div>
         </CardContent>

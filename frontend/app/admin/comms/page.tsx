@@ -8,6 +8,7 @@ CardHeader,
 CardTitle,
 } from "@/components/ui/card";
 import { api } from "@/lib/api";
+import { chatRoomsSchema } from "@/lib/commsRecords";
 import { formatDateTime } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -23,8 +24,8 @@ export default function AdminCommsPage() {
   const { data: rooms, isLoading } = useQuery({
     queryKey: ["admin-chat-rooms"],
     queryFn: async () => {
-      const { data } = await api.get("/comms/rooms");
-      return data;
+      const { data } = await api.get<unknown>("/comms/rooms");
+      return chatRoomsSchema.parse(data);
     },
   });
 
@@ -37,7 +38,7 @@ export default function AdminCommsPage() {
   }
 
   const getRoomIcon = (type: string) => {
-    switch (type) {
+    switch (type.toLowerCase()) {
       case "company":
         return <Users className="h-5 w-5 text-blue-500" />;
       case "team":
@@ -84,7 +85,7 @@ export default function AdminCommsPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {roomList.filter((r: any) => r.type === "team").length}
+              {roomList.filter((r) => r.type === "TEAM").length}
             </div>
           </CardContent>
         </Card>
@@ -98,7 +99,7 @@ export default function AdminCommsPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {roomList.filter((r: any) => r.locked).length}
+              {roomList.filter((r) => r.locked).length}
             </div>
           </CardContent>
         </Card>
@@ -112,7 +113,7 @@ export default function AdminCommsPage() {
         <CardContent>
           {roomList.length > 0 ? (
             <div className="space-y-3">
-              {roomList.map((room: any) => (
+              {roomList.map((room) => (
                 <Link
                   key={room.id}
                   href={`/admin/comms/${room.id}`}

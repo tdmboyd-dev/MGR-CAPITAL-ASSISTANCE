@@ -111,6 +111,7 @@ const linksByRole: Record<string, NavLink[]> = {
   employee: [
     { href: "/employee/dashboard", label: "Dashboard", icon: Home },
     { href: "/employee/cases", label: "My Cases", icon: FileText },
+    { href: "/employee/payouts", label: "My Earnings", icon: DollarSign },
     { href: "/employee/leaderboard", label: "Leaderboard", icon: Trophy },
     { href: "/employee/training", label: "Training", icon: BookOpen },
     { href: "/employee/compliance", label: "My Compliance", icon: Shield },

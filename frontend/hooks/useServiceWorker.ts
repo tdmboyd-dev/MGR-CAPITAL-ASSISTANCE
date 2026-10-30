@@ -1,5 +1,7 @@
 "use client";
 
+import { useHydrated } from "@/hooks/useHydrated";
+import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { useEffect, useState } from "react";
 
 interface ServiceWorkerState {
@@ -11,6 +13,9 @@ interface ServiceWorkerState {
 }
 
 export function useServiceWorker() {
+  const hydrated = useHydrated();
+  const online = useOnlineStatus();
+  const supported = hydrated && "serviceWorker" in navigator;
   const [state, setState] = useState<ServiceWorkerState>({
     isSupported: false,
     isInstalled: false,
@@ -22,7 +27,7 @@ export function useServiceWorker() {
   useEffect(() => {
     // Check if service workers are supported
     const isSupported = "serviceWorker" in navigator;
-    setState((prev) => ({ ...prev, isSupported }));
+
 
     if (!isSupported) return;
 
@@ -70,21 +75,10 @@ export function useServiceWorker() {
 
     registerSW();
 
-    // Track online/offline status
-    const handleOnline = () => setState((prev) => ({ ...prev, isOffline: false }));
-    const handleOffline = () => setState((prev) => ({ ...prev, isOffline: true }));
-
-    window.addEventListener("online", handleOnline);
-    window.addEventListener("offline", handleOffline);
-
-    // Set initial offline state
-    setState((prev) => ({ ...prev, isOffline: !navigator.onLine }));
-
     return () => {
       disposed = true;
       if (updateTimer) clearInterval(updateTimer);
-      window.removeEventListener("online", handleOnline);
-      window.removeEventListener("offline", handleOffline);
+
     };
   }, []);
 
@@ -127,7 +121,7 @@ export function useServiceWorker() {
         applicationServerKey: urlBase64ToUint8Array(vapidPublicKey) as BufferSource,
       });
 
-      console.log("[SW] Push subscription:", subscription);
+
       return subscription;
     } catch (error) {
       console.error("[SW] Push subscription failed:", error);
@@ -136,17 +130,20 @@ export function useServiceWorker() {
   };
 
   // Queue offline request for background sync
-  const queueOfflineRequest = async (request: {
+  const queueOfflineRequest = async (...requests: [{
     url: string;
     method: string;
     headers?: Record<string, string>;
     body?: string;
-  }) => {
+  }]) => {
+    void requests;
     throw new Error("Offline changes are unavailable. Reconnect and submit while signed in; no request or credentials were stored.");
   };
 
   return {
     ...state,
+    isSupported: supported,
+    isOffline: !online,
     updateServiceWorker,
     requestPushPermission,
     queueOfflineRequest,

@@ -62,14 +62,14 @@ export default function FounderEmailsPage() {
       });
       if (statusFilter) params.set("status", statusFilter);
       if (search) params.set("search", search);
-      const { data } = await api.get(`/api/emails/history?${params}`);
+      const { data } = await api.get(`/emails/history?${params}`);
       return data;
     },
   });
 
   const retryMutation = useMutation({
     mutationFn: async (id: string) => {
-      const { data } = await api.post(`/api/emails/${id}/retry`);
+      const { data } = await api.post(`/emails/${id}/retry`);
       return data;
     },
     onSuccess: () => {
@@ -97,9 +97,9 @@ export default function FounderEmailsPage() {
     },
   });
 
-  const sentCount = statsData?.byStatus?.find((s: any) => s.status === "SENT")?.count || 0;
-  const failedCount = statsData?.byStatus?.find((s: any) => s.status === "FAILED")?.count || 0;
-  const pendingCount = statsData?.byStatus?.find((s: any) => s.status === "PENDING")?.count || 0;
+  const sentCount = statsData?.byStatus?.find((s: {status:string;count:number}) => s.status === "SENT")?.count || 0;
+  const failedCount = statsData?.byStatus?.find((s: {status:string;count:number}) => s.status === "FAILED")?.count || 0;
+  const pendingCount = statsData?.byStatus?.find((s: {status:string;count:number}) => s.status === "PENDING")?.count || 0;
 
   return (
     <div className="space-y-6">
@@ -273,7 +273,7 @@ export default function FounderEmailsPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {historyData?.data?.map((log: any) => (
+                    {historyData?.data?.map((log: {id:string; status:string; toName?:string; toAddress:string; subject?:string; type:string; createdAt:string}) => (
                       <tr key={log.id} className="border-b">
                         <td className="py-3 pr-4">
                           <span

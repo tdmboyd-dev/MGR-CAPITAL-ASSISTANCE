@@ -10,6 +10,7 @@ CardTitle,
 import { BarChartComponent,DonutChartComponent } from "@/components/ui/charts";
 import { useAuth } from "@/hooks/useAuth";
 import { api } from "@/lib/api";
+import { trainingProgressSchema } from "@/lib/trainingRecords";
 import { formatCurrency } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowRight,BookOpen,CheckCircle,DollarSign,FileText } from "lucide-react";
@@ -29,8 +30,9 @@ export default function EmployeeDashboard() {
   const { data: training } = useQuery({
     queryKey: ["training-progress"],
     queryFn: async () => {
-      const { data } = await api.get("/training/progress");
-      return data;
+      const { data } = await api.get<unknown>("/training/progress");
+      const modules=trainingProgressSchema.parse(data).data.map(row=>({...row,id:row.moduleId,completed:row.status==="COMPLETED"}));
+      return {modules,completedModules:modules.filter(row=>row.completed).length,totalModules:modules.length};
     },
   });
 
@@ -163,7 +165,7 @@ export default function EmployeeDashboard() {
           <CardContent>
             {stats?.recentCases?.length > 0 ? (
               <div className="space-y-3">
-                {stats.recentCases.map((caseItem: any) => (
+                {stats.recentCases.map((caseItem: { id:string; caseCode?:string; state:string; county:string; status:string }) => (
                   <Link
                     key={caseItem.id}
                     href={`/employee/cases/${caseItem.id}`}
@@ -208,9 +210,9 @@ export default function EmployeeDashboard() {
             </Link>
           </CardHeader>
           <CardContent>
-            {training?.modules?.length > 0 ? (
+            {training && training.modules.length > 0 ? (
               <div className="space-y-3">
-                {training.modules.slice(0, 5).map((module: any) => (
+                {training.modules.slice(0, 5).map((module) => (
                   <Link
                     key={module.id}
                     href={`/employee/training/${module.id}`}
@@ -219,7 +221,7 @@ export default function EmployeeDashboard() {
                     <div>
                       <p className="font-medium">{module.title}</p>
                       <p className="text-sm text-muted-foreground">
-                        {module.duration} min
+                        {module.status.replaceAll("_", " ")}
                       </p>
                     </div>
                     {module.completed ? (

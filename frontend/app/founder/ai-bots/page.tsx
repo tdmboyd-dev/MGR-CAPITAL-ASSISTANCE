@@ -79,37 +79,6 @@ export default function AIBotsPage() {
     },
   });
 
-  // Task mutation
-  const taskMutation = useMutation({
-    mutationFn: async ({
-      botId,
-      taskType,
-      input,
-    }: {
-      botId: string;
-      taskType: string;
-      input: unknown;
-    }) => {
-      const { data } = await api.post(`/ai-bots/${botId}/task`, { taskType, input });
-      return data.data;
-    },
-    onSuccess: (data) => {
-      toast.success("Task completed", {
-        description: `${data.botId} finished the task`,
-      });
-      setChatMessages((prev) => [
-        ...prev,
-        {
-          role: "bot",
-          content: `Task completed!\n\n${JSON.stringify(data.result, null, 2)}`,
-        },
-      ]);
-    },
-    onError: () => {
-      toast.error("Task failed");
-    },
-  });
-
   const handleSendMessage = () => {
     if (!inputMessage.trim() || !selectedBot) return;
 

@@ -1,0 +1,18 @@
+{
+  "focusedImplementationBoundaries": {
+    "passed": 18,
+    "failed": 0,
+    "command": "node --test tests/search-payment-boundary.node.cjs tests/frontend-record-contracts.node.cjs",
+    "proof": "Actual module code with mocked dependency boundaries; no provider proof"
+  },
+  "legacyJest": {
+    "numPassedTests": 202,
+    "numPendingTests": 16,
+    "numFailedTests": 0,
+    "numPassedTestSuites": 8
+  },
+  "retiredObsoleteTest": "One literal2x money-display arithmetic assertion removed after owner selected actual payable amounts; actual service/database/API coverage is employee-earnings-postgres.ts",
+  "backendFinalTypeScript": "passed after nullable leader-tier correction",
+  "frontendOptimizedGenerationEntries": 99,
+  "limits": "No exhaustive semantic audit, provider/device, real customer recovery or production qualification"
+}

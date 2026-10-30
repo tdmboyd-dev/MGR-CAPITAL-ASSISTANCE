@@ -37,7 +37,7 @@ export default function Error({
           </Button>
 
           <Button
-            onClick={() => window.location.href = "/"}
+            onClick={() => window.location.assign(new URL("/", window.location.origin).href)}
             variant="outline"
           >
             Go home

@@ -408,7 +408,7 @@ export default function ChildCompanyPage() {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {requirements.map((req: any, index: number) => (
+            {requirements.map((req: { met: boolean; label: string; description: string; current?: number; target?: number }, index: number) => (
               <div
                 key={index}
                 className="flex items-start gap-3 p-4 rounded-lg bg-background"

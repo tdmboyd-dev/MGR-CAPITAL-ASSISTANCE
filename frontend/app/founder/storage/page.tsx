@@ -64,7 +64,7 @@ interface Dashboard {
 interface ProviderTemplate {
   displayName: string;
   type: string;
-  config: Record<string, any>;
+  config: Record<string, string | number | boolean>;
   capacityBytes: number;
   credentialFields: string[];
   setupGuide: string;
@@ -449,7 +449,7 @@ export default function StorageAdminPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {files.files.map((file: any) => (
+                      {files.files.map((file: { id:string; fileName:string; fileSize:string; mimeType?:string; document?:{caseId:string}; createdAt:string }) => (
                         <tr key={file.id} className="border-b hover:bg-muted/50 transition-colors">
                           <td className="p-3 font-medium">{file.fileName}</td>
                           <td className="p-3 text-sm">{formatBytes(file.fileSize)}</td>
@@ -687,7 +687,7 @@ function SyncModal({
   const [sourceId, setSourceId] = useState("");
   const [targetId, setTargetId] = useState("");
   const [isSyncing, setIsSyncing] = useState(false);
-  const [result, setResult] = useState<any>(null);
+  const [result, setResult] = useState<{success:boolean; migrated:number; failed:number; errors?:string[]} | null>(null);
 
   const handleSync = async () => {
     if (!sourceId || !targetId) return;
@@ -771,7 +771,7 @@ function SyncModal({
             <div className={`p-3 rounded-lg text-sm ${result.success ? "bg-green-500/10 text-green-500" : "bg-red-500/10 text-red-500"}`}>
               <p>Migrated: {result.migrated} files</p>
               {result.failed > 0 && <p>Failed: {result.failed}</p>}
-              {result.errors?.length > 0 && (
+              {result.errors && result.errors.length > 0 && (
                 <ul className="mt-1 text-xs">
                   {result.errors.slice(0, 5).map((e: string, i: number) => (
                     <li key={i}>{e}</li>

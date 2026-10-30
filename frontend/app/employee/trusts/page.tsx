@@ -1,6 +1,7 @@
 "use client";
 import { apiFailure } from "@/lib/apiFailure";
 
+import { type ComponentProps } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -80,7 +81,7 @@ const PLAN_COLORS: Record<string, string> = {
   PREMIUM_ESTATE: "border-amber-500 bg-amber-500/5",
 };
 
-const STATUS_BADGES: Record<string, { variant: string; label: string }> = {
+const STATUS_BADGES: Record<string, { variant: ComponentProps<typeof Badge>["variant"]; label: string }> = {
   PENDING: { variant: "secondary", label: "Pending Setup" },
   DOCUMENTS_GENERATED: { variant: "info", label: "Documents Ready" },
   NOTARIZATION_SCHEDULED: { variant: "warning", label: "Notarization Scheduled" },
@@ -211,7 +212,7 @@ export default function EmployeeTrustsPage() {
               </div>
               <Badge
                 variant={
-                  STATUS_BADGES[enrollment.status]?.variant as any || "secondary"
+                  STATUS_BADGES[enrollment.status]?.variant || "secondary"
                 }
               >
                 {STATUS_BADGES[enrollment.status]?.label || enrollment.status}

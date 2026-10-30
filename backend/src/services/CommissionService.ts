@@ -6,6 +6,7 @@
 
 import { EmployeeTier } from "@prisma/client";
 import prisma from "../lib/prisma.js";
+import { bankingService } from "./BankingService.js";
 import { enforceStateFeeCap } from "../data/stateRules.js";
 
 export interface CommissionPlan {
@@ -18,41 +19,8 @@ export interface CommissionPlan {
 }
 
 // Commission tier configuration
-// SHADOW ACCOUNTING: Employees see displayedRatePercent, actually receive actualRatePercent
-const TIER_CONFIG: Record<EmployeeTier, Omit<CommissionPlan, "id">> = {
-  TIER_1_ASSOCIATE: {
-    tierName: "Tier 1 — Associate",
-    tier: "TIER_1_ASSOCIATE",
-    displayedRatePercent: 20,
-    actualRatePercent: 10,
-  },
-  TIER_2_SPECIALIST: {
-    tierName: "Tier 2 — Specialist",
-    tier: "TIER_2_SPECIALIST",
-    displayedRatePercent: 40,
-    actualRatePercent: 20,
-  },
-  TIER_3_SENIOR_SPECIALIST: {
-    tierName: "Tier 3 — Senior Specialist",
-    tier: "TIER_3_SENIOR_SPECIALIST",
-    displayedRatePercent: 60,
-    actualRatePercent: 30,
-  },
-  TIER_4_TEAM_LEADER: {
-    tierName: "Tier 4 — Team Leader",
-    tier: "TIER_4_TEAM_LEADER",
-    displayedRatePercent: 80,
-    actualRatePercent: 40,
-    overridePercent: 10,
-  },
-  TIER_5_EXECUTIVE_PARTNER: {
-    tierName: "Tier 5 — Executive Partner",
-    tier: "TIER_5_EXECUTIVE_PARTNER",
-    displayedRatePercent: 100,
-    actualRatePercent: 50,
-    overridePercent: 20,
-  },
-};
+// SHADOW ACCOUNTING: Actual rates determine payable dollars; legacy display rates are tier metadata only.
+const TIER_CONFIG=Object.fromEntries(bankingService.getAllTiers().map(tier=>[tier.tier,{tierName:tier.displayName,tier:tier.tier,displayedRatePercent:tier.displayedRatePercent,actualRatePercent:tier.actualRatePercent,overridePercent:tier.overridePercent??undefined}])) as Record<EmployeeTier,Omit<CommissionPlan,'id'>>;
 
 export class CommissionService {
   /**
@@ -97,21 +65,20 @@ export class CommissionService {
     feeAmountCents: number;
   }): number {
     const plan = this.getPlanForTier(params.tier);
-    if (!plan) return 0;
+    if (!plan) throw new Error('Invalid employee tier');
+    if(!Number.isSafeInteger(params.feeAmountCents)||params.feeAmountCents<0||params.feeAmountCents>2147483647)throw new Error('Invalid fee cents');
     return Math.round((params.feeAmountCents * plan.actualRatePercent) / 100);
   }
 
   /**
-   * Calculate displayed commission (what employee THINKS they're getting)
-   * SHADOW ACCOUNTING: This is shown to employees, but they receive half
+   * Calculate employee-facing payable commission
+   * Owner decision: display and allocation must use the same payable dollars.
    */
   calculateDisplayedCommission(params: {
     tier: EmployeeTier | string;
     feeAmountCents: number;
   }): number {
-    const plan = this.getPlanForTier(params.tier);
-    if (!plan) return 0;
-    return Math.round((params.feeAmountCents * plan.displayedRatePercent) / 100);
+    return this.calculateEmployeeCommission(params);
   }
 
   /**
@@ -212,7 +179,7 @@ export class CommissionService {
    */
   getDisplayedRate(tier: EmployeeTier): number {
     const plan = this.getPlanForTier(tier);
-    return plan?.displayedRatePercent || 20;
+    return plan?.actualRatePercent || 10;
   }
 
   /**

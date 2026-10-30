@@ -3,28 +3,38 @@ import { z } from "zod";
 import { commsService } from "../services/CommsService.js";
 import { authMiddleware } from "../middleware/authMiddleware.js";
 import { ChatRoomType } from "@prisma/client";
+import prisma from "../lib/prisma.js";
+import { currentActor, accessFailure } from "../services/CaseDocumentAccess.js";
+import type { AuthRequest } from "../middleware/authMiddleware.js";
 
 const router = Router();
 
 // All routes require authentication
 router.use(authMiddleware);
+router.use((req:AuthRequest,res,next)=>{
+ res.setHeader('Cache-Control','private, no-store');
+ void currentActor(prisma,req.user!.id).then(actor=>{
+   if(actor.role==='CLIENT')return res.status(403).json({success:false,error:'Staff communication access required'});
+   req.user={...req.user!,role:actor.role};next();
+ }).catch(error=>accessFailure(res,error,'Communication authority unavailable'));
+});
 
 // Validation schemas
 const createRoomSchema = z.object({
-  name: z.string().min(1).max(100),
+  name: z.string().trim().min(1).max(100),
   type: z.enum(["COMPANY", "TEAM", "PRIVATE"]).default("TEAM"),
   description: z.string().max(500).optional(),
   locked: z.boolean().optional(),
-  password: z.string().min(4).optional(),
+  password: z.string().min(8).max(200).optional(),
 });
 
 const sendMessageSchema = z.object({
   roomId: z.string(),
-  content: z.string().min(1).max(5000),
+  content: z.string().trim().min(1).max(5000),
 });
 
 const editMessageSchema = z.object({
-  content: z.string().min(1).max(5000),
+  content: z.string().trim().min(1).max(5000),
 });
 
 /**
@@ -42,7 +52,7 @@ router.get("/rooms", async (req: Request, res: Response) => {
     });
   } catch (error: any) {
     console.error("Error fetching rooms:", error);
-    res.status(500).json({
+    res.status(error?.statusCode || 503).json({
       success: false,
       error: error.message || "Failed to fetch rooms",
     });
@@ -80,7 +90,7 @@ router.get("/rooms/:id", async (req: Request, res: Response) => {
     });
   } catch (error: any) {
     console.error("Error fetching room:", error);
-    res.status(500).json({
+    res.status(error?.statusCode || 503).json({
       success: false,
       error: error.message || "Failed to fetch room",
     });
@@ -126,7 +136,7 @@ router.post("/rooms", async (req: Request, res: Response) => {
     });
   } catch (error: any) {
     console.error("Error creating room:", error);
-    res.status(500).json({
+    res.status(error?.statusCode || 503).json({
       success: false,
       error: error.message || "Failed to create room",
     });
@@ -167,7 +177,7 @@ router.patch("/rooms/:id", async (req: Request, res: Response) => {
     });
   } catch (error: any) {
     console.error("Error updating room:", error);
-    res.status(error.message.includes("Not authorized") ? 403 : 500).json({
+    res.status(error?.statusCode || 503).json({
       success: false,
       error: error.message || "Failed to update room",
     });
@@ -191,7 +201,7 @@ router.delete("/rooms/:id", async (req: Request, res: Response) => {
     });
   } catch (error: any) {
     console.error("Error deleting room:", error);
-    res.status(error.message.includes("Not authorized") ? 403 : 500).json({
+    res.status(error?.statusCode || 503).json({
       success: false,
       error: error.message || "Failed to delete room",
     });
@@ -228,7 +238,7 @@ router.get("/messages", async (req: Request, res: Response) => {
     });
   } catch (error: any) {
     console.error("Error fetching messages:", error);
-    res.status(error.message.includes("Not authorized") ? 403 : 500).json({
+    res.status(error?.statusCode || 503).json({
       success: false,
       error: error.message || "Failed to fetch messages",
     });
@@ -277,7 +287,7 @@ router.post("/messages", async (req: Request, res: Response) => {
     });
   } catch (error: any) {
     console.error("Error sending message:", error);
-    res.status(500).json({
+    res.status(error?.statusCode || 503).json({
       success: false,
       error: error.message || "Failed to send message",
     });
@@ -315,7 +325,7 @@ router.patch("/messages/:id", async (req: Request, res: Response) => {
     });
   } catch (error: any) {
     console.error("Error editing message:", error);
-    res.status(error.message.includes("Not authorized") ? 403 : 500).json({
+    res.status(error?.statusCode || 503).json({
       success: false,
       error: error.message || "Failed to edit message",
     });
@@ -339,7 +349,7 @@ router.delete("/messages/:id", async (req: Request, res: Response) => {
     });
   } catch (error: any) {
     console.error("Error deleting message:", error);
-    res.status(error.message.includes("Not authorized") ? 403 : 500).json({
+    res.status(error?.statusCode || 503).json({
       success: false,
       error: error.message || "Failed to delete message",
     });
@@ -361,7 +371,7 @@ router.post("/seed", async (req: Request, res: Response) => {
       });
     }
 
-    await commsService.seedDefaultRooms();
+    await commsService.seedDefaultRooms(user.id);
 
     res.json({
       success: true,
@@ -369,7 +379,7 @@ router.post("/seed", async (req: Request, res: Response) => {
     });
   } catch (error: any) {
     console.error("Error seeding rooms:", error);
-    res.status(500).json({
+    res.status(error?.statusCode || 503).json({
       success: false,
       error: error.message || "Failed to seed rooms",
     });

@@ -1,6 +1,5 @@
 "use client";
 
-import { useAuth } from "@/hooks/useAuth";
 import { Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
@@ -8,7 +7,6 @@ import { useEffect } from "react";
 // Redirect portal to dashboard - the portal page now redirects to the main client dashboard
 export default function ClientPortalRedirect() {
   const router = useRouter();
-  const { user } = useAuth();
 
   useEffect(() => {
     // Redirect to client dashboard

@@ -10,28 +10,12 @@ CardHeader,
 CardTitle,
 } from "@/components/ui/card";
 import { SkeletonList } from "@/components/ui/skeleton";
-import { useAuth } from "@/hooks/useAuth";
+import "@/hooks/useAuth";
 import { api } from "@/lib/api";
+import { apiFailure } from "@/lib/apiFailure";
 import { formatCurrency,formatDateTime } from "@/lib/utils";
 import { useMutation,useQuery,useQueryClient } from "@tanstack/react-query";
-import {
-AlertCircle,
-ArrowRight,
-Award,
-Bot,
-Briefcase,
-Calendar,
-CheckCircle,
-Clock,
-DollarSign,
-History,
-Play,
-Shield,
-Star,
-TrendingUp,
-Video,
-Zap,
-} from "lucide-react";
+import { ArrowRight, Award, Bot, Briefcase, Calendar, CheckCircle, Clock, DollarSign, History, Play, Star, TrendingUp, Video, Zap } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 
@@ -54,17 +38,7 @@ const SESSION_STATUS_COLORS: Record<string, string> = {
   no_show: "bg-gray-500",
 };
 
-// Application status display
-const APPLICATION_STATUS: Record<string, { label: string; color: string; icon: import("lucide-react").LucideIcon }> = {
-  pending: { label: "Pending Review", color: "bg-yellow-500", icon: Clock },
-  training_required: { label: "Training Required", color: "bg-blue-500", icon: Award },
-  background_check: { label: "Background Check", color: "bg-purple-500", icon: Shield },
-  approved: { label: "Approved", color: "bg-green-500", icon: CheckCircle },
-  rejected: { label: "Rejected", color: "bg-red-500", icon: AlertCircle },
-};
-
 export default function EmployeeNotaryPage() {
-  const { user } = useAuth();
   const queryClient = useQueryClient();
   const [subscribingTier, setSubscribingTier] = useState<string | null>(null);
 
@@ -112,8 +86,7 @@ export default function EmployeeNotaryPage() {
   });
 
   // Check if user is an active notary or has a pending application
-  const isActiveNotary = !!dashboardData;
-  const isNotNotary = dashboardError && (dashboardError as any)?.response?.status === 400;
+  const isNotNotary = dashboardError && apiFailure(dashboardError).response?.status === 400;
 
   // Loading state
   if (dashboardLoading) {
@@ -391,8 +364,8 @@ export default function EmployeeNotaryPage() {
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {plansData
-                .filter((plan: any) => plan.tier !== "NONE")
-                .map((plan: any) => (
+                .filter((plan: { tier:string; name:string; monthlyCostCents:number; features:string[] }) => plan.tier !== "NONE")
+                .map((plan: { tier:string; name:string; monthlyCostCents:number; features:string[] }) => (
                   <div
                     key={plan.tier}
                     className={`p-4 rounded-lg border-2 transition-colors ${
@@ -463,7 +436,7 @@ export default function EmployeeNotaryPage() {
         <CardContent>
           {dashboardData?.upcomingSessions?.length > 0 ? (
             <div className="space-y-3">
-              {dashboardData.upcomingSessions.map((session: any) => (
+              {dashboardData.upcomingSessions.map((session: { id:string; clientName:string; documentType:string; sessionType:string; status:string; scheduledTime:string }) => (
                 <div
                   key={session.id}
                   className="flex items-center justify-between p-4 rounded-lg bg-muted/50 hover:bg-muted transition-colors"

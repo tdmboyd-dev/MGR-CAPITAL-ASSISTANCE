@@ -121,15 +121,14 @@ export default function MarketplacePage() {
   })
 
   const connectWallet = async () => {
-    // @ts-ignore - Phantom wallet
-    if (window.solana) {
+    const wallet = (window as Window & { solana?: { connect: () => Promise<{ publicKey: { toString: () => string } }> } }).solana
+    if (wallet) {
       try {
-        // @ts-ignore
-        const response = await window.solana.connect()
+        const response = await wallet.connect()
         setWalletAddress(response.publicKey.toString())
         setWalletConnected(true)
         toast.success('Wallet connected!')
-      } catch (err) {
+      } catch {
         toast.error('Failed to connect wallet')
       }
     } else {
@@ -159,12 +158,10 @@ export default function MarketplacePage() {
         queryClient.invalidateQueries({ queryKey: ['marketplace-listings'] })
       } else {
         // Demo mode
-        toast.success('Listed successfully (demo mode)')
-        setNewListingOpen(false)
+        toast.error('Listing was not confirmed. No sale was created.')
       }
     } catch {
-      toast.success('Listed successfully (demo mode)')
-      setNewListingOpen(false)
+      toast.error('Listing was not confirmed. Check the connection before retrying.')
     }
   }
 
@@ -174,7 +171,7 @@ export default function MarketplacePage() {
       return
     }
 
-    toast.success('Purchase initiated! (demo mode - transaction simulated)')
+    toast.error(`Purchase execution is unavailable for ${listingId}. No transaction was submitted.`)
     queryClient.invalidateQueries({ queryKey: ['marketplace-listings'] })
   }
 
@@ -182,6 +179,7 @@ export default function MarketplacePage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 p-6">
+      <p role="status" className="mb-4 rounded border border-amber-700 p-4 text-amber-200">Marketplace prototype: sample listings and figures may be shown. They are not live offers or proof of a transferable claim. Purchase execution is unavailable.</p>
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}

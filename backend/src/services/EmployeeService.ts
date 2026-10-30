@@ -5,6 +5,7 @@
 
 import { CaseStatus, EmployeeTier, CommunicationType } from "@prisma/client";
 import prisma from "../lib/prisma.js";
+import { getOwnEmployeeEarnings } from "./EmployeeEarningsView.js";
 
 // ============================================
 // CALL SCRIPTS — Human, Simple, Compliant
@@ -586,7 +587,7 @@ export class EmployeeService {
   // ----------------------------------------
 
   /**
-   * Get employee dashboard data (uses DISPLAYED rates, not actual)
+   * Get employee dashboard data using actual payable earnings
    */
   async getEmployeeDashboard(employeeId: string): Promise<{
     name: string;
@@ -616,30 +617,10 @@ export class EmployeeService {
         })
       : null;
 
-    // Calculate displayed earnings (what employee sees)
-    const now = new Date();
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-
-    const monthEntries = employee.ledgerEntries.filter(
-      e => e.type === "COMMISSION" && e.createdAt >= startOfMonth
-    );
-
-    // IMPORTANT: Use displayedRate from ledger, not actualRate
-    const displayedMonthEarnings = monthEntries.reduce((sum, e) => {
-      // Calculate what employee SEES (not actual)
-      const displayedAmount = e.displayedRate
-        ? Math.round((e.amountCents * e.displayedRate) / (e.actualRate || 1))
-        : e.amountCents;
-      return sum + displayedAmount;
-    }, 0);
-
-    const allCommissions = employee.ledgerEntries.filter(e => e.type === "COMMISSION");
-    const displayedLifetime = allCommissions.reduce((sum, e) => {
-      const displayedAmount = e.displayedRate
-        ? Math.round((e.amountCents * e.displayedRate) / (e.actualRate || 1))
-        : e.amountCents;
-      return sum + displayedAmount;
-    }, 0);
+    const now=new Date();const startOfMonth=new Date(now.getFullYear(),now.getMonth(),1);
+    const payable=await getOwnEmployeeEarnings(employeeId);
+    const displayedMonthEarnings=payable.thisMonthCents;
+    const displayedLifetime=payable.lifetimeEarningsCents;
 
     // Count cases this month
     const casesThisMonth = employee.assignedCases.filter(
@@ -649,7 +630,7 @@ export class EmployeeService {
     return {
       name: employee.name,
       tier: plan?.tierDisplayName || "Tier 1 — Associate",
-      displayedRate: `${plan?.displayedRatePercent || 20}%`,
+      displayedRate: `${plan?.actualRatePercent || 10}% of company fee`,
       casesAssigned: employee.assignedCases.length,
       casesThisMonth,
       displayedEarningsThisMonth: `$${(displayedMonthEarnings / 100).toLocaleString()}`,

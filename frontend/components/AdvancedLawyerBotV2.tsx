@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button'
 import { ContactShadows,Environment,Html,OrbitControls } from '@react-three/drei'
 import { Canvas,useFrame } from '@react-three/fiber'
 import { AnimatePresence,motion } from 'framer-motion'
-import { Loader2,RotateCcw,Volume2,VolumeX } from 'lucide-react'
+import { Loader2,Volume2,VolumeX } from 'lucide-react'
 import { Suspense,useEffect,useRef,useState } from 'react'
 import * as THREE from 'three'
 
@@ -103,9 +103,8 @@ function BotModel({
 
   const [targetViseme, setTargetViseme] = useState<{ mouthOpen: number; mouthWide: number; jawOpen: number }>(VISEMES.silence)
   const [currentMouth, setCurrentMouth] = useState({ open: 0, wide: 0, jaw: 0 })
-  const [blinkTimer, setBlinkTimer] = useState(Math.random() * 3)
+  const [blinkTimer, setBlinkTimer] = useState(() => Math.random() * 3)
   const [isBlinking, setIsBlinking] = useState(false)
-  const [charIndex, setCharIndex] = useState(0)
 
   const expressionConfig = EXPRESSIONS[expression]
   const clothingColor = new THREE.Color(CLOTHING_COLORS[clothing])
@@ -113,8 +112,6 @@ function BotModel({
   // Process viseme stream or transcript
   useEffect(() => {
     if (!isSpeaking) {
-      setTargetViseme(VISEMES.silence)
-      setCharIndex(0)
       return
     }
 
@@ -155,7 +152,6 @@ function BotModel({
         const char = chars[idx]
         const visemeKey = charToViseme[char] || 'silence'
         setTargetViseme(VISEMES[visemeKey])
-        setCharIndex(idx)
         idx++
       }, 80) // ~12 chars/sec for natural speech
 
@@ -170,9 +166,9 @@ function BotModel({
     // Smooth mouth interpolation
     const lerpSpeed = 12 * delta
     setCurrentMouth(prev => ({
-      open: THREE.MathUtils.lerp(prev.open, targetViseme.mouthOpen, lerpSpeed),
-      wide: THREE.MathUtils.lerp(prev.wide, targetViseme.mouthWide, lerpSpeed),
-      jaw: THREE.MathUtils.lerp(prev.jaw, targetViseme.jawOpen, lerpSpeed),
+      open: THREE.MathUtils.lerp(prev.open, (isSpeaking ? targetViseme : VISEMES.silence).mouthOpen, lerpSpeed),
+      wide: THREE.MathUtils.lerp(prev.wide, (isSpeaking ? targetViseme : VISEMES.silence).mouthWide, lerpSpeed),
+      jaw: THREE.MathUtils.lerp(prev.jaw, (isSpeaking ? targetViseme : VISEMES.silence).jawOpen, lerpSpeed),
     }))
 
     // Apply mouth shape
@@ -368,25 +364,6 @@ export default function AdvancedLawyerBotV2({
   showControls = true,
 }: AdvancedLawyerBotV2Props) {
   const [muted, setMuted] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  if (error) {
-    return (
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        className="h-96 flex flex-col items-center justify-center gap-4 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-200 dark:border-red-800"
-        role="alert"
-      >
-        <p className="text-red-600 dark:text-red-400">{error}</p>
-        <Button variant="outline" onClick={() => window.location.reload()}>
-          <RotateCcw className="h-4 w-4 mr-2" />
-          Retry
-        </Button>
-      </motion.div>
-    )
-  }
-
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.95 }}

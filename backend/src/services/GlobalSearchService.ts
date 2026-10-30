@@ -6,8 +6,9 @@
  * with optional AI embedding for semantic relevance.
  */
 
-import { UserRole, CaseStatus, DocumentType } from "@prisma/client";
+import { UserRole, CaseStatus, DocumentType, Prisma } from "@prisma/client";
 import prisma from "../lib/prisma.js";
+import { currentActor, caseScope, documentScope, type Actor } from "./CaseDocumentAccess.js";
 
 // Result types for each searchable entity
 export interface CaseSearchResult {
@@ -118,7 +119,6 @@ class GlobalSearchService {
     const {
       query,
       userId,
-      userRole,
       limit = 50,
       types = ["case", "user", "document", "communication"],
     } = options;
@@ -133,6 +133,8 @@ class GlobalSearchService {
       };
     }
 
+    const actor = await currentActor(prisma, userId);
+
     // Record search for recent/popular tracking
     this.recordSearch(userId, query);
 
@@ -144,15 +146,15 @@ class GlobalSearchService {
 
     if (types.includes("case")) {
       searchPromises.push(
-        this.searchCases(searchTerm, userId, userRole, options).then((r) => {
+        this.searchCases(searchTerm, actor, options).then((r) => {
           results.push(...r);
         })
       );
     }
 
-    if (types.includes("user") && this.canSearchUsers(userRole)) {
+    if (types.includes("user") && this.canSearchUsers(actor.role)) {
       searchPromises.push(
-        this.searchUsers(searchTerm, userRole).then((r) => {
+        this.searchUsers(searchTerm, actor).then((r) => {
           results.push(...r);
         })
       );
@@ -160,15 +162,15 @@ class GlobalSearchService {
 
     if (types.includes("document")) {
       searchPromises.push(
-        this.searchDocuments(searchTerm, userId, userRole).then((r) => {
+        this.searchDocuments(searchTerm, actor).then((r) => {
           results.push(...r);
         })
       );
     }
 
-    if (types.includes("communication")) {
+    if (types.includes("communication") && actor.role !== 'CLIENT') {
       searchPromises.push(
-        this.searchCommunications(searchTerm, userId, userRole).then((r) => {
+        this.searchCommunications(searchTerm, actor).then((r) => {
           results.push(...r);
         })
       );
@@ -203,35 +205,20 @@ class GlobalSearchService {
    */
   private async searchCases(
     query: string,
-    userId: string,
-    userRole: UserRole,
+    actor: Actor,
     options: GlobalSearchOptions
   ): Promise<CaseSearchResult[]> {
-    const whereClause: any = {
+    const whereClause: Prisma.CaseWhereInput = {
+      AND: [caseScope(actor)],
       OR: [
         { caseCode: { contains: query, mode: "insensitive" } },
         { previousOwner: { contains: query, mode: "insensitive" } },
         { propertyAddress: { contains: query, mode: "insensitive" } },
         { state: { contains: query, mode: "insensitive" } },
         { county: { contains: query, mode: "insensitive" } },
-        { notes: { contains: query, mode: "insensitive" } },
+        ...(actor.role === 'FOUNDER' ? [{ notes: { contains: query, mode: "insensitive" as const } }] : []),
       ],
     };
-
-    // Role-based access control
-    if (userRole === "EMPLOYEE") {
-      whereClause.assignedEmployeeId = userId;
-    } else if (userRole === "CLIENT") {
-      whereClause.clientId = userId;
-    } else if (userRole === "TEAM_LEAD") {
-      // Team leads see their team's cases
-      const teamMembers = await prisma.user.findMany({
-        where: { teamLeaderId: userId },
-        select: { id: true },
-      });
-      const teamIds = [userId, ...teamMembers.map((m) => m.id)];
-      whereClause.assignedEmployeeId = { in: teamIds };
-    }
 
     // Optional filters
     if (options.state) {
@@ -265,7 +252,7 @@ class GlobalSearchService {
       status: c.status,
       previousOwner: c.previousOwner,
       propertyAddress: c.propertyAddress,
-      surplusAmountCents: c.surplusAmountCents,
+      surplusAmountCents: actor.role === "FOUNDER" ? c.surplusAmountCents : null,
       state: c.state,
       county: c.county,
       matchedField: this.findMatchedField(query, {
@@ -274,7 +261,7 @@ class GlobalSearchService {
         propertyAddress: c.propertyAddress,
         state: c.state,
         county: c.county,
-        notes: c.notes,
+        notes: actor.role === 'FOUNDER' ? c.notes : null,
       }),
       score: this.calculateScore(query, [
         c.caseCode,
@@ -291,7 +278,7 @@ class GlobalSearchService {
    */
   private async searchUsers(
     query: string,
-    userRole: UserRole
+    actor: Actor
   ): Promise<UserSearchResult[]> {
     const users = await prisma.user.findMany({
       where: {
@@ -300,7 +287,7 @@ class GlobalSearchService {
           { name: { contains: query, mode: "insensitive" } },
         ],
         // Non-founders can only see active users
-        ...(userRole !== "FOUNDER" && userRole !== "ADMIN" ? { isActive: true } : {}),
+        ...(!(actor.role === "FOUNDER" && actor.tenantId === null) ? { tenantId: actor.tenantId } : {}),
       },
       take: 20,
       select: {
@@ -330,30 +317,14 @@ class GlobalSearchService {
    */
   private async searchDocuments(
     query: string,
-    userId: string,
-    userRole: UserRole
+    actor: Actor
   ): Promise<DocumentSearchResult[]> {
-    // Build case access filter
-    let caseFilter: any = {};
-    if (userRole === "EMPLOYEE") {
-      caseFilter = { case: { assignedEmployeeId: userId } };
-    } else if (userRole === "CLIENT") {
-      caseFilter = { case: { clientId: userId } };
-    } else if (userRole === "TEAM_LEAD") {
-      const teamMembers = await prisma.user.findMany({
-        where: { teamLeaderId: userId },
-        select: { id: true },
-      });
-      const teamIds = [userId, ...teamMembers.map((m) => m.id)];
-      caseFilter = { case: { assignedEmployeeId: { in: teamIds } } };
-    }
-
     const documents = await prisma.document.findMany({
       where: {
         OR: [
           { fileName: { contains: query, mode: "insensitive" } },
         ],
-        ...caseFilter,
+        AND: [documentScope(actor)],
       },
       take: 20,
       include: {
@@ -385,31 +356,15 @@ class GlobalSearchService {
    */
   private async searchCommunications(
     query: string,
-    userId: string,
-    userRole: UserRole
+    actor: Actor
   ): Promise<CommunicationSearchResult[]> {
-    // Build case access filter
-    let caseFilter: any = {};
-    if (userRole === "EMPLOYEE") {
-      caseFilter = { case: { assignedEmployeeId: userId } };
-    } else if (userRole === "CLIENT") {
-      caseFilter = { case: { clientId: userId } };
-    } else if (userRole === "TEAM_LEAD") {
-      const teamMembers = await prisma.user.findMany({
-        where: { teamLeaderId: userId },
-        select: { id: true },
-      });
-      const teamIds = [userId, ...teamMembers.map((m) => m.id)];
-      caseFilter = { case: { assignedEmployeeId: { in: teamIds } } };
-    }
-
     const communications = await prisma.communication.findMany({
       where: {
         OR: [
           { subject: { contains: query, mode: "insensitive" } },
           { content: { contains: query, mode: "insensitive" } },
         ],
-        ...caseFilter,
+        case: caseScope(actor),
       },
       take: 20,
       orderBy: { createdAt: "desc" },
@@ -444,7 +399,7 @@ class GlobalSearchService {
    * Check if user role can search users
    */
   private canSearchUsers(role: UserRole): boolean {
-    return ["FOUNDER", "ADMIN", "HR", "TEAM_LEAD"].includes(role);
+    return ["FOUNDER", "ADMIN"].includes(role);
   }
 
   /**

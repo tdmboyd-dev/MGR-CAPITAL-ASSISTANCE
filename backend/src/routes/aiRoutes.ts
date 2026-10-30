@@ -5,8 +5,11 @@
 // ============================================
 
 import express, { Request, Response, NextFunction } from "express";
+import prisma from "../lib/prisma.js";
+import { requireCase } from "../services/CaseDocumentAccess.js";
+import type { AuthenticatedRequest } from "../middleware/authMiddleware.js";
 import { authenticate, authorize } from "../middleware/auth.js";
-import { aiSearchService, SearchType } from "../services/AiSearchService.js";
+import { aiSearchService } from "../services/AiSearchService.js";
 import { aiAgentService, AgentTask, AgentContext } from "../services/AiAgentService.js";
 
 const router = express.Router();
@@ -23,55 +26,10 @@ router.use(authenticate);
  * Semantic search across cases, documents, communications
  * Query params: query, type (cases|docs|comms|all), limit
  */
-router.get("/search", async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const { query, type = "all", limit = "10" } = req.query;
-
-    if (!query || typeof query !== "string") {
-      return res.status(400).json({ error: "Query parameter required" });
-    }
-
-    const searchType = type as SearchType;
-    const validTypes: SearchType[] = ["cases", "docs", "comms", "all"];
-    if (!validTypes.includes(searchType)) {
-      return res.status(400).json({ error: "Invalid type. Use: cases, docs, comms, or all" });
-    }
-
-    const results = await aiSearchService.semanticSearch(
-      query,
-      searchType,
-      parseInt(limit as string, 10) || 10
-    );
-
-    res.json(results);
-  } catch (error) {
-    next(error);
-  }
-});
-
-/**
- * GET /api/ai/search/suggestions
- * Get search suggestions based on partial query
- */
-router.get("/search/suggestions", async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const { query } = req.query;
-
-    if (!query || typeof query !== "string" || query.length < 2) {
-      return res.json({ suggestions: [] });
-    }
-
-    // Simple keyword suggestions based on common terms
-    const suggestions = await aiSearchService.getSearchSuggestions(query);
-    res.json({ suggestions });
-  } catch (error) {
-    next(error);
-  }
-});
-
-// ============================================
-// RECOMMENDATION ENDPOINTS
-// ============================================
+// The former semantic implementation queried global records without actor scopes and
+// used obsolete schema fields. Keep the old surface explicit until it is qualified.
+router.get('/search', (_req: Request, res: Response) => res.status(503).json({ success: false, code: 'SEMANTIC_SEARCH_UNAVAILABLE', error: 'Use the authenticated /api/search/global keyword search.' }));
+router.get('/search/suggestions', (_req: Request, res: Response) => res.status(503).json({ success: false, code: 'SEMANTIC_SEARCH_UNAVAILABLE', error: 'Use the authenticated /api/search/global keyword search.' }));
 
 /**
  * GET /api/ai/recommendations/case/:caseId
@@ -85,6 +43,7 @@ router.get("/recommendations/case/:caseId", async (req: Request, res: Response, 
       return res.status(400).json({ error: "Case ID required" });
     }
 
+    await requireCase(prisma, (req as AuthenticatedRequest).user!.id, caseId);
     const recommendations = await aiSearchService.getCaseRecommendations(caseId);
     res.json(recommendations);
   } catch (error) {

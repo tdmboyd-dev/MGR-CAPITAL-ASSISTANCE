@@ -3,26 +3,14 @@
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card,CardContent,CardHeader,CardTitle } from '@/components/ui/card'
-import { Progress } from '@/components/ui/progress'
+
 import { useQuery } from '@tanstack/react-query'
 import { AnimatePresence,motion } from 'framer-motion'
-import {
-Activity,
-AlertTriangle,
-Bell,
-Brain,
-CheckCircle,
-Clock,
-DollarSign,
-Eye,
-Loader2,
-RefreshCw,
-ShieldAlert,ShieldCheck,
-TrendingUp,
-XCircle,
-Zap
-} from 'lucide-react'
-import { useEffect,useState } from 'react'
+import { Activity, AlertTriangle, CheckCircle, Clock, DollarSign, Loader2, RefreshCw, ShieldAlert, ShieldCheck, TrendingUp, XCircle, Zap } from 'lucide-react';
+import { api } from '@/lib/api'
+import { useAuth } from '@/hooks/useAuth'
+import { paymentListSchema, paymentMetricsSchema } from '@/lib/paymentRecords'
+import { useState } from 'react'
 import { Area,AreaChart,CartesianGrid,Cell,Pie,PieChart,ResponsiveContainer,Tooltip,XAxis,YAxis } from 'recharts'
 import { toast } from 'sonner'
 
@@ -39,7 +27,7 @@ interface FraudScore {
 interface Payment {
   id: string
   amount: number
-  method: string
+  method: string | null
   status: string
   clientId?: string
   clientName?: string
@@ -50,159 +38,35 @@ interface Payment {
 
 export default function PaymentsDashboard() {
   const [refreshing, setRefreshing] = useState(false)
-  const [realtimePayments, setRealtimePayments] = useState<Payment[]>([])
-  const [wsConnected, setWsConnected] = useState(false)
+  const { user } = useAuth()
   const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null)
-
-  // WebSocket connection for real-time updates
-  useEffect(() => {
-    let ws: WebSocket | null = null
-
-    const connect = () => {
-      try {
-        const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-        const wsHost = process.env.NEXT_PUBLIC_WS_HOST || window.location.host
-        ws = new WebSocket(`${wsProtocol}//${wsHost}/payments`)
-
-        ws.onopen = () => {
-          setWsConnected(true)
-          console.log('WebSocket connected')
-        }
-
-        ws.onmessage = (event) => {
-          const data = JSON.parse(event.data)
-          if (data.type === 'new_payment') {
-            toast.info('New payment received!', {
-              description: `$${data.payment.amount.toLocaleString()} via ${data.payment.method}`,
-            })
-            setRealtimePayments(prev => [data.payment, ...prev].slice(0, 10))
-            refetchPayments()
-            refetchMetrics()
-          }
-          if (data.type === 'fraud_alert') {
-            toast.error('Fraud Alert!', {
-              description: data.message,
-            })
-          }
-        }
-
-        ws.onclose = () => {
-          setWsConnected(false)
-          setTimeout(connect, 3000) // Reconnect after 3s
-        }
-
-        ws.onerror = () => {
-          setWsConnected(false)
-        }
-      } catch (err) {
-        setWsConnected(false)
-      }
-    }
-
-    connect()
-
-    return () => {
-      if (ws) ws.close()
-    }
-  }, [])
-
-  const { data: payments, isLoading: paymentsLoading, refetch: refetchPayments } = useQuery({
-    queryKey: ['payments'],
-    queryFn: async () => {
-      // Demo data with fraud scores
-      return {
-        data: [
-          { id: 'pay_1', amount: 12500, method: 'ach', status: 'succeeded', clientName: 'John Smith', createdAt: new Date().toISOString(), fraudScore: { score: 0.12, risk: 'low', factors: [], recommendation: 'approve', confidence: 0.92 } },
-          { id: 'pay_2', amount: 8750, method: 'stripe', status: 'succeeded', clientName: 'Sarah Johnson', createdAt: new Date(Date.now() - 3600000).toISOString(), fraudScore: { score: 0.08, risk: 'low', factors: [], recommendation: 'approve', confidence: 0.95 } },
-          { id: 'pay_3', amount: 45000, method: 'ach', status: 'pending', clientName: 'Michael Brown', createdAt: new Date(Date.now() - 7200000).toISOString(), fraudScore: { score: 0.65, risk: 'high', factors: ['Unusual amount', 'New customer'], recommendation: 'review', confidence: 0.88 } },
-          { id: 'pay_4', amount: 3200, method: 'paypal', status: 'succeeded', clientName: 'Emily Davis', createdAt: new Date(Date.now() - 10800000).toISOString(), fraudScore: { score: 0.05, risk: 'low', factors: [], recommendation: 'approve', confidence: 0.97 } },
-          { id: 'pay_5', amount: 78000, method: 'ach', status: 'review', clientName: 'Unknown', createdAt: new Date(Date.now() - 14400000).toISOString(), fraudScore: { score: 0.89, risk: 'critical', factors: ['Very high amount', 'Unknown customer', 'Unusual time'], recommendation: 'block', confidence: 0.91 } },
-        ] as Payment[]
-      }
-    },
+  const paymentQuery = useQuery({
+    queryKey: ['payments', user?.id], enabled: user?.role === 'FOUNDER',
+    queryFn: async ({ signal }) => paymentListSchema.parse((await api.get<unknown>('/payments', { signal })).data),
+    retry: false, gcTime: 0,
   })
-
-  const { data: metrics, isLoading: metricsLoading, refetch: refetchMetrics } = useQuery({
-    queryKey: ['payment-metrics'],
-    queryFn: async () => {
-      return {
-        data: {
-          totalRecovered: 487500,
-          pending: 123000,
-          refunded: 15000,
-          trend: [
-            { date: '2026-01-19', amount: 45000 },
-            { date: '2026-01-20', amount: 62000 },
-            { date: '2026-01-21', amount: 38000 },
-            { date: '2026-01-22', amount: 71000 },
-            { date: '2026-01-23', amount: 89000 },
-            { date: '2026-01-24', amount: 95000 },
-            { date: '2026-01-25', amount: 87500 },
-          ],
-          byMethod: [
-            { method: 'ACH', total: 285000, count: 45 },
-            { method: 'Stripe', total: 142000, count: 32 },
-            { method: 'PayPal', total: 45500, count: 18 },
-            { method: 'Check', total: 15000, count: 5 },
-          ],
-          fraudStats: {
-            blocked: 3,
-            reviewed: 8,
-            approved: 89,
-            totalScanned: 100,
-            modelAccuracy: 0.94,
-          }
-        }
-      }
-    },
+  const metricsQuery = useQuery({
+    queryKey: ['payment-metrics', user?.id], enabled: user?.role === 'FOUNDER',
+    queryFn: async ({ signal }) => paymentMetricsSchema.parse((await api.get<unknown>('/payments/metrics', { signal })).data),
+    retry: false, gcTime: 0,
   })
-
-  const { data: fraudMetrics } = useQuery({
-    queryKey: ['fraud-metrics'],
-    queryFn: async () => {
-      return {
-        data: {
-          accuracy: 0.94,
-          precision: 0.89,
-          recall: 0.92,
-          f1Score: 0.90,
-          isReady: true,
-        }
-      }
-    },
-  })
+  const { data: payments, isLoading: paymentsLoading, refetch: refetchPayments } = paymentQuery
+  const { data: metrics, isLoading: metricsLoading, refetch: refetchMetrics } = metricsQuery
 
   const handleRefresh = async () => {
     setRefreshing(true)
-    await Promise.all([refetchPayments(), refetchMetrics()])
-    setRefreshing(false)
-    toast.success('Data refreshed')
+    try {
+      const results = await Promise.all([refetchPayments(), refetchMetrics()])
+      if (results.some(result => result.isError)) throw new Error('Refresh failed')
+      toast.success('Saved financial records refreshed')
+    } catch { toast.error('Financial records could not be refreshed') }
+    finally { setRefreshing(false) }
   }
 
-  // Handle payment approval/blocking
-  const handlePaymentAction = async (paymentId: string, action: 'approve' | 'block') => {
-    try {
-      const endpoint = action === 'approve'
-        ? `/api/payments/${paymentId}/approve`
-        : `/api/payments/${paymentId}/block`
-
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include'
-      })
-
-      if (!response.ok) {
-        throw new Error(`Failed to ${action} payment`)
-      }
-
-      toast.success(`Payment ${action === 'approve' ? 'approved' : 'blocked'} successfully`)
-      setSelectedPayment(null)
-      refetchPayments()
-    } catch (error) {
-      toast.error(`Failed to ${action} payment. Please try again.`)
-      console.error(`Payment ${action} error:`, error)
-    }
+  const handlePaymentAction = async (...action: [string, 'approve' | 'block']) => {
+    void action
+    // The server intentionally rejects unqualified money movement. No write is sent.
+    toast.error('Payment execution is unavailable until the provider workflow is qualified.')
   }
 
   const getRiskBadge = (risk: string) => {
@@ -230,6 +94,10 @@ export default function PaymentsDashboard() {
     )
   }
 
+  if (paymentQuery.isError || metricsQuery.isError || user?.role !== 'FOUNDER') {
+    return <div role="alert" className="space-y-4 p-8"><p>Financial records are unavailable. A failed request does not mean there are no payments.</p><Button onClick={handleRefresh} disabled={refreshing}>Retry</Button></div>
+  }
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -243,13 +111,10 @@ export default function PaymentsDashboard() {
             <DollarSign className="h-10 w-10 text-blue-600" />
             Payments Control Center
           </h1>
-          <p className="text-muted-foreground mt-1">AI-powered fraud detection • Real-time monitoring</p>
+          <p className="text-muted-foreground mt-1">Saved payment records and recovery totals</p>
         </div>
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-white/80 dark:bg-slate-800/80 shadow">
-            <div className={`w-2 h-2 rounded-full ${wsConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
-            <span className="text-sm">{wsConnected ? 'Live' : 'Offline'}</span>
-          </div>
+          <Badge variant="outline">Saved records · refresh manually</Badge>
           <Button onClick={handleRefresh} disabled={refreshing} variant="outline">
             <RefreshCw className={`mr-2 h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
             Refresh
@@ -257,85 +122,10 @@ export default function PaymentsDashboard() {
         </div>
       </div>
 
-      {/* Real-time Alert Banner */}
-      {realtimePayments.length > 0 && (
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="p-4 rounded-xl bg-gradient-to-r from-blue-500/10 to-indigo-500/10 border border-blue-500/20 flex items-center justify-between"
-        >
-          <div className="flex items-center gap-3">
-            <Bell className="h-5 w-5 text-blue-600 animate-bounce" />
-            <span className="font-medium">
-              {realtimePayments.length} new payment{realtimePayments.length > 1 ? 's' : ''} received in real-time
-            </span>
-          </div>
-          <Button variant="ghost" size="sm" onClick={() => setRealtimePayments([])}>
-            Dismiss
-          </Button>
-        </motion.div>
-      )}
-
-      {/* AI Fraud Detection Stats */}
-      <Card className="border-none shadow-2xl backdrop-blur-xl bg-gradient-to-br from-purple-500/10 via-pink-500/10 to-red-500/10">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Brain className="h-5 w-5 text-purple-600" />
-            AI Fraud Detection Engine
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-6">
-            <div className="text-center">
-              <div className="relative w-20 h-20 mx-auto mb-2">
-                <svg className="w-20 h-20 transform -rotate-90">
-                  <circle cx="40" cy="40" r="35" stroke="#e5e7eb" strokeWidth="6" fill="none" />
-                  <circle
-                    cx="40" cy="40" r="35"
-                    stroke="#8b5cf6"
-                    strokeWidth="6"
-                    fill="none"
-                    strokeDasharray={`${(fraudMetrics?.data?.accuracy || 0) * 220} 220`}
-                    strokeLinecap="round"
-                  />
-                </svg>
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="text-lg font-bold">{((fraudMetrics?.data?.accuracy || 0) * 100).toFixed(0)}%</span>
-                </div>
-              </div>
-              <p className="text-sm text-muted-foreground">Model Accuracy</p>
-            </div>
-
-            <div className="text-center p-4 rounded-xl bg-green-500/10">
-              <p className="text-3xl font-bold text-green-600">{metrics?.data?.fraudStats?.approved || 0}</p>
-              <p className="text-sm text-muted-foreground flex items-center justify-center gap-1">
-                <CheckCircle className="h-4 w-4" /> Auto-Approved
-              </p>
-            </div>
-
-            <div className="text-center p-4 rounded-xl bg-yellow-500/10">
-              <p className="text-3xl font-bold text-yellow-600">{metrics?.data?.fraudStats?.reviewed || 0}</p>
-              <p className="text-sm text-muted-foreground flex items-center justify-center gap-1">
-                <Eye className="h-4 w-4" /> Flagged for Review
-              </p>
-            </div>
-
-            <div className="text-center p-4 rounded-xl bg-red-500/10">
-              <p className="text-3xl font-bold text-red-600">{metrics?.data?.fraudStats?.blocked || 0}</p>
-              <p className="text-sm text-muted-foreground flex items-center justify-center gap-1">
-                <XCircle className="h-4 w-4" /> Blocked
-              </p>
-            </div>
-
-            <div className="text-center p-4 rounded-xl bg-blue-500/10">
-              <p className="text-3xl font-bold text-blue-600">{metrics?.data?.fraudStats?.totalScanned || 0}</p>
-              <p className="text-sm text-muted-foreground flex items-center justify-center gap-1">
-                <Activity className="h-4 w-4" /> Total Scanned
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      <Card><CardContent className="p-6 text-amber-700 dark:text-amber-300">
+        These are saved financial records, not confirmation of bank settlement. Payment execution and live payment events are not qualified.
+        Fraud accuracy and automatic approval statistics are unavailable; no sample model scores are displayed.
+      </CardContent></Card>
 
       {/* Metrics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
@@ -419,7 +209,7 @@ export default function PaymentsDashboard() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Activity className="h-5 w-5" />
-              Recovery Trend (Last 7 Days)
+              Recorded Recovery Trend (Last 30 Days)
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -470,7 +260,7 @@ export default function PaymentsDashboard() {
                   nameKey="method"
                   label={({ method, percent }) => `${method}: ${(percent * 100).toFixed(0)}%`}
                 >
-                  {(metrics?.data?.byMethod || []).map((_: any, index: number) => (
+                  {(metrics?.data?.byMethod || []).map((_, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>
@@ -487,11 +277,11 @@ export default function PaymentsDashboard() {
           <CardTitle className="flex items-center justify-between">
             <span className="flex items-center gap-2">
               <Zap className="h-5 w-5" />
-              Recent Payments with AI Fraud Analysis
+              Recent Saved Payments
             </span>
             <Badge variant="outline" className="font-normal">
               <Activity className="h-3 w-3 mr-1" />
-              Real-time
+              Saved records
             </Badge>
           </CardTitle>
         </CardHeader>
@@ -533,23 +323,7 @@ export default function PaymentsDashboard() {
                   </div>
 
                   <div className="flex items-center gap-6">
-                    {/* Fraud Score Visualization */}
-                    <div className="text-center">
-                      <div className="flex items-center gap-2">
-                        <Progress
-                          value={(p.fraudScore?.score || 0) * 100}
-                          className={`w-20 h-2 ${
-                            (p.fraudScore?.score || 0) > 0.6 ? '[&>div]:bg-red-500' :
-                            (p.fraudScore?.score || 0) > 0.3 ? '[&>div]:bg-yellow-500' :
-                            '[&>div]:bg-green-500'
-                          }`}
-                        />
-                        <span className="text-xs font-mono">
-                          {((p.fraudScore?.score || 0) * 100).toFixed(0)}%
-                        </span>
-                      </div>
-                      {getRiskBadge(p.fraudScore?.risk || 'low')}
-                    </div>
+                    <Badge variant="outline">Fraud assessment unavailable</Badge>
 
                     <div className="text-right">
                       <p className="font-bold text-xl">${p.amount?.toLocaleString() || 0}</p>
@@ -593,7 +367,7 @@ export default function PaymentsDashboard() {
               className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-lg w-full p-6"
               onClick={(e) => e.stopPropagation()}
             >
-              <h3 className="text-xl font-bold mb-4">Fraud Analysis Details</h3>
+              <h3 className="text-xl font-bold mb-4">Saved Payment Details</h3>
 
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
@@ -603,21 +377,21 @@ export default function PaymentsDashboard() {
 
                 <div className="flex justify-between items-center">
                   <span>Risk Level</span>
-                  {getRiskBadge(selectedPayment.fraudScore?.risk || 'low')}
+                  {getRiskBadge(selectedPayment.fraudScore?.risk || 'unknown')}
                 </div>
 
                 <div className="flex justify-between items-center">
                   <span>AI Confidence</span>
-                  <span className="font-mono">{((selectedPayment.fraudScore?.confidence || 0) * 100).toFixed(0)}%</span>
+                  <span className="font-mono">{selectedPayment.fraudScore ? `${(selectedPayment.fraudScore.confidence * 100).toFixed(0)}%` : 'Unavailable'}</span>
                 </div>
 
                 <div className="flex justify-between items-center">
                   <span>Recommendation</span>
                   <Badge variant={
                     selectedPayment.fraudScore?.recommendation === 'approve' ? 'default' :
-                    selectedPayment.fraudScore?.recommendation === 'review' ? 'secondary' : 'destructive'
+                    selectedPayment.fraudScore?.recommendation === 'review' ? 'secondary' : 'outline'
                   }>
-                    {selectedPayment.fraudScore?.recommendation?.toUpperCase()}
+                    {selectedPayment.fraudScore?.recommendation?.toUpperCase() ?? 'Unavailable'}
                   </Badge>
                 </div>
 
@@ -638,7 +412,7 @@ export default function PaymentsDashboard() {
                 <div className="flex gap-3 pt-4">
                   <Button
                     className="flex-1 bg-green-600 hover:bg-green-700"
-                    onClick={() => handlePaymentAction(selectedPayment.id, 'approve')}
+                    disabled title="Provider qualification required" onClick={() => handlePaymentAction(selectedPayment.id, 'approve')}
                   >
                     <CheckCircle className="h-4 w-4 mr-2" />
                     Approve
@@ -646,7 +420,7 @@ export default function PaymentsDashboard() {
                   <Button
                     variant="destructive"
                     className="flex-1"
-                    onClick={() => handlePaymentAction(selectedPayment.id, 'block')}
+                    disabled title="Provider qualification required" onClick={() => handlePaymentAction(selectedPayment.id, 'block')}
                   >
                     <XCircle className="h-4 w-4 mr-2" />
                     Block

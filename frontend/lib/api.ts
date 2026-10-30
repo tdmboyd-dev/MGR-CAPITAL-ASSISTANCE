@@ -124,7 +124,7 @@ api.interceptors.response.use(
         // Clear auth state and redirect to login
         clearBrowserAuthentication();
         if (typeof window !== "undefined") {
-          window.location.href = "/auth/login";
+          window.location.assign(new URL("/auth/login", window.location.origin).href);
         }
         return Promise.reject(refreshError);
       } finally {

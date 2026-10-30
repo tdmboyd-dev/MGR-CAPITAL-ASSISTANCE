@@ -8,12 +8,22 @@ import { authMiddleware } from "../middleware/authMiddleware.js";
 import { roleGuard } from "../middleware/roleGuard.js";
 import { opsMetricsService } from "../services/OpsMetricsService.js";
 import { metaBot } from "../bots/metaBot.js";
+import prisma from '../lib/prisma.js';
+import { currentActor, accessFailure } from '../services/CaseDocumentAccess.js';
+import type { AuthRequest } from '../middleware/authMiddleware.js';
 
 const router = Router();
 
 // All routes require authentication + FOUNDER role
 router.use(authMiddleware);
 router.use(roleGuard(["FOUNDER"]));
+router.use((req: AuthRequest, res, next) => {
+  res.setHeader('Cache-Control', 'private, no-store');
+  void currentActor(prisma, req.user!.id).then(actor => {
+    if (actor.role !== 'FOUNDER' || actor.tenantId !== null) return res.status(403).json({ success: false, error: 'Global founder metrics access required' });
+    next();
+  }).catch(error => accessFailure(res, error, 'Metrics authority unavailable'));
+});
 
 // ============================================
 // ROOT METRICS (for /api/ops/metrics)

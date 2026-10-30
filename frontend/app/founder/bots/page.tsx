@@ -7,6 +7,8 @@ CardDescription,
 CardHeader,
 CardTitle,
 } from "@/components/ui/card";
+import { botMineSchema, botSubscriptionsSchema, botTiersSchema } from "@/lib/botRecords";
+import { useAuth } from "@/hooks/useAuth";
 import { api } from "@/lib/api";
 import { useMutation,useQuery,useQueryClient } from "@tanstack/react-query";
 import { Bot,DollarSign,Shield,ToggleLeft,ToggleRight,TrendingUp,Users } from "lucide-react";
@@ -20,29 +22,33 @@ const TIER_LABELS: Record<string, { label: string; price: string; color: string 
 };
 
 export default function FounderBotsPage() {
+  const { user } = useAuth();
   const queryClient = useQueryClient();
 
-  const { data: subscriptionsData, isLoading } = useQuery({
-    queryKey: ["all-bot-subscriptions"],
-    queryFn: async () => {
-      const { data } = await api.get("/bot-subscriptions/all");
-      return data;
+  const { data: subscriptionsData, isLoading, error } = useQuery({
+    queryKey: ["all-bot-subscriptions", user?.id],
+    enabled: Boolean(user),
+    queryFn: async ({ signal }) => {
+      const { data } = await api.get<unknown>("/bot-subscriptions/all", { signal });
+      return botSubscriptionsSchema.parse(data);
     },
   });
 
   const { data: tiers } = useQuery({
-    queryKey: ["bot-tiers"],
-    queryFn: async () => {
-      const { data } = await api.get("/bot-subscriptions/tiers");
-      return data;
+    queryKey: ["bot-tiers", user?.id],
+    enabled: Boolean(user),
+    queryFn: async ({ signal }) => {
+      const { data } = await api.get<unknown>("/bot-subscriptions/tiers", { signal });
+      return botTiersSchema.parse(data);
     },
   });
 
   const { data: myData } = useQuery({
-    queryKey: ["my-bot-subscription"],
-    queryFn: async () => {
-      const { data } = await api.get("/bot-subscriptions/mine");
-      return data;
+    queryKey: ["my-bot-subscription", user?.id],
+    enabled: Boolean(user),
+    queryFn: async ({ signal }) => {
+      const { data } = await api.get<unknown>("/bot-subscriptions/mine", { signal });
+      return botMineSchema.parse(data);
     },
   });
 
@@ -52,7 +58,7 @@ export default function FounderBotsPage() {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["all-bot-subscriptions"] });
+      queryClient.invalidateQueries({ queryKey: ["all-bot-subscriptions", user?.id] });
     },
   });
 
@@ -64,17 +70,19 @@ export default function FounderBotsPage() {
     );
   }
 
+  if (error) return <p role="alert">Subscriptions could not be loaded. Reload to retry; no revenue was inferred.</p>;
+
   const subscriptions = subscriptionsData?.subscriptions || [];
   const totalRevenue = subscriptions
-    .filter((s: any) => s.tier !== "FOUNDER")
-    .reduce((sum: number, s: any) => sum + s.monthlyCostCents, 0);
+    .filter((s) => s.tier !== "FOUNDER")
+    .reduce((sum: number, s) => sum + s.monthlyCostCents, 0);
 
-  const tierDistribution = subscriptions.reduce((acc: Record<string, number>, s: any) => {
+  const tierDistribution = subscriptions.reduce((acc: Record<string, number>, s) => {
     acc[s.tier] = (acc[s.tier] || 0) + 1;
     return acc;
   }, {});
 
-  const totalUsageCost = subscriptions.reduce((sum: number, s: any) => sum + s.totalChargedCents, 0);
+  const totalUsageCost = subscriptions.reduce((sum: number, s) => sum + s.totalChargedCents, 0);
 
   return (
     <div className="space-y-6">
@@ -97,13 +105,13 @@ export default function FounderBotsPage() {
           <CardContent>
             <div className="text-2xl font-bold">{subscriptions.length}</div>
             <p className="text-xs text-muted-foreground">
-              {subscriptions.filter((s: any) => s.isActive).length} active
+              {subscriptions.filter((s) => s.isActive).length} active
             </p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Monthly Revenue</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Scheduled Monthly Charges</CardTitle>
             <DollarSign className="h-5 w-5 text-green-500" />
           </CardHeader>
           <CardContent>
@@ -118,7 +126,7 @@ export default function FounderBotsPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">${(totalUsageCost / 100).toFixed(2)}</div>
-            <p className="text-xs text-muted-foreground">Lifetime revenue</p>
+            <p className="text-xs text-muted-foreground">Recorded charges, not confirmed receipts</p>
           </CardContent>
         </Card>
         <Card>
@@ -173,7 +181,7 @@ export default function FounderBotsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {(tiers.tiers as any[]).map((tier: any) => (
+                  {tiers.tiers.map((tier) => (
                     <tr key={tier.tier} className="border-b">
                       <td className={`py-2 px-3 font-medium ${TIER_LABELS[tier.tier]?.color || ""}`}>
                         {TIER_LABELS[tier.tier]?.label || tier.tier}
@@ -181,7 +189,7 @@ export default function FounderBotsPage() {
                       <td className="py-2 px-3">{tier.monthlyPrice}</td>
                       <td className="py-2 px-3">
                         <div className="flex flex-wrap gap-1">
-                          {(tier.bots as string[]).map((bot: string) => (
+                          {tier.bots.map((bot) => (
                             <span key={bot} className="px-2 py-0.5 rounded-full bg-muted text-xs">
                               {bot}
                             </span>
@@ -210,7 +218,7 @@ export default function FounderBotsPage() {
             {subscriptions.length === 0 ? (
               <p className="text-muted-foreground text-center py-8">No subscriptions yet</p>
             ) : (
-              subscriptions.map((sub: any) => {
+              subscriptions.map((sub) => {
                 const tierInfo = TIER_LABELS[sub.tier] || TIER_LABELS.STARTER;
                 return (
                   <div

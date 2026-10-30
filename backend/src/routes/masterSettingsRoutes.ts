@@ -15,6 +15,7 @@ import { authMiddleware, AuthRequest } from "../middleware/authMiddleware.js";
 import prisma from "../lib/prisma.js";
 import { roleGuard } from "../middleware/roleGuard.js";
 import { asyncHandler, Errors } from "../middleware/errorHandler.js";
+import { currentActor, accessFailure } from '../services/CaseDocumentAccess.js';
 import {
   masterSettingsService,
   MasterSettings,
@@ -23,6 +24,13 @@ import {
 } from "../services/MasterSettingsService.js";
 
 const router = Router();
+router.use(authMiddleware, (req: AuthRequest, res, next) => {
+  res.setHeader('Cache-Control', 'private, no-store');
+  void currentActor(prisma, req.user!.id).then(actor => {
+    if (!['FOUNDER', 'ADMIN'].includes(actor.role) || actor.tenantId !== null) return res.status(403).json({ success: false, error: 'Global settings authority required' });
+    next();
+  }).catch(error => accessFailure(res, error, 'Settings authority unavailable'));
+});
 
 // Valid feature keys for validation
 const validFeatureKeys = Object.values(FeatureKeys);

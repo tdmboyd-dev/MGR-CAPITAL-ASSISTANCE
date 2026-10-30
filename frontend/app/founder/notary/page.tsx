@@ -29,6 +29,7 @@ TableHeader,
 TableRow,
 } from "@/components/ui/table";
 import { Tabs,TabsContent,TabsList,TabsTrigger } from "@/components/ui/tabs";
+import Image from "next/image";
 import { api } from "@/lib/api";
 import { useMutation,useQuery,useQueryClient } from "@tanstack/react-query";
 import {
@@ -53,7 +54,7 @@ User,
 Video,
 X
 } from "lucide-react";
-import { useCallback,useEffect,useRef,useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { toast } from "sonner";
 
 interface NotaryConfig {
@@ -178,7 +179,7 @@ export default function FounderNotaryPage() {
   const sealInputRef = useRef<HTMLInputElement>(null);
   const signatureInputRef = useRef<HTMLInputElement>(null);
 
-  const [formData, setFormData] = useState<Partial<NotaryConfig>>({
+  const emptyForm: Partial<NotaryConfig> = {
     notaryName: "",
     commissionNumber: "",
     state: "",
@@ -192,7 +193,8 @@ export default function FounderNotaryPage() {
     eoInsuranceExpirationDate: "",
     digitalSealBase64: null,
     digitalSignatureBase64: null,
-  });
+  };
+  const [draft, setDraft] = useState<Partial<NotaryConfig> | null>(null);
 
   // Fetch notary config
   const { data: config, isLoading: configLoading } = useQuery({
@@ -256,9 +258,10 @@ export default function FounderNotaryPage() {
       const { data } = await api.post("/founder-notary/config", configData);
       return data;
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       toast.success("Notary configuration saved successfully");
-      queryClient.invalidateQueries({ queryKey: ["founder-notary-config"] });
+      await queryClient.invalidateQueries({ queryKey: ["founder-notary-config"] });
+      setDraft(null);
     },
     onError: (errorUnknown: unknown) => {
       const error = apiFailure(errorUnknown);
@@ -266,10 +269,7 @@ export default function FounderNotaryPage() {
     },
   });
 
-  // Initialize form with existing config
-  useEffect(() => {
-    if (config) {
-      setFormData({
+  const savedForm: Partial<NotaryConfig> = config ? {
         notaryName: config.notaryName || "",
         commissionNumber: config.commissionNumber || "",
         state: config.state || "",
@@ -283,9 +283,11 @@ export default function FounderNotaryPage() {
         eoInsuranceExpirationDate: config.eoInsuranceExpirationDate?.split("T")[0] || "",
         digitalSealBase64: config.digitalSealBase64 || null,
         digitalSignatureBase64: config.digitalSignatureBase64 || null,
-      });
-    }
-  }, [config]);
+  } : emptyForm;
+  const formData = draft ?? savedForm;
+  const setFormData = (update: Partial<NotaryConfig> | ((value: Partial<NotaryConfig>) => Partial<NotaryConfig>)) => {
+    setDraft(previous => typeof update === 'function' ? update(previous ?? savedForm) : update);
+  };
 
   // File to base64 converter
   const convertFileToBase64 = useCallback((file: File): Promise<string> => {
@@ -316,7 +318,7 @@ export default function FounderNotaryPage() {
       const base64 = await convertFileToBase64(file);
       setFormData((prev) => ({ ...prev, digitalSealBase64: base64 }));
       toast.success("Seal image uploaded");
-    } catch (error) {
+    } catch {
       toast.error("Failed to process image");
     }
   };
@@ -340,7 +342,7 @@ export default function FounderNotaryPage() {
       const base64 = await convertFileToBase64(file);
       setFormData((prev) => ({ ...prev, digitalSignatureBase64: base64 }));
       toast.success("Signature image uploaded");
-    } catch (error) {
+    } catch {
       toast.error("Failed to process image");
     }
   };
@@ -705,7 +707,7 @@ export default function FounderNotaryPage() {
                 {formData.digitalSealBase64 ? (
                   <div className="space-y-4">
                     <div className="relative border rounded-lg p-4 bg-muted/50 flex items-center justify-center">
-                      <img
+                      <Image width={400} height={160} unoptimized
                         src={formData.digitalSealBase64}
                         alt="Digital Seal"
                         className="max-h-40 object-contain"
@@ -768,7 +770,7 @@ export default function FounderNotaryPage() {
                 {formData.digitalSignatureBase64 ? (
                   <div className="space-y-4">
                     <div className="relative border rounded-lg p-4 bg-muted/50 flex items-center justify-center">
-                      <img
+                      <Image width={400} height={160} unoptimized
                         src={formData.digitalSignatureBase64}
                         alt="Digital Signature"
                         className="max-h-40 object-contain"

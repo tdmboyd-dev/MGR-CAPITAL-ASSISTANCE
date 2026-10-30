@@ -190,7 +190,6 @@ export default function EmployeeCompliancePage() {
                   {data.trainingProgress.map((module) => {
                     const isComplete = module.status === "COMPLETED";
                     const isInProgress = module.status === "IN_PROGRESS";
-                    const notStarted = module.status === "NOT_STARTED";
 
                     return (
                       <div
