@@ -1,0 +1,12 @@
+{
+  "passed": 7,
+  "checks": [
+    "Warehouse requires current founder and metadata does not disclose original bytes",
+    "Actual saved41 county records returned through authenticated API; invalid pagination rejected",
+    "HTTP email queue is durable, repeat-safe and denies client management",
+    "Missing SMTP returns503 without marking a send attempt or delivery",
+    "Recovery rules API retains unknown deadlines and blocks automatic filing",
+    "Individual recovery list/detail HTTP routes paginate all current work files, retain41Davidson records and deny client access",
+    "Actual rendered docket imports through authenticated HTTP idempotently for11 matching work files; client denied"
+  ]
+}

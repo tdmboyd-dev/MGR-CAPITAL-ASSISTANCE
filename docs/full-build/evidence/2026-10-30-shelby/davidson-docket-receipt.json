@@ -1,0 +1,24 @@
+{
+  "passed": 5,
+  "checks": [
+    "Actual owner-verified official court capture validates227dated event rows against original rendered text",
+    "Wrong court, case header, stale capture, invalid date and misdated real event are rejected",
+    "Target parcel has2sale-confirmation entries;1unscoped claim motion and other-parcel orders do not certify its payment",
+    "Concurrent imports save one source snapshot and one current-authorized docket check per matching work file",
+    "Individual work file reopens with attributed court events and review-required outside status, not a claimed/available assertion"
+  ],
+  "caseNumber": "25-0490-II",
+  "officialCaseId": "83449",
+  "capturedAt": "2026-10-30T04:54:23.539Z",
+  "eventRows": 227,
+  "affectedWorkItems": 11,
+  "snapshotId": "cmvui2yg30002gu0wifna30jo",
+  "sha256": "0fc235521171baa0be1efbd2e43f7ab533510be1df9de8878d6b17eb5925a43b",
+  "targetParcel": "10803019800",
+  "targetParcelEvents": 2,
+  "unscopedClaimMotions": 1,
+  "otherParcelDisbursements": 9,
+  "claimantOrPaymentVerified": false,
+  "method": "Real owner-verified browser session; captured original rendered public docket, then actual isolated PostgreSQL integration",
+  "reopenItemId": "cmvuh9v01005n52wqluaae6nq"
+}

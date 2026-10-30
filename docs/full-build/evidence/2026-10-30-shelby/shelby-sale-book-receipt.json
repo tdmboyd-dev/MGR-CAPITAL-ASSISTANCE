@@ -1,0 +1,25 @@
+{
+  "passed": 12,
+  "checks": [
+    "Actual175page original yields427complete reconciled sections; recording fees are retained without a second deduction",
+    "Alphanumeric parcels, multiple parents, source pages and confirmation-date basis retained without inventing visual qualification",
+    "Two defaulted unsold parcels retain conflicting printed figures instead of becoming available-money leads",
+    "Missing pages, changed money and duplicate parcel identifiers fail the complete-edition checks",
+    "Unknown or changed PDF edition cannot use the qualified adapter",
+    "Actual upload HTTP denies nonfounder and arbitrary path/JSON input",
+    "Actual bounded original-byte HTTP upload saves and deduplicates the admitted source snapshot",
+    "Actual warehouse transaction saves427source records and153research work files without creating customers or engagements",
+    "Zero-figure/unsold records stay in warehouse; positive work files begin on hold and exclude bidder defaults",
+    "Reimport retains work notes/stage and does not duplicate source observations",
+    "Shelby commercial court connection stays unavailable rather than accepting prohibited portal use",
+    "Missing source returns404 and individual work-file HTTP returns original-page provenance and access restriction"
+  ],
+  "snapshotId": "cmvunn92n00039srmfaj7bbjq",
+  "itemId": "cmvunnhp300o19srml31alm54",
+  "recordCount": 427,
+  "workFiles": 153,
+  "historicalPositivePrintedCents": 359390506,
+  "excludedUnsoldPrintedCents": 89240,
+  "sourceHash": "832590aa775b936c1f97d025ca5f572473268c132b26d253bf3c3806fc423e41",
+  "proof": "Actual published sale-book bytes, isolated PostgreSQL/HTTP, synthetic operator; no current balance, claimant, commercial court access or production proof"
+}

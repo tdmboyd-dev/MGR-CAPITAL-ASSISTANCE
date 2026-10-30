@@ -1,0 +1,5 @@
+{
+  "disabledBrowserAccounts": 2,
+  "revokedRefreshTokens": 1,
+  "scope": "Only the exact two synthetic browser accounts from the Shelby cycle; no deletion, owner or customer accounts"
+}

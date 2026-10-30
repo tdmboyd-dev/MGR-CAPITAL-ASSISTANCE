@@ -1,0 +1,8 @@
+{
+  "passed": 3,
+  "checks": [
+    "Fresh process verifies original PDF bytes/hash and427saved source sections",
+    "Page provenance, visual-review flags and multiple-parent relationship survive JSON persistence",
+    "153held research files retain notes, exclude unsold parcels and total359301266historical cents without current-balance certification"
+  ]
+}

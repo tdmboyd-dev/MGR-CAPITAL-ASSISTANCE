@@ -65,6 +65,9 @@ export class CapitalSourceWarehouse {
    if(snapshot.sourceId==='tn-davidson-excess-register') {
     const {parseDavidsonSurplusPdf}=await import('./DavidsonSurplusParser.js');const report=await parseDavidsonSurplusPdf(snapshot.rawBytes);parsed={data:{records:report.records}};
     await db.capitalSourceSnapshot.update({where:{id:snapshotId},data:{sourceDate:new Date(report.sourceDate)}});
+   } else if(snapshot.sourceId==='tn-shelby-sale-book-2202') {
+    const {parseShelby2202Pdf}=await import('./ShelbySaleBookParser.js');const report=await parseShelby2202Pdf(snapshot.rawBytes);parsed={data:{records:report.records}};
+    await db.capitalSourceSnapshot.update({where:{id:snapshotId},data:{sourceDate:new Date(report.sourceDate)}});
    } else {
     let raw:unknown;try{raw=JSON.parse(Buffer.from(snapshot.rawBytes).toString('utf8'));}catch{throw new AppError('Adapter required',422,'This source document needs a qualified format-specific adapter. Original bytes remain saved.');}
     const result=normalizedSchema.safeParse(raw);if(!result.success)throw new AppError('Schema changed',422,'Source does not match the admitted normalized-record format. No rows were imported.');parsed=result;
@@ -82,7 +85,7 @@ export class CapitalSourceWarehouse {
    const recoveryItems=await enrollRecoverySnapshot(db,snapshotId);
    await db.auditLog.create({data:{userId:actorId,action:'SOURCE_ROWS_NORMALIZED',entityType:'SOURCE_SNAPSHOT',entityId:snapshotId,details:{rows:parsed.data.records.length,recoveryItems,format:'MGR_SOURCE_RECORDS_V1',claimantIdentityVerified:false,entitlementVerified:false}}});
    return {snapshotId,recordCount:parsed.data.records.length,recoveryItems,claimantIdentityVerified:false,entitlementVerified:false,casesCreated:0};
-  },{timeout:20000,maxWait:5000});
+  },{timeout:60000,maxWait:5000});
  }
  async list(actorId:string) {await owner(prisma,actorId);return prisma.capitalSourceSnapshot.findMany({select:{id:true,sourceId:true,sourceUrl:true,acquiredAt:true,sourceDate:true,sha256:true,contentType:true,byteLength:true,rightsReference:true,kind:true,_count:{select:{records:true}}},orderBy:{acquiredAt:'desc'},take:100});}
 }

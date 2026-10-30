@@ -1,0 +1,17 @@
+{
+  "sourceURL": "https://www.shelbycountytn.gov/DocumentCenter/View/45087/TX-2024TS2202SaleBook",
+  "bytes": 1877217,
+  "sha256": "832590aa775b936c1f97d025ca5f572473268c132b26d253bf3c3806fc423e41",
+  "directHTTP": 403,
+  "acquired": "Actual official browser file-link download through supported downloadMedia API",
+  "courtRestriction": "Any commercial use of data obtained through the use of this site is strictly prohibited.",
+  "courtNoticeObserved": "Actual Chrome disclaimer before Accept/Decline; not accepted",
+  "requestSent": false,
+  "intermediateIssues": [
+    "Strict parser initially stopped on newline-separated owner fields; repaired without skipping rows",
+    "Two defaulted unsold parcels retain positive printed figures; preserved and excluded from recovery enrollment",
+    "Old tests assumed41total work files and one docket; repaired to validate scoped source/history and actual pagination",
+    "Chrome local file selection was blocked until owner enabled file-URL access; final chooser/upload passed",
+    "Combined shell-authoring command rejected before execution without a specific reason; local changes completed as reviewable file patches; no portal bypass"
+  ]
+}

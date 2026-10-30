@@ -1,5 +1,20 @@
 # Capital Assistance — evidence-based scorecard
 
+## October30 Shelby acquisition and held research continuation
+
+| Defined acceptance scope | Passed / applicable | Limits |
+|---|---|---|
+| Shelby original/edition parser/warehouse/work HTTP+DB |12/12 (100%) |Actual public original; synthetic operator; historical figures only |
+| Source/work fresh-process reopening |3/3 (100%) |No full backup/restore qualification |
+| Actual browser action DB corroboration |3/3 (100%) |Actual upload and note/save/reload; mobile/all-role matrix excluded |
+| Actual record corpus |427sections reconciled;153held work files |155positive printed figures include2defaulted/unsold parcels excluded from enrollment; full visual corrections/current balances unresolved |
+| Davidson/shared regressions |6/6 pipeline;7/7 HTTP;5/5 docket |Retained history and expanded source population; provider/production excluded |
+| Three changed frontend screens / builds |Lint clean; backend/frontend optimized build99entries passed |Prior whole frontend157errors/100warnings remains open |
+| Shelby commercial court integration |Blocked |Explicit commercial-use prohibition; authorized channel/permission needed; no acceptance or bypass |
+| Whole Capital / nationwide coverage |Unassessed |Current handoff queue controls next work |
+
+Evidence: evidence/2026-10-30-shelby/. Current narrative and remaining queue: HANDOFF.md. Earlier dated scope snapshots follow.
+
 ## October30 connected-source and hierarchy continuation
 
 | Defined acceptance scope | Passed / applicable | Limit |

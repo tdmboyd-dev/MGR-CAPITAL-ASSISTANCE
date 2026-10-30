@@ -1,10 +1,67 @@
 # MGR Capital Assistance — authoritative human and AI handoff
 
-Updated October 30, 2026. Repository: https://github.com/tdmboyd-dev/MGR-CAPITAL-ASSISTANCE . Branch: `repair/bottom-up-capital-2026-10-28`. Baseline for the latest continuation: `e4083f163bbc2896492a8e834d04391b7264a2cc`. The final commit containing this handoff is the source checkpoint; inspect Git for its exact hash. Original `master` was preserved at `2c5d717d818041880a92e1f1f42a9cbe255549c4` when this cycle began; recheck before continuing.
+Updated October 30, 2026. Repository: https://github.com/tdmboyd-dev/MGR-CAPITAL-ASSISTANCE . Branch: `repair/bottom-up-capital-2026-10-28`. Baseline for the latest continuation: `7b9e161f0740fbedebb4555db0eed2b54eca6c00`. The final commit containing this handoff is the source checkpoint; inspect Git for its exact hash. Original `master` was preserved at `2c5d717d818041880a92e1f1f42a9cbe255549c4` when this cycle began; recheck before continuing.
 
 This is the single current handoff. Its repair register, evidence and remaining-work register replace stacked old checkpoints and separate repair reports. Historical receipts remain under `docs/full-build/evidence/`; they are supporting proof, not alternative current instructions. WORK-STATE and old setup/TODO entrypoints point here. Do not resume TaxSlayer or Compliance Buddy: the owner explicitly stopped that work and its monitor was deleted.
 
-## Current continuation: connected source window and company hierarchy
+## Current continuation: Memphis / Shelby source acquisition and held research files
+
+October30,2026. Continued from `7b9e161f0740fbedebb4555db0eed2b54eca6c00`. This is the current continuation authority. The dated sections below retain prior evidence; their superseded missing-Shelby-import, source-count and next-action statements are not the current queue. Whole Capital audit/launch completion remains **UNASSESSED**.
+
+### Actual working result
+
+- Acquired the **actual official175page Tax Sale2202PDF** through its public Chrome file-link download. Ordinary direct HTTP still returned403; no challenge, paywall or access restriction was bypassed. Original file size1,877,217bytes, SHA256 `832590aa775b936c1f97d025ca5f572473268c132b26d253bf3c3806fc423e41`. Original bytes are retained in the isolated PostgreSQL warehouse and owner's Downloads. This is a public sale-book source, separate from the restricted commercial-use court portal.
+- Implemented and integrated the exact-edition Shelby parser: **427complete parcel sections**, all bid/tax/commission/printed-excess equations reconcile. Recording fees are separately paid in this edition and must not be subtracted again. Source preserves each printed amount, purchaser separately from historical taxpayer,14character alphanumeric parcel ID, multiple-parent linkage, source pages/excerpt and the stated redemption-period label. No automatic legal deadline is inferred.
+- All427source records remain available, including272zero-figure sections and not-sold records.155sections have positive printed figures totaling359390506cents. Two explicitly say the winning bidder defaulted/property was NOT SOLD while retaining positive figures totaling89240cents. Those two are excluded from recovery enrollment. **153held research work files** carry359301266historical printed cents; this is NOT current funds, recoverable value, claimant entitlement or business revenue. Existing41Davidson work files remain, giving194combined files.
+- Every Shelby work file starts **ON_HOLD**, with `SOURCE_VISUAL_AND_CURRENT_BALANCE_REVIEW_REQUIRED`. The book has visually crossed-out entries, and full175page visual correction qualification is not complete. Extracted arithmetic is not visual or current-balance verification. No customers, permission-to-contact, engagements or cases are created by this import.
+- Added authenticated founder-only original-PDF upload from the browser's file chooser;2MiB/type/source bounds; same bytes deduplicate to one snapshot. Unknown/changed editions stay archived for review and cannot enter this qualified parser. This adapter is specifically the hash-qualified2202edition, not a generic arbitrary sale-book scraper.
+- Actual Chrome file selection/upload -> normalization -> saved427records -> selected source survives reload **passed**. Owner enabled local-file access for the ChatGPT extension after its file-chooser call was blocked. Existing companion permissions were not expanded. Source selection persists through a token-free `snapshotId` page parameter.
+- Opened an actual Shelby parcel work file, saved a truthful research note, and reloaded the exact selected file. The note, ON_HOLD state, original pages172–173, audit and single source observation were corroborated by a separate database process. Work selection now survives reload through `workItemId`; original PDF page links are on each file. First visual checks covered PDF pages1–3and175, not every page.
+
+### Genuine court-access blocker
+
+The county index links to CourtConnect with a trailing slash that breaks its relative frame URLs. The canonical entry without the trailing slash loaded. Its disclaimer, before Accept/Decline, states: **“Any commercial use of data obtained through the use of this site is strictly prohibited.”** No Accept action, commercial court query or acceptance of new terms was performed.
+
+The Shelby adapter now reports `COMMERCIAL_ACCESS_PERMISSION_REQUIRED` and refuses to prepare a commercial source connection. The installed companion remains scoped to Davidson. An authorized county channel or written permission is needed before automated commercial court-status research. A proxy, browser cookie, different endpoint or copied frame URL is not a substitute for permission. The FAQ describes parcel-based case research and says no comprehensive excess-proceeds list or standard claim form is provided; this does not grant commercial portal rights.
+
+Primary sources inspected:
+- Official publication index: https://www.shelbycountytn.gov/330/Tax-Sale-Information
+- Exact original: https://www.shelbycountytn.gov/DocumentCenter/View/45087/TX-2024TS2202SaleBook
+- Official excess-proceeds FAQ: https://www.shelbycountytn.gov/DocumentCenter/View/42034/FAQs-ExcessProceeds
+- Canonical CourtConnect entry, visibly inspected in Chrome: https://chancerydata.shelbycountytn.gov/chweb/ck_public_qry_main.cp_main_idx
+- Disclaimer frame, visibly inspected before acceptance: https://chancerydata.shelbycountytn.gov/docs/disclaim.htm (web reader failed; actual browser displayed it).
+
+### Verification and corrections
+
+Evidence: `docs/full-build/evidence/2026-10-30-shelby/`.
+
+- **12/12** actual local PostgreSQL/HTTP checks: full document reconciliation, alphanumeric/multiple-parent/page/date provenance, unsold conflicts, missing/changed/duplicate data rejection, edition hash, upload access/type bounds, deduplicated original storage,427records/153held work files, no fabricated clients/cases, reimport preserving notes/history, commercial connection refusal, missing-snapshot404 and individual-file provenance.
+- **3/3** separate-process source/work persistence checks; **3/3** independent corroboration of browser-saved note, source pages/audit and one-observation reimport.
+- Actual Chrome original download, enabled file chooser, upload, normalized display, selected-source reload, individual work-file note/save/reload observed. No new console errors in the final work-file observation. Screenshot evidence is retained. Mobile and all-role browser matrices remain unverified.
+- Davidson pipeline **6/6**, shared HTTP boundaries **7/7**, Davidson docket **5/5** passed again. Two earlier tests initially assumed the entire warehouse contained only41files/one docket; expanded data correctly contradicted those assumptions. Tests now check actual pagination/current totals, retain41Davidson records, and verify the particular docket snapshot within retained history. No product guard was weakened.
+- Backend build and optimized frontend build passed;99generation entries. Three changed frontend surfaces lint clean. Existing Jest suite rerun:203passed,16skipped,8suites passed. Prior whole-frontend157errors/100warnings remains the last whole-app snapshot; not cleared or rerun by these targeted checks. Dependency versions unchanged; previous zero production advisories/five low upstream development findings are historical dependency evidence, not a fresh scan.
+
+Publication check: pinned default Gitleaks8.30 found0leaks and0exact private runtime-value matches in the changed/new publishable payload, with no new scan exceptions. This does not scan untouched history.
+
+Only isolated `capital_auth_lab` was written; no schema migration was necessary this cycle. The12check test creates two synthetic staff accounts and disables them in finally; the two exact synthetic browser founder accounts were disabled and1refresh token revoked at closeout. Owned API/frontend listeners stopped; durable original/source/work records retained. Scratch extract/parse scripts were removed from the repository. No claimant outreach, commercial portal acceptance, records request, purchase, paid acquisition, signing, filing, notarial act, settlement or production deployment occurred. The TXT mirror remains exact handoff bytes.
+
+### Current ordered queue
+
+1. Obtain an authorized Shelby source for current balances, pending claims and disbursements. Verify current county recipient before sending the draft below; owner must authorize the send and personally review any agreement, costs or access terms. Meanwhile the existing historical sale-book work remains available.
+2. Complete visual-correction review of all source pages and map corrected/withdrawn records without removing original evidence; benchmark it against the retained427sections and153held files. Keep unknowns on hold; do not equate an absent portal case with no funds.
+3. Qualify additional Shelby sale books as separate editions with acquisition provenance, correction handling, cross-sale history and current-balance reconciliation. Current parser admits2202only. Do not deduplicate a different tax sale merely because the same parcel occurs again without researching the correct sale/court identity.
+4. Continue remaining semantic code audit, whole frontend lint repairs, owner/parent/child action matrix, historical workspace migration and positive setup UI; preserve current economics and newer work.
+5. Finish historical title/claimant identity/authority and permitted contact research, then positive signing, filing, notary, outreach and settlement with real authorized customer/provider/government receipts when customers exist. No customer is required to finish pre-customer data/research software.
+6. Tennessee first; qualify each state/county process and its source rights before enabling national automation. Jurisdiction inventory is not operational national coverage.
+
+Prepared county inquiry (NOT SENT; recipient and owner send authorization pending):
+
+Subject: MGR Capital Assistance — authorized Shelby surplus research data access
+
+We are building a surplus-recovery research system for Shelby County. We reviewed the published sale books and saw the CourtConnect disclaimer prohibiting commercial data use. We have not accepted that restriction for a commercial integration. Please identify an authorized access route or permission process for this use, including any bulk/public-record export or API. We need parcel/sale/case identifiers, currently held excess balances, pending or resolved excess-proceeds claims, disbursement/escheat status and update dates where maintained. Please clarify source coverage, refresh process, lawful internal storage/combination, access for our authorized staff/child companies, automation limits, correction process, agreements and any quoted fees. This inquiry does not approve a purchase, fee or agreement. If another county office handles authorization, please identify the appropriate contact.
+
+
+## Earlier continuation: connected source window and company hierarchy
 
 October30. Continued from `e4083f163bbc2896492a8e834d04391b7264a2cc`; newer source and master preserved. This section supersedes older browser-only manual-capture and missing hierarchy descriptions where specifically repaired. Whole Capital completion remains **UNASSESSED**. The founder authorized installing the local companion and completed its county human check. No customer exists or was contacted.
 

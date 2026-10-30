@@ -57,5 +57,109 @@
       "evidence": "evidence/2026-10-29-native-research/source-reading-ledger.json",
       "followUp": "Read and qualify the remaining source ledger"
     }
-  ]
+  ],
+  "currentCycle": {
+    "date": "2026-10-30",
+    "authority": "HANDOFF.md",
+    "scope": "Shelby historical-source import and held research operations; current balances/commercial court access/full product unfinished",
+    "tasks": [
+      {
+        "id": "CAP-SHELBY-01",
+        "task": "Acquire and hash actual original Shelby2202PDF",
+        "status": "PASS",
+        "evidence": "evidence/2026-10-30-shelby/"
+      },
+      {
+        "id": "CAP-SHELBY-02",
+        "task": "Extract and reconcile all427edition sections",
+        "status": "PASS",
+        "evidence": "evidence/2026-10-30-shelby/"
+      },
+      {
+        "id": "CAP-SHELBY-03",
+        "task": "Preserve alphanumeric and multiple-parent parcel identity",
+        "status": "PASS",
+        "evidence": "evidence/2026-10-30-shelby/"
+      },
+      {
+        "id": "CAP-SHELBY-04",
+        "task": "Exclude defaulted unsold positives from recovery enrollment",
+        "status": "PASS",
+        "evidence": "evidence/2026-10-30-shelby/"
+      },
+      {
+        "id": "CAP-SHELBY-05",
+        "task": "Retain427source records and153held research files without clients/cases",
+        "status": "PASS",
+        "evidence": "evidence/2026-10-30-shelby/"
+      },
+      {
+        "id": "CAP-SHELBY-06",
+        "task": "Authenticated bounded upload and original-byte deduplication",
+        "status": "PASS",
+        "evidence": "evidence/2026-10-30-shelby/"
+      },
+      {
+        "id": "CAP-SHELBY-07",
+        "task": "Preserve notes/history across repeated normalization",
+        "status": "PASS",
+        "evidence": "evidence/2026-10-30-shelby/"
+      },
+      {
+        "id": "CAP-SHELBY-08",
+        "task": "Complete Chrome file chooser/upload and selected-source reopening",
+        "status": "PASS",
+        "evidence": "evidence/2026-10-30-shelby/"
+      },
+      {
+        "id": "CAP-SHELBY-09",
+        "task": "Complete work-file note/save/reload and separate DB corroboration",
+        "status": "PASS",
+        "evidence": "evidence/2026-10-30-shelby/"
+      },
+      {
+        "id": "CAP-SHELBY-10",
+        "task": "Expose original page provenance and current-balance warnings",
+        "status": "PASS",
+        "evidence": "evidence/2026-10-30-shelby/"
+      },
+      {
+        "id": "CAP-SHELBY-11",
+        "task": "Block commercial court connection pending authorized access",
+        "status": "PASS",
+        "evidence": "evidence/2026-10-30-shelby/"
+      },
+      {
+        "id": "CAP-SHELBY-12",
+        "task": "Return404for missing source rather than empty success",
+        "status": "PASS",
+        "evidence": "evidence/2026-10-30-shelby/"
+      },
+      {
+        "id": "CAP-SHELBY-13",
+        "task": "Repair regression tests for multiple counties and retained docket history",
+        "status": "PASS",
+        "evidence": "evidence/2026-10-30-shelby/"
+      },
+      {
+        "id": "CAP-SHELBY-14",
+        "task": "Pass builds,targeted lint,Davidson/shared regressions and203Jest tests",
+        "status": "PASS",
+        "evidence": "evidence/2026-10-30-shelby/"
+      },
+      {
+        "id": "CAP-SHELBY-15",
+        "task": "Consolidate current handoff,scorecard,reading evidence and exact TXT",
+        "status": "PASS",
+        "evidence": "evidence/2026-10-30-shelby/"
+      },
+      {
+        "id": "CAP-SHELBY-ACCESS",
+        "task": "Authorized commercial current-court data channel",
+        "status": "BLOCKED",
+        "reason": "Portal expressly prohibits commercial use; no terms accepted or request sent",
+        "next": "Owner-approved county inquiry or authorized alternative; draft in HANDOFF"
+      }
+    ]
+  }
 }

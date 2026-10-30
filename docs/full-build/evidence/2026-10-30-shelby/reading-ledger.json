@@ -1,0 +1,82 @@
+{
+  "wholeRepositoryAudit": "UNFINISHED",
+  "pdfScope": "All175pages machine extracted and427sections reconciled; only pages1-3and175visually inspected; all records retain visual-review requirement",
+  "handbook": "Repository MGR-BEAST-PACK read through end during this continuation",
+  "files": [
+    {
+      "path": "backend/src/services/ShelbySaleBookParser.ts",
+      "sha256": "ec29410a8996124b47f175db171e8b304e0887a36c502de4015bfc8af27f1b76",
+      "status": "FULL_CURRENT_SCOPE_READ_OR_AUTHORED"
+    },
+    {
+      "path": "backend/src/services/CapitalSourceWarehouse.ts",
+      "sha256": "bbff5a5012aff23d787f97a26b912186cd0c9d5a16bc6419ba8e64ed89d26a67",
+      "status": "FULL_CURRENT_SCOPE_READ_OR_AUTHORED"
+    },
+    {
+      "path": "backend/src/services/CapitalRecoveryPipeline.ts",
+      "sha256": "eb5896cba563971ca6ee31eb3911228850fe4debf40ce729c340e419e7cb4d75",
+      "status": "FULL_CURRENT_SCOPE_READ_OR_AUTHORED"
+    },
+    {
+      "path": "backend/src/services/GovernmentSourceService.ts",
+      "sha256": "efb1bbbdc3ffc72ed717c45c5f05e68fbc43996130b565e70976457f2005b300",
+      "status": "FULL_CURRENT_SCOPE_READ_OR_AUTHORED"
+    },
+    {
+      "path": "backend/src/services/CapitalSourceConnections.ts",
+      "sha256": "7dfc9806b1edba78f8a45002ca712bc035f9f515437a347a7135bb2515679dd4",
+      "status": "FULL_CURRENT_SCOPE_READ_OR_AUTHORED"
+    },
+    {
+      "path": "backend/tests/shelby-sale-book-postgres.ts",
+      "sha256": "ca7d78602172b52f6fcf708b7293264b5c3944fbd473ea94b06bb192b17a5cbd",
+      "status": "FULL_CURRENT_SCOPE_READ_OR_AUTHORED"
+    },
+    {
+      "path": "backend/tests/shelby-sale-book-reopen.ts",
+      "sha256": "c3385324be01c98f52dcc638e552802c25ad9b23722265bbefcf468f8614a580",
+      "status": "FULL_CURRENT_SCOPE_READ_OR_AUTHORED"
+    },
+    {
+      "path": "backend/tests/shelby-browser-reopen.ts",
+      "sha256": "902faf75ba5ca981200b0db9827299f85c9dda250682f8bcc9e760ba353336b2",
+      "status": "FULL_CURRENT_SCOPE_READ_OR_AUTHORED"
+    },
+    {
+      "path": "backend/tests/shelby-cycle-cleanup.ts",
+      "sha256": "cf6dbc757bcc36e271bc1009626e8b51aa67dd9c2577ec28f93d9efdf3176698",
+      "status": "FULL_CURRENT_SCOPE_READ_OR_AUTHORED"
+    },
+    {
+      "path": "backend/tests/owned-systems-http.ts",
+      "sha256": "5b64d4986078eeecb096d046da4b72de3e534770d195e009b3e261f244313c19",
+      "status": "FULL_CURRENT_SCOPE_READ_OR_AUTHORED"
+    },
+    {
+      "path": "backend/tests/davidson-docket-postgres.ts",
+      "sha256": "16b6ac4d023c2875fb893e82eed95f4473760dcc65397985093a72e7098e44c4",
+      "status": "FULL_CURRENT_SCOPE_READ_OR_AUTHORED"
+    },
+    {
+      "path": "frontend/app/founder/source-warehouse/page.tsx",
+      "sha256": "53592b23a04b010654c11d18d9030ff9274fe579286b9f173609a0c4363b33f0",
+      "status": "FULL_CURRENT_SCOPE_READ_OR_AUTHORED"
+    },
+    {
+      "path": "frontend/app/founder/recovery-pipeline/page.tsx",
+      "sha256": "d38a8cae1142fa51bf375985f83302bd07bb272fc0f4476b6622c1666c7d32bc",
+      "status": "FULL_CURRENT_SCOPE_READ_OR_AUTHORED"
+    },
+    {
+      "path": "backend/src/routes/claimantResearch.ts",
+      "sha256": "b76d7fdca66f730403770eaade2f82f1d301f0d6779a11364169fa60dc5f55b0",
+      "status": "PARTIAL_MODIFIED_PATHS_ONLY"
+    },
+    {
+      "path": "frontend/app/source-connections/page.tsx",
+      "sha256": "39e2da38cafc7d757bf83ada2d4456a1f5f7f90a776e7e6625639be95d1ef4ee",
+      "status": "PARTIAL_MODIFIED_PATHS_ONLY"
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "passed": 3,
+  "checks": [
+    "Fresh process corroborates actual browser-saved held work-file note and audit",
+    "Saved work file retains original PDF pages172and173 without availability certification",
+    "Actual repeated browser import retains one source observation per work item"
+  ],
+  "itemId": "cmvunnjiq010p9srmpbwz5f0h",
+  "sourceRecordId": "cmvunnhjt00no9srmqqojw3s1",
+  "parcelNumber": "D0255V0D000960",
+  "stage": "ON_HOLD",
+  "sourcePages": [
+    172,
+    173
+  ],
+  "proof": "Actual Chrome file chooser/upload, selected snapshot reload, work-file note/save/reload and isolated database corroboration; public source, synthetic operator, no customer engagement"
+}
