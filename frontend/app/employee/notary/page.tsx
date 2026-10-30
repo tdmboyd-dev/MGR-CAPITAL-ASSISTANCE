@@ -1,38 +1,38 @@
 "use client";
 
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { api } from "@/lib/api";
-import { useAuth } from "@/hooks/useAuth";
-import Link from "next/link";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { SkeletonList } from "@/components/ui/skeleton";
-import { formatCurrency, formatDateTime } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 import {
-  Award,
-  DollarSign,
-  Clock,
-  Star,
-  Video,
-  Calendar,
-  CheckCircle,
-  AlertCircle,
-  Zap,
-  Bot,
-  ArrowRight,
-  Play,
-  History,
-  Briefcase,
-  TrendingUp,
-  Shield,
+Card,
+CardContent,
+CardDescription,
+CardHeader,
+CardTitle,
+} from "@/components/ui/card";
+import { SkeletonList } from "@/components/ui/skeleton";
+import { useAuth } from "@/hooks/useAuth";
+import { api } from "@/lib/api";
+import { formatCurrency,formatDateTime } from "@/lib/utils";
+import { useMutation,useQuery,useQueryClient } from "@tanstack/react-query";
+import {
+AlertCircle,
+ArrowRight,
+Award,
+Bot,
+Briefcase,
+Calendar,
+CheckCircle,
+Clock,
+DollarSign,
+History,
+Play,
+Shield,
+Star,
+TrendingUp,
+Video,
+Zap,
 } from "lucide-react";
+import Link from "next/link";
 import { useState } from "react";
 
 // Tier badge colors
@@ -55,7 +55,7 @@ const SESSION_STATUS_COLORS: Record<string, string> = {
 };
 
 // Application status display
-const APPLICATION_STATUS: Record<string, { label: string; color: string; icon: any }> = {
+const APPLICATION_STATUS: Record<string, { label: string; color: string; icon: import("lucide-react").LucideIcon }> = {
   pending: { label: "Pending Review", color: "bg-yellow-500", icon: Clock },
   training_required: { label: "Training Required", color: "bg-blue-500", icon: Award },
   background_check: { label: "Background Check", color: "bg-purple-500", icon: Shield },

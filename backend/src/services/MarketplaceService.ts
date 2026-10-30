@@ -53,7 +53,7 @@ export class MarketplaceService {
     const id = `listing_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
     // Generate escrow account for holding NFT during sale
-    const escrowKeypair = Keypair.generate();
+    const escrowKeypair = await Keypair.generate();
 
     const listing: Listing = {
       id,

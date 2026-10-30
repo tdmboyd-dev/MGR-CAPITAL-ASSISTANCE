@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { toast } from "sonner";
-import { WifiOff, Wifi } from "lucide-react";
 import { useServiceWorker } from "@/hooks/useServiceWorker";
+import { Wifi,WifiOff } from "lucide-react";
+import { useEffect,useState } from "react";
+import { toast } from "sonner";
 
 export function OfflineHandler() {
   useServiceWorker();

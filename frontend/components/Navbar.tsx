@@ -1,13 +1,12 @@
 "use client";
 
-import { Moon, Sun, LogOut, Menu, X } from "lucide-react";
-import { useAuth } from "@/hooks/useAuth";
-import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { AiSearchBar } from "@/components/AiSearchBar";
 import { GlobalSearchBar } from "@/components/GlobalSearchBar";
-import { NotificationBell } from "@/components/NotificationBell";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import { NotificationBell } from "@/components/NotificationBell";
+import { Avatar,AvatarFallback } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import { useAuth } from "@/hooks/useAuth";
+import { LogOut,Menu,Moon,Sun,X } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 interface NavbarProps {

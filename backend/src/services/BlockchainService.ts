@@ -12,7 +12,7 @@
  * REAL PRICE FEED: Uses CoinGecko API for live ETH/USD conversion
  */
 
-import Web3 from "web3";
+import { JsonRpcProvider, Wallet, isAddress, parseEther, formatEther, formatUnits } from "ethers";
 import { LedgerEntryType, LedgerEntryStatus } from "@prisma/client";
 import { config } from "../config/env.js";
 import { logger } from "../utils/logger.js";
@@ -63,7 +63,7 @@ interface PayoutOptions {
 }
 
 class BlockchainService {
-  private web3: any;
+  private provider: JsonRpcProvider;
   private isEnabled: boolean;
   private network: string;
   private isMainnet: boolean;
@@ -74,7 +74,7 @@ class BlockchainService {
 
     // Select RPC URL based on network
     const rpcUrl = config.ethereumRpcUrl || RPC_URLS[this.network] || RPC_URLS.sepolia;
-    this.web3 = new (Web3 as any)(rpcUrl);
+    this.provider = new JsonRpcProvider(rpcUrl);
     this.isEnabled = !!config.ethereumPrivateKey && !!config.ethereumWalletAddress;
 
     if (!this.isEnabled) {
@@ -196,7 +196,7 @@ class BlockchainService {
     }
 
     // Validate address
-    if (!this.web3.utils.isAddress(recipientAddress)) {
+    if (!isAddress(recipientAddress)) {
       return {
         success: false,
         error: "Invalid Ethereum address",
@@ -216,7 +216,7 @@ class BlockchainService {
         };
       }
 
-      const amountWei = this.web3.utils.toWei(ethAmount.toFixed(18), "ether");
+      const amountWei = parseEther(ethAmount.toFixed(18));
 
       logger.info('Preparing ETH payout', {
         amountCents,
@@ -230,21 +230,17 @@ class BlockchainService {
         from: config.ethereumWalletAddress!,
         to: recipientAddress,
         value: amountWei,
-        gas: 21000,
-        gasPrice: await this.web3.eth.getGasPrice(),
+        gasLimit: 21000,
+        gasPrice: (await this.provider.getFeeData()).gasPrice,
       };
 
-      // Sign and send transaction
-      const signedTx = await this.web3.eth.accounts.signTransaction(
-        tx,
-        config.ethereumPrivateKey!
-      );
-
-      const receipt = await this.web3.eth.sendSignedTransaction(
-        signedTx.rawTransaction!
-      );
-
-      const txHash = receipt.transactionHash as string;
+      // Keep signing and broadcast behind the configured wallet; constructing the service sends nothing.
+      const wallet = new Wallet(config.ethereumPrivateKey!, this.provider);
+      if (wallet.address.toLowerCase() !== config.ethereumWalletAddress!.toLowerCase()) throw new Error('Configured wallet address does not match its signing key');
+      const submitted = await wallet.sendTransaction(tx);
+      const receipt = await submitted.wait(1, 120000);
+      if (!receipt || receipt.status !== 1) throw new Error('Blockchain settlement was not confirmed');
+      const txHash = receipt.hash;
 
       // Create ledger entry for the payout
       const ledgerEntry = await prisma.ledgerEntry.create({
@@ -320,8 +316,8 @@ class BlockchainService {
     if (!this.isEnabled) return null;
 
     try {
-      const balanceWei = await this.web3.eth.getBalance(config.ethereumWalletAddress!);
-      const balanceEth = this.web3.utils.fromWei(balanceWei, "ether");
+      const balanceWei = await this.provider.getBalance(config.ethereumWalletAddress!);
+      const balanceEth = formatEther(balanceWei);
       return { balanceEth, balanceWei: balanceWei.toString() };
     } catch (error: any) {
       logger.error("BlockchainService getBalance error:", { error: error?.message });
@@ -338,14 +334,14 @@ class BlockchainService {
     status?: boolean;
   }> {
     try {
-      const receipt = await this.web3.eth.getTransactionReceipt(txHash);
+      const receipt = await this.provider.getTransactionReceipt(txHash);
       if (!receipt) {
         return { confirmed: false };
       }
       return {
         confirmed: true,
         blockNumber: Number(receipt.blockNumber),
-        status: receipt.status,
+        status: receipt.status === 1,
       };
     } catch (error: any) {
       logger.error("BlockchainService verifyTransaction error:", { error: error?.message });
@@ -358,8 +354,8 @@ class BlockchainService {
    */
   async getGasPrice(): Promise<string> {
     try {
-      const gasPrice = await this.web3.eth.getGasPrice();
-      return this.web3.utils.fromWei(gasPrice, "gwei") + " gwei";
+      const gasPrice = (await this.provider.getFeeData()).gasPrice;
+      return gasPrice === null ? "unknown" : formatUnits(gasPrice, "gwei") + " gwei";
     } catch (error) {
       return "unknown";
     }

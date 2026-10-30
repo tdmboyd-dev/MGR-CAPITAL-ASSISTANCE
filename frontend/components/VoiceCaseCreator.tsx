@@ -1,29 +1,31 @@
 "use client";
+import { useSpeechAvailable } from '@/hooks/useSpeechAvailable';
+import type { BrowserSpeechRecognition } from '@/types/browser-speech';
 
-import { useState, useRef, useEffect } from "react";
-import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { CaseIntakeForm } from "@/components/CaseIntakeForm";
 import { Badge } from "@/components/ui/badge";
-import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
+import { Card,CardContent,CardHeader,CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { CaseIntakeForm } from "@/components/CaseIntakeForm";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+Select,
+SelectContent,
+SelectItem,
+SelectTrigger,
+SelectValue,
 } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import {
-  Mic,
-  MicOff,
-  FileText,
-  Loader2,
-  Sparkles,
-  Volume2,
+FileText,
+Loader2,
+Mic,
+MicOff,
+Sparkles,
+Volume2,
 } from "lucide-react";
+import { useEffect,useRef,useState } from "react";
+import { toast } from "sonner";
 
 interface SpeechRecognitionEvent {
   results: SpeechRecognitionResultList;
@@ -52,18 +54,18 @@ export default function VoiceCaseCreator() {
   const [extractedData, setExtractedData] = useState<ExtractedCaseData | null>(
     null
   );
-  const [isSupported, setIsSupported] = useState(true);
+  const isSupported = useSpeechAvailable();
 
-  const recognitionRef = useRef<any>(null);
+  const recognitionRef = useRef<BrowserSpeechRecognition | null>(null);
+  const requestedListening = useRef(false);
 
   useEffect(() => {
     // Check for browser support
     const SpeechRecognition =
-      (window as any).SpeechRecognition ||
-      (window as any).webkitSpeechRecognition;
+      window.SpeechRecognition ||
+      window.webkitSpeechRecognition;
 
     if (!SpeechRecognition) {
-      setIsSupported(false);
       return;
     }
 
@@ -92,6 +94,7 @@ export default function VoiceCaseCreator() {
     };
 
     recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
+      requestedListening.current = false;
       console.error("Speech recognition error:", event.error);
       if (event.error === "not-allowed") {
         toast.error("Microphone access denied. Please enable it in settings.");
@@ -102,18 +105,20 @@ export default function VoiceCaseCreator() {
     };
 
     recognition.onend = () => {
-      if (listening) {
-        // Restart if still supposed to be listening
-        recognition.start();
+      if (requestedListening.current) {
+        // Restart only while this mounted recorder still owns the request
+        try { recognition.start(); } catch { requestedListening.current = false; setListening(false); }
       }
     };
 
     recognitionRef.current = recognition;
 
     return () => {
-      recognition.stop();
+      requestedListening.current = false;
+      recognition.onend = null;
+      recognition.abort();
     };
-  }, [listening]);
+  }, []);
 
   const startListening = () => {
     if (!recognitionRef.current) {
@@ -122,6 +127,7 @@ export default function VoiceCaseCreator() {
     }
 
     try {
+      requestedListening.current = true;
       recognitionRef.current.start();
       setListening(true);
       setTranscript("");
@@ -129,12 +135,15 @@ export default function VoiceCaseCreator() {
       setExtractedData(null);
       toast.success("Listening... Speak now");
     } catch (error) {
+      requestedListening.current = false;
+      setListening(false);
       toast.error("Failed to start voice recognition");
     }
   };
 
   const stopListening = () => {
     if (recognitionRef.current) {
+      requestedListening.current = false;
       recognitionRef.current.stop();
     }
     setListening(false);
@@ -327,8 +336,8 @@ export default function VoiceCaseCreator() {
                 <Label htmlFor="priority">Priority</Label>
                 <Select
                   value={extractedData.priority}
-                  onValueChange={(value: any) =>
-                    setExtractedData({ ...extractedData, priority: value })
+                  onValueChange={(value) =>
+                    ["LOW","MEDIUM","HIGH","URGENT"].includes(value) && setExtractedData({ ...extractedData, priority: value as ExtractedCaseData["priority"] })
                   }
                 >
                   <SelectTrigger>

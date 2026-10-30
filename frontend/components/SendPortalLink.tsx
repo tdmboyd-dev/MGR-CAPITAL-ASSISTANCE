@@ -1,21 +1,21 @@
 "use client";
+import { apiFailure } from "@/lib/apiFailure";
 
-import { useState } from "react";
 import { api } from "@/lib/api";
 import {
-  Link2,
-  Mail,
-  MessageSquare,
-  Copy,
-  Check,
-  ExternalLink,
-  Clock,
-  Shield,
-  Send,
-  Loader2,
-  Settings,
-  X,
+Check,
+Clock,
+Copy,
+ExternalLink,
+Link2,
+Loader2,
+Mail,
+MessageSquare,
+Settings,
+Shield,
+X
 } from "lucide-react";
+import { useState } from "react";
 
 interface SendPortalLinkProps {
   caseId: string;
@@ -67,7 +67,8 @@ export function SendPortalLink({
           setTimeout(() => setSent(false), 3000);
         }
       }
-    } catch (err: any) {
+    } catch (errUnknown: unknown) {
+      const err = apiFailure(errUnknown);
       setError(err.response?.data?.error || "Failed to generate portal link");
     } finally {
       setLoading(false);
@@ -102,7 +103,8 @@ export function SendPortalLink({
       setShowSettings(false);
       // Refresh link data
       await generateLink("copy");
-    } catch (err: any) {
+    } catch (errUnknown: unknown) {
+      const err = apiFailure(errUnknown);
       setError(err.response?.data?.error || "Failed to update settings");
     }
   };

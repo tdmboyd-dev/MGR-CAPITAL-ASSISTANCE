@@ -1,0 +1,24 @@
+{
+  "passed": 13,
+  "checks": [
+    "Concurrent repeated email key creates one durable job",
+    "Changed request, unauthorized actor and header injection rejected",
+    "Actual owned SMTP transaction accepted once under competing workers; saved receipt is ACCEPTED, not delivered",
+    "Accepted email is not automatically resent",
+    "Actual SMTP550 is permanent failure",
+    "Actual SMTP451 schedules bounded retry",
+    "Lost SMTP acknowledgement becomes UNKNOWN and is not resent",
+    "Expired in-flight worker lease requires reconciliation",
+    "Warehouse snapshot and normalized rows persist idempotently; client access rejected",
+    "Source normalization audit failure rolls back rows",
+    "Actual official Davidson PDF reconciles41 rows to195070522cents, with9 pending-proceeding footnotes",
+    "Amount disagreement and invalid dates reject the entire report",
+    "Actual official county records imported into owned Postgres with original bytes/hash/provenance; no customers or claims created"
+  ],
+  "emailProof": "Actual loopback SMTP protocol; synthetic recipient only, no external delivery proof",
+  "warehouseProof": "Actual official county PDF imported in isolated Postgres; not a current-funds or entitlement certification",
+  "snapshotId": "cmvug1g220024yyb7rnd9d9zs",
+  "reopenEmailId": "cmvuhs2wj0002cdgotbyqb5fa",
+  "publicRecordCount": 41,
+  "reportedTotalCents": 195070522
+}

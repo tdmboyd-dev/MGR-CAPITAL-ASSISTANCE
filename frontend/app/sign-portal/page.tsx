@@ -1,25 +1,24 @@
 "use client";
+import { apiFailure } from "@/lib/apiFailure";
 
-import { useState, useRef, useEffect, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
 import axios from "axios";
+import { AnimatePresence,motion } from "framer-motion";
 import {
-  FileText,
-  CheckCircle2,
-  AlertCircle,
-  ChevronRight,
-  PenTool,
-  Loader2,
-  Shield,
-  Clock,
-  XCircle,
-  User,
-  Upload,
-  HelpCircle,
-  Phone,
-  Mail,
+AlertCircle,
+CheckCircle2,
+ChevronRight,
+Clock,
+FileText,
+HelpCircle,
+Loader2,
+Mail,
+PenTool,
+Phone,
+Shield,
+XCircle
 } from "lucide-react";
+import { useSearchParams } from "next/navigation";
+import { Suspense,useEffect,useRef,useState } from "react";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
@@ -102,7 +101,8 @@ function SignPortalInner() {
         });
         setSignedDocs(alreadySigned);
       }
-    } catch (err: any) {
+    } catch (errUnknown: unknown) {
+      const err = apiFailure(errUnknown);
       if (err.response?.status === 410) {
         setExpired(true);
         setError(err.response.data?.error || "This portal link has expired.");
@@ -179,7 +179,8 @@ function SignPortalInner() {
       if (!unsignedDocs || unsignedDocs.length === 0) {
         setAllDone(true);
       }
-    } catch (err: any) {
+    } catch (errUnknown: unknown) {
+      const err = apiFailure(errUnknown);
       alert(err.response?.data?.error || "Failed to sign document. Please try again.");
     } finally {
       setSigning(false);
@@ -533,7 +534,7 @@ function SignPortalInner() {
               {messageSent ? (
                 <div className="bg-green-50 rounded-lg p-4 text-green-700">
                   <CheckCircle2 className="h-5 w-5 inline mr-2" />
-                  Message sent! We'll get back to you soon.
+                  Message sent! We&apos;ll get back to you soon.
                 </div>
               ) : (
                 <div>

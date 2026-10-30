@@ -6,15 +6,7 @@ import {
 } from '@solana/web3.js';
 import prisma from "../lib/prisma.js";
 
-// SPL Token - dynamically handle different versions
-// @ts-ignore - Version compatibility
-const splToken = require('@solana/spl-token') as any;
-const createMint = splToken.createMint || splToken.default?.createMint;
-const getOrCreateAssociatedTokenAccount = splToken.getOrCreateAssociatedTokenAccount || splToken.default?.getOrCreateAssociatedTokenAccount;
-const mintTo = splToken.mintTo || splToken.default?.mintTo;
-const transfer = splToken.transfer || splToken.default?.transfer;
-const getAccount = splToken.getAccount || splToken.default?.getAccount;
-const TOKEN_PROGRAM_ID = splToken.TOKEN_PROGRAM_ID;
+import { createMint, getOrCreateAssociatedTokenAccount, mintTo, getAccount, associatedTokenAddress } from './SolanaTokenAdapter.js';
 
 // Solana connection
 const connection = new Connection(
@@ -36,24 +28,17 @@ const connection = new Connection(
  * 3. Set SOLANA_PRIVATE_KEY in env
  */
 export class TokenomicsService {
-  private wallet: Keypair;
+  private walletPromise: Promise<Keypair> | null = null;
   private mintAddress: PublicKey | null = null;
-
-  constructor() {
-    // Load wallet from environment
-    const privateKeyString = process.env.SOLANA_PRIVATE_KEY;
-    if (privateKeyString) {
-      try {
-        const privateKey = JSON.parse(privateKeyString);
-        this.wallet = Keypair.fromSecretKey(Uint8Array.from(privateKey));
-      } catch {
-        console.warn('[Tokenomics] Invalid private key, using generated wallet');
-        this.wallet = Keypair.generate();
-      }
-    } else {
-      console.warn('[Tokenomics] No private key set, using generated wallet');
-      this.wallet = Keypair.generate();
+  private async getWallet(): Promise<Keypair> {
+    const secret = process.env.SOLANA_PRIVATE_KEY;
+    if (!secret) throw new Error('Solana signing wallet is not configured');
+    if (!this.walletPromise) {
+      const parsed: unknown = JSON.parse(secret);
+      if (!Array.isArray(parsed) || parsed.length !== 64 || !parsed.every(value => Number.isInteger(value) && value >= 0 && value <= 255)) throw new Error('Invalid Solana signing wallet');
+      this.walletPromise = Keypair.fromSecretKey(Uint8Array.from(parsed));
     }
+    return this.walletPromise;
   }
 
   /**
@@ -63,9 +48,9 @@ export class TokenomicsService {
     try {
       const mint = await createMint(
         connection,
-        this.wallet,           // Payer
-        this.wallet.publicKey, // Mint authority
-        this.wallet.publicKey, // Freeze authority
+        await this.getWallet(),           // Payer
+        (await this.getWallet()).publicKey, // Mint authority
+        (await this.getWallet()).publicKey, // Freeze authority
         9                      // 9 decimals (standard)
       );
 
@@ -122,7 +107,7 @@ export class TokenomicsService {
       // Get or create user's token account
       const tokenAccount = await getOrCreateAssociatedTokenAccount(
         connection,
-        this.wallet,
+        await this.getWallet(),
         mint,
         userPubkey
       );
@@ -132,10 +117,10 @@ export class TokenomicsService {
 
       const signature = await mintTo(
         connection,
-        this.wallet,
+        await this.getWallet(),
         mint,
         tokenAccount.address,
-        this.wallet,
+        await this.getWallet(),
         tokenAmount
       );
 
@@ -200,14 +185,8 @@ export class TokenomicsService {
       const mint = await this.getMintAddress();
       const userPubkey = new PublicKey(userWalletAddress);
 
-      const tokenAccount = await getOrCreateAssociatedTokenAccount(
-        connection,
-        this.wallet,
-        mint,
-        userPubkey
-      );
-
-      const account = await getAccount(connection, tokenAccount.address);
+      const address = await associatedTokenAddress(mint,userPubkey);
+      const account = await getAccount(connection,address);
       return Number(account.amount) / 1e9; // Convert from base units
     } catch {
       return 0;

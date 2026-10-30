@@ -1,10 +1,10 @@
 'use client'
 
-import { motion } from 'framer-motion'
-import { Trophy, Star, BadgeCheck, Target, Zap, Award, Gift, TrendingUp } from 'lucide-react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Progress } from '@/components/ui/progress'
 import { Badge } from '@/components/ui/badge'
+import { Card,CardContent } from '@/components/ui/card'
+import { Progress } from '@/components/ui/progress'
+import { motion } from 'framer-motion'
+import { Award,BadgeCheck,Gift,Star,Target,TrendingUp,Trophy,Zap } from 'lucide-react'
 
 interface GamifiedClientProgressProps {
   progress: number // 0-100
@@ -28,7 +28,7 @@ const LEVELS = [
   { name: 'Legend', min: 4, color: 'from-yellow-400 to-amber-500' },
 ]
 
-const BADGE_ICONS: Record<string, any> = {
+const BADGE_ICONS: Record<string, import("lucide-react").LucideIcon> = {
   'quick-start': Zap,
   'document-master': BadgeCheck,
   'early-bird': Star,
@@ -217,9 +217,9 @@ export default function GamifiedClientProgress({
           <div className="flex items-center gap-3">
             <TrendingUp className="h-8 w-8" />
             <div>
-              <p className="font-semibold">You're making great progress!</p>
+              <p className="font-semibold">You&apos;re making great progress!</p>
               <p className="text-sm opacity-90">
-                Complete the next milestone to unlock the "Milestone Master" badge.
+                Complete the next milestone to unlock the &quot;Milestone Master&quot; badge.
               </p>
             </div>
           </div>

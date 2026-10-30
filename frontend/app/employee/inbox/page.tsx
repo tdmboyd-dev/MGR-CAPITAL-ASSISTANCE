@@ -1,51 +1,49 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { api } from "@/lib/api";
-import {
-  Inbox,
-  Send,
-  FileEdit,
-  Trash2,
-  AlertTriangle,
-  Search,
-  RefreshCw,
-  Star,
-  StarOff,
-  Mail,
-  MailOpen,
-  Reply,
-  Forward,
-  MoreHorizontal,
-  Plus,
-  ChevronLeft,
-  ChevronRight,
-  Paperclip,
-  User,
-} from "lucide-react";
-import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { EmailComposer } from "@/components/EmailComposer";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+Card,
+CardContent,
+CardHeader
+} from "@/components/ui/card";
+import {
+DropdownMenu,
+DropdownMenuContent,
+DropdownMenuItem,
+DropdownMenuSeparator,
+DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
-import { EmptyState } from "@/components/ui/empty-state";
-import { EmailComposer } from "@/components/EmailComposer";
+import { api } from "@/lib/api";
+import { cn,sanitizeHtml } from "@/lib/utils";
+import { useMutation,useQuery,useQueryClient } from "@tanstack/react-query";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { cn, sanitizeHtml } from "@/lib/utils";
+ChevronLeft,
+ChevronRight,
+FileEdit,
+Forward,
+Inbox,
+Mail,
+MailOpen,
+MoreHorizontal,
+Paperclip,
+Plus,
+RefreshCw,
+Reply,
+Search,
+Send,
+Star,
+StarOff,
+Trash2,
+User
+} from "lucide-react";
+import { useEffect,useState } from "react";
+import { toast } from "sonner";
 
 interface Email {
   id: string;

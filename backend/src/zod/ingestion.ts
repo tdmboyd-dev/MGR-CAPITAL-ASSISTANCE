@@ -40,7 +40,7 @@ export const TransformationRuleSchema = z.object({
     "calculate",
     "lookup",
   ]),
-  params: z.record(z.unknown()).optional(),
+  params: z.record(z.string(), z.unknown()).optional(),
 });
 
 /**
@@ -190,7 +190,7 @@ export const DEFAULT_INGESTION_CONFIG: IngestionConfig = {
 /**
  * Raw ingestion data (before parsing)
  */
-export const RawIngestionDataSchema = z.record(z.unknown());
+export const RawIngestionDataSchema = z.record(z.string(), z.unknown());
 
 /**
  * Normalized ingestion data (after parsing)
@@ -206,7 +206,7 @@ export const NormalizedIngestionDataSchema = z.object({
   saleDate: z.string().optional(),
   redemptionDeadline: z.string().optional(),
   propertyClass: z.string().optional(),
-  additionalData: z.record(z.unknown()).optional(),
+  additionalData: z.record(z.string(), z.unknown()).optional(),
 });
 
 export type NormalizedIngestionData = z.infer<typeof NormalizedIngestionDataSchema>;

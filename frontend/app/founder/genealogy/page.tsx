@@ -1,37 +1,38 @@
 'use client'
+import { apiFailure } from "@/lib/apiFailure";
 
-import { useState, useEffect, useRef, useCallback } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { useQuery, useMutation } from '@tanstack/react-query'
-import { api } from '@/lib/api'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Badge } from '@/components/ui/badge'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Textarea } from '@/components/ui/textarea'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-import { toast } from 'sonner'
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card,CardContent,CardHeader,CardTitle } from '@/components/ui/card';
+import { Dialog,DialogContent,DialogHeader,DialogTitle,DialogTrigger } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select,SelectContent,SelectItem,SelectTrigger,SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
+import { api } from '@/lib/api';
+import { useMutation,useQuery } from '@tanstack/react-query';
+import * as d3 from 'd3';
+import { AnimatePresence,motion } from 'framer-motion';
 import {
-  Users,
-  GitBranch,
-  Search,
-  Plus,
-  Download,
-  Brain,
-  UserPlus,
-  Phone,
-  Mail,
-  MapPin,
-  CheckCircle,
-  XCircle,
-  Clock,
-  Sparkles,
-  FileText,
-  RefreshCw
-} from 'lucide-react'
-import * as d3 from 'd3'
+Brain,
+CheckCircle,
+Clock,
+Download,
+FileText,
+GitBranch,
+Mail,
+MapPin,
+Phone,
+Plus,
+RefreshCw,
+Search,
+Sparkles,
+UserPlus,
+Users,
+XCircle
+} from 'lucide-react';
+import { useCallback,useEffect,useRef,useState } from 'react';
+import { toast } from 'sonner';
 
 interface FamilyMember {
   id: string
@@ -191,7 +192,8 @@ export default function GenealogyPage() {
       setShowNewTreeDialog(false)
       setNewTreeForm({ caseId: '', decedentName: '', deathDate: '', state: '', knownRelatives: '', lastKnownAddress: '' })
     },
-    onError: (err: any) => {
+    onError: (errUnknown: unknown) => {
+      const err = apiFailure(errUnknown);
       toast.error(err.message || 'Failed to generate tree')
     }
   })

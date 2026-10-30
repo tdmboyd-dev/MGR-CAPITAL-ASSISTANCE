@@ -1,0 +1,26 @@
+[
+  {
+    "name": "offline-privacy",
+    "exitCode": 0
+  },
+  {
+    "name": "record-parsing",
+    "exitCode": 0
+  },
+  {
+    "name": "native-boundaries",
+    "exitCode": 0
+  },
+  {
+    "name": "payout-planning",
+    "exitCode": 0
+  },
+  {
+    "name": "payment-truth",
+    "exitCode": 0
+  },
+  {
+    "name": "jest",
+    "exitCode": 0
+  }
+]

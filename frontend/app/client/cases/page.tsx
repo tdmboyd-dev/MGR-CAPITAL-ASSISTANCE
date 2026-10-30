@@ -1,34 +1,34 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
-import { api } from "@/lib/api";
-import Link from "next/link";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+Card,
+CardContent,
+CardDescription,
+CardHeader,
+CardTitle,
+} from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { SkeletonList } from "@/components/ui/skeleton";
-import { formatCurrency, formatDate } from "@/lib/utils";
+import { api } from "@/lib/api";
+import { formatCurrency,formatDate } from "@/lib/utils";
+import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import {
-  FileText,
-  MapPin,
-  Clock,
-  CheckCircle,
-  DollarSign,
-  AlertCircle,
-  ArrowRight,
-  TrendingUp,
-  Phone,
-  Mail,
-  Heart,
+AlertCircle,
+ArrowRight,
+CheckCircle,
+Clock,
+DollarSign,
+FileText,
+Heart,
+Mail,
+MapPin,
+Phone,
+TrendingUp,
 } from "lucide-react";
+import Link from "next/link";
 
 // Client-friendly status display - using "recovered funds" terminology
 const STATUS_DISPLAY: Record<string, { label: string; color: string; bgColor: string; progress: number }> = {

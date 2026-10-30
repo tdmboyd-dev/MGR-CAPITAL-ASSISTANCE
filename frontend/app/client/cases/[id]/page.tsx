@@ -1,46 +1,43 @@
 "use client";
 
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { api } from "@/lib/api";
-import { useParams, useRouter } from "next/navigation";
-import Link from "next/link";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { DocumentUploader } from "@/components/DocumentUploader";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+Card,
+CardContent,
+CardDescription,
+CardHeader,
+CardTitle,
+} from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
-import { DocumentUploader } from "@/components/DocumentUploader";
-import { formatCurrency, formatDate, formatDateTime } from "@/lib/utils";
-import { motion, AnimatePresence } from "framer-motion";
+import { api } from "@/lib/api";
+import { formatCurrency,formatDate,formatDateTime } from "@/lib/utils";
+import { useQuery } from "@tanstack/react-query";
+import { AnimatePresence,motion } from "framer-motion";
 import {
-  ArrowLeft,
-  MapPin,
-  FileText,
-  Clock,
-  CheckCircle,
-  AlertCircle,
-  DollarSign,
-  Download,
-  Eye,
-  Upload,
-  Phone,
-  Mail,
-  Shield,
-  Calendar,
-  ChevronDown,
-  ChevronUp,
-  Loader2,
-  Home,
-  TrendingUp,
-  Heart,
+AlertCircle,
+ArrowLeft,
+Calendar,
+CheckCircle,
+ChevronDown,
+ChevronUp,
+Clock,
+DollarSign,
+Eye,
+FileText,
+Heart,
+Home,
+Mail,
+Phone,
+Shield,
+TrendingUp,
+Upload
 } from "lucide-react";
+import Link from "next/link";
+import { useParams,useRouter } from "next/navigation";
+import { useState } from "react";
 
 // Client-friendly status display - hide internal terminology
 const STATUS_DISPLAY: Record<string, {

@@ -1,7 +1,9 @@
 # Capital Assistance — current resume checkpoint
 
-October29 Chicago / October30 UTC. Branch `repair/bottom-up-capital-2026-10-28`, repository tdmboyd-dev/MGR-CAPITAL-ASSISTANCE. Current truth, repair register and ordered remaining work: [HANDOFF.md](HANDOFF.md). Explicit acceptance denominators: [SCORECARD.md](docs/full-build/SCORECARD.md).
+October29 Chicago / October30 UTC. Branch repair/bottom-up-capital-2026-10-28, repository tdmboyd-dev/MGR-CAPITAL-ASSISTANCE. Read HANDOFF.md current launch section first; SCORECARD remains evidence-based.
 
-Latest cycle: real case intake and reopening, durable numbering/idempotent creation, atomic state/assignment/edit/inbox, legacy portal/account/document safeguards, expired-session loop and Next16/React19 migration. Actual synthetic API/database checks10/16/12 plus3 fresh-process checks; browser save/status/reload/inbox-read proof. Full audit remains unfinished. Frontend audit0; backend70; whole-frontend lint snapshot283errors/212warnings; new targeted surfaces lint passes. Build/scan/cleanup receipts are beside the named evidence.
+No customers yet; Memphis/Shelby local launch first; Tennessee then qualified national expansion. Actual Davidson PDF41rows/$1,950,705.22 reported, owned original-byte warehouse and individual deduplicated recovery work files are integrated. Real assessor candidates are not historical claimant proof. Owner cleared initial court verification;227 actual docket rows saved against11work files; external outcome remains review-required. The next court search challenged again. Shelby175-page source is admitted but direct original acquisition returned403; no Shelby import claimed. No paid CIA subscription or claimant outreach performed.
 
-Preserve master and newer work. No production/customer schema, funds, filing or claimant contact was changed. No paid provider or autonomous business jobs ran. Test tab/services closed; two exact browser test accounts disabled. Private lab config remains outside Git. Do not resume TaxSlayer/Compliance. See handoff before continuing.
+Production backend audit0; five low development findings remain. Whole frontend lint 157errors/100warnings; no suppression. See current receipts, test/build/cleanup record and exact remaining order in HANDOFF.md. Whole product audit/production readiness remain unassessed.
+
+Preserve newer work/master. Schema applied only to isolated capital_auth_lab. Do not resume TaxSlayer/Compliance. Private config stays outside Git. Current commit is the Git checkpoint containing this file; read Git for hash.

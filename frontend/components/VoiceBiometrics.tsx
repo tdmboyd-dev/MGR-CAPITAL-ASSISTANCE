@@ -1,11 +1,11 @@
 'use client'
 
-import { useState, useRef, useEffect, useCallback } from 'react'
-import { motion } from 'framer-motion'
 import { Button } from '@/components/ui/button'
-import { Mic, CheckCircle, AlertCircle, Loader2, Shield, Volume2, UserCheck } from 'lucide-react'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Card,CardContent,CardDescription,CardHeader,CardTitle } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
+import { motion } from 'framer-motion'
+import { AlertCircle,CheckCircle,Loader2,Mic,Shield,UserCheck,Volume2 } from 'lucide-react'
+import { useCallback,useEffect,useRef,useState } from 'react'
 import { toast } from 'sonner'
 
 interface VoiceBiometricsProps {

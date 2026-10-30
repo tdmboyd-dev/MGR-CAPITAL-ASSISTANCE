@@ -1,12 +1,12 @@
 'use client'
 
-import { useRef, useEffect, useState, useMemo, Suspense } from 'react'
-import { Canvas, useFrame } from '@react-three/fiber'
-import { OrbitControls, Environment, Html, ContactShadows } from '@react-three/drei'
-import * as THREE from 'three'
-import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
-import { Loader2, Volume2, VolumeX, RotateCcw } from 'lucide-react'
+import { ContactShadows,Environment,Html,OrbitControls } from '@react-three/drei'
+import { Canvas,useFrame } from '@react-three/fiber'
+import { AnimatePresence,motion } from 'framer-motion'
+import { Loader2,RotateCcw,Volume2,VolumeX } from 'lucide-react'
+import { Suspense,useEffect,useRef,useState } from 'react'
+import * as THREE from 'three'
 
 type Expression = 'neutral' | 'happy' | 'angry' | 'thinking' | 'surprised' | 'sad' | 'confused' | 'excited'
 

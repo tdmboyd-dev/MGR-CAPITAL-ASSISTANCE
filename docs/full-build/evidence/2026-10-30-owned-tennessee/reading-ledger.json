@@ -1,0 +1,122 @@
+{
+  "scope": "Listed sources authored or semantically read for this cycle; legacy template and uploader inspection were partial. Other SDK, schema, routes and components were partially inspected. Import organization, lint and compiler traversal are not semantic whole-repository reading.",
+  "wholeRepositoryAudit": "UNFINISHED",
+  "files": [
+    {
+      "path": "backend/src/services/CapitalSourceWarehouse.ts",
+      "sha256": "4ad09e528eacffcfb945fa63461b7eaafb3d73c082fc1cf5cf6493e9a80f7c43",
+      "status": "AUTHORED_OR_FULL_SCOPE_READ"
+    },
+    {
+      "path": "backend/src/services/CapitalRecoveryPipeline.ts",
+      "sha256": "96e275ab3a335e33a29734db3ac8099ed007a6fef3aba525fb2d7cb07f9a8213",
+      "status": "AUTHORED_OR_FULL_SCOPE_READ"
+    },
+    {
+      "path": "backend/src/services/DavidsonSurplusParser.ts",
+      "sha256": "ddb8c8454015ca12e985118954c302e56f1be44e73b24c8ba4378844ef71b250",
+      "status": "AUTHORED_OR_FULL_SCOPE_READ"
+    },
+    {
+      "path": "backend/src/services/DavidsonOwnerResearch.ts",
+      "sha256": "0ae9b7359c2eb93cf97a26439be8cdc1adba926f036928b1edea4da660513fe2",
+      "status": "AUTHORED_OR_FULL_SCOPE_READ"
+    },
+    {
+      "path": "backend/src/services/RecoveryJurisdictionService.ts",
+      "sha256": "599ea1f875a54d0b91aa3ba6a59aab50626764e0bb5f35bb982004d244a9cf13",
+      "status": "AUTHORED_OR_FULL_SCOPE_READ"
+    },
+    {
+      "path": "backend/src/services/CapitalEmailOutbox.ts",
+      "sha256": "f12db882feab554de1d323b0ac24e899bef395a9baedd4845a69e46f0ecbedfc",
+      "status": "AUTHORED_OR_FULL_SCOPE_READ"
+    },
+    {
+      "path": "backend/src/services/EmailService.ts",
+      "sha256": "4c9aab4111ee13f1cb4da1672fdbeb93fe84a0d71fce319693b09279f49057e5",
+      "status": "PARTIAL_LEGACY_INSPECTION_AND_EDITS"
+    },
+    {
+      "path": "backend/src/services/SolanaTokenAdapter.ts",
+      "sha256": "f669df1885e0aba3b363d9e52f9b1fc1f4a73cef2625b5a27108b4783e36d5f9",
+      "status": "AUTHORED_OR_FULL_SCOPE_READ"
+    },
+    {
+      "path": "backend/src/services/CaseDocumentAccess.ts",
+      "sha256": "67913cfe9883b0a22ddba627c2c205542a964ed908440d027c66b883962c38be",
+      "status": "AUTHORED_OR_FULL_SCOPE_READ"
+    },
+    {
+      "path": "backend/src/routes/documents.ts",
+      "sha256": "0e94b22e92b8587f9eabd7ecdd374dff32eafe532db85385c0741ef9fe5afada",
+      "status": "AUTHORED_OR_FULL_SCOPE_READ"
+    },
+    {
+      "path": "backend/src/routes/capitalEmail.ts",
+      "sha256": "2a9c6a42d2f93830aac8d6cb96200924110dbea6a57e4f3e58b495247d005cb2",
+      "status": "AUTHORED_OR_FULL_SCOPE_READ"
+    },
+    {
+      "path": "backend/src/routes/nftRoutes.ts",
+      "sha256": "6b43ea1cf364c089e60d10c398bff5346b7a0c8d59aadf59d9dad8bbb3ee4b9e",
+      "status": "AUTHORED_OR_FULL_SCOPE_READ"
+    },
+    {
+      "path": "backend/src/services/NFTService.ts",
+      "sha256": "b5bba3f2fca519b40741ce7312b965f312c914cc79d1b67e129cfd45889a790a",
+      "status": "AUTHORED_OR_FULL_SCOPE_READ"
+    },
+    {
+      "path": "frontend/app/founder/source-warehouse/page.tsx",
+      "sha256": "46fb0decc36018cdcb52652c0ddff08c10e13a3f3b9ad8f4dc17a8797fe4891d",
+      "status": "AUTHORED_OR_FULL_SCOPE_READ"
+    },
+    {
+      "path": "frontend/app/founder/recovery-pipeline/page.tsx",
+      "sha256": "5a025fae71ec3dc2742808afd8939fc52dd1d075f6f439b9ae14240799eb6073",
+      "status": "AUTHORED_OR_FULL_SCOPE_READ"
+    },
+    {
+      "path": "frontend/app/founder/recovery-rules/page.tsx",
+      "sha256": "bbd5d281cc2103a6a78d2c2dca4f02b3285c849ed5c87eac59f8b61d141142e3",
+      "status": "AUTHORED_OR_FULL_SCOPE_READ"
+    },
+    {
+      "path": "frontend/app/founder/email-outbox/page.tsx",
+      "sha256": "838312af12bd5e510ca8485cb65bf621ce0fd93208dc24a4d370df6ec640251c",
+      "status": "AUTHORED_OR_FULL_SCOPE_READ"
+    },
+    {
+      "path": "frontend/app/founder/analytics/page.tsx",
+      "sha256": "d6991f5abc5cdef217b8ee92dcaabe32fb267161e41f407b673683f9f387bbf1",
+      "status": "AUTHORED_OR_FULL_SCOPE_READ"
+    },
+    {
+      "path": "frontend/hooks/useNotifications.ts",
+      "sha256": "190f60054d7ea77194bdf58bf685f44818d04e3979223713721418c255541554",
+      "status": "AUTHORED_OR_FULL_SCOPE_READ"
+    },
+    {
+      "path": "frontend/components/DocumentUploader.tsx",
+      "sha256": "0808e679ba3daa576dab15aae1667ab1a9016c50c47246b5621f7bf35deb38d0",
+      "status": "AUTHORED_OR_FULL_SCOPE_READ"
+    },
+    {
+      "path": "frontend/components/ui/document-uploader.tsx",
+      "sha256": "2eaeebdf89e61a7075c9655d5af86a13f8b932ebf7c4bc498b99791459767c7b",
+      "status": "PARTIAL_LEGACY_INSPECTION_AND_EDITS"
+    },
+    {
+      "path": "backend/src/services/DavidsonDocketEvidence.ts",
+      "sha256": "8e2840cc6dfc9c2824e37db5b952a4a626d883287cb280c734f33767051665c1",
+      "status": "AUTHORED_AND_EXECUTED_NAMED_ACCEPTANCE"
+    },
+    {
+      "path": "frontend/components/RecoveryCourtEvidence.tsx",
+      "sha256": "92edf8d1b3d9fe5b68e9c3be13bb70872f92f1b2cbbf25e753874ac1477ce87c",
+      "status": "AUTHORED_AND_EXECUTED_NAMED_ACCEPTANCE"
+    }
+  ],
+  "unreadAddition": "Shelby175-page book: primary excerpt inspected; original download403; full semantic/parser qualification unfinished."
+}

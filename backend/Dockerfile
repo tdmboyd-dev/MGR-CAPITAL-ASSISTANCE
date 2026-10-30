@@ -13,12 +13,12 @@
 # -----------------------------------------------------------------------------
 # Stage 1: Dependencies
 # -----------------------------------------------------------------------------
-FROM node:20-alpine AS deps
+FROM node:24-alpine AS deps
 
 WORKDIR /app
 
 # Install build dependencies for native modules (bcrypt, etc.)
-RUN apk add --no-cache python3 make g++ libc6-compat
+RUN apk add --no-cache python3 make g++ libc6-compat openssl
 
 # Copy package files
 COPY package*.json ./
@@ -33,7 +33,7 @@ RUN npx prisma generate
 # -----------------------------------------------------------------------------
 # Stage 2: Builder
 # -----------------------------------------------------------------------------
-FROM node:20-alpine AS builder
+FROM node:24-alpine AS builder
 
 WORKDIR /app
 
@@ -45,15 +45,15 @@ COPY --from=deps /app/package*.json ./
 COPY . .
 
 # Build TypeScript (if applicable)
-RUN npm run build 2>/dev/null || echo "No build script, using source directly"
+RUN npm run build
 
 # Prune dev dependencies
-RUN npm prune --production
+RUN npm prune --omit=dev
 
 # -----------------------------------------------------------------------------
 # Stage 3: Production Runner
 # -----------------------------------------------------------------------------
-FROM node:20-alpine AS runner
+FROM node:24-alpine AS runner
 
 WORKDIR /app
 
@@ -61,7 +61,7 @@ WORKDIR /app
 RUN apk add --no-cache \
     wget \
     curl \
-    tini \
+    tini openssl \
     && rm -rf /var/cache/apk/*
 
 # Create non-root user for security
@@ -77,7 +77,7 @@ COPY --from=builder --chown=backend:nodejs /app/node_modules ./node_modules
 COPY --from=builder --chown=backend:nodejs /app/package*.json ./
 COPY --from=builder --chown=backend:nodejs /app/prisma ./prisma
 COPY --from=builder --chown=backend:nodejs /app/src ./src
-COPY --from=builder --chown=backend:nodejs /app/dist ./dist 2>/dev/null || true
+COPY --from=builder --chown=backend:nodejs /app/dist ./dist
 
 # Switch to non-root user
 USER backend
@@ -97,4 +97,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD wget --no-verbose --tries=1 --spider http://localhost:4000/health || exit 1
 
 # Start application
-CMD ["node", "--experimental-specifier-resolution=node", "src/server.js"]
+CMD ["node", "dist/server.js"]

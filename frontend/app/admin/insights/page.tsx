@@ -1,20 +1,20 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
-import { api } from "@/lib/api";
 import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
+Card,
+CardContent,
+CardHeader,
+CardTitle,
 } from "@/components/ui/card";
+import { api } from "@/lib/api";
 import { formatCurrency } from "@/lib/utils";
+import { useQuery } from "@tanstack/react-query";
 import {
-  FileText,
-  DollarSign,
-  TrendingUp,
-  Users,
-  BarChart3,
+BarChart3,
+DollarSign,
+FileText,
+TrendingUp,
+Users,
 } from "lucide-react";
 
 export default function AdminInsightsPage() {

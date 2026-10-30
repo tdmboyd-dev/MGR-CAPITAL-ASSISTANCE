@@ -1,3 +1,4 @@
+import { AppError } from '../middleware/errorHandler.js';
 /**
  * CountySurplusRequirementsService.ts — MGR CAPITAL ASSISTANCE
  *
@@ -24,7 +25,7 @@ export interface CountyRequirements {
   county: string;
 
   // Notarization requirements
-  notarizationRequired: boolean;
+  notarizationRequired: boolean | null;
   notarizationDetails: string[];
 
   // Forms required
@@ -36,15 +37,15 @@ export interface CountyRequirements {
   }[];
 
   // POA requirements
-  poaRequired: boolean;
+  poaRequired: boolean | null;
   poaDetails: string;
 
   // Heirship requirements (if owner deceased)
-  heirshipAffidavitRequired: boolean;
+  heirshipAffidavitRequired: boolean | null;
   heirshipDetails: string;
 
   // Filing method
-  filingMethod: 'mail' | 'online' | 'in_person' | 'email' | 'multiple';
+  filingMethod: 'mail' | 'online' | 'in_person' | 'email' | 'multiple' | 'unknown';
   filingAddress?: string;
   filingEmail?: string;
   filingPortalUrl?: string;
@@ -69,6 +70,9 @@ export interface CountyRequirements {
   // Notes
   notes: string;
 
+  verificationStatus?: string;
+  autoFileAllowed?: boolean;
+  sourceReferences?: string[];
   // Last verified
   lastVerified?: Date;
   verifiedBy?: string;
@@ -338,7 +342,8 @@ class CountySurplusRequirementsService {
 
     // Check Tennessee first (most detailed)
     if (stateUpper === 'TN' || stateUpper === 'TENNESSEE') {
-      return TENNESSEE_COUNTIES[countyUpper] || this.getDefaultRequirements('TN', countyUpper);
+      const legacy = TENNESSEE_COUNTIES[countyUpper] || this.getDefaultRequirements('TN', countyUpper);
+      return {...legacy, verificationStatus:'LEGACY_CHECKLIST_NOT_QUALIFIED',autoFileAllowed:false,notarizationRequired:null,notarizationDetails:[],poaRequired:null,poaDetails:'Specific authority and representation requirements need source review.',heirshipAffidavitRequired:null,heirshipDetails:'Estate or heir authority must be determined from the actual facts and court requirements.',filingMethod:'unknown',lastVerified:undefined,deadlineType:'varies',deadlineDays:undefined,deadlineNotes:'No one-year sale-date deadline admitted. Review the court proceeding.',formsRequired:[],filingAddress:undefined,notes:'The old checklist is not a verified county requirement. Use the source-specific rules endpoint; Shelby has no standard motion form.',sourceReferences:['https://www.shelbycountytn.gov/DocumentCenter/View/42034/FAQs-ExcessProceeds','https://chanceryclerkandmaster.nashville.gov/forms/']};
     }
 
     // Check other states
@@ -374,7 +379,7 @@ class CountySurplusRequirementsService {
    * Get all Tennessee counties
    */
   getTennesseeCounties(): CountyRequirements[] {
-    return Object.values(TENNESSEE_COUNTIES);
+    return Object.keys(TENNESSEE_COUNTIES).map(county=>this.getRequirements('TN',county)!);
   }
 
   /**
@@ -382,7 +387,7 @@ class CountySurplusRequirementsService {
    */
   getStateDeadlines(): Record<string, { days: number; notes: string }> {
     return {
-      'TN': { days: 365, notes: '1 year from tax sale date' },
+
       'FL': { days: 120, notes: '120 days - very short!' },
       'TX': { days: 730, notes: '2 years from sale' },
       'GA': { days: 365, notes: '1 year from sale' },
@@ -404,6 +409,7 @@ class CountySurplusRequirementsService {
     isExpired: boolean;
     deadlineDate: Date;
   } {
+    if (['TN','TENNESSEE'].includes(state.toUpperCase())) throw new AppError('Deadline review required',409,'A Tennessee claim deadline cannot be computed from the sale date alone. Review the court file and recovery type.');
     const deadlines = this.getStateDeadlines();
     const stateDeadline = deadlines[state.toUpperCase()] || { days: 365 };
 
@@ -427,6 +433,7 @@ class CountySurplusRequirementsService {
    */
   getRequiredDocuments(state: string, county: string, isDeceased: boolean, hasAgent: boolean): string[] {
     const requirements = this.getRequirements(state, county);
+    if (requirements?.verificationStatus==='LEGACY_CHECKLIST_NOT_QUALIFIED') throw new AppError('Checklist review required',409,'The old county checklist was not qualified. Use current court sources before preparing a filing packet.');
     const docs: string[] = [];
 
     // Always needed

@@ -1,71 +1,67 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
-import { toast } from "sonner";
-import {
-  DndContext,
-  DragOverlay,
-  closestCorners,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  DragStartEvent,
-  DragEndEvent,
-  DragOverEvent,
-} from "@dnd-kit/core";
-import {
-  arrayMove,
-  SortableContext,
-  sortableKeyboardCoordinates,
-  verticalListSortingStrategy,
-  useSortable,
-} from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Avatar,AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Card,CardContent,CardHeader,CardTitle } from "@/components/ui/card";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
+Dialog,
+DialogContent,
+DialogHeader,
+DialogTitle
 } from "@/components/ui/dialog";
+import {
+DropdownMenu,
+DropdownMenuContent,
+DropdownMenuItem,
+DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import {
-  Search,
-  Filter,
-  Plus,
-  MoreVertical,
-  Phone,
-  Mail,
-  MapPin,
-  DollarSign,
-  Clock,
-  AlertTriangle,
-  CheckCircle,
-  FileText,
-  Users,
-  TrendingUp,
-  Calendar,
-  Building2,
-  UserPlus,
-  PhoneCall,
-  FileSignature,
-  Gavel,
-  Trophy,
-  Banknote,
+closestCorners,
+DndContext,
+DragEndEvent,
+DragOverEvent,
+DragOverlay,
+DragStartEvent,
+KeyboardSensor,
+PointerSensor,
+useSensor,
+useSensors,
+} from "@dnd-kit/core";
+import {
+SortableContext,
+sortableKeyboardCoordinates,
+useSortable,
+verticalListSortingStrategy
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import {
+AlertTriangle,
+Banknote,
+Building2,
+Calendar,
+Clock,
+DollarSign,
+FileSignature,
+FileText,
+Filter,
+Gavel,
+Mail,
+MapPin,
+MoreVertical,
+Phone,
+PhoneCall,
+Plus,
+Search,
+TrendingUp,
+Trophy,
+UserPlus,
+Users
 } from "lucide-react";
+import { useEffect,useState } from "react";
+import { toast } from "sonner";
 
 // Pipeline stages
 const PIPELINE_STAGES = [

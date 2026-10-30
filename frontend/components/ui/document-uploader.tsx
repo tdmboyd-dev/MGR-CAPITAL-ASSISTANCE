@@ -1,19 +1,21 @@
 "use client";
+import { apiFailure } from "@/lib/apiFailure";
 
-import { useState, useCallback } from "react";
-import { useDropzone } from "react-dropzone";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+Select,
+SelectContent,
+SelectItem,
+SelectTrigger,
+SelectValue,
 } from "@/components/ui/select";
+import { api } from "@/lib/api";
+import { useMutation,useQueryClient } from "@tanstack/react-query";
+import { FileText,Loader2,Upload,X } from "lucide-react";
+import { useCallback,useState } from "react";
+import { useDropzone } from "react-dropzone";
 import { toast } from "sonner";
-import { Upload, X, FileText, Loader2 } from "lucide-react";
+import { z } from "zod";
 
 const DOCUMENT_TYPES = [
   { value: "CLIENT_SERVICE_AGREEMENT", label: "Client Service Agreement" },
@@ -32,9 +34,10 @@ const DOCUMENT_TYPES = [
 interface DocumentUploaderProps {
   caseId: string;
   onSuccess?: () => void;
+  clientOnly?: boolean;
 }
 
-export function DocumentUploader({ caseId, onSuccess }: DocumentUploaderProps) {
+export function DocumentUploader({ caseId, onSuccess, clientOnly = false }: DocumentUploaderProps) {
   const [file, setFile] = useState<File | null>(null);
   const [docType, setDocType] = useState<string>("");
   const queryClient = useQueryClient();
@@ -50,7 +53,7 @@ export function DocumentUploader({ caseId, onSuccess }: DocumentUploaderProps) {
       const { data } = await api.post(`/documents/${caseId}/upload`, formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
-      return data;
+      return z.object({success:z.literal(true),data:z.object({success:z.literal(true)})}).parse(data);
     },
     onSuccess: () => {
       toast.success("Document uploaded successfully");
@@ -60,7 +63,8 @@ export function DocumentUploader({ caseId, onSuccess }: DocumentUploaderProps) {
       queryClient.invalidateQueries({ queryKey: ["case-documents", caseId] });
       onSuccess?.();
     },
-    onError: (error: any) => {
+    onError: (errorUnknown: unknown) => {
+      const error = apiFailure(errorUnknown);
       toast.error(error.response?.data?.error || "Failed to upload document");
     },
   });
@@ -79,7 +83,8 @@ export function DocumentUploader({ caseId, onSuccess }: DocumentUploaderProps) {
       "application/msword": [".doc"],
       "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [".docx"],
     },
-    maxSize: 50 * 1024 * 1024,
+    maxSize: 10 * 1024 * 1024,
+    onDropRejected: () => toast.error('Upload one supported file up to 10 MiB.'),
     multiple: false,
   });
 
@@ -138,7 +143,7 @@ export function DocumentUploader({ caseId, onSuccess }: DocumentUploaderProps) {
               <>
                 <p className="font-medium">Drag & drop a file here</p>
                 <p className="text-sm text-muted-foreground">
-                  or click to browse (PDF, images, Word docs up to 50MB)
+                  or click to browse (PDF, images, Word docs up to 10 MiB)
                 </p>
               </>
             )}
@@ -152,7 +157,7 @@ export function DocumentUploader({ caseId, onSuccess }: DocumentUploaderProps) {
             <SelectValue placeholder="Select document type" />
           </SelectTrigger>
           <SelectContent>
-            {DOCUMENT_TYPES.map((type) => (
+              {DOCUMENT_TYPES.filter(type => !clientOnly || ['CLIENT_SERVICE_AGREEMENT','LIMITED_POA','CLIENT_ID'].includes(type.value)).map((type) => (
               <SelectItem key={type.value} value={type.value}>
                 {type.label}
               </SelectItem>

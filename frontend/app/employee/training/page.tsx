@@ -1,19 +1,19 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
-import { api } from "@/lib/api";
-import Link from "next/link";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+Card,
+CardContent,
+CardDescription,
+CardHeader,
+CardTitle,
+} from "@/components/ui/card";
 import { SkeletonList } from "@/components/ui/skeleton";
-import { BookOpen, Play, CheckCircle, Clock, Lock } from "lucide-react";
+import { api } from "@/lib/api";
+import { useQuery } from "@tanstack/react-query";
+import { BookOpen,CheckCircle,Clock,Lock,Play } from "lucide-react";
+import Link from "next/link";
 
 export default function EmployeeTrainingPage() {
   const { data, isLoading } = useQuery({

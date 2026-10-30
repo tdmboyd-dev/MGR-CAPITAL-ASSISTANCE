@@ -1,45 +1,45 @@
 "use client";
+import { apiFailure } from "@/lib/apiFailure";
 
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { api } from "@/lib/api";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
+import { Card,CardContent,CardDescription,CardHeader,CardTitle } from "@/components/ui/card";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
+Dialog,
+DialogContent,
+DialogDescription,
+DialogFooter,
+DialogHeader,
+DialogTitle,
 } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+Select,
+SelectContent,
+SelectItem,
+SelectTrigger,
+SelectValue,
 } from "@/components/ui/select";
-import { toast } from "sonner";
+import { Tabs,TabsContent,TabsList,TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
+import { api } from "@/lib/api";
+import { useMutation,useQuery,useQueryClient } from "@tanstack/react-query";
 import {
-  FileText,
-  AlertTriangle,
-  Ban,
-  Users,
-  Clock,
-  CheckCircle,
-  XCircle,
-  Shield,
-  Gavel,
-  Scale,
-  Eye,
-  Plus,
-  Loader2,
+AlertTriangle,
+Ban,
+CheckCircle,
+Clock,
+Eye,
+FileText,
+Gavel,
+Loader2,
+Plus,
+Scale,
+Shield,
+XCircle
 } from "lucide-react";
+import { useState } from "react";
+import { toast } from "sonner";
 
 interface Violation {
   id: string;
@@ -170,7 +170,8 @@ export default function OfficeTablePage() {
       queryClient.invalidateQueries({ queryKey: ["office-table-summary"] });
       queryClient.invalidateQueries({ queryKey: ["pending-violations"] });
     },
-    onError: (error: any) => {
+    onError: (errorUnknown: unknown) => {
+      const error = apiFailure(errorUnknown);
       toast.error(error.response?.data?.error || "Failed to report violation");
     },
   });
@@ -197,7 +198,8 @@ export default function OfficeTablePage() {
       queryClient.invalidateQueries({ queryKey: ["pending-violations"] });
       queryClient.invalidateQueries({ queryKey: ["active-bans"] });
     },
-    onError: (error: any) => {
+    onError: (errorUnknown: unknown) => {
+      const error = apiFailure(errorUnknown);
       toast.error(error.response?.data?.error || "Failed to review violation");
     },
   });
@@ -215,7 +217,8 @@ export default function OfficeTablePage() {
       queryClient.invalidateQueries({ queryKey: ["active-bans"] });
       queryClient.invalidateQueries({ queryKey: ["appealed-bans"] });
     },
-    onError: (error: any) => {
+    onError: (errorUnknown: unknown) => {
+      const error = apiFailure(errorUnknown);
       toast.error(error.response?.data?.error || "Failed to review appeal");
     },
   });
@@ -684,7 +687,7 @@ export default function OfficeTablePage() {
                 <p className="mt-2 text-sm">{selectedViolation.description}</p>
               </div>
               <p className="text-sm text-muted-foreground">
-                Confirming will issue a ban with the specified severity. The user's pending pay will be reduced accordingly.
+                Confirming will issue a ban with the specified severity. The user&apos;s pending pay will be reduced accordingly.
               </p>
             </div>
           )}

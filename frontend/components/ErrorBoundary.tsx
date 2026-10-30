@@ -1,9 +1,9 @@
 "use client";
 
-import React, { Component, ReactNode } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { AlertTriangle, RefreshCw, Home } from "lucide-react";
+import { Card,CardContent,CardHeader,CardTitle } from "@/components/ui/card";
+import { AlertTriangle,Home,RefreshCw } from "lucide-react";
+import React,{ Component,ReactNode } from "react";
 
 interface Props {
   children: ReactNode;

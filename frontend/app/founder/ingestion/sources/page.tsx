@@ -1,31 +1,30 @@
 "use client";
 
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { api } from "@/lib/api";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { formatDate } from "@/lib/utils";
 import {
-  Globe,
-  Plus,
-  RefreshCw,
-  Trash2,
-  Play,
-  Pencil,
-  X,
-  Check,
-  ArrowLeft,
+Card,
+CardContent,
+CardDescription,
+CardHeader,
+CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { api } from "@/lib/api";
+import { formatDate } from "@/lib/utils";
+import { useMutation,useQuery,useQueryClient } from "@tanstack/react-query";
+import {
+ArrowLeft,
+Check,
+Globe,
+Play,
+Plus,
+RefreshCw,
+Trash2,
+X
 } from "lucide-react";
 import Link from "next/link";
+import { useState } from "react";
 
 interface IngestionSource {
   id: string;
@@ -139,7 +138,7 @@ export default function SourceManagerPage() {
   });
 
   const updateSource = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: Record<string, any> }) => {
+    mutationFn: async ({ id, data }: { id: string; data: Record<string, unknown> }) => {
       await api.put(`/ingestion/sources/${id}`, data);
     },
     onSuccess: () => {

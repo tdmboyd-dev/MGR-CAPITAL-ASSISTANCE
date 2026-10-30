@@ -1,31 +1,30 @@
 'use client'
 
-import { useEffect, useRef, useState, useCallback } from 'react'
-import * as Y from 'yjs'
-import { WebsocketProvider } from 'y-websocket'
-import { useAuth } from '@/hooks/useAuth'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Alert,AlertDescription } from '@/components/ui/alert'
+import { Avatar,AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Button } from '@/components/ui/button'
+import { Card,CardContent,CardHeader,CardTitle } from '@/components/ui/card'
+import { Popover,PopoverContent,PopoverTrigger } from '@/components/ui/popover'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { Tooltip,TooltipContent,TooltipProvider,TooltipTrigger } from '@/components/ui/tooltip'
+import { useAuth } from '@/hooks/useAuth'
+import { AnimatePresence,motion } from 'framer-motion'
 import {
-  RotateCcw,
-  RotateCw,
-  History,
-  AlertCircle,
-  Wifi,
-  WifiOff,
-  Save,
-  Users,
-  Clock,
-  CheckCircle,
+AlertCircle,
+CheckCircle,
+History,
+RotateCcw,
+RotateCw,
+Save,
+Users,
+Wifi,
+WifiOff
 } from 'lucide-react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { useCallback,useEffect,useRef,useState } from 'react'
 import { toast } from 'sonner'
+import { WebsocketProvider } from 'y-websocket'
+import * as Y from 'yjs'
 
 interface Props {
   caseId: string

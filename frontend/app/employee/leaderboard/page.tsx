@@ -1,32 +1,33 @@
 "use client";
+import { apiFailure } from "@/lib/apiFailure";
 
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { api } from "@/lib/api";
-import { useAuth } from "@/hooks/useAuth";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
 import {
-  Trophy,
-  Medal,
-  Crown,
-  Star,
-  Users,
-  Building2,
-  Layers,
-  Gift,
-  Send,
-  TrendingUp,
-  Award,
-  Sparkles,
+Card,
+CardContent,
+CardHeader,
+CardTitle,
+} from "@/components/ui/card";
+import { useAuth } from "@/hooks/useAuth";
+import { api } from "@/lib/api";
+import { useMutation,useQuery,useQueryClient } from "@tanstack/react-query";
+import {
+Award,
+Building2,
+Crown,
+Gift,
+Layers,
+Medal,
+Send,
+Sparkles,
+Star,
+TrendingUp,
+Trophy,
+Users,
 } from "lucide-react";
+import { useState } from "react";
+import { toast } from "sonner";
 
 // ─── Types ───
 interface LeaderboardEntry {
@@ -148,7 +149,8 @@ export default function LeaderboardPage() {
       setIncentiveBonus(0);
       setSelectedEmployee("");
     },
-    onError: (err: any) => {
+    onError: (errUnknown: unknown) => {
+      const err = apiFailure(errUnknown);
       toast.error(err?.response?.data?.error || "Failed to send incentive");
     },
   });
@@ -159,7 +161,7 @@ export default function LeaderboardPage() {
   const childCompanyLeaders: ChildCompanyLeader[] = leaderboard?.childCompanyLeaders || [];
   const incentives: Incentive[] = incentivesData?.data || [];
 
-  const tabs: { key: Tab; label: string; icon: any }[] = [
+  const tabs: { key: Tab; label: string; icon: import("lucide-react").LucideIcon }[] = [
     { key: "company", label: "Company-Wide", icon: Users },
     { key: "team", label: "My Team", icon: Building2 },
     { key: "tiers", label: "Tier Leaders", icon: Layers },

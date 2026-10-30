@@ -1,43 +1,42 @@
 "use client";
 
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { api } from "@/lib/api";
-import { useParams, useRouter } from "next/navigation";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+Card,
+CardContent,
+CardDescription,
+CardHeader,
+CardTitle,
+} from "@/components/ui/card";
+import {
+Select,
+SelectContent,
+SelectItem,
+SelectTrigger,
+SelectValue,
 } from "@/components/ui/select";
-import { formatCurrency, formatDate, formatDateTime } from "@/lib/utils";
-import { toast } from "sonner";
+import { Skeleton } from "@/components/ui/skeleton";
+import { api } from "@/lib/api";
+import { formatCurrency,formatDate,formatDateTime } from "@/lib/utils";
+import { useMutation,useQuery,useQueryClient } from "@tanstack/react-query";
 import {
-  ArrowLeft,
-  MapPin,
-  User,
-  Phone,
-  Mail,
-  FileText,
-  Clock,
-  CheckCircle,
-  AlertCircle,
-  Download,
-  Eye,
-  Users,
-  Edit,
+AlertCircle,
+ArrowLeft,
+Clock,
+Download,
+Edit,
+Eye,
+FileText,
+Mail,
+MapPin,
+Phone,
+User,
+Users
 } from "lucide-react";
+import { useParams,useRouter } from "next/navigation";
+import { useState } from "react";
+import { toast } from "sonner";
 
 const STATUS_COLORS: Record<string, string> = {
   NEW: "bg-gray-500",
@@ -146,7 +145,7 @@ export default function AdminCaseDetailPage() {
         <AlertCircle className="h-12 w-12 mx-auto mb-4 text-destructive" />
         <h2 className="text-xl font-bold">Case Not Found</h2>
         <p className="text-muted-foreground mb-4">
-          This case doesn't exist or has been deleted.
+          This case doesn&apos;t exist or has been deleted.
         </p>
         <Button onClick={() => router.back()}>Go Back</Button>
       </div>

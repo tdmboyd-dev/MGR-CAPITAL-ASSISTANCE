@@ -1,9 +1,10 @@
 "use client";
+import { apiFailure } from "@/lib/apiFailure";
 
+import { api,clearBrowserAuthentication } from "@/lib/api";
+import { createContext,ReactNode,useContext,useEffect } from "react";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { api, clearBrowserAuthentication } from "@/lib/api";
-import { createContext, useContext, useEffect, ReactNode } from "react";
 
 export interface User {
   id: string;
@@ -78,7 +79,8 @@ export const useAuthStore = create<AuthState>()(
             set({ isLoading: false, error: data.error || "Login failed" });
             return false;
           }
-        } catch (err: any) {
+        } catch (errUnknown: unknown) {
+      const err = apiFailure(errUnknown);
           const errorMsg =
             err.response?.data?.error ||
             err.response?.data?.message ||

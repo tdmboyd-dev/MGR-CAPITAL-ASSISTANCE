@@ -1,24 +1,29 @@
 'use client'
 
-import { useQuery } from '@tanstack/react-query'
-import { motion } from 'framer-motion'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card,CardContent,CardDescription,CardHeader,CardTitle } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+Table,
+TableBody,
+TableCell,
+TableHead,
+TableHeader,
+TableRow,
 } from '@/components/ui/table'
-import {
-  DollarSign, RefreshCw, Loader2, CheckCircle, Clock,
-  TrendingUp, Wallet, Calendar, Award, Building
-} from 'lucide-react'
 import { api } from '@/lib/api'
+import { useQuery } from '@tanstack/react-query'
+import { motion } from 'framer-motion'
+import {
+Award,Building,
+Calendar,
+CheckCircle,Clock,
+DollarSign,
+Loader2,
+RefreshCw,
+TrendingUp,Wallet
+} from 'lucide-react'
 
 // Format currency
 const formatCurrency = (cents: number) => {
@@ -379,7 +384,7 @@ export default function EmployeePayoutsPage() {
                     <h5 className="font-medium">Case Completed</h5>
                   </div>
                   <p className="text-sm text-muted-foreground">
-                    When a case you're assigned to is successfully recovered, your commission is calculated.
+                    When a case you&apos;re assigned to is successfully recovered, your commission is calculated.
                   </p>
                 </div>
                 <div className="p-4 bg-white rounded-lg border border-blue-200">
@@ -388,7 +393,7 @@ export default function EmployeePayoutsPage() {
                     <h5 className="font-medium">Pending Status</h5>
                   </div>
                   <p className="text-sm text-muted-foreground">
-                    Commission shows as "Pending" while funds are being processed through Nickel ACH.
+                    Commission shows as &quot;Pending&quot; while funds are being processed through Nickel ACH.
                   </p>
                 </div>
                 <div className="p-4 bg-white rounded-lg border border-blue-200">
@@ -397,7 +402,7 @@ export default function EmployeePayoutsPage() {
                     <h5 className="font-medium">Paid</h5>
                   </div>
                   <p className="text-sm text-muted-foreground">
-                    Once ACH transfer clears (typically 2-3 business days), status changes to "Paid".
+                    Once ACH transfer clears (typically 2-3 business days), status changes to &quot;Paid&quot;.
                   </p>
                 </div>
               </div>

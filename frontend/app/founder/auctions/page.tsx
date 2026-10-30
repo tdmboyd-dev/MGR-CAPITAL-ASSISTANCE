@@ -1,43 +1,37 @@
 'use client'
+import { apiFailure } from "@/lib/apiFailure";
 
-import { useState, useEffect } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { useQuery, useMutation } from '@tanstack/react-query'
-import { api } from '@/lib/api'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Badge } from '@/components/ui/badge'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Textarea } from '@/components/ui/textarea'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-import { Progress } from '@/components/ui/progress'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { toast } from 'sonner'
-import useWebSocket from 'react-use-websocket'
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card,CardContent,CardHeader,CardTitle } from '@/components/ui/card';
+import { Dialog,DialogContent,DialogHeader,DialogTitle,DialogTrigger } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Progress } from '@/components/ui/progress';
+import { Select,SelectContent,SelectItem,SelectTrigger,SelectValue } from '@/components/ui/select';
+import { Tabs,TabsContent,TabsList,TabsTrigger } from '@/components/ui/tabs';
+import { Textarea } from '@/components/ui/textarea';
+import { api } from '@/lib/api';
+import { useMutation,useQuery } from '@tanstack/react-query';
+import { AnimatePresence,motion } from 'framer-motion';
 import {
-  Gavel,
-  DollarSign,
-  Clock,
-  TrendingUp,
-  Users,
-  Wallet,
-  Plus,
-  ArrowUp,
-  ArrowDown,
-  Zap,
-  BarChart3,
-  Timer,
-  CheckCircle,
-  XCircle,
-  AlertTriangle,
-  Sparkles,
-  RefreshCw,
-  ExternalLink,
-  Coins,
-  PieChart
-} from 'lucide-react'
+CheckCircle,
+Coins,
+DollarSign,
+Gavel,
+PieChart,
+Plus,
+RefreshCw,
+Timer,
+TrendingUp,
+Users,
+Wallet,
+XCircle,
+Zap
+} from 'lucide-react';
+import { useState } from 'react';
+import useWebSocket from 'react-use-websocket';
+import { toast } from 'sonner';
 
 interface Bid {
   id: string
@@ -178,7 +172,8 @@ export default function AuctionsPage() {
       setNewAuction({ claimId: '', title: '', description: '', surplusAmount: '', minimumBid: '', fractions: '100', durationDays: '7', state: '' })
       refetch()
     },
-    onError: (err: any) => {
+    onError: (errUnknown: unknown) => {
+      const err = apiFailure(errUnknown);
       toast.error(err?.response?.data?.error || 'Failed to create auction')
     }
   })
@@ -224,7 +219,8 @@ export default function AuctionsPage() {
       setBidAmount('')
       refetch()
     },
-    onError: (err: any) => {
+    onError: (errUnknown: unknown) => {
+      const err = apiFailure(errUnknown);
       toast.error(err.message || 'Failed to place bid')
     }
   })
@@ -242,7 +238,8 @@ export default function AuctionsPage() {
       toast.success('Fractions purchased!')
       refetch()
     },
-    onError: (err: any) => {
+    onError: (errUnknown: unknown) => {
+      const err = apiFailure(errUnknown);
       toast.error(err.message || 'Failed to purchase')
     }
   })

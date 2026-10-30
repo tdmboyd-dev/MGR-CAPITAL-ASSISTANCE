@@ -1,37 +1,38 @@
 "use client";
+import { apiFailure } from "@/lib/apiFailure";
 
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { api } from "@/lib/api";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
+Card,
+CardContent,
+CardDescription,
+CardHeader,
+CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { api } from "@/lib/api";
+import { useMutation,useQuery,useQueryClient } from "@tanstack/react-query";
 import {
-  HardDrive,
-  Cloud,
-  Plus,
-  RefreshCw,
-  CheckCircle,
-  XCircle,
-  ArrowUpDown,
-  Trash2,
-  TestTube,
-  Power,
-  ArrowRightLeft,
-  ChevronLeft,
-  ChevronRight,
-  Database,
-  Shield,
-  Loader2,
-  X,
+ArrowRightLeft,
+ArrowUpDown,
+CheckCircle,
+ChevronLeft,
+ChevronRight,
+Cloud,
+Database,
+HardDrive,
+Loader2,
+Plus,
+Power,
+RefreshCw,
+Shield,
+TestTube,
+Trash2,
+X,
+XCircle,
 } from "lucide-react";
+import { useState } from "react";
 import { toast } from "sonner";
 
 // ============================================
@@ -95,7 +96,7 @@ const TYPE_COLORS: Record<string, string> = {
   PCLOUD: "bg-emerald-600",
 };
 
-const TYPE_ICONS: Record<string, any> = {
+const TYPE_ICONS: Record<string, import("lucide-react").LucideIcon> = {
   LOCAL: HardDrive,
   S3: Cloud,
   PCLOUD: Database,
@@ -184,7 +185,8 @@ export default function StorageAdminPage() {
       toast.success(data.message);
       queryClient.invalidateQueries({ queryKey: ["storage-dashboard"] });
     },
-    onError: (err: any) => {
+    onError: (errUnknown: unknown) => {
+      const err = apiFailure(errUnknown);
       toast.error(err?.response?.data?.error || "Failed to delete provider");
     },
   });
@@ -410,7 +412,7 @@ export default function StorageAdminPage() {
         ) : (
           <Card className="col-span-2">
             <CardContent className="py-12 text-center text-muted-foreground">
-              No storage providers configured. Click "Add Provider" to get started.
+              No storage providers configured. Click &quot;Add Provider&quot; to get started.
             </CardContent>
           </Card>
         )}
@@ -559,7 +561,8 @@ function AddProviderModal({
       });
       toast.success(`${template.displayName} added! Test connection then enable.`);
       onSuccess();
-    } catch (err: any) {
+    } catch (errUnknown: unknown) {
+      const err = apiFailure(errUnknown);
       toast.error(err?.response?.data?.error || "Failed to add provider");
     } finally {
       setIsSubmitting(false);
@@ -701,7 +704,8 @@ function SyncModal({
       } else {
         toast.error(`Sync had ${data.failed} failures`);
       }
-    } catch (err: any) {
+    } catch (errUnknown: unknown) {
+      const err = apiFailure(errUnknown);
       toast.error(err?.response?.data?.error || "Sync failed");
     } finally {
       setIsSyncing(false);

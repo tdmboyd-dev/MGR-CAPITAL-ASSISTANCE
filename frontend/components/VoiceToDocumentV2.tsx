@@ -1,46 +1,49 @@
 'use client'
+import { useSpeechAvailable } from '@/hooks/useSpeechAvailable';
+import { apiFailure } from "@/lib/apiFailure";
+import type { BrowserSpeechErrorEvent,BrowserSpeechRecognition,BrowserSpeechResultEvent } from '@/types/browser-speech';
 
-import { useState, useRef, useEffect, useCallback } from 'react'
-import { toast } from 'sonner'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card,CardContent,CardHeader,CardTitle } from '@/components/ui/card';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+Dialog,
+DialogContent,
+DialogHeader,
+DialogTitle,
+} from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
-import { ScrollArea } from '@/components/ui/scroll-area'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+Select,
+SelectContent,
+SelectItem,
+SelectTrigger,
+SelectValue,
+} from '@/components/ui/select';
+import { Tabs,TabsContent,TabsList,TabsTrigger } from '@/components/ui/tabs';
+import { Textarea } from '@/components/ui/textarea';
+import { useAuth } from '@/hooks/useAuth';
+import { AnimatePresence,motion } from 'framer-motion';
 import {
-  Mic,
-  MicOff,
-  FileText,
-  Loader2,
-  Download,
-  Share2,
-  Volume2,
-  FileCheck,
-  Sparkles,
-  Eye,
-  Edit3,
-  Copy,
-  Check,
-  AlertCircle,
-  Wand2,
-} from 'lucide-react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { useAuth } from '@/hooks/useAuth'
+AlertCircle,
+Check,
+Copy,
+Download,
+Edit3,
+Eye,
+FileCheck,
+FileText,
+Loader2,
+Mic,
+MicOff,
+Share2,
+Sparkles,
+Volume2,
+Wand2,
+} from 'lucide-react';
+import { useCallback,useEffect,useRef,useState } from 'react';
+import { toast } from 'sonner';
 
 type DocumentType =
   | 'demand-letter'
@@ -95,23 +98,23 @@ export default function VoiceToDocumentV2() {
   const [generating, setGenerating] = useState(false)
   const [documentUrl, setDocumentUrl] = useState<string | null>(null)
   const [documentType, setDocumentType] = useState<DocumentType>('demand-letter')
-  const [isSupported, setIsSupported] = useState(true)
+  const isSupported = useSpeechAvailable()
   const [generatedContent, setGeneratedContent] = useState<string | null>(null)
   const [previewOpen, setPreviewOpen] = useState(false)
   const [copied, setCopied] = useState(false)
   const [activeTab, setActiveTab] = useState<'preview' | 'edit'>('preview')
 
-  const recognitionRef = useRef<any>(null)
+  const recognitionRef = useRef<BrowserSpeechRecognition | null>(null);
+  const requestedListening = useRef(false)
   const audioLevelRef = useRef<number>(0)
 
   // Check speech recognition support
   useEffect(() => {
     const SpeechRecognition =
-      (window as any).SpeechRecognition ||
-      (window as any).webkitSpeechRecognition
+      window.SpeechRecognition ||
+      window.webkitSpeechRecognition
 
     if (!SpeechRecognition) {
-      setIsSupported(false)
       return
     }
 
@@ -121,7 +124,7 @@ export default function VoiceToDocumentV2() {
     recognition.lang = 'en-US'
     recognition.maxAlternatives = 1
 
-    recognition.onresult = (event: any) => {
+    recognition.onresult = (event: BrowserSpeechResultEvent) => {
       let interim = ''
       let final = ''
 
@@ -140,7 +143,8 @@ export default function VoiceToDocumentV2() {
       setInterimTranscript(interim)
     }
 
-    recognition.onerror = (event: any) => {
+    recognition.onerror = (event: BrowserSpeechErrorEvent) => {
+      requestedListening.current = false
       console.error('Speech recognition error:', event.error)
       if (event.error !== 'no-speech') {
         toast.error(`Voice error: ${event.error}`)
@@ -149,17 +153,19 @@ export default function VoiceToDocumentV2() {
     }
 
     recognition.onend = () => {
-      if (listening) {
-        recognition.start()
+      if (requestedListening.current) {
+        try { recognition.start() } catch { requestedListening.current = false; setListening(false) }
       }
     }
 
     recognitionRef.current = recognition
 
     return () => {
-      recognition.stop()
+      requestedListening.current = false
+      recognition.onend = null
+      recognition.abort()
     }
-  }, [listening])
+  }, [])
 
   const startListening = useCallback(() => {
     if (!recognitionRef.current) {
@@ -168,6 +174,7 @@ export default function VoiceToDocumentV2() {
     }
 
     try {
+      requestedListening.current = true
       recognitionRef.current.start()
       setListening(true)
       setTranscript('')
@@ -178,12 +185,15 @@ export default function VoiceToDocumentV2() {
         description: 'Say "new paragraph" to start a new paragraph',
       })
     } catch (error) {
+      requestedListening.current = false
+      setListening(false)
       toast.error('Failed to start voice recognition')
     }
   }, [])
 
   const stopListening = useCallback(() => {
     if (recognitionRef.current) {
+      requestedListening.current = false
       recognitionRef.current.stop()
     }
     setListening(false)
@@ -236,7 +246,8 @@ export default function VoiceToDocumentV2() {
         toast.success('Document generated!')
         setPreviewOpen(true)
       }
-    } catch (error: any) {
+    } catch (errorUnknown: unknown) {
+      const error = apiFailure(errorUnknown);
       console.error('Generation error:', error)
       toast.error('Failed to generate document', {
         description: error.message,
@@ -521,8 +532,8 @@ export default function VoiceToDocumentV2() {
             <ul className="list-disc list-inside space-y-0.5 ml-4">
               <li>Speak clearly and at a moderate pace</li>
               <li>Include names, dates, and amounts when relevant</li>
-              <li>Say "new paragraph" to indicate paragraph breaks</li>
-              <li>Say "period", "comma", "colon" for punctuation</li>
+              <li>Say &quot;new paragraph&quot; to indicate paragraph breaks</li>
+              <li>Say &quot;period&quot;, &quot;comma&quot;, &quot;colon&quot; for punctuation</li>
               <li>Review and edit the generated document before use</li>
             </ul>
           </div>
@@ -555,7 +566,7 @@ export default function VoiceToDocumentV2() {
             </div>
           </DialogHeader>
 
-          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="flex-1 flex flex-col">
+          <Tabs value={activeTab} onValueChange={(v) => { if(v === "preview" || v === "edit") setActiveTab(v); }} className="flex-1 flex flex-col">
             <TabsList className="mx-4 mt-2 w-fit">
               <TabsTrigger value="preview">
                 <Eye className="h-4 w-4 mr-1" />
@@ -604,7 +615,7 @@ export default function VoiceToDocumentV2() {
               {documentUrl && (
                 <a
                   href={documentUrl}
-                  download={`${documentType}-${Date.now()}.pdf`}
+                  download={`${documentType}.pdf`}
                 >
                   <Button>
                     <Download className="h-4 w-4 mr-2" />

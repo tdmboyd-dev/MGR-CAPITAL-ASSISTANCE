@@ -1,25 +1,25 @@
 "use client";
 
-import { useState, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
-import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
 import { motion } from "framer-motion";
-import { Loader2, Lock, ArrowLeft, CheckCircle, AlertCircle } from "lucide-react";
-import { toast } from "sonner";
+import { AlertCircle,ArrowLeft,CheckCircle,Loader2,Lock } from "lucide-react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import { Suspense,useState } from "react";
+import { useForm } from "react-hook-form";
+import { toast } from "sonner";
+import * as z from "zod";
 
 import { Button } from "@/components/ui/button";
+import {
+Card,
+CardContent,
+CardDescription,
+CardHeader,
+CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 

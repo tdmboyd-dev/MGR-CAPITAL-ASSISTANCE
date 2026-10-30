@@ -1,21 +1,21 @@
 "use client";
 
 import {
-  BarChart as ReBarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  PieChart as RePieChart,
-  Pie,
-  Cell,
-  Legend,
-  LineChart as ReLineChart,
-  Line,
-  Area,
-  AreaChart as ReAreaChart,
+Area,
+Bar,
+CartesianGrid,
+Cell,
+Legend,
+Line,
+Pie,
+AreaChart as ReAreaChart,
+BarChart as ReBarChart,
+LineChart as ReLineChart,
+PieChart as RePieChart,
+ResponsiveContainer,
+Tooltip,
+XAxis,
+YAxis,
 } from "recharts";
 
 const COLORS = [
@@ -32,7 +32,7 @@ const COLORS = [
 interface ChartData {
   name: string;
   value?: number;
-  [key: string]: any;
+  [key: string]: string | number | undefined;
 }
 
 interface BarChartProps {

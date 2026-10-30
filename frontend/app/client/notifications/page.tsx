@@ -1,36 +1,36 @@
 "use client";
 
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { api } from "@/lib/api";
-import Link from "next/link";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { formatDateTime, formatDate } from "@/lib/utils";
-import { motion } from "framer-motion";
-import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
 import {
-  Bell,
-  FileText,
-  DollarSign,
-  CheckCircle,
-  Inbox,
-  AlertCircle,
-  Loader2,
-  Clock,
-  MessageSquare,
-  TrendingUp,
-  ArrowRight,
+Card,
+CardContent,
+CardDescription,
+CardHeader,
+CardTitle,
+} from "@/components/ui/card";
+import { api } from "@/lib/api";
+import { formatDateTime } from "@/lib/utils";
+import { useMutation,useQuery,useQueryClient } from "@tanstack/react-query";
+import { motion } from "framer-motion";
+import {
+AlertCircle,
+ArrowRight,
+Bell,
+CheckCircle,
+Clock,
+DollarSign,
+FileText,
+Inbox,
+Loader2,
+MessageSquare,
+TrendingUp,
 } from "lucide-react";
+import Link from "next/link";
+import { toast } from "sonner";
 
 // Notification type configurations
-const NOTIFICATION_CONFIG: Record<string, { icon: any; color: string; bgColor: string; label: string }> = {
+const NOTIFICATION_CONFIG: Record<string, { icon: import("lucide-react").LucideIcon; color: string; bgColor: string; label: string }> = {
   CASE_UPDATE: {
     icon: FileText,
     color: "text-blue-600",

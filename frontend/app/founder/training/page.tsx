@@ -1,26 +1,26 @@
 "use client";
 
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { api } from "@/lib/api";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-  GraduationCap,
-  Users,
-  Trophy,
-  BarChart3,
-  Search,
-  RefreshCw,
-  BookOpen,
+Card,
+CardContent,
+CardHeader,
+CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { api } from "@/lib/api";
+import { useQuery } from "@tanstack/react-query";
+import {
+BarChart3,
+BookOpen,
+GraduationCap,
+RefreshCw,
+Search,
+Trophy,
+Users,
 } from "lucide-react";
+import { useState } from "react";
 
 interface TrainingModule {
   id: string;

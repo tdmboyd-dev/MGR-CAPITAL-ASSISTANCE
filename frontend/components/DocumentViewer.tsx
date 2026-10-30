@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
-import { Document, Page, pdfjs } from "react-pdf";
-import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Download, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ChevronLeft,ChevronRight,Download,Loader2,ZoomIn,ZoomOut } from "lucide-react";
+import { useState } from "react";
+import { Document,Page,pdfjs } from "react-pdf";
 // react-pdf CSS handled via next.config
 
 // Set up PDF.js worker

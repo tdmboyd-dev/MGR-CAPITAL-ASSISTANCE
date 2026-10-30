@@ -1,6 +1,7 @@
 "use client";
+import { apiFailure } from "@/lib/apiFailure";
 
-import { useState, useEffect, useCallback } from "react";
+import { useCallback,useEffect,useState } from "react";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -420,7 +421,8 @@ export default function FounderCommandCenterPage() {
           botType: a.botType ?? "research",
         }))
       );
-    } catch (err: any) {
+    } catch (errUnknown: unknown) {
+      const err = apiFailure(errUnknown);
       setError(err?.message || "Failed to load command center data");
     } finally {
       setLoading(false);

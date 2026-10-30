@@ -1,42 +1,41 @@
 "use client";
+import { apiFailure } from "@/lib/apiFailure";
 
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { api } from "@/lib/api";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import {
-  DonutChartComponent,
-  BarChartComponent,
+Card,
+CardContent,
+CardDescription,
+CardHeader,
+CardTitle,
+} from "@/components/ui/card";
+import {
+BarChartComponent,
+DonutChartComponent,
 } from "@/components/ui/charts";
+import { Input } from "@/components/ui/input";
+import { api } from "@/lib/api";
 import { formatCurrency } from "@/lib/utils";
-import { toast } from "sonner";
+import { useMutation,useQuery,useQueryClient } from "@tanstack/react-query";
 import {
-  Shield,
-  ShieldCheck,
-  ShieldPlus,
-  Crown,
-  DollarSign,
-  Users,
-  TrendingUp,
-  CheckCircle,
-  Clock,
-  AlertCircle,
-  Search,
-  RefreshCw,
-  Eye,
-  Play,
-  Loader2,
-  Percent,
+CheckCircle,
+Clock,
+Crown,
+DollarSign,
+Eye,
+Loader2,
+Percent,
+Play,
+RefreshCw,
+Search,
+Shield,
+ShieldCheck,
+ShieldPlus,
+TrendingUp
 } from "lucide-react";
+import { useState } from "react";
+import { toast } from "sonner";
 
 interface TrustEnrollment {
   id: string;
@@ -70,7 +69,7 @@ interface FounderInterest {
   };
 }
 
-const PLAN_ICONS: Record<string, any> = {
+const PLAN_ICONS: Record<string, import("lucide-react").LucideIcon> = {
   BASIC_PROTECTION: Shield,
   ENHANCED_PROTECTION: ShieldPlus,
   PREMIUM_ESTATE: Crown,
@@ -142,7 +141,8 @@ export default function FounderTrustsPage() {
       queryClient.invalidateQueries({ queryKey: ["founder-trust-interest"] });
       setSelectedEnrollment(null);
     },
-    onError: (error: any) => {
+    onError: (errorUnknown: unknown) => {
+      const error = apiFailure(errorUnknown);
       toast.error(error.response?.data?.message || "Failed to activate trust");
     },
   });

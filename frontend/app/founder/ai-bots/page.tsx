@@ -1,30 +1,28 @@
 "use client";
 
-import { useState } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { api } from "@/lib/api";
-import { motion, AnimatePresence } from "framer-motion";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { Button } from "@/components/ui/button";
 import {
-  Send,
-  Loader2,
-  Bot,
-  Zap,
-  MessageSquare,
-  CheckCircle,
-  AlertCircle,
+Card,
+CardContent,
+CardDescription,
+CardHeader,
+CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Tabs,TabsContent,TabsList,TabsTrigger } from "@/components/ui/tabs";
+import { api } from "@/lib/api";
+import { useMutation,useQuery } from "@tanstack/react-query";
+import { AnimatePresence,motion } from "framer-motion";
+import {
+Bot,
+Loader2,
+MessageSquare,
+Send,
+Zap
 } from "lucide-react";
+import { useState } from "react";
 import { toast } from "sonner";
 
 interface LegalBot {
@@ -90,7 +88,7 @@ export default function AIBotsPage() {
     }: {
       botId: string;
       taskType: string;
-      input: any;
+      input: unknown;
     }) => {
       const { data } = await api.post(`/ai-bots/${botId}/task`, { taskType, input });
       return data.data;

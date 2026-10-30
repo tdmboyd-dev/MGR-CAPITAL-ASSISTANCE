@@ -8,11 +8,11 @@
  * with real-time suggestions and results modal.
  */
 
-import { useState, useEffect, useRef, useCallback } from "react";
-import { Search, X, FileText, User, MessageSquare, Briefcase, Loader2 } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
 import api from "@/lib/api";
+import { AnimatePresence,motion } from "framer-motion";
+import { Briefcase,FileText,Loader2,MessageSquare,Search,User,X } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useCallback,useEffect,useRef,useState } from "react";
 
 interface SearchResult {
   type: "case" | "user" | "document" | "communication";
@@ -281,7 +281,7 @@ export function GlobalSearchBar() {
                 onClick={performSearch}
                 className="w-full px-4 py-2 text-sm text-blue-600 dark:text-blue-400 hover:bg-gray-50 dark:hover:bg-gray-700 border-t border-gray-200 dark:border-gray-700"
               >
-                Search all for "{query}"
+                Search all for &quot;{query}&quot;
               </button>
             </motion.div>
           )}
@@ -316,7 +316,7 @@ export function GlobalSearchBar() {
                       Search Results
                     </h2>
                     <p className="text-sm text-gray-500 dark:text-gray-400">
-                      {results.totalResults} results for "{results.query}" ({results.searchTime}ms)
+                      {results.totalResults} results for &quot;{results.query}&quot; ({results.searchTime}ms)
                     </p>
                   </div>
                   <button

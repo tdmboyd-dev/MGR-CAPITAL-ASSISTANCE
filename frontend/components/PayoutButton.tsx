@@ -1,4 +1,5 @@
 "use client";
+import { apiFailure } from "@/lib/apiFailure";
 
 /**
  * Payout Button — MGR CAPITAL ASSISTANCE
@@ -8,23 +9,23 @@
  * Includes wallet connection and transaction confirmation.
  */
 
-import { useState } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
-import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
+Dialog,
+DialogContent,
+DialogDescription,
+DialogFooter,
+DialogHeader,
+DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { toast } from "sonner";
-import { Wallet, Loader2, CheckCircle2, AlertTriangle, ExternalLink } from "lucide-react";
+import { api } from "@/lib/api";
 import { formatCurrency } from "@/lib/utils";
+import { useMutation,useQuery } from "@tanstack/react-query";
+import { AlertTriangle,CheckCircle2,ExternalLink,Loader2,Wallet } from "lucide-react";
+import { useState } from "react";
+import { toast } from "sonner";
 
 interface PayoutButtonProps {
   caseId: string;
@@ -80,7 +81,8 @@ export function PayoutButton({
         });
       }
     },
-    onError: (error: any) => {
+    onError: (errorUnknown: unknown) => {
+      const error = apiFailure(errorUnknown);
       toast.error("Payout failed", {
         description: error.response?.data?.error || "Unknown error",
       });

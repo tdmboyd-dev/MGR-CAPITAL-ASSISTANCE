@@ -1,3 +1,23 @@
+# Capital Assistance — evidence-based scorecard
+
+## October30 owned Tennessee launch cycle
+
+| Defined acceptance scope | Passed / applicable | Stage and limits |
+|---|---|---|
+| Owned email/warehouse named checks |13/13 (100%) |Actual isolated DB + loopback SMTP; no external delivery |
+| Individual recovery pipeline named checks |6/6 (100%) |Actual41public records; no customer authority or outside claim certification |
+| Separate-process owned-system reopening |5/5 (100%) |Bytes, rows, receipts, work notes/history; no backup/restore claim |
+| Actual new HTTP boundary checks |7/7 (100%) |Current actor, records, queue, rules, work files |
+| Dependency/NFT offline checks |6/6 (100%) |Actual SDKs/rendering/files; no chain transaction |
+| Jurisdiction guard checks |3/3 (100%) |153coverage entries remain unknown/conditional; not153legally qualified workflows |
+| Actual rendered public court evidence |5/5 (100%) |227rows/11work files; human-assisted, not unattended access or payment proof |
+| Backend production dependency findings |0current |Development still5low upstream-unpatched; see audit receipts |
+| Whole frontend lint |157errors/100warnings |Failed; before283errors/212warnings; rules retained |
+| Browser named journey |Observed county acquire/owner lookup/reopen; work save/reload; outbox queue |Local synthetic founder + actual public source; mobile/full role matrix excluded |
+| Whole Capital launch/product |Unassessed |Semantic source, outside court status, historical title/claimant authority, provider/deployed proof remain open |
+
+Source of truth: [HANDOFF](../../HANDOFF.md). Evidence:[current receipts](evidence/2026-10-30-owned-tennessee/). Below are dated historical snapshots, not competing current claims.
+
 # Capital Assistance — latest acceptance scorecard
 
 October29 Chicago / October30 UTC. The sole narrative and remaining-work queue are in [HANDOFF.md](../../HANDOFF.md). Latest receipts: `evidence/2026-10-30-case-workflows/`. Earlier rows below are dated history.

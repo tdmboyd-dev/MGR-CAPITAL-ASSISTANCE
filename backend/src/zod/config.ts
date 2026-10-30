@@ -57,7 +57,7 @@ export const SchedulerJobConfigSchema = z.object({
 
 export const SchedulerConfigSchema = z.object({
   timezone: z.string().default("America/Chicago"),
-  jobs: z.record(SchedulerJobConfigSchema).default({}),
+  jobs: z.record(z.string(), SchedulerJobConfigSchema).default({}),
 });
 
 export type SchedulerConfig = z.infer<typeof SchedulerConfigSchema>;
@@ -125,7 +125,7 @@ export const ComplianceConfigSchema = z.object({
   urgentDeadlineWarningDays: z.number().int().min(1).default(3),
 
   // Stale status thresholds (days)
-  staleStatusDays: z.record(z.number().int().min(1)).default({
+  staleStatusDays: z.record(z.string(), z.number().int().min(1)).default({
     NEW: 14,
     CONTACTED: 21,
     DOCS_PENDING: 30,
@@ -194,7 +194,7 @@ export const SystemConfigSchema = z.object({
   cacheTimeoutSeconds: z.number().int().min(1).default(300),
 
   // Features flags
-  features: z.record(z.boolean()).default({}),
+  features: z.record(z.string(), z.boolean()).default({}),
 });
 
 // =============================================================================
@@ -220,7 +220,7 @@ export type JwtConfig = z.infer<typeof JwtConfigSchema>;
 
 export const SecurityConfigSchema = z.object({
   // JWT settings
-  jwt: JwtConfigSchema.default({}),
+  jwt: JwtConfigSchema.prefault({}),
 
   // Rate limiting
   rateLimitEnabled: z.boolean().default(true),
@@ -373,7 +373,7 @@ export const FounderConfigValueSchema = z.union([
   SystemConfigSchema,
   NotaryCredentialsSchema,
   DigitalSealConfigSchema,
-  z.record(z.unknown()), // Allow arbitrary config for extensibility
+  z.record(z.string(), z.unknown()), // Allow arbitrary config for extensibility
 ]);
 
 export type FounderConfigValue = z.infer<typeof FounderConfigValueSchema>;

@@ -1,50 +1,47 @@
 "use client";
 
-import { useState } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { api } from "@/lib/api";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+Card,
+CardContent,
+CardDescription,
+CardHeader,
+CardTitle,
+} from "@/components/ui/card";
+import {
+Select,
+SelectContent,
+SelectItem,
+SelectTrigger,
+SelectValue,
+} from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+Table,
+TableBody,
+TableCell,
+TableHead,
+TableHeader,
+TableRow,
 } from "@/components/ui/table";
 import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
+Tabs,
+TabsContent,
+TabsList,
+TabsTrigger,
 } from "@/components/ui/tabs";
+import { api } from "@/lib/api";
+import { useMutation,useQuery } from "@tanstack/react-query";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Shield,
-  FileText,
-  AlertTriangle,
-  CheckCircle,
-  RefreshCw,
-  Users,
-  DollarSign,
-  Clock,
-  Flag,
+AlertTriangle,
+CheckCircle,
+FileText,
+Flag,
+RefreshCw,
+Shield
 } from "lucide-react";
+import { useState } from "react";
 import { toast } from "sonner";
 
 interface ComplianceDashboard {

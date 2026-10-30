@@ -1,28 +1,25 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { api } from "@/lib/api";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
-  Send,
-  Bot,
-  User,
-  Trash2,
-  Zap,
-  AlertTriangle,
-  Users,
-  Building2,
-  Globe,
-  CheckCircle2,
+Card,
+CardContent
+} from "@/components/ui/card";
+import { api } from "@/lib/api";
+import { useMutation,useQuery,useQueryClient } from "@tanstack/react-query";
+import {
+Bot,
+Building2,
+CheckCircle2,
+Globe,
+Send,
+Trash2,
+User,
+Users,
+Zap
 } from "lucide-react";
+import { useEffect,useRef,useState } from "react";
 
 interface ChatMessage {
   id: string;

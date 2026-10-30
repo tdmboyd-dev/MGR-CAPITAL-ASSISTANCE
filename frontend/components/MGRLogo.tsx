@@ -1,19 +1,15 @@
 'use client'
+import { useHydrated } from '@/hooks/useHydrated'
 
+import { motion,type Variants } from 'framer-motion'
 import { useTheme } from 'next-themes'
-import { motion, type Variants } from 'framer-motion'
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 
 export default function MGRLogo({ size = 'normal' }: { size?: 'small' | 'normal' | 'large' }) {
   const { theme, resolvedTheme } = useTheme()
-  const [mounted, setMounted] = useState(false)
+  const mounted = useHydrated();
 
-  // Prevent hydration mismatch
-  useEffect(() => {
-    setMounted(true)
-  }, [])
-
-  const currentTheme = mounted ? (resolvedTheme || theme) : 'light'
+const currentTheme = mounted ? (resolvedTheme || theme) : 'light'
 
   const variants: Variants = {
     hidden: { opacity: 0, scale: 0.95 },

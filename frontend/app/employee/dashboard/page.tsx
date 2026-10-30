@@ -1,19 +1,19 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
-import { api } from "@/lib/api";
-import { useAuth } from "@/hooks/useAuth";
-import Link from "next/link";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
+Card,
+CardContent,
+CardDescription,
+CardHeader,
+CardTitle,
 } from "@/components/ui/card";
-import { DonutChartComponent, BarChartComponent } from "@/components/ui/charts";
+import { BarChartComponent,DonutChartComponent } from "@/components/ui/charts";
+import { useAuth } from "@/hooks/useAuth";
+import { api } from "@/lib/api";
 import { formatCurrency } from "@/lib/utils";
-import { FileText, DollarSign, BookOpen, CheckCircle, ArrowRight } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { ArrowRight,BookOpen,CheckCircle,DollarSign,FileText } from "lucide-react";
+import Link from "next/link";
 
 export default function EmployeeDashboard() {
   const { user } = useAuth();

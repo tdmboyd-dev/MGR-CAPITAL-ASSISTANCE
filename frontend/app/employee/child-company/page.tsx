@@ -1,33 +1,33 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
-import { api } from "@/lib/api";
-import { useAuth } from "@/hooks/useAuth";
-import Link from "next/link";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { formatCurrency } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 import {
-  Building2,
-  CheckCircle,
-  XCircle,
-  Clock,
-  ArrowRight,
-  Star,
-  Users,
-  DollarSign,
-  FileText,
-  Sparkles,
-  Lock,
-  TrendingUp,
+Card,
+CardContent,
+CardDescription,
+CardHeader,
+CardTitle,
+} from "@/components/ui/card";
+import { useAuth } from "@/hooks/useAuth";
+import { api } from "@/lib/api";
+import { formatCurrency } from "@/lib/utils";
+import { useQuery } from "@tanstack/react-query";
+import {
+ArrowRight,
+Building2,
+CheckCircle,
+Clock,
+DollarSign,
+FileText,
+Lock,
+Sparkles,
+Star,
+TrendingUp,
+Users,
+XCircle,
 } from "lucide-react";
+import Link from "next/link";
 
 export default function ChildCompanyPage() {
   const { user } = useAuth();

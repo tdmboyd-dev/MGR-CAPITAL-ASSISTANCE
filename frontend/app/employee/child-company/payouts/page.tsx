@@ -1,62 +1,63 @@
 "use client";
+import { apiFailure } from "@/lib/apiFailure";
 
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import Link from "next/link";
-import { api } from "@/lib/api";
-import { formatCurrency, formatDate } from "@/lib/utils";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+Card,
+CardContent,
+CardDescription,
+CardHeader,
+CardTitle,
+} from "@/components/ui/card";
+import { LineChartComponent } from "@/components/ui/charts";
+import {
+Dialog,
+DialogContent,
+DialogDescription,
+DialogFooter,
+DialogHeader,
+DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+Select,
+SelectContent,
+SelectItem,
+SelectTrigger,
+SelectValue,
 } from "@/components/ui/select";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { LineChartComponent } from "@/components/ui/charts";
-import { toast } from "sonner";
+Table,
+TableBody,
+TableCell,
+TableHead,
+TableHeader,
+TableRow,
+} from "@/components/ui/table";
+import { api } from "@/lib/api";
+import { formatCurrency,formatDate } from "@/lib/utils";
+import { useMutation,useQuery,useQueryClient } from "@tanstack/react-query";
 import {
-  ArrowLeft,
-  DollarSign,
-  Clock,
-  CheckCircle,
-  TrendingUp,
-  Calendar,
-  Loader2,
-  RefreshCw,
-  Search,
-  Building2,
-  PiggyBank,
-  AlertTriangle,
-  FileText,
-  Percent,
-  XCircle,
+AlertTriangle,
+ArrowLeft,
+Building2,
+Calendar,
+CheckCircle,
+Clock,
+DollarSign,
+FileText,
+Loader2,
+Percent,
+PiggyBank,
+RefreshCw,
+Search,
+TrendingUp,
+XCircle,
 } from "lucide-react";
+import Link from "next/link";
+import { useState } from "react";
+import { toast } from "sonner";
 
 interface PayoutTransaction {
   id: string;
@@ -194,7 +195,8 @@ export default function ChildCompanyPayoutsPage() {
       setPayoutAmount("");
       queryClient.invalidateQueries({ queryKey: ["child-company-financials"] });
     },
-    onError: (error: any) => {
+    onError: (errorUnknown: unknown) => {
+      const error = apiFailure(errorUnknown);
       toast.error(error.response?.data?.error || "Failed to request payout");
     },
   });

@@ -1,39 +1,38 @@
 "use client";
 
-import { useState } from "react";
-import {
-  format,
-  addDays,
-  startOfWeek,
-  endOfWeek,
-  startOfMonth,
-  endOfMonth,
-  eachDayOfInterval,
-  isSameMonth,
-  isSameDay,
-  addMonths,
-  subMonths,
-} from "date-fns";
-import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card,CardContent,CardHeader,CardTitle } from "@/components/ui/card";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
+Dialog,
+DialogContent,
+DialogHeader,
+DialogTitle
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  ChevronLeft,
-  ChevronRight,
-  Plus,
-  Calendar as CalendarIcon,
-  Clock,
-} from "lucide-react";
 import { cn } from "@/lib/utils";
+import { DragDropContext,Draggable,Droppable } from "@hello-pangea/dnd";
+import {
+addDays,
+addMonths,
+eachDayOfInterval,
+endOfMonth,
+endOfWeek,
+format,
+isSameDay,
+isSameMonth,
+startOfMonth,
+startOfWeek,
+subMonths,
+} from "date-fns";
+import {
+Calendar as CalendarIcon,
+ChevronLeft,
+ChevronRight,
+Clock,
+Plus,
+} from "lucide-react";
+import { useState } from "react";
 
 interface CalendarEvent {
   id: string;
@@ -77,7 +76,7 @@ export function Calendar({
   const handleNextMonth = () => setCurrentMonth(addMonths(currentMonth, 1));
   const handleToday = () => setCurrentMonth(new Date());
 
-  const handleDragEnd = (result: any) => {
+  const handleDragEnd = (result: import("@hello-pangea/dnd").DropResult) => {
     if (!result.destination) return;
 
     const eventId = result.draggableId;

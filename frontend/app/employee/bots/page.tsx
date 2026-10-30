@@ -1,16 +1,16 @@
 "use client";
 
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { api } from "@/lib/api";
-import { useAuth } from "@/hooks/useAuth";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
+Card,
+CardContent,
+CardDescription,
+CardHeader,
+CardTitle,
 } from "@/components/ui/card";
-import { Bot, Zap, DollarSign, Activity, ArrowUpCircle, CheckCircle, XCircle } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { api } from "@/lib/api";
+import { useMutation,useQuery,useQueryClient } from "@tanstack/react-query";
+import { Activity,Bot,CheckCircle,DollarSign,XCircle,Zap } from "lucide-react";
 import { useState } from "react";
 
 const TIER_LABELS: Record<string, { label: string; price: string; color: string }> = {

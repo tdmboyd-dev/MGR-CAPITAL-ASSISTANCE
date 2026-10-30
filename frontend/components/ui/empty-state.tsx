@@ -1,8 +1,8 @@
 "use client";
 
-import { ReactNode } from "react";
-import { FileText, BookOpen, MessageSquare, Inbox, Search, FolderOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { BookOpen,FileText,FolderOpen,Inbox,MessageSquare,Search } from "lucide-react";
+import { ReactNode } from "react";
 
 interface EmptyStateProps {
   icon?: "cases" | "training" | "messages" | "inbox" | "search" | "folder";

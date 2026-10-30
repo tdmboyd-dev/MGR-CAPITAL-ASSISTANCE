@@ -1,41 +1,49 @@
 'use client'
+import { apiFailure } from "@/lib/apiFailure";
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Input } from '@/components/ui/input'
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card,CardContent,CardDescription,CardHeader,CardTitle } from '@/components/ui/card';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
+Dialog,
+DialogContent,
+DialogDescription,
+DialogFooter,
+DialogHeader,
+DialogTitle,
+DialogTrigger,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  DialogFooter,
-} from '@/components/ui/dialog'
+Select,
+SelectContent,
+SelectItem,
+SelectTrigger,
+SelectValue,
+} from '@/components/ui/select';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+Table,
+TableBody,
+TableCell,
+TableHead,
+TableHeader,
+TableRow,
+} from '@/components/ui/table';
+import { api } from '@/lib/api';
+import { useMutation,useQuery,useQueryClient } from '@tanstack/react-query';
 import {
-  DollarSign, RefreshCw, Loader2, CheckCircle, Clock, Search,
-  AlertTriangle, ArrowRight, FileText, Download, Eye, XCircle
-} from 'lucide-react'
-import { useState } from 'react'
-import { toast } from 'sonner'
-import { api } from '@/lib/api'
+AlertTriangle,
+CheckCircle,Clock,
+DollarSign,
+Eye,
+FileText,
+Loader2,
+RefreshCw,
+Search,
+XCircle
+} from 'lucide-react';
+import { useState } from 'react';
+import { toast } from 'sonner';
 
 // Format currency
 const formatCurrency = (cents: number) => {
@@ -122,7 +130,8 @@ export default function AdminPayoutsPage() {
       setNotes('')
       queryClient.invalidateQueries({ queryKey: ['admin-payouts'] })
     },
-    onError: (error: any) => {
+    onError: (errorUnknown: unknown) => {
+      const error = apiFailure(errorUnknown);
       toast.error(error.response?.data?.error || 'Failed to complete payout')
     }
   })
@@ -510,10 +519,10 @@ export default function AdminPayoutsPage() {
             <div>
               <h4 className="font-semibold text-blue-800">Payout Workflow</h4>
               <ol className="mt-2 text-sm text-blue-700 list-decimal list-inside space-y-1">
-                <li>Cases move to "AWAITING_FUNDS" when funds are received from county</li>
+                <li>Cases move to &quot;AWAITING_FUNDS&quot; when funds are received from county</li>
                 <li>Founder processes payout via Founder Dashboard &rarr; Payouts &rarr; Nickel</li>
                 <li>ACH transfers are initiated in Nickel dashboard</li>
-                <li>Once ACH clears, mark payout as "Completed" here with reference number</li>
+                <li>Once ACH clears, mark payout as &quot;Completed&quot; here with reference number</li>
                 <li>All completions are logged for audit compliance</li>
               </ol>
             </div>

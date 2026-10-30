@@ -1,47 +1,45 @@
 "use client";
 
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { api } from "@/lib/api";
-import Link from "next/link";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { DocumentUploader } from "@/components/DocumentUploader";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import {
+Card,
+CardContent,
+CardDescription,
+CardHeader,
+CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+Select,
+SelectContent,
+SelectItem,
+SelectTrigger,
+SelectValue,
 } from "@/components/ui/select";
-import { DocumentUploader } from "@/components/DocumentUploader";
+import { api } from "@/lib/api";
 import { formatDate } from "@/lib/utils";
-import { motion, AnimatePresence } from "framer-motion";
-import { toast } from "sonner";
+import { useQuery,useQueryClient } from "@tanstack/react-query";
+import { AnimatePresence,motion } from "framer-motion";
 import {
-  FileText,
-  Upload,
-  CheckCircle,
-  Clock,
-  AlertCircle,
-  Eye,
-  Download,
-  Search,
-  Filter,
-  Loader2,
-  XCircle,
-  Shield,
-  Phone,
-  Mail,
-  Heart,
+AlertCircle,
+CheckCircle,
+Clock,
+Download,
+Eye,
+FileText,
+Heart,
+Loader2,
+Mail,
+Phone,
+Search,
+Shield,
+Upload,
+XCircle
 } from "lucide-react";
+import Link from "next/link";
+import { useState } from "react";
+import { toast } from "sonner";
 
 // Client-friendly document type labels
 const DOC_TYPE_LABELS: Record<string, string> = {
@@ -55,7 +53,7 @@ const DOC_TYPE_LABELS: Record<string, string> = {
   OTHER: "Other",
 };
 
-const DOC_STATUS_CONFIG: Record<string, { label: string; color: string; bgColor: string; icon: any }> = {
+const DOC_STATUS_CONFIG: Record<string, { label: string; color: string; bgColor: string; icon: import("lucide-react").LucideIcon }> = {
   PENDING: { label: "Under Review", color: "text-yellow-600", bgColor: "bg-yellow-100 dark:bg-yellow-900/30", icon: Clock },
   APPROVED: { label: "Approved", color: "text-green-600", bgColor: "bg-green-100 dark:bg-green-900/30", icon: CheckCircle },
   REJECTED: { label: "Needs Revision", color: "text-red-600", bgColor: "bg-red-100 dark:bg-red-900/30", icon: XCircle },

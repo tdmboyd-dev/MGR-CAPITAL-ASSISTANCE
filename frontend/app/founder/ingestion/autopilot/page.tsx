@@ -1,29 +1,29 @@
 "use client";
 
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { api } from "@/lib/api";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { formatDate } from "@/lib/utils";
 import {
-  Zap,
-  Activity,
-  ArrowLeft,
-  RefreshCw,
-  Play,
-  CheckCircle,
-  XCircle,
-  Clock,
-  Database,
-  Users,
-  TrendingUp,
+Card,
+CardContent,
+CardDescription,
+CardHeader,
+CardTitle,
+} from "@/components/ui/card";
+import { api } from "@/lib/api";
+import { formatDate } from "@/lib/utils";
+import { useMutation,useQuery,useQueryClient } from "@tanstack/react-query";
+import {
+Activity,
+ArrowLeft,
+CheckCircle,
+Clock,
+Database,
+Play,
+RefreshCw,
+TrendingUp,
+Users,
+XCircle,
+Zap,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -48,7 +48,7 @@ interface AutopilotRun {
   recordsParsed: number;
   casesCreated: number;
   casesRouted: number;
-  errors: any;
+  errors: unknown;
   startedAt: string;
   completedAt: string | null;
   durationMs: number | null;

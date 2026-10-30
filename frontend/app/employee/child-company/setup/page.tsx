@@ -1,32 +1,33 @@
 "use client";
+import { apiFailure } from "@/lib/apiFailure";
 
-import { useState, useEffect } from "react";
-import { useMutation } from "@tanstack/react-query";
-import { api } from "@/lib/api";
-import { useRouter } from "next/navigation";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import {
+Card,
+CardContent,
+CardDescription,
+CardHeader,
+CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { toast } from "sonner";
+import { api } from "@/lib/api";
+import { useMutation } from "@tanstack/react-query";
 import {
-  Building2,
-  Palette,
-  Rocket,
-  CheckCircle,
-  ArrowRight,
-  ArrowLeft,
-  Loader2,
-  Globe,
-  Image,
-  Star,
+ArrowLeft,
+ArrowRight,
+Building2,
+CheckCircle,
+Globe,
+Image,
+Loader2,
+Palette,
+Rocket,
+Star,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useEffect,useState } from "react";
+import { toast } from "sonner";
 
 function slugify(text: string): string {
   return text
@@ -82,7 +83,8 @@ export default function ChildCompanySetupPage() {
       setCreatedCompany(data.data || data);
       setCreated(true);
     },
-    onError: (error: any) => {
+    onError: (errorUnknown: unknown) => {
+      const error = apiFailure(errorUnknown);
       toast.error(
         error.response?.data?.error || "Failed to create child company"
       );
@@ -427,7 +429,7 @@ export default function ChildCompanySetupPage() {
             <CardHeader>
               <CardTitle>Company Branding</CardTitle>
               <CardDescription>
-                Customize your company's visual identity
+                Customize your company&apos;s visual identity
                 {formData.plan === "BRANDED" &&
                   " (limited customization on Branded plan)"}
               </CardDescription>

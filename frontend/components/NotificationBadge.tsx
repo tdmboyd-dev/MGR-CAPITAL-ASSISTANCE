@@ -1,19 +1,19 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { Bell } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
+Popover,
+PopoverContent,
+PopoverTrigger,
 } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Badge } from "@/components/ui/badge";
 import { useNotifications } from "@/hooks/useNotifications";
 import { format } from "date-fns";
-import { motion, AnimatePresence } from "framer-motion";
+import { AnimatePresence,motion } from "framer-motion";
+import { Bell } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 
 export function NotificationBadge() {
   const { unreadCount, notifications, isConnected, error, markAsRead, markAllAsRead } =

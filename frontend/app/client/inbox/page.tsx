@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 
 // Redirect inbox to messages page for consistency
 export default function ClientInboxRedirect() {

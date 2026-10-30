@@ -1,24 +1,24 @@
 "use client";
 
+import { zodResolver } from "@hookform/resolvers/zod";
+import { motion } from "framer-motion";
+import { ArrowLeft,CheckCircle,Loader2,Mail } from "lucide-react";
+import Link from "next/link";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
-import { motion } from "framer-motion";
-import { Loader2, Mail, ArrowLeft, CheckCircle } from "lucide-react";
 import { toast } from "sonner";
-import Link from "next/link";
+import * as z from "zod";
 
 import { Button } from "@/components/ui/button";
+import {
+Card,
+CardContent,
+CardDescription,
+CardHeader,
+CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 

@@ -1,31 +1,30 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Button } from "@/components/ui/button";
+import {
+Card,
+CardContent,
+CardDescription,
+CardHeader,
+CardTitle,
+} from "@/components/ui/card";
+import { Confetti } from "@/components/ui/confetti";
+import { Skeleton } from "@/components/ui/skeleton";
 import { api } from "@/lib/api";
 import { sanitizeHtml } from "@/lib/utils";
-import { useParams, useRouter } from "next/navigation";
+import { useMutation,useQuery,useQueryClient } from "@tanstack/react-query";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Confetti } from "@/components/ui/confetti";
-import { toast } from "sonner";
-import {
-  ArrowLeft,
-  Play,
-  CheckCircle,
-  BookOpen,
-  Clock,
-  Award,
-  XCircle,
-  AlertCircle,
+ArrowLeft,
+Award,
+BookOpen,
+CheckCircle,
+Clock,
+Play,
+XCircle
 } from "lucide-react";
+import { useParams,useRouter } from "next/navigation";
+import { useState } from "react";
+import { toast } from "sonner";
 
 interface QuizResult {
   passed: boolean;

@@ -1,49 +1,49 @@
 "use client";
 
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { api } from "@/lib/api";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
+Card,
+CardContent,
+CardDescription,
+CardHeader,
+CardTitle,
+} from "@/components/ui/card";
+import {
+Dialog,
+DialogContent,
+DialogHeader,
+DialogTitle,
+DialogTrigger,
 } from "@/components/ui/dialog";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { SkeletonTable } from "@/components/ui/skeleton";
-import { formatDate } from "@/lib/utils";
-import { toast } from "sonner";
 import {
-  BookOpen,
-  Plus,
-  Edit,
-  Trash2,
-  Users,
-  Clock,
-  CheckCircle,
-  BarChart3,
-  RefreshCw,
+Table,
+TableBody,
+TableCell,
+TableHead,
+TableHeader,
+TableRow,
+} from "@/components/ui/table";
+import { Textarea } from "@/components/ui/textarea";
+import { api } from "@/lib/api";
+import { formatDate } from "@/lib/utils";
+import { useMutation,useQuery,useQueryClient } from "@tanstack/react-query";
+import {
+BarChart3,
+BookOpen,
+CheckCircle,
+Clock,
+Edit,
+Plus,
+RefreshCw,
+Trash2,
+Users,
 } from "lucide-react";
+import { useState } from "react";
+import { toast } from "sonner";
 
 interface TrainingModule {
   id: string;

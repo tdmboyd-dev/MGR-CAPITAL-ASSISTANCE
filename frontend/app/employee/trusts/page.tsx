@@ -1,39 +1,40 @@
 "use client";
+import { apiFailure } from "@/lib/apiFailure";
 
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { api } from "@/lib/api";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+Card,
+CardContent,
+CardDescription,
+CardHeader,
+CardTitle,
+} from "@/components/ui/card";
+import {
+Select,
+SelectContent,
+SelectItem,
+SelectTrigger,
+SelectValue,
 } from "@/components/ui/select";
-import { toast } from "sonner";
+import { api } from "@/lib/api";
+import { useMutation,useQuery,useQueryClient } from "@tanstack/react-query";
 import {
-  Shield,
-  ShieldCheck,
-  ShieldPlus,
-  Crown,
-  CheckCircle,
-  Clock,
-  DollarSign,
-  FileText,
-  Calendar,
-  AlertCircle,
-  Loader2,
-  ArrowRight,
+AlertCircle,
+ArrowRight,
+Calendar,
+CheckCircle,
+Clock,
+Crown,
+DollarSign,
+FileText,
+Loader2,
+Shield,
+ShieldCheck,
+ShieldPlus,
 } from "lucide-react";
+import { useState } from "react";
+import { toast } from "sonner";
 
 interface TrustPlan {
   type: string;
@@ -67,7 +68,7 @@ const US_STATES = [
   "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY",
 ];
 
-const PLAN_ICONS: Record<string, any> = {
+const PLAN_ICONS: Record<string, import("lucide-react").LucideIcon> = {
   BASIC_PROTECTION: Shield,
   ENHANCED_PROTECTION: ShieldPlus,
   PREMIUM_ESTATE: Crown,
@@ -124,7 +125,8 @@ export default function EmployeeTrustsPage() {
       setSelectedPlan(null);
       setSelectedState("");
     },
-    onError: (error: any) => {
+    onError: (errorUnknown: unknown) => {
+      const error = apiFailure(errorUnknown);
       toast.error(error.response?.data?.message || "Failed to enroll");
     },
   });
@@ -139,7 +141,8 @@ export default function EmployeeTrustsPage() {
       toast.success("Setup fee paid successfully!");
       queryClient.invalidateQueries({ queryKey: ["my-trust-enrollment"] });
     },
-    onError: (error: any) => {
+    onError: (errorUnknown: unknown) => {
+      const error = apiFailure(errorUnknown);
       toast.error(error.response?.data?.message || "Payment failed");
     },
   });
@@ -154,7 +157,8 @@ export default function EmployeeTrustsPage() {
       toast.success("Notarization session scheduled!");
       queryClient.invalidateQueries({ queryKey: ["my-trust-enrollment"] });
     },
-    onError: (error: any) => {
+    onError: (errorUnknown: unknown) => {
+      const error = apiFailure(errorUnknown);
       toast.error(error.response?.data?.message || "Failed to schedule");
     },
   });

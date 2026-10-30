@@ -1,12 +1,11 @@
 'use client'
 
-import { useState } from 'react'
-import { motion } from 'framer-motion'
 import { Button } from '@/components/ui/button'
+import { Card,CardContent,CardDescription,CardHeader,CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { AlertCircle, CheckCircle, FileText, Loader2, Scale, Shield } from 'lucide-react'
-import { Progress } from '@/components/ui/progress'
+import { motion } from 'framer-motion'
+import { AlertCircle,CheckCircle,FileText,Loader2,Scale,Shield } from 'lucide-react'
+import { useState } from 'react'
 
 interface AuditResult {
   errors: string[]

@@ -1,32 +1,33 @@
 "use client";
+import { apiFailure } from "@/lib/apiFailure";
 
-import { useState, useRef } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { api } from "@/lib/api";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { formatDate } from "@/lib/utils";
 import {
-  Upload,
-  Database,
-  Clock,
-  CheckCircle,
-  XCircle,
-  RefreshCw,
-  FileUp,
-  FileText,
-  Globe,
-  Zap,
-  ArrowRight,
+Card,
+CardContent,
+CardDescription,
+CardHeader,
+CardTitle,
+} from "@/components/ui/card";
+import { api } from "@/lib/api";
+import { formatDate } from "@/lib/utils";
+import { useQuery,useQueryClient } from "@tanstack/react-query";
+import {
+ArrowRight,
+CheckCircle,
+Clock,
+Database,
+FileText,
+FileUp,
+Globe,
+RefreshCw,
+Upload,
+XCircle,
+Zap,
 } from "lucide-react";
 import Link from "next/link";
+import { useRef,useState } from "react";
 
 interface IngestionBatch {
   id: string;
@@ -98,7 +99,8 @@ export default function FounderIngestionPage() {
 
       setUploadResult(data?.data || data);
       refetch();
-    } catch (error: any) {
+    } catch (errorUnknown: unknown) {
+      const error = apiFailure(errorUnknown);
       setUploadResult({ error: error?.response?.data?.error || "Upload failed" });
     } finally {
       setUploading(false);

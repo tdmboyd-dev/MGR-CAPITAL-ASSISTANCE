@@ -1,67 +1,65 @@
 "use client";
 
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { api } from "@/lib/api";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+Card,
+CardContent,
+CardDescription,
+CardHeader,
+CardTitle,
+} from "@/components/ui/card";
+import {
+Dialog,
+DialogContent,
+DialogDescription,
+DialogFooter,
+DialogHeader,
+DialogTitle,
+DialogTrigger,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+Select,
+SelectContent,
+SelectItem,
+SelectTrigger,
+SelectValue,
+} from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+Table,
+TableBody,
+TableCell,
+TableHead,
+TableHeader,
+TableRow,
 } from "@/components/ui/table";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
+Tabs,
+TabsContent,
+TabsList,
+TabsTrigger,
 } from "@/components/ui/tabs";
+import { api } from "@/lib/api";
+import { useMutation,useQuery,useQueryClient } from "@tanstack/react-query";
 import {
-  Users,
-  UserPlus,
-  UserCheck,
-  UserX,
-  Briefcase,
-  GraduationCap,
-  TrendingUp,
-  Search,
-  RefreshCw,
-  Mail,
-  ChevronUp,
-  ChevronDown,
-  AlertTriangle,
-  CheckCircle,
-  Clock,
+Briefcase,
+CheckCircle,
+ChevronDown,
+ChevronUp,
+Clock,
+GraduationCap,
+Mail,
+RefreshCw,
+Search,
+UserCheck,
+UserPlus,
+Users,
+UserX
 } from "lucide-react";
+import { useState } from "react";
 import { toast } from "sonner";
 
 interface HRDashboard {

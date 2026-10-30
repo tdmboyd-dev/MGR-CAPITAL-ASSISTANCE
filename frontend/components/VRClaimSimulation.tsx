@@ -1,12 +1,12 @@
 'use client'
 
-import { Canvas } from '@react-three/fiber'
-import { OrbitControls, Environment } from '@react-three/drei'
-import { useState, Suspense } from 'react'
 import { Button } from '@/components/ui/button'
+import { Card,CardContent,CardHeader,CardTitle } from '@/components/ui/card'
+import { Environment,OrbitControls } from '@react-three/drei'
+import { Canvas } from '@react-three/fiber'
 import { motion } from 'framer-motion'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Loader2, Eye, EyeOff } from 'lucide-react'
+import { Eye,EyeOff,Loader2 } from 'lucide-react'
+import { Suspense,useState } from 'react'
 
 // Property type configurations
 const PROPERTY_TYPES = {

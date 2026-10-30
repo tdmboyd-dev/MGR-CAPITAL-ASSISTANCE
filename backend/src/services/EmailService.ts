@@ -1,19 +1,15 @@
 /**
  * EmailService.ts — MGR CAPITAL ASSISTANCE
- * Production Email System with nodemailer + MJML templates + drip sequences
- *
- * PROVIDER CHAIN (automatic failover):
- * 1. Modoboa SMTP (mail.capitalmgr.com) — PRIMARY (self-hosted, unlimited, $0)
- * 2. Brevo API (300 emails/day) — FALLBACK ONLY
- * 3. Console log — LAST RESORT (dev only)
- *
- * NO PAID EMAIL DEPENDENCY — Modoboa handles all production email
+ * Template mail adapter. Configured SMTP is preferred; external fallbacks are
+ * opt-in. A log is never a delivery receipt. Use CapitalEmailOutbox for durable
+ * business mail. Self-hosted mail still requires hosting, DNS and operations.
  */
 
-import nodemailer from 'nodemailer';
+import nodemailer, { type Transporter } from 'nodemailer';
 // @ts-ignore - mjml types may not be installed
 import mjml2html from 'mjml';
 import { config } from '../config/env.js';
+import { z } from 'zod';
 import { logger } from '../utils/logger.js';
 
 // Provider configuration
@@ -34,13 +30,16 @@ const SES_SMTP_USER = process.env.SMTP_USER;
 const SES_SMTP_PASS = process.env.SMTP_PASS;
 
 // Build Modoboa SMTP transporter (PRIMARY)
-let modoboaTransporter: nodemailer.Transporter | null = null;
+let modoboaTransporter: Transporter | null = null;
 if (MODOBOA_SMTP_HOST && MODOBOA_SMTP_USER && MODOBOA_SMTP_PASS) {
   try {
     modoboaTransporter = nodemailer.createTransport({
       host: MODOBOA_SMTP_HOST,
       port: MODOBOA_SMTP_PORT,
-      secure: false,
+      secure: MODOBOA_SMTP_PORT === 465,
+      requireTLS: MODOBOA_SMTP_PORT !== 465,
+      disableFileAccess: true,
+      disableUrlAccess: true,
       auth: {
         user: MODOBOA_SMTP_USER,
         pass: MODOBOA_SMTP_PASS,
@@ -56,13 +55,16 @@ if (MODOBOA_SMTP_HOST && MODOBOA_SMTP_USER && MODOBOA_SMTP_PASS) {
 }
 
 // Build Amazon SES SMTP transporter (FALLBACK)
-let smtpTransporter: nodemailer.Transporter | null = null;
-if (SES_SMTP_HOST && SES_SMTP_USER && SES_SMTP_PASS) {
+let smtpTransporter: Transporter | null = null;
+if (SES_SMTP_HOST && SES_SMTP_USER && SES_SMTP_PASS && (!SES_SMTP_HOST.endsWith('.amazonaws.com') || process.env.CAPITAL_EMAIL_ALLOW_EXTERNAL_FALLBACKS === 'true')) {
   try {
     smtpTransporter = nodemailer.createTransport({
       host: SES_SMTP_HOST,
       port: SES_SMTP_PORT,
-      secure: process.env.SMTP_SECURE === 'true',
+      secure: SES_SMTP_PORT === 465,
+      requireTLS: SES_SMTP_PORT !== 465,
+      disableFileAccess: true,
+      disableUrlAccess: true,
       auth: {
         user: SES_SMTP_USER,
         pass: SES_SMTP_PASS,
@@ -78,7 +80,7 @@ if (SES_SMTP_HOST && SES_SMTP_USER && SES_SMTP_PASS) {
 }
 
 // Determine primary provider — Modoboa is PRIMARY, SES and Brevo are fallbacks
-const PRIMARY_PROVIDER = modoboaTransporter ? 'modoboa' : (smtpTransporter ? 'ses' : (BREVO_API_KEY ? 'brevo' : 'log'));
+const PRIMARY_PROVIDER = modoboaTransporter ? 'modoboa' : (smtpTransporter ? 'smtp' : (BREVO_API_KEY && process.env.CAPITAL_EMAIL_ALLOW_EXTERNAL_FALLBACKS === 'true' ? 'brevo' : 'unavailable'));
 logger.info(`[EmailService] Provider chain: Modoboa=${modoboaTransporter ? 'YES' : 'NO'}, SES=${smtpTransporter ? 'YES' : 'NO'}, Brevo=${BREVO_API_KEY ? 'YES' : 'NO'}`);
 
 // Email templates stored in memory
@@ -95,7 +97,7 @@ const TEMPLATES: Record<string, (data: any) => string> = {
             <mj-text font-size="16px" color="#333" line-height="1.6">
               Your account has been created successfully. You can now access all features of the platform.
             </mj-text>
-            <mj-button background-color="#3b82f6" color="white" href="${data.loginUrl || 'https://app.mgrcapital.com/login'}" border-radius="8px" font-size="16px">
+            <mj-button background-color="#3b82f6" color="white" href="${data.loginUrl || 'https://capitalmgr.com/auth/login'}" border-radius="8px" font-size="16px">
               Sign In to Your Account
             </mj-button>
           </mj-column>
@@ -274,7 +276,7 @@ export class EmailService {
   getStatus(): { provider: string; configured: boolean; brevo: boolean; modoboa: boolean; ses: boolean; modoboaVerified: boolean; sesVerified: boolean } {
     return {
       provider: PRIMARY_PROVIDER,
-      configured: PRIMARY_PROVIDER !== 'log',
+      configured: PRIMARY_PROVIDER !== 'unavailable',
       brevo: !!BREVO_API_KEY,
       modoboa: !!modoboaTransporter,
       ses: !!smtpTransporter,
@@ -288,26 +290,30 @@ export class EmailService {
    * Modoboa SMTP → Amazon SES SMTP → Brevo API → Console Log
    */
   async send(templateName: string, to: string, data: Record<string, any>): Promise<boolean> {
-    const html = this.renderTemplate(templateName, data);
+    if (!z.email().safeParse(to).success) return false;
+    const html = await this.renderTemplate(templateName, data);
     const subject = data.subject || 'MGR Capital Notification';
+    if (typeof subject !== 'string' || subject.length > 300 || /[\r\n]/.test(subject)) return false;
     const plainText = data.plainText || this.stripHtml(html);
 
     // Try Modoboa SMTP first (self-hosted, unlimited, $0 cost)
     if (modoboaTransporter && !this.modoboaFailed) {
       const modoboaResult = await this.sendViaModoboa(to, subject, html, plainText);
       if (modoboaResult) return true;
-      logger.warn('[EmailService] Modoboa SMTP failed, trying Amazon SES fallback...');
+      // A lost SMTP acknowledgement may already have delivered this message.
+      // Never fall through to another provider after beginning an attempt.
+      return false;
     }
 
     // Try Amazon SES SMTP as second option
-    if (smtpTransporter && !this.sesFailed) {
+    if (smtpTransporter && !this.sesFailed && (!SES_SMTP_HOST?.includes('amazonaws.com') || process.env.CAPITAL_EMAIL_ALLOW_EXTERNAL_FALLBACKS === 'true')) {
       const sesResult = await this.sendViaSES(to, subject, html, plainText);
       if (sesResult) return true;
-      logger.warn('[EmailService] Amazon SES failed, trying Brevo fallback...');
+      return false;
     }
 
     // Try Brevo as last API fallback (external API, rate limited)
-    if (BREVO_API_KEY) {
+    if (BREVO_API_KEY && process.env.CAPITAL_EMAIL_ALLOW_EXTERNAL_FALLBACKS === 'true') {
       const brevoResult = await this.sendViaBrevo(to, subject, html, plainText);
       if (brevoResult) return true;
       logger.warn('[EmailService] Brevo fallback also failed');
@@ -318,9 +324,9 @@ export class EmailService {
       template: templateName,
       to,
       subject,
-      bodyPreview: plainText.substring(0, 200),
+      deliveryConfirmed: false,
     });
-    return process.env.NODE_ENV === 'development'; // Return true in dev so flows don't break
+    return false; // Logging is never an accepted delivery receipt.
   }
 
   /**
@@ -377,7 +383,8 @@ export class EmailService {
         text,
       });
 
-      logger.info('[EmailService] Email sent via Modoboa SMTP', { to, subject, messageId: info.messageId });
+      if (!info.accepted?.some((recipient: unknown) => typeof recipient === 'string' && recipient.toLowerCase() === to.toLowerCase())) return false;
+      logger.info('[EmailService] Email accepted via Modoboa SMTP', { messageId: info.messageId, deliveryVerified: false });
       this.modoboaVerified = true;
       return true;
     } catch (error: any) {
@@ -405,7 +412,8 @@ export class EmailService {
         text,
       });
 
-      logger.info('[EmailService] Email sent via Amazon SES SMTP', { to, subject, messageId: info.messageId });
+      if (!info.accepted?.some((recipient: unknown) => typeof recipient === 'string' && recipient.toLowerCase() === to.toLowerCase())) return false;
+      logger.info('[EmailService] Email accepted via SMTP', { messageId: info.messageId, deliveryVerified: false });
       this.sesVerified = true;
       return true;
     } catch (error: any) {
@@ -463,7 +471,17 @@ export class EmailService {
     return this.send('_raw', to, { subject, body, title: subject });
   }
 
-  private renderTemplate(name: string, data: any): string {
+  private async renderTemplate(name: string, data: any): Promise<string> {
+    const escape = (value:string) => value.replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]!));
+    const origin = new URL(process.env.FRONTEND_URL || 'https://capitalmgr.com');
+    const safe:Record<string,unknown> = {};
+    for (const [key,value] of Object.entries(data)) {
+      if (typeof value === 'string') {
+        if (/Url$|Link$/.test(key)) { const target = new URL(value,origin); if (target.origin !== origin.origin || target.username || target.password || !['https:','http:'].includes(target.protocol)) throw new Error('Email link must remain on the configured application'); safe[key] = escape(target.href); }
+        else safe[key] = escape(value);
+      } else if (typeof value === 'number' && Number.isFinite(value)) safe[key] = value;
+    }
+    data = safe;
     const templateFn = TEMPLATES[name];
     if (!templateFn) {
       // Default template for any unrecognized name
@@ -488,7 +506,7 @@ export class EmailService {
           </mj-body>
         </mjml>
       `;
-      const { html } = mjml2html(mjml);
+      const { html } = await mjml2html(mjml);
       return html;
     }
 
@@ -499,7 +517,7 @@ export class EmailService {
       return mjml;
     }
 
-    const { html } = mjml2html(mjml);
+    const { html } = await mjml2html(mjml);
     return html;
   }
 

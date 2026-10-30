@@ -1,17 +1,17 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
-import { Mic, MicOff, Loader2, Volume2, History, ChevronDown, ChevronUp } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
+Dialog,
+DialogContent,
+DialogHeader,
+DialogTitle,
 } from "@/components/ui/dialog";
-import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
+import { AnimatePresence,motion } from "framer-motion";
+import { ChevronDown,ChevronUp,History,Loader2,Mic,MicOff,Volume2 } from "lucide-react";
+import { useEffect,useRef,useState } from "react";
+import { toast } from "sonner";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 

@@ -1,16 +1,15 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
-import { api } from "@/lib/api";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
+Card,
+CardContent,
+CardHeader,
+CardTitle
 } from "@/components/ui/card";
+import { api } from "@/lib/api";
 import { formatCurrency } from "@/lib/utils";
-import { FileText, Users, TrendingUp, AlertTriangle } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { AlertTriangle,FileText,TrendingUp,Users } from "lucide-react";
 
 export default function AdminDashboard() {
   const { data: stats, isLoading } = useQuery({

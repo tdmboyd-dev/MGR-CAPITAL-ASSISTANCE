@@ -1,0 +1,16 @@
+{
+  "passed": 6,
+  "checks": [
+    "Every actual Davidson record creates one work item without inventing a customer or engagement",
+    "Concurrent repeated imports do not duplicate work items",
+    "Imported balance is not an external claim or availability certification",
+    "Work saves with audit; stale edits, client management and fabricated claimed status are rejected",
+    "Another snapshot of the same report retains one work file, source history and founder notes",
+    "Formatting-insensitive internal parcel match finds an existing case without calling it an externally paid claim"
+  ],
+  "reopenItemId": "cmvuh9uy9005552wqhngurtzq",
+  "syntheticCaseId": "cmvuharzd00ix116higsvpbmf",
+  "workItemsForActualCountyReport": 41,
+  "externalCourtClaimLookup": "Not integrated; no claimed/available certification",
+  "proof": "Actual isolated PostgreSQL using public source records; one clearly synthetic engagement exercises internal duplicate search"
+}

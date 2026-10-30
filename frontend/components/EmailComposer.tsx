@@ -1,32 +1,33 @@
 "use client";
+import { apiFailure } from "@/lib/apiFailure";
 
-import { useState, useRef, useEffect } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { api } from "@/lib/api";
-import {
-  Send,
-  Save,
-  Paperclip,
-  X,
-  User,
-  Users,
-  Loader2,
-  Minimize2,
-  Maximize2,
-} from "lucide-react";
-import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+Dialog,
+DialogContent,
+DialogHeader,
+DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { useMutation,useQueryClient } from "@tanstack/react-query";
+import {
+Loader2,
+Maximize2,
+Minimize2,
+Paperclip,
+Save,
+Send,
+User,
+Users,
+X,
+} from "lucide-react";
+import { useEffect,useRef,useState } from "react";
+import { toast } from "sonner";
 
 interface Email {
   id: string;
@@ -134,7 +135,8 @@ export function EmailComposer({
       queryClient.invalidateQueries({ queryKey: ["email-folder-counts"] });
       onSend?.();
     },
-    onError: (error: any) => {
+    onError: (errorUnknown: unknown) => {
+      const error = apiFailure(errorUnknown);
       toast.error(error.response?.data?.error || "Failed to send email");
     },
   });

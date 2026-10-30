@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { useAuth } from "@/hooks/useAuth";
-import { Navbar } from "@/components/Navbar";
-import { Sidebar } from "@/components/Sidebar";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { Navbar } from "@/components/Navbar";
 import { OfflineHandler } from "@/components/OfflineHandler";
+import { Sidebar } from "@/components/Sidebar";
+import { useAuth } from "@/hooks/useAuth";
+import { useRouter } from "next/navigation";
+import { useEffect,useState } from "react";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -45,12 +45,7 @@ export function DashboardLayout({ children, allowedRoles }: DashboardLayoutProps
     }
   }, [user, accessToken, isHydrated, router, allowedRoles]);
 
-  // Close sidebar on route change (mobile)
-  useEffect(() => {
-    setSidebarOpen(false);
-  }, []);
-
-  if (!isHydrated || !accessToken || !user) {
+if (!isHydrated || !accessToken || !user) {
     return (
       <div className="flex h-screen items-center justify-center bg-background">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>

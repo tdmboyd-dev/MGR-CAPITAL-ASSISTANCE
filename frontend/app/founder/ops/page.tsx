@@ -1,42 +1,41 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
-import { api } from "@/lib/api";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
-import { LineChartComponent, BarChartComponent } from "@/components/ui/charts";
-import { formatCurrency } from "@/lib/utils";
-import {
-  TrendingUp,
-  TrendingDown,
-  Minus,
-  DollarSign,
-  FileText,
-  BarChart3,
-  Calendar,
-  Activity,
-  CheckCircle2,
-  AlertTriangle,
-  XCircle,
-  Bot,
-  Clock,
-  Zap,
-} from "lucide-react";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import {
+Card,
+CardContent,
+CardDescription,
+CardHeader,
+CardTitle,
+} from "@/components/ui/card";
+import { BarChartComponent,LineChartComponent } from "@/components/ui/charts";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+Table,
+TableBody,
+TableCell,
+TableHead,
+TableHeader,
+TableRow,
+} from "@/components/ui/table";
+import { api } from "@/lib/api";
+import { formatCurrency } from "@/lib/utils";
+import { useQuery } from "@tanstack/react-query";
+import {
+Activity,
+AlertTriangle,
+BarChart3,
+Bot,
+Calendar,
+CheckCircle2,
+Clock,
+DollarSign,
+FileText,
+Minus,
+TrendingDown,
+TrendingUp,
+XCircle
+} from "lucide-react";
 
 interface ForecastPoint {
   date: string;

@@ -1,36 +1,36 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import {
-  Loader2,
-  Settings,
-  Mail,
-  AlertTriangle,
-  CheckCircle,
-  ArrowLeft,
-  Shield,
-  Key
+AlertTriangle,
+ArrowLeft,
+CheckCircle,
+Key,
+Loader2,
+Mail,
+Settings,
+Shield
 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useEffect,useState } from "react";
 import { toast } from "sonner";
 
-import { useAuth } from "@/hooks/useAuth";
+import {
+Alert,
+AlertDescription,
+AlertTitle,
+} from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import {
+Card,
+CardContent,
+CardDescription,
+CardHeader,
+CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  Alert,
-  AlertDescription,
-  AlertTitle,
-} from "@/components/ui/alert";
+import { useAuth } from "@/hooks/useAuth";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 

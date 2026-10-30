@@ -1,14 +1,14 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { motion } from 'framer-motion'
-import { TrendingUp, Calculator, Loader2, Info } from 'lucide-react'
+import { Alert,AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
+import { Card,CardContent,CardDescription,CardHeader,CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { Tooltip,TooltipContent,TooltipProvider,TooltipTrigger } from '@/components/ui/tooltip'
+import { motion } from 'framer-motion'
+import { Calculator,Info,Loader2,TrendingUp } from 'lucide-react'
+import { useEffect,useState } from 'react'
 
 interface PredictionResult {
   predictedSurplus: number

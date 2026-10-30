@@ -1,20 +1,20 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
-import { useRouter } from "next/navigation";
-import { Search, FileText, Users, Briefcase, Settings, X, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
+Dialog,
+DialogContent,
+DialogHeader,
+DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/useAuth";
-import { api } from "@/lib/api";
-import { motion, AnimatePresence } from "framer-motion";
 import { useDebounce } from "@/hooks/useDebounce";
+import { api } from "@/lib/api";
+import { AnimatePresence,motion } from "framer-motion";
+import { Briefcase,FileText,Loader2,Search,Settings,Users,X } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useCallback,useEffect,useRef,useState } from "react";
 
 interface SearchResult {
   id: string;
@@ -24,7 +24,7 @@ interface SearchResult {
   link: string;
 }
 
-const typeIcons: Record<string, any> = {
+const typeIcons: Record<string, import("lucide-react").LucideIcon> = {
   case: Briefcase,
   client: Users,
   document: FileText,
@@ -237,7 +237,7 @@ export function GlobalSearch() {
               </AnimatePresence>
             ) : query.length >= 2 ? (
               <div className="py-8 text-center text-muted-foreground">
-                No results found for "{query}"
+                No results found for &quot;{query}&quot;
               </div>
             ) : (
               <div className="py-8 text-center text-muted-foreground">

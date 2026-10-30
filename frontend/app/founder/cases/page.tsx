@@ -1,23 +1,23 @@
 "use client";
 
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { api } from "@/lib/api";
-import Link from "next/link";
+import { SendPortalLink } from "@/components/SendPortalLink";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
+Card,
+CardContent,
+CardDescription,
+CardHeader,
+CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { SkeletonTable } from "@/components/ui/skeleton";
-import { formatCurrency, formatDate } from "@/lib/utils";
-import { Search, ChevronLeft, ChevronRight, FileText, Link2, X } from "lucide-react";
-import { SendPortalLink } from "@/components/SendPortalLink";
+import { api } from "@/lib/api";
+import { formatCurrency,formatDate } from "@/lib/utils";
+import { useQuery } from "@tanstack/react-query";
+import { ChevronLeft,ChevronRight,FileText,Link2,Search } from "lucide-react";
+import Link from "next/link";
+import { useState } from "react";
 
 const STATUS_COLORS: Record<string, string> = {
   NEW: "bg-gray-500",

@@ -1,30 +1,31 @@
 "use client";
+import { apiFailure } from "@/lib/apiFailure";
 
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { api } from "@/lib/api";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import {
+Card,
+CardContent,
+CardDescription,
+CardHeader,
+CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
-import { toast } from "sonner";
+import { Tabs,TabsContent,TabsList,TabsTrigger } from "@/components/ui/tabs";
+import { api } from "@/lib/api";
+import { useMutation,useQuery,useQueryClient } from "@tanstack/react-query";
 import {
-  Settings,
-  BookOpen,
-  Database,
-  Activity,
-  Cog,
-  Save,
-  RotateCcw,
+Activity,
+BookOpen,
+Cog,
+Database,
+RotateCcw,
+Save,
+Settings,
 } from "lucide-react";
+import { useState } from "react";
+import { toast } from "sonner";
 
 interface ConfigSection {
   key: string;
@@ -95,7 +96,8 @@ export default function FounderConfigPage() {
       queryClient.invalidateQueries({ queryKey: ["founder-config"] });
       setHasChanges(false);
     },
-    onError: (error: any) => {
+    onError: (errorUnknown: unknown) => {
+      const error = apiFailure(errorUnknown);
       toast.error(error.response?.data?.error || "Failed to save configuration");
     },
   });

@@ -1,47 +1,47 @@
 "use client";
 
-import { useState } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { api } from "@/lib/api";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+Card,
+CardContent,
+CardDescription,
+CardHeader,
+CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+Select,
+SelectContent,
+SelectItem,
+SelectTrigger,
+SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Badge } from "@/components/ui/badge";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+Table,
+TableBody,
+TableCell,
+TableHead,
+TableHeader,
+TableRow,
 } from "@/components/ui/table";
+import { api } from "@/lib/api";
+import { useMutation,useQuery } from "@tanstack/react-query";
 import {
-  Shield,
-  Download,
-  FileSpreadsheet,
-  FileText,
-  Calendar,
-  RefreshCw,
-  AlertTriangle,
-  CheckCircle,
-  Eye,
-  Send,
+AlertTriangle,
+Calendar,
+CheckCircle,
+Download,
+Eye,
+FileSpreadsheet,
+FileText,
+RefreshCw,
+Send,
+Shield,
 } from "lucide-react";
+import { useState } from "react";
 
 interface ExportType {
   id: string;
@@ -77,7 +77,7 @@ interface DigestSummary {
 export default function FounderCompliancePage() {
   const [exportType, setExportType] = useState<string>("audit");
   const [exportFormat, setExportFormat] = useState<string>("csv");
-  const [startDate, setStartDate] = useState<string>(
+  const [startDate, setStartDate] = useState<string>(() =>
     new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0]
   );
   const [endDate, setEndDate] = useState<string>(

@@ -1,63 +1,64 @@
 "use client";
+import { apiFailure } from "@/lib/apiFailure";
 
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { api } from "@/lib/api";
-import Link from "next/link";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+Card,
+CardContent,
+CardDescription,
+CardHeader,
+CardTitle,
+} from "@/components/ui/card";
+import {
+Dialog,
+DialogContent,
+DialogDescription,
+DialogFooter,
+DialogHeader,
+DialogTitle,
+} from "@/components/ui/dialog";
+import {
+DropdownMenu,
+DropdownMenuContent,
+DropdownMenuItem,
+DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+Select,
+SelectContent,
+SelectItem,
+SelectTrigger,
+SelectValue,
 } from "@/components/ui/select";
+import { api } from "@/lib/api";
+import { formatCurrency,formatDate } from "@/lib/utils";
+import { useMutation,useQuery,useQueryClient } from "@tanstack/react-query";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { formatCurrency, formatDate } from "@/lib/utils";
-import { toast } from "sonner";
-import {
-  Users,
-  UserPlus,
-  ArrowLeft,
-  MoreVertical,
-  User,
-  Trash2,
-  Mail,
-  Calendar,
-  Briefcase,
-  DollarSign,
-  Activity,
-  Clock,
-  Loader2,
-  RefreshCw,
-  Search,
-  XCircle,
-  Send,
-  AlertTriangle,
+Activity,
+AlertTriangle,
+ArrowLeft,
+Briefcase,
+Calendar,
+Clock,
+DollarSign,
+Loader2,
+Mail,
+MoreVertical,
+RefreshCw,
+Search,
+Send,
+Trash2,
+User,
+UserPlus,
+Users,
+XCircle,
 } from "lucide-react";
+import Link from "next/link";
+import { useState } from "react";
+import { toast } from "sonner";
 
 interface TeamMember {
   id: string;
@@ -140,7 +141,8 @@ export default function ChildCompanyEmployeesPage() {
       setInviteForm({ email: "", role: "AGENT", name: "" });
       toast.success("Invitation sent successfully");
     },
-    onError: (error: any) => {
+    onError: (errorUnknown: unknown) => {
+      const error = apiFailure(errorUnknown);
       toast.error(error.response?.data?.error || "Failed to send invitation");
     },
   });
@@ -156,7 +158,8 @@ export default function ChildCompanyEmployeesPage() {
       setMemberToRemove(null);
       toast.success("Team member removed successfully");
     },
-    onError: (error: any) => {
+    onError: (errorUnknown: unknown) => {
+      const error = apiFailure(errorUnknown);
       toast.error(error.response?.data?.error || "Failed to remove team member");
     },
   });
@@ -172,7 +175,8 @@ export default function ChildCompanyEmployeesPage() {
       setInvitationToCancel(null);
       toast.success("Invitation cancelled");
     },
-    onError: (error: any) => {
+    onError: (errorUnknown: unknown) => {
+      const error = apiFailure(errorUnknown);
       toast.error(error.response?.data?.error || "Failed to cancel invitation");
     },
   });
@@ -186,7 +190,8 @@ export default function ChildCompanyEmployeesPage() {
     onSuccess: () => {
       toast.success("Invitation resent successfully");
     },
-    onError: (error: any) => {
+    onError: (errorUnknown: unknown) => {
+      const error = apiFailure(errorUnknown);
       toast.error(error.response?.data?.error || "Failed to resend invitation");
     },
   });

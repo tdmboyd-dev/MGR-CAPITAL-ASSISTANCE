@@ -1,21 +1,20 @@
 "use client";
 
-import type { ReactElement } from "react";
 import { format } from "date-fns";
-import {
-  CheckCircle2,
-  Clock,
-  AlertCircle,
-  FileText,
-  Phone,
-  Mail,
-  DollarSign,
-  UserCheck,
-  XCircle,
-  Upload,
-  MessageSquare,
-} from "lucide-react";
 import { motion } from "framer-motion";
+import {
+CheckCircle2,
+Clock,
+DollarSign,
+FileText,
+Mail,
+MessageSquare,
+Phone,
+Upload,
+UserCheck,
+XCircle
+} from "lucide-react";
+import type { ReactElement } from "react";
 
 interface TimelineEvent {
   id: string;

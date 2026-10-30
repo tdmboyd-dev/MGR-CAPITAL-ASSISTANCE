@@ -1,13 +1,13 @@
 'use client'
 
-import * as tf from '@tensorflow/tfjs'
-import { useEffect, useState, useCallback } from 'react'
-import { motion } from 'framer-motion'
 import { Button } from '@/components/ui/button'
+import { Card,CardContent,CardDescription,CardHeader,CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts'
-import { Brain, TrendingUp, Clock, DollarSign, Loader2, Scale, AlertTriangle } from 'lucide-react'
+import * as tf from '@tensorflow/tfjs'
+import { motion } from 'framer-motion'
+import { AlertTriangle,Brain,Clock,DollarSign,Loader2,Scale,TrendingUp } from 'lucide-react'
+import { useCallback,useEffect,useState } from 'react'
+import { Bar,BarChart,ResponsiveContainer,Tooltip,XAxis,YAxis } from 'recharts'
 import { toast } from 'sonner'
 
 interface SimulationInputs {

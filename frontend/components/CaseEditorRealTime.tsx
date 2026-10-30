@@ -1,16 +1,16 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
-import * as Y from "yjs";
-import { WebsocketProvider } from "y-websocket";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
+import { Card,CardContent,CardHeader,CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Users, Save, Wifi, WifiOff, Circle } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Circle,Save,Users,Wifi,WifiOff } from "lucide-react";
+import { useCallback,useEffect,useState } from "react";
 import { toast } from "sonner";
+import { WebsocketProvider } from "y-websocket";
+import * as Y from "yjs";
 
 interface Props {
   caseId: string;

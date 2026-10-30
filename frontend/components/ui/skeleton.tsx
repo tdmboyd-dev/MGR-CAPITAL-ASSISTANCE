@@ -49,4 +49,4 @@ function SkeletonList({ items = 5 }: { items?: number }) {
   );
 }
 
-export { Skeleton, SkeletonCard, SkeletonTable, SkeletonList };
+export { Skeleton,SkeletonCard,SkeletonList,SkeletonTable };

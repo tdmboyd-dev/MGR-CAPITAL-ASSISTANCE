@@ -8,35 +8,35 @@
  * Persists layout in localStorage per user role.
  */
 
-import { useState, useEffect, useCallback } from "react";
-import { Responsive, WidthProvider, Layout } from "react-grid-layout";
-import { useQuery } from "@tanstack/react-query";
-import { api } from "@/lib/api";
-import { useAuth } from "@/hooks/useAuth";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
-  Lock,
-  Unlock,
-  RotateCcw,
-  Settings,
-  DollarSign,
-  FileText,
-  Users,
-  AlertTriangle,
-  TrendingUp,
-  Activity,
-  Bot,
-  Bell,
+Card,
+CardContent,
+CardDescription,
+CardHeader,
+CardTitle,
+} from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useAuth } from "@/hooks/useAuth";
+import { api } from "@/lib/api";
+import { useQuery } from "@tanstack/react-query";
+import {
+Activity,
+AlertTriangle,
+Bell,
+Bot,
+DollarSign,
+FileText,
+Lock,
+RotateCcw,
+Settings,
+TrendingUp,
+Unlock,
+Users,
 } from "lucide-react";
+import { useCallback,useEffect,useState } from "react";
+import { Layout,Responsive,WidthProvider } from "react-grid-layout";
 
 // Import styles for react-grid-layout
 import "react-grid-layout/css/styles.css";
@@ -52,7 +52,7 @@ interface WidgetConfig {
   icon: React.ReactNode;
   minW: number;
   minH: number;
-  component: React.ComponentType<any>;
+  component: React.ComponentType;
 }
 
 // Widget components

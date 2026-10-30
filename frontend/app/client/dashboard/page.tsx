@@ -1,37 +1,37 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
-import { api } from "@/lib/api";
-import { useAuth } from "@/hooks/useAuth";
-import Link from "next/link";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+Card,
+CardContent,
+CardDescription,
+CardHeader,
+CardTitle,
+} from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { formatCurrency, formatDate } from "@/lib/utils";
+import { useAuth } from "@/hooks/useAuth";
+import { api } from "@/lib/api";
+import { formatCurrency,formatDate } from "@/lib/utils";
+import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import {
-  FileText,
-  DollarSign,
-  Clock,
-  CheckCircle,
-  AlertCircle,
-  ArrowRight,
-  Phone,
-  Mail,
-  Shield,
-  Heart,
-  TrendingUp,
-  Calendar,
-  Upload,
-  MessageSquare,
+AlertCircle,
+ArrowRight,
+Calendar,
+CheckCircle,
+Clock,
+DollarSign,
+FileText,
+Heart,
+Mail,
+MessageSquare,
+Phone,
+Shield,
+TrendingUp,
+Upload,
 } from "lucide-react";
+import Link from "next/link";
 
 // Client-friendly status display - hide internal terminology
 const STATUS_DISPLAY: Record<string, { label: string; color: string; progress: number; message: string }> = {

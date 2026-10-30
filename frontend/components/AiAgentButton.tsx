@@ -6,38 +6,42 @@
  * Phase 15: Advanced AI Agents
  */
 
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
+Dialog,
+DialogContent,
+DialogDescription,
+DialogHeader,
+DialogTitle,
 } from "@/components/ui/dialog";
-import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Textarea } from "@/components/ui/textarea";
 import {
-  Bot,
-  Mail,
-  Shield,
-  FileText,
-  MessageSquare,
-  Copy,
-  Check,
-  AlertTriangle,
-  Loader2,
-  Send,
+AlertTriangle,
+Bot,
+Check,
+Copy,
+FileText,
+Loader2,
+Mail,
+MessageSquare,
+Send,
+Shield,
 } from "lucide-react";
+import { useState } from "react";
 import { toast } from "sonner";
+import { z } from "zod";
+
+const outreachResultSchema = z.object({subject:z.string(),body:z.string(),tone:z.string(),callToAction:z.string()});
+const complianceResultSchema = z.object({isCompliant:z.boolean(),issues:z.array(z.string()),recommendations:z.array(z.string()),riskLevel:z.enum(['low','medium','high'])});
 
 type AgentTask = "outreach" | "compliance" | "summary" | "document_review";
 
 interface AgentContext {
   caseId?: string;
   documentId?: string;
-  customData?: Record<string, any>;
+  customData?: Record<string, unknown>;
 }
 
 interface OutreachEmailResult {
@@ -58,7 +62,7 @@ interface AgentResult {
   success: boolean;
   task: AgentTask;
   output: string;
-  structuredData?: Record<string, any>;
+  structuredData?: Record<string, unknown>;
 }
 
 const taskConfig = {
@@ -315,11 +319,13 @@ export function AiAgentButton({
     }
 
     if (task === "outreach" && result.structuredData) {
-      return renderOutreachResult(result.structuredData as OutreachEmailResult);
+      const parsed=outreachResultSchema.safeParse(result.structuredData);
+      return parsed.success ? renderOutreachResult(parsed.data) : <p role="alert">The AI returned an invalid outreach draft. No message was sent.</p>;
     }
 
     if (task === "compliance" && result.structuredData) {
-      return renderComplianceResult(result.structuredData as ComplianceCheckResult);
+      const parsed=complianceResultSchema.safeParse(result.structuredData);
+      return parsed.success ? renderComplianceResult(parsed.data) : <p role="alert">The AI returned an invalid review. Compliance is unverified.</p>;
     }
 
     return (

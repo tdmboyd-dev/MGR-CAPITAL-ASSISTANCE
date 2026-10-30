@@ -1,32 +1,33 @@
 "use client";
+import { apiFailure } from "@/lib/apiFailure";
 
-import { useState, useRef } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api } from "@/lib/api";
-import {
-  ArrowLeft,
-  Send,
-  Save,
-  Paperclip,
-  X,
-  User,
-  Users,
-  Loader2,
-} from "lucide-react";
-import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+Card,
+CardContent,
+CardHeader,
+CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { api } from "@/lib/api";
+import { useMutation,useQuery,useQueryClient } from "@tanstack/react-query";
 import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+ArrowLeft,
+Loader2,
+Paperclip,
+Save,
+Send,
+User,
+Users,
+X,
+} from "lucide-react";
 import Link from "next/link";
+import { useRouter,useSearchParams } from "next/navigation";
+import { useRef,useState } from "react";
+import { toast } from "sonner";
 
 interface Attachment {
   file: File;
@@ -81,7 +82,8 @@ export default function ComposeEmailPage() {
       queryClient.invalidateQueries({ queryKey: ["email-folder-counts"] });
       router.push("/founder/inbox");
     },
-    onError: (error: any) => {
+    onError: (errorUnknown: unknown) => {
+      const error = apiFailure(errorUnknown);
       toast.error(error.response?.data?.error || "Failed to send email");
     },
   });

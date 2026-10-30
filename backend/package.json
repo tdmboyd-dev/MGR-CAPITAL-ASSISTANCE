@@ -38,8 +38,8 @@
     "@aws-sdk/client-s3": "^3.983.0",
     "@aws-sdk/s3-request-presigner": "^3.983.0",
     "@prisma/client": "5.22.0",
-    "@solana/spl-token": "^0.1.8",
-    "@solana/web3.js": "^1.98.4",
+    "@solana-program/token": "^0.18.0",
+    "@solana/web3.js": "^3.1.1",
     "@tensorflow/tfjs": "^4.22.0",
     "@types/bcrypt": "^6.0.0",
     "@types/cookie-parser": "^1.4.10",
@@ -54,43 +54,59 @@
     "bcrypt": "^6.0.0",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
+    "cssnano": "^8.0.10",
     "dotenv": "^16.3.1",
+    "ethers": "^6.17.0",
     "exceljs": "^4.4.0",
     "express": "^4.18.2",
     "express-rate-limit": "^8.2.1",
     "helmet": "^8.1.0",
     "imapflow": "^1.2.8",
     "jsonwebtoken": "^9.0.2",
-    "mjml": "^4.18.0",
+    "mjml": "^5.4.1",
     "multer": "^2.0.2",
     "node-cron": "^4.2.1",
-    "nodemailer": "^7.0.12",
+    "nodemailer": "^10.3.1",
     "openai": "^6.17.0",
     "pdf-lib": "^1.17.1",
+    "pdf-parse": "^2.4.5",
     "pdfkit": "^0.17.2",
     "prisma": "5.22.0",
-    "puppeteer": "^24.37.3",
-    "puppeteer-extra": "^3.3.6",
-    "puppeteer-extra-plugin-stealth": "^2.11.2",
+    "puppeteer": "^25.16.0",
     "redis": "^5.10.0",
     "ssh2": "^1.17.0",
     "stripe": "^20.2.0",
     "tsx": "^4.1.2",
     "typescript": "^5.2.2",
     "web-push": "^3.6.7",
-    "web3": "^4.16.0",
     "ws": "^8.19.0",
-    "zod": "^3.23.8"
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@types/imapflow": "^1.0.23",
     "@types/jest": "^30.0.0",
     "@types/puppeteer": "^5.4.7",
     "@types/supertest": "^6.0.3",
-    "cypress": "^14.0.0",
-    "jest": "^30.2.0",
+    "cypress": "^16.2.1",
+    "jest": "^30.5.2",
     "jest-mock-extended": "^4.0.0",
+    "picomatch": "^4.0.7",
     "supertest": "^7.2.2",
     "ts-jest": "^29.4.6"
+  },
+  "overrides": {
+    "exceljs": {
+      "uuid": "^11.1.1"
+    },
+    "qs": "^6.17.1",
+    "htmlnano": {
+      "cssnano": "^8.0.0"
+    },
+    "fdir": {
+      "picomatch": "^4.0.7"
+    }
+  },
+  "engines": {
+    "node": "^22.11.0 || ^24.11.0 || >=26.0.0"
   }
 }

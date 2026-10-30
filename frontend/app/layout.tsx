@@ -1,9 +1,9 @@
-import type { Metadata, Viewport } from "next";
+import { ClientUtilities } from '@/components/ClientUtilities';
+import type { Metadata,Viewport } from "next";
 import { Inter } from "next/font/google";
+import { Toaster } from "sonner";
 import "./globals.css";
 import { Providers } from "./providers";
-import { Toaster } from "sonner";
-import { ClientUtilities } from '@/components/ClientUtilities';
 
 const inter = Inter({ subsets: ["latin"] });
 

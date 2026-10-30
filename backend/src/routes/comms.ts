@@ -108,7 +108,7 @@ router.post("/rooms", async (req: Request, res: Response) => {
       return res.status(400).json({
         success: false,
         error: "Invalid input",
-        details: validation.error.errors,
+        details: validation.error.issues,
       });
     }
 
@@ -147,7 +147,7 @@ router.patch("/rooms/:id", async (req: Request, res: Response) => {
       return res.status(400).json({
         success: false,
         error: "Invalid input",
-        details: validation.error.errors,
+        details: validation.error.issues,
       });
     }
 
@@ -248,7 +248,7 @@ router.post("/messages", async (req: Request, res: Response) => {
       return res.status(400).json({
         success: false,
         error: "Invalid input",
-        details: validation.error.errors,
+        details: validation.error.issues,
       });
     }
 
@@ -298,7 +298,7 @@ router.patch("/messages/:id", async (req: Request, res: Response) => {
       return res.status(400).json({
         success: false,
         error: "Invalid input",
-        details: validation.error.errors,
+        details: validation.error.issues,
       });
     }
 

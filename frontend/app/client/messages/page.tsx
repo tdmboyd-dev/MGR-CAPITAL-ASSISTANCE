@@ -1,51 +1,46 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { api } from "@/lib/api";
-import { useAuth } from "@/hooks/useAuth";
-import Link from "next/link";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
+import {
+Card,
+CardContent,
+CardDescription,
+CardHeader,
+CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { formatDateTime, formatDate } from "@/lib/utils";
-import { motion, AnimatePresence } from "framer-motion";
-import { toast } from "sonner";
 import {
-  MessageSquare,
-  Send,
-  Phone,
-  Mail,
-  Clock,
-  CheckCircle,
-  AlertCircle,
-  FileText,
-  DollarSign,
-  Bell,
-  Loader2,
-  Shield,
-  Heart,
-  User,
-  RefreshCw,
-  Inbox,
-  Plus,
+Select,
+SelectContent,
+SelectItem,
+SelectTrigger,
+SelectValue,
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { useAuth } from "@/hooks/useAuth";
+import { api } from "@/lib/api";
+import { formatDate,formatDateTime } from "@/lib/utils";
+import { useMutation,useQuery,useQueryClient } from "@tanstack/react-query";
+import { AnimatePresence,motion } from "framer-motion";
+import {
+DollarSign,
+FileText,
+Heart,
+Inbox,
+Loader2,
+Mail,
+MessageSquare,
+Phone,
+Plus,
+RefreshCw,
+Send,
+Shield
 } from "lucide-react";
+import Link from "next/link";
+import { useEffect,useRef,useState } from "react";
+import { toast } from "sonner";
 
 // Message categories for clients
 const MESSAGE_CATEGORIES = {

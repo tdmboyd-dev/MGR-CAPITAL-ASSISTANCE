@@ -1,61 +1,60 @@
 "use client";
+import { apiFailure } from "@/lib/apiFailure";
 
-import { useState, useCallback, useRef, useEffect } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { api } from "@/lib/api";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+Card,
+CardContent,
+CardDescription,
+CardHeader,
+CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+Select,
+SelectContent,
+SelectItem,
+SelectTrigger,
+SelectValue,
 } from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Badge } from "@/components/ui/badge";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+Table,
+TableBody,
+TableCell,
+TableHead,
+TableHeader,
+TableRow,
 } from "@/components/ui/table";
-import { toast } from "sonner";
+import { Tabs,TabsContent,TabsList,TabsTrigger } from "@/components/ui/tabs";
+import { api } from "@/lib/api";
+import { useMutation,useQuery,useQueryClient } from "@tanstack/react-query";
 import {
-  Stamp,
-  Upload,
-  Save,
-  CheckCircle,
-  AlertTriangle,
-  Clock,
-  FileText,
-  Video,
-  BookOpen,
-  MapPin,
-  Shield,
-  Calendar,
-  DollarSign,
-  Building,
-  User,
-  Hash,
-  Image as ImageIcon,
-  PenTool,
-  X,
-  RefreshCw,
-  Search,
-  Eye,
+AlertTriangle,
+BookOpen,
+Calendar,
+CheckCircle,
+Clock,
+DollarSign,
+Eye,
+FileText,
+Image as ImageIcon,
+MapPin,
+PenTool,
+RefreshCw,
+Save,
+Search,
+Shield,
+Stamp,
+Upload,
+User,
+Video,
+X
 } from "lucide-react";
+import { useCallback,useEffect,useRef,useState } from "react";
+import { toast } from "sonner";
 
 interface NotaryConfig {
   id?: string;
@@ -261,7 +260,8 @@ export default function FounderNotaryPage() {
       toast.success("Notary configuration saved successfully");
       queryClient.invalidateQueries({ queryKey: ["founder-notary-config"] });
     },
-    onError: (error: any) => {
+    onError: (errorUnknown: unknown) => {
+      const error = apiFailure(errorUnknown);
       toast.error(error.response?.data?.error || "Failed to save configuration");
     },
   });

@@ -1,0 +1,1965 @@
+{
+  "errors": 157,
+  "warnings": 100,
+  "rules": {
+    "@typescript-eslint/no-explicit-any": 125,
+    "@typescript-eslint/no-unused-vars": 77,
+    "react-hooks/exhaustive-deps": 10,
+    "@next/next/no-location-assign-relative-destination": 5,
+    "react-hooks/incompatible-library": 3,
+    "react-hooks/set-state-in-effect": 21,
+    "jsx-a11y/alt-text": 1,
+    "@next/next/no-assign-module-variable": 1,
+    "@typescript-eslint/ban-ts-comment": 3,
+    "@next/next/no-img-element": 3,
+    "react-hooks/immutability": 4,
+    "react-hooks/purity": 2,
+    "react-hooks/refs": 1,
+    "import/no-anonymous-default-export": 1
+  },
+  "files": [
+    {
+      "file": "app\\admin\\cases\\[id]\\page.tsx",
+      "errors": 2,
+      "warnings": 0,
+      "findings": [
+        {
+          "line": 330,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        },
+        {
+          "line": 365,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        }
+      ]
+    },
+    {
+      "file": "app\\admin\\cases\\page.tsx",
+      "errors": 4,
+      "warnings": 0,
+      "findings": [
+        {
+          "line": 83,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        },
+        {
+          "line": 86,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        },
+        {
+          "line": 88,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        },
+        {
+          "line": 213,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        }
+      ]
+    },
+    {
+      "file": "app\\admin\\comms\\page.tsx",
+      "errors": 3,
+      "warnings": 0,
+      "findings": [
+        {
+          "line": 87,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        },
+        {
+          "line": 101,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        },
+        {
+          "line": 115,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        }
+      ]
+    },
+    {
+      "file": "app\\admin\\compliance\\page.tsx",
+      "errors": 2,
+      "warnings": 0,
+      "findings": [
+        {
+          "line": 134,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        },
+        {
+          "line": 143,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        }
+      ]
+    },
+    {
+      "file": "app\\admin\\users\\page.tsx",
+      "errors": 0,
+      "warnings": 2,
+      "findings": [
+        {
+          "line": 75,
+          "rule": "@typescript-eslint/no-unused-vars",
+          "severity": 1
+        },
+        {
+          "line": 99,
+          "rule": "@typescript-eslint/no-unused-vars",
+          "severity": 1
+        }
+      ]
+    },
+    {
+      "file": "app\\auth\\forgot-password\\page.tsx",
+      "errors": 0,
+      "warnings": 1,
+      "findings": [
+        {
+          "line": 64,
+          "rule": "@typescript-eslint/no-unused-vars",
+          "severity": 1
+        }
+      ]
+    },
+    {
+      "file": "app\\auth\\login\\page.tsx",
+      "errors": 0,
+      "warnings": 1,
+      "findings": [
+        {
+          "line": 79,
+          "rule": "@typescript-eslint/no-unused-vars",
+          "severity": 1
+        }
+      ]
+    },
+    {
+      "file": "app\\auth\\register\\page.tsx",
+      "errors": 0,
+      "warnings": 1,
+      "findings": [
+        {
+          "line": 98,
+          "rule": "@typescript-eslint/no-unused-vars",
+          "severity": 1
+        }
+      ]
+    },
+    {
+      "file": "app\\auth\\reset-password\\page.tsx",
+      "errors": 0,
+      "warnings": 1,
+      "findings": [
+        {
+          "line": 93,
+          "rule": "@typescript-eslint/no-unused-vars",
+          "severity": 1
+        }
+      ]
+    },
+    {
+      "file": "app\\client\\cases\\[id]\\page.tsx",
+      "errors": 1,
+      "warnings": 0,
+      "findings": [
+        {
+          "line": 565,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        }
+      ]
+    },
+    {
+      "file": "app\\client\\cases\\page.tsx",
+      "errors": 4,
+      "warnings": 0,
+      "findings": [
+        {
+          "line": 59,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        },
+        {
+          "line": 61,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        },
+        {
+          "line": 63,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        },
+        {
+          "line": 156,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        }
+      ]
+    },
+    {
+      "file": "app\\client\\dashboard\\page.tsx",
+      "errors": 6,
+      "warnings": 1,
+      "findings": [
+        {
+          "line": 153,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        },
+        {
+          "line": 156,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        },
+        {
+          "line": 159,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        },
+        {
+          "line": 164,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        },
+        {
+          "line": 165,
+          "rule": "@typescript-eslint/no-unused-vars",
+          "severity": 1
+        },
+        {
+          "line": 165,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        },
+        {
+          "line": 331,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        }
+      ]
+    },
+    {
+      "file": "app\\client\\documents\\page.tsx",
+      "errors": 8,
+      "warnings": 0,
+      "findings": [
+        {
+          "line": 103,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        },
+        {
+          "line": 111,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        },
+        {
+          "line": 112,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        },
+        {
+          "line": 113,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        },
+        {
+          "line": 115,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        },
+        {
+          "line": 268,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        },
+        {
+          "line": 346,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        },
+        {
+          "line": 367,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        }
+      ]
+    },
+    {
+      "file": "app\\client\\messages\\page.tsx",
+      "errors": 1,
+      "warnings": 3,
+      "findings": [
+        {
+          "line": 71,
+          "rule": "@typescript-eslint/no-unused-vars",
+          "severity": 1
+        },
+        {
+          "line": 76,
+          "rule": "@typescript-eslint/no-unused-vars",
+          "severity": 1
+        },
+        {
+          "line": 133,
+          "rule": "react-hooks/exhaustive-deps",
+          "severity": 1
+        },
+        {
+          "line": 256,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        }
+      ]
+    },
+    {
+      "file": "app\\client\\notifications\\page.tsx",
+      "errors": 5,
+      "warnings": 0,
+      "findings": [
+        {
+          "line": 164,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        },
+        {
+          "line": 165,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        },
+        {
+          "line": 173,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        },
+        {
+          "line": 220,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        },
+        {
+          "line": 311,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        }
+      ]
+    },
+    {
+      "file": "app\\client\\portal\\page.tsx",
+      "errors": 0,
+      "warnings": 1,
+      "findings": [
+        {
+          "line": 11,
+          "rule": "@typescript-eslint/no-unused-vars",
+          "severity": 1
+        }
+      ]
+    },
+    {
+      "file": "app\\employee\\alerts-chamber\\page.tsx",
+      "errors": 0,
+      "warnings": 1,
+      "findings": [
+        {
+          "line": 79,
+          "rule": "react-hooks/exhaustive-deps",
+          "severity": 1
+        }
+      ]
+    },
+    {
+      "file": "app\\employee\\bots\\page.tsx",
+      "errors": 4,
+      "warnings": 3,
+      "findings": [
+        {
+          "line": 37,
+          "rule": "@typescript-eslint/no-unused-vars",
+          "severity": 1
+        },
+        {
+          "line": 39,
+          "rule": "@typescript-eslint/no-unused-vars",
+          "severity": 1
+        },
+        {
+          "line": 49,
+          "rule": "@typescript-eslint/no-unused-vars",
+          "severity": 1
+        },
+        {
+          "line": 227,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        },
+        {
+          "line": 227,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        },
+        {
+          "line": 256,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        },
+        {
+          "line": 256,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        }
+      ]
+    },
+    {
+      "file": "app\\employee\\cases\\[id]\\page.tsx",
+      "errors": 1,
+      "warnings": 0,
+      "findings": [
+        {
+          "line": 309,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        }
+      ]
+    },
+    {
+      "file": "app\\employee\\cases\\page.tsx",
+      "errors": 3,
+      "warnings": 0,
+      "findings": [
+        {
+          "line": 67,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        },
+        {
+          "line": 79,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        },
+        {
+          "line": 95,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        }
+      ]
+    },
+    {
+      "file": "app\\employee\\child-company\\page.tsx",
+      "errors": 1,
+      "warnings": 0,
+      "findings": [
+        {
+          "line": 411,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        }
+      ]
+    },
+    {
+      "file": "app\\employee\\child-company\\settings\\page.tsx",
+      "errors": 0,
+      "warnings": 2,
+      "findings": [
+        {
+          "line": 188,
+          "rule": "@next/next/no-location-assign-relative-destination",
+          "severity": 1
+        },
+        {
+          "line": 436,
+          "rule": "react-hooks/incompatible-library",
+          "severity": 1
+        }
+      ]
+    },
+    {
+      "file": "app\\employee\\child-company\\setup\\page.tsx",
+      "errors": 2,
+      "warnings": 2,
+      "findings": [
+        {
+          "line": 43,
+          "rule": "@typescript-eslint/no-unused-vars",
+          "severity": 1
+        },
+        {
+          "line": 43,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        },
+        {
+          "line": 59,
+          "rule": "react-hooks/set-state-in-effect",
+          "severity": 2
+        },
+        {
+          "line": 441,
+          "rule": "jsx-a11y/alt-text",
+          "severity": 1
+        }
+      ]
+    },
+    {
+      "file": "app\\employee\\comms\\page.tsx",
+      "errors": 4,
+      "warnings": 0,
+      "findings": [
+        {
+          "line": 104,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        },
+        {
+          "line": 133,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        },
+        {
+          "line": 136,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        },
+        {
+          "line": 145,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        }
+      ]
+    },
+    {
+      "file": "app\\employee\\compliance\\page.tsx",
+      "errors": 0,
+      "warnings": 1,
+      "findings": [
+        {
+          "line": 193,
+          "rule": "@typescript-eslint/no-unused-vars",
+          "severity": 1
+        }
+      ]
+    },
+    {
+      "file": "app\\employee\\dashboard\\page.tsx",
+      "errors": 2,
+      "warnings": 0,
+      "findings": [
+        {
+          "line": 166,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        },
+        {
+          "line": 213,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        }
+      ]
+    },
+    {
+      "file": "app\\employee\\email\\setup\\page.tsx",
+      "errors": 0,
+      "warnings": 1,
+      "findings": [
+        {
+          "line": 85,
+          "rule": "react-hooks/incompatible-library",
+          "severity": 1
+        }
+      ]
+    },
+    {
+      "file": "app\\employee\\inbox\\page.tsx",
+      "errors": 1,
+      "warnings": 1,
+      "findings": [
+        {
+          "line": 95,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        },
+        {
+          "line": 198,
+          "rule": "react-hooks/exhaustive-deps",
+          "severity": 1
+        }
+      ]
+    },
+    {
+      "file": "app\\employee\\leaderboard\\page.tsx",
+      "errors": 1,
+      "warnings": 0,
+      "findings": [
+        {
+          "line": 138,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        }
+      ]
+    },
+    {
+      "file": "app\\employee\\notary\\page.tsx",
+      "errors": 4,
+      "warnings": 3,
+      "findings": [
+        {
+          "line": 58,
+          "rule": "@typescript-eslint/no-unused-vars",
+          "severity": 1
+        },
+        {
+          "line": 67,
+          "rule": "@typescript-eslint/no-unused-vars",
+          "severity": 1
+        },
+        {
+          "line": 115,
+          "rule": "@typescript-eslint/no-unused-vars",
+          "severity": 1
+        },
+        {
+          "line": 116,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        },
+        {
+          "line": 394,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        },
+        {
+          "line": 395,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        },
+        {
+          "line": 466,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        }
+      ]
+    },
+    {
+      "file": "app\\employee\\training\\[id]\\page.tsx",
+      "errors": 2,
+      "warnings": 0,
+      "findings": [
+        {
+          "line": 113,
+          "rule": "@next/next/no-assign-module-variable",
+          "severity": 2
+        },
+        {
+          "line": 328,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        }
+      ]
+    },
+    {
+      "file": "app\\employee\\training\\page.tsx",
+      "errors": 2,
+      "warnings": 0,
+      "findings": [
+        {
+          "line": 28,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        },
+        {
+          "line": 77,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        }
+      ]
+    },
+    {
+      "file": "app\\employee\\trusts\\page.tsx",
+      "errors": 1,
+      "warnings": 0,
+      "findings": [
+        {
+          "line": 214,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        }
+      ]
+    },
+    {
+      "file": "app\\error.tsx",
+      "errors": 0,
+      "warnings": 1,
+      "findings": [
+        {
+          "line": 40,
+          "rule": "@next/next/no-location-assign-relative-destination",
+          "severity": 1
+        }
+      ]
+    },
+    {
+      "file": "app\\founder\\ai-bots\\page.tsx",
+      "errors": 0,
+      "warnings": 1,
+      "findings": [
+        {
+          "line": 83,
+          "rule": "@typescript-eslint/no-unused-vars",
+          "severity": 1
+        }
+      ]
+    },
+    {
+      "file": "app\\founder\\alerts-chamber\\page.tsx",
+      "errors": 0,
+      "warnings": 1,
+      "findings": [
+        {
+          "line": 86,
+          "rule": "react-hooks/exhaustive-deps",
+          "severity": 1
+        }
+      ]
+    },
+    {
+      "file": "app\\founder\\auctions\\page.tsx",
+      "errors": 0,
+      "warnings": 2,
+      "findings": [
+        {
+          "line": 182,
+          "rule": "@typescript-eslint/no-unused-vars",
+          "severity": 1
+        },
+        {
+          "line": 195,
+          "rule": "@typescript-eslint/no-unused-vars",
+          "severity": 1
+        }
+      ]
+    },
+    {
+      "file": "app\\founder\\bots\\page.tsx",
+      "errors": 8,
+      "warnings": 0,
+      "findings": [
+        {
+          "line": 69,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        },
+        {
+          "line": 70,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        },
+        {
+          "line": 72,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        },
+        {
+          "line": 77,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        },
+        {
+          "line": 100,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        },
+        {
+          "line": 176,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        },
+        {
+          "line": 176,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        },
+        {
+          "line": 213,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        }
+      ]
+    },
+    {
+      "file": "app\\founder\\cases\\page.tsx",
+      "errors": 2,
+      "warnings": 0,
+      "findings": [
+        {
+          "line": 39,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        },
+        {
+          "line": 155,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        }
+      ]
+    },
+    {
+      "file": "app\\founder\\child-companies\\page.tsx",
+      "errors": 2,
+      "warnings": 1,
+      "findings": [
+        {
+          "line": 85,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        },
+        {
+          "line": 87,
+          "rule": "@typescript-eslint/no-unused-vars",
+          "severity": 1
+        },
+        {
+          "line": 221,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        }
+      ]
+    },
+    {
+      "file": "app\\founder\\command-center\\page.tsx",
+      "errors": 12,
+      "warnings": 0,
+      "findings": [
+        {
+          "line": 281,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        },
+        {
+          "line": 282,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        },
+        {
+          "line": 283,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        },
+        {
+          "line": 284,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        },
+        {
+          "line": 338,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        },
+        {
+          "line": 349,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        },
+        {
+          "line": 414,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        },
+        {
+          "line": 433,
+          "rule": "react-hooks/set-state-in-effect",
+          "severity": 2
+        },
+        {
+          "line": 444,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        },
+        {
+          "line": 453,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        },
+        {
+          "line": 467,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        },
+        {
+          "line": 476,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        }
+      ]
+    },
+    {
+      "file": "app\\founder\\comms\\page.tsx",
+      "errors": 4,
+      "warnings": 0,
+      "findings": [
+        {
+          "line": 188,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        },
+        {
+          "line": 217,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        },
+        {
+          "line": 220,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        },
+        {
+          "line": 230,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        }
+      ]
+    },
+    {
+      "file": "app\\founder\\config\\page.tsx",
+      "errors": 4,
+      "warnings": 2,
+      "findings": [
+        {
+          "line": 30,
+          "rule": "@typescript-eslint/no-unused-vars",
+          "severity": 1
+        },
+        {
+          "line": 32,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        },
+        {
+          "line": 74,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        },
+        {
+          "line": 75,
+          "rule": "@typescript-eslint/no-unused-vars",
+          "severity": 1
+        },
+        {
+          "line": 90,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        },
+        {
+          "line": 111,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        }
+      ]
+    },
+    {
+      "file": "app\\founder\\dashboard\\page.tsx",
+      "errors": 1,
+      "warnings": 0,
+      "findings": [
+        {
+          "line": 227,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        }
+      ]
+    },
+    {
+      "file": "app\\founder\\deadlines\\page.tsx",
+      "errors": 3,
+      "warnings": 0,
+      "findings": [
+        {
+          "line": 95,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        },
+        {
+          "line": 99,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        },
+        {
+          "line": 229,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        }
+      ]
+    },
+    {
+      "file": "app\\founder\\documents\\assignment\\page.tsx",
+      "errors": 0,
+      "warnings": 2,
+      "findings": [
+        {
+          "line": 136,
+          "rule": "@typescript-eslint/no-unused-vars",
+          "severity": 1
+        },
+        {
+          "line": 205,
+          "rule": "react-hooks/incompatible-library",
+          "severity": 1
+        }
+      ]
+    },
+    {
+      "file": "app\\founder\\emails\\page.tsx",
+      "errors": 4,
+      "warnings": 0,
+      "findings": [
+        {
+          "line": 100,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        },
+        {
+          "line": 101,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        },
+        {
+          "line": 102,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        },
+        {
+          "line": 276,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        }
+      ]
+    },
+    {
+      "file": "app\\founder\\genealogy\\page.tsx",
+      "errors": 4,
+      "warnings": 4,
+      "findings": [
+        {
+          "line": 79,
+          "rule": "@typescript-eslint/no-unused-vars",
+          "severity": 1
+        },
+        {
+          "line": 79,
+          "rule": "@typescript-eslint/no-unused-vars",
+          "severity": 1
+        },
+        {
+          "line": 88,
+          "rule": "@typescript-eslint/no-unused-vars",
+          "severity": 1
+        },
+        {
+          "line": 88,
+          "rule": "@typescript-eslint/no-unused-vars",
+          "severity": 1
+        },
+        {
+          "line": 234,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        },
+        {
+          "line": 235,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        },
+        {
+          "line": 236,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        },
+        {
+          "line": 332,
+          "rule": "react-hooks/set-state-in-effect",
+          "severity": 2
+        }
+      ]
+    },
+    {
+      "file": "app\\founder\\inbox\\page.tsx",
+      "errors": 0,
+      "warnings": 1,
+      "findings": [
+        {
+          "line": 189,
+          "rule": "react-hooks/exhaustive-deps",
+          "severity": 1
+        }
+      ]
+    },
+    {
+      "file": "app\\founder\\ingestion\\autopilot\\page.tsx",
+      "errors": 0,
+      "warnings": 1,
+      "findings": [
+        {
+          "line": 76,
+          "rule": "@typescript-eslint/no-unused-vars",
+          "severity": 1
+        }
+      ]
+    },
+    {
+      "file": "app\\founder\\ingestion\\page.tsx",
+      "errors": 2,
+      "warnings": 1,
+      "findings": [
+        {
+          "line": 58,
+          "rule": "@typescript-eslint/no-unused-vars",
+          "severity": 1
+        },
+        {
+          "line": 60,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        },
+        {
+          "line": 312,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        }
+      ]
+    },
+    {
+      "file": "app\\founder\\ingestion\\sources\\page.tsx",
+      "errors": 0,
+      "warnings": 1,
+      "findings": [
+        {
+          "line": 81,
+          "rule": "@typescript-eslint/no-unused-vars",
+          "severity": 1
+        }
+      ]
+    },
+    {
+      "file": "app\\founder\\marketplace\\page.tsx",
+      "errors": 2,
+      "warnings": 2,
+      "findings": [
+        {
+          "line": 124,
+          "rule": "@typescript-eslint/ban-ts-comment",
+          "severity": 2
+        },
+        {
+          "line": 127,
+          "rule": "@typescript-eslint/ban-ts-comment",
+          "severity": 2
+        },
+        {
+          "line": 132,
+          "rule": "@typescript-eslint/no-unused-vars",
+          "severity": 1
+        },
+        {
+          "line": 171,
+          "rule": "@typescript-eslint/no-unused-vars",
+          "severity": 1
+        }
+      ]
+    },
+    {
+      "file": "app\\founder\\nft\\page.tsx",
+      "errors": 2,
+      "warnings": 1,
+      "findings": [
+        {
+          "line": 59,
+          "rule": "@typescript-eslint/no-unused-vars",
+          "severity": 1
+        },
+        {
+          "line": 124,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        },
+        {
+          "line": 265,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        }
+      ]
+    },
+    {
+      "file": "app\\founder\\notary\\page.tsx",
+      "errors": 1,
+      "warnings": 4,
+      "findings": [
+        {
+          "line": 272,
+          "rule": "react-hooks/set-state-in-effect",
+          "severity": 2
+        },
+        {
+          "line": 319,
+          "rule": "@typescript-eslint/no-unused-vars",
+          "severity": 1
+        },
+        {
+          "line": 343,
+          "rule": "@typescript-eslint/no-unused-vars",
+          "severity": 1
+        },
+        {
+          "line": 708,
+          "rule": "@next/next/no-img-element",
+          "severity": 1
+        },
+        {
+          "line": 771,
+          "rule": "@next/next/no-img-element",
+          "severity": 1
+        }
+      ]
+    },
+    {
+      "file": "app\\founder\\office-table\\page.tsx",
+      "errors": 1,
+      "warnings": 2,
+      "findings": [
+        {
+          "line": 102,
+          "rule": "@typescript-eslint/no-unused-vars",
+          "severity": 1
+        },
+        {
+          "line": 413,
+          "rule": "@typescript-eslint/no-unused-vars",
+          "severity": 1
+        },
+        {
+          "line": 631,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        }
+      ]
+    },
+    {
+      "file": "app\\founder\\payments\\page.tsx",
+      "errors": 3,
+      "warnings": 2,
+      "findings": [
+        {
+          "line": 79,
+          "rule": "react-hooks/immutability",
+          "severity": 2
+        },
+        {
+          "line": 80,
+          "rule": "react-hooks/immutability",
+          "severity": 2
+        },
+        {
+          "line": 97,
+          "rule": "@typescript-eslint/no-unused-vars",
+          "severity": 1
+        },
+        {
+          "line": 107,
+          "rule": "react-hooks/exhaustive-deps",
+          "severity": 1
+        },
+        {
+          "line": 473,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        }
+      ]
+    },
+    {
+      "file": "app\\founder\\payouts\\page.tsx",
+      "errors": 0,
+      "warnings": 3,
+      "findings": [
+        {
+          "line": 303,
+          "rule": "@typescript-eslint/no-unused-vars",
+          "severity": 1
+        },
+        {
+          "line": 516,
+          "rule": "@typescript-eslint/no-unused-vars",
+          "severity": 1
+        },
+        {
+          "line": 525,
+          "rule": "@typescript-eslint/no-unused-vars",
+          "severity": 1
+        }
+      ]
+    },
+    {
+      "file": "app\\founder\\phone-bot\\page.tsx",
+      "errors": 1,
+      "warnings": 3,
+      "findings": [
+        {
+          "line": 90,
+          "rule": "@typescript-eslint/no-unused-vars",
+          "severity": 1
+        },
+        {
+          "line": 94,
+          "rule": "@typescript-eslint/no-unused-vars",
+          "severity": 1
+        },
+        {
+          "line": 110,
+          "rule": "@typescript-eslint/no-unused-vars",
+          "severity": 1
+        },
+        {
+          "line": 310,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        }
+      ]
+    },
+    {
+      "file": "app\\founder\\storage\\page.tsx",
+      "errors": 3,
+      "warnings": 0,
+      "findings": [
+        {
+          "line": 67,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        },
+        {
+          "line": 452,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        },
+        {
+          "line": 690,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        }
+      ]
+    },
+    {
+      "file": "app\\founder\\trusts\\page.tsx",
+      "errors": 0,
+      "warnings": 1,
+      "findings": [
+        {
+          "line": 152,
+          "rule": "@typescript-eslint/no-unused-vars",
+          "severity": 1
+        }
+      ]
+    },
+    {
+      "file": "app\\founder\\worker-bots\\page.tsx",
+      "errors": 1,
+      "warnings": 0,
+      "findings": [
+        {
+          "line": 593,
+          "rule": "react-hooks/set-state-in-effect",
+          "severity": 2
+        }
+      ]
+    },
+    {
+      "file": "app\\global-error.tsx",
+      "errors": 0,
+      "warnings": 1,
+      "findings": [
+        {
+          "line": 97,
+          "rule": "@next/next/no-location-assign-relative-destination",
+          "severity": 1
+        }
+      ]
+    },
+    {
+      "file": "app\\settings\\page.tsx",
+      "errors": 0,
+      "warnings": 2,
+      "findings": [
+        {
+          "line": 72,
+          "rule": "@typescript-eslint/no-unused-vars",
+          "severity": 1
+        },
+        {
+          "line": 102,
+          "rule": "@typescript-eslint/no-unused-vars",
+          "severity": 1
+        }
+      ]
+    },
+    {
+      "file": "app\\sign-portal\\page.tsx",
+      "errors": 3,
+      "warnings": 2,
+      "findings": [
+        {
+          "line": 71,
+          "rule": "@typescript-eslint/no-unused-vars",
+          "severity": 1
+        },
+        {
+          "line": 83,
+          "rule": "react-hooks/set-state-in-effect",
+          "severity": 2
+        },
+        {
+          "line": 87,
+          "rule": "react-hooks/immutability",
+          "severity": 2
+        },
+        {
+          "line": 88,
+          "rule": "react-hooks/exhaustive-deps",
+          "severity": 1
+        },
+        {
+          "line": 99,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        }
+      ]
+    },
+    {
+      "file": "components\\AdvancedLawyerBotV2.tsx",
+      "errors": 2,
+      "warnings": 2,
+      "findings": [
+        {
+          "line": 106,
+          "rule": "react-hooks/purity",
+          "severity": 2
+        },
+        {
+          "line": 108,
+          "rule": "@typescript-eslint/no-unused-vars",
+          "severity": 1
+        },
+        {
+          "line": 116,
+          "rule": "react-hooks/set-state-in-effect",
+          "severity": 2
+        },
+        {
+          "line": 371,
+          "rule": "@typescript-eslint/no-unused-vars",
+          "severity": 1
+        }
+      ]
+    },
+    {
+      "file": "components\\AiAgentButton.tsx",
+      "errors": 1,
+      "warnings": 2,
+      "findings": [
+        {
+          "line": 117,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        },
+        {
+          "line": 171,
+          "rule": "@typescript-eslint/no-unused-vars",
+          "severity": 1
+        },
+        {
+          "line": 215,
+          "rule": "@typescript-eslint/no-unused-vars",
+          "severity": 1
+        }
+      ]
+    },
+    {
+      "file": "components\\AiRecommendationsCard.tsx",
+      "errors": 1,
+      "warnings": 1,
+      "findings": [
+        {
+          "line": 100,
+          "rule": "react-hooks/set-state-in-effect",
+          "severity": 2
+        },
+        {
+          "line": 102,
+          "rule": "react-hooks/exhaustive-deps",
+          "severity": 1
+        }
+      ]
+    },
+    {
+      "file": "components\\AiSearchBar.tsx",
+      "errors": 1,
+      "warnings": 0,
+      "findings": [
+        {
+          "line": 71,
+          "rule": "react-hooks/set-state-in-effect",
+          "severity": 2
+        }
+      ]
+    },
+    {
+      "file": "components\\BotAvatar3D.tsx",
+      "errors": 0,
+      "warnings": 1,
+      "findings": [
+        {
+          "line": 17,
+          "rule": "@typescript-eslint/no-unused-vars",
+          "severity": 1
+        }
+      ]
+    },
+    {
+      "file": "components\\CaseEditorRealTime.tsx",
+      "errors": 3,
+      "warnings": 2,
+      "findings": [
+        {
+          "line": 43,
+          "rule": "@typescript-eslint/no-unused-vars",
+          "severity": 1
+        },
+        {
+          "line": 78,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        },
+        {
+          "line": 79,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        },
+        {
+          "line": 93,
+          "rule": "react-hooks/set-state-in-effect",
+          "severity": 2
+        },
+        {
+          "line": 128,
+          "rule": "@typescript-eslint/no-unused-vars",
+          "severity": 1
+        }
+      ]
+    },
+    {
+      "file": "components\\CustomizableDashboard.tsx",
+      "errors": 6,
+      "warnings": 0,
+      "findings": [
+        {
+          "line": 105,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        },
+        {
+          "line": 144,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        },
+        {
+          "line": 184,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        },
+        {
+          "line": 261,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        },
+        {
+          "line": 300,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        },
+        {
+          "line": 426,
+          "rule": "react-hooks/set-state-in-effect",
+          "severity": 2
+        }
+      ]
+    },
+    {
+      "file": "components\\DocumentViewer.tsx",
+      "errors": 0,
+      "warnings": 1,
+      "findings": [
+        {
+          "line": 67,
+          "rule": "@next/next/no-img-element",
+          "severity": 1
+        }
+      ]
+    },
+    {
+      "file": "components\\ESignaturePad.tsx",
+      "errors": 0,
+      "warnings": 1,
+      "findings": [
+        {
+          "line": 61,
+          "rule": "@typescript-eslint/no-unused-vars",
+          "severity": 1
+        }
+      ]
+    },
+    {
+      "file": "components\\EmailComposer.tsx",
+      "errors": 1,
+      "warnings": 0,
+      "findings": [
+        {
+          "line": 85,
+          "rule": "react-hooks/set-state-in-effect",
+          "severity": 2
+        }
+      ]
+    },
+    {
+      "file": "components\\ErrorBoundary.tsx",
+      "errors": 0,
+      "warnings": 1,
+      "findings": [
+        {
+          "line": 43,
+          "rule": "@next/next/no-location-assign-relative-destination",
+          "severity": 1
+        }
+      ]
+    },
+    {
+      "file": "components\\GlobalSearch.tsx",
+      "errors": 2,
+      "warnings": 1,
+      "findings": [
+        {
+          "line": 45,
+          "rule": "@typescript-eslint/no-unused-vars",
+          "severity": 1
+        },
+        {
+          "line": 73,
+          "rule": "react-hooks/set-state-in-effect",
+          "severity": 2
+        },
+        {
+          "line": 82,
+          "rule": "react-hooks/set-state-in-effect",
+          "severity": 2
+        }
+      ]
+    },
+    {
+      "file": "components\\GlobalSearchBar.tsx",
+      "errors": 1,
+      "warnings": 0,
+      "findings": [
+        {
+          "line": 79,
+          "rule": "react-hooks/set-state-in-effect",
+          "severity": 2
+        }
+      ]
+    },
+    {
+      "file": "components\\LeadPipelineKanban.tsx",
+      "errors": 1,
+      "warnings": 2,
+      "findings": [
+        {
+          "line": 575,
+          "rule": "@typescript-eslint/no-unused-vars",
+          "severity": 1
+        },
+        {
+          "line": 580,
+          "rule": "react-hooks/immutability",
+          "severity": 2
+        },
+        {
+          "line": 764,
+          "rule": "@typescript-eslint/no-unused-vars",
+          "severity": 1
+        }
+      ]
+    },
+    {
+      "file": "components\\LitigationSimulator.tsx",
+      "errors": 1,
+      "warnings": 1,
+      "findings": [
+        {
+          "line": 213,
+          "rule": "react-hooks/set-state-in-effect",
+          "severity": 2
+        },
+        {
+          "line": 297,
+          "rule": "@typescript-eslint/no-unused-vars",
+          "severity": 1
+        }
+      ]
+    },
+    {
+      "file": "components\\OfflineHandler.tsx",
+      "errors": 1,
+      "warnings": 0,
+      "findings": [
+        {
+          "line": 30,
+          "rule": "react-hooks/set-state-in-effect",
+          "severity": 2
+        }
+      ]
+    },
+    {
+      "file": "components\\RealTimeCaseEditorV2.tsx",
+      "errors": 3,
+      "warnings": 2,
+      "findings": [
+        {
+          "line": 134,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        },
+        {
+          "line": 169,
+          "rule": "react-hooks/set-state-in-effect",
+          "severity": 2
+        },
+        {
+          "line": 239,
+          "rule": "@typescript-eslint/no-unused-vars",
+          "severity": 1
+        },
+        {
+          "line": 448,
+          "rule": "react-hooks/refs",
+          "severity": 2
+        },
+        {
+          "line": 449,
+          "rule": "@typescript-eslint/no-unused-vars",
+          "severity": 1
+        }
+      ]
+    },
+    {
+      "file": "components\\SurplusForecaster.tsx",
+      "errors": 0,
+      "warnings": 1,
+      "findings": [
+        {
+          "line": 28,
+          "rule": "@typescript-eslint/no-unused-vars",
+          "severity": 1
+        }
+      ]
+    },
+    {
+      "file": "components\\VRClaimSimulation.tsx",
+      "errors": 1,
+      "warnings": 0,
+      "findings": [
+        {
+          "line": 192,
+          "rule": "@typescript-eslint/ban-ts-comment",
+          "severity": 2
+        }
+      ]
+    },
+    {
+      "file": "components\\VoiceAiButton.tsx",
+      "errors": 2,
+      "warnings": 1,
+      "findings": [
+        {
+          "line": 47,
+          "rule": "react-hooks/set-state-in-effect",
+          "severity": 2
+        },
+        {
+          "line": 47,
+          "rule": "@typescript-eslint/no-explicit-any",
+          "severity": 2
+        },
+        {
+          "line": 97,
+          "rule": "@typescript-eslint/no-unused-vars",
+          "severity": 1
+        }
+      ]
+    },
+    {
+      "file": "components\\VoiceBiometrics.tsx",
+      "errors": 2,
+      "warnings": 1,
+      "findings": [
+        {
+          "line": 55,
+          "rule": "react-hooks/set-state-in-effect",
+          "severity": 2
+        },
+        {
+          "line": 75,
+          "rule": "@typescript-eslint/no-unused-vars",
+          "severity": 1
+        },
+        {
+          "line": 358,
+          "rule": "react-hooks/purity",
+          "severity": 2
+        }
+      ]
+    },
+    {
+      "file": "components\\VoiceCaseCreator.tsx",
+      "errors": 0,
+      "warnings": 1,
+      "findings": [
+        {
+          "line": 137,
+          "rule": "@typescript-eslint/no-unused-vars",
+          "severity": 1
+        }
+      ]
+    },
+    {
+      "file": "components\\VoiceToDocumentV2.tsx",
+      "errors": 0,
+      "warnings": 2,
+      "findings": [
+        {
+          "line": 109,
+          "rule": "@typescript-eslint/no-unused-vars",
+          "severity": 1
+        },
+        {
+          "line": 187,
+          "rule": "@typescript-eslint/no-unused-vars",
+          "severity": 1
+        }
+      ]
+    },
+    {
+      "file": "components\\WorkflowEditor.tsx",
+      "errors": 0,
+      "warnings": 3,
+      "findings": [
+        {
+          "line": 127,
+          "rule": "@typescript-eslint/no-unused-vars",
+          "severity": 1
+        },
+        {
+          "line": 135,
+          "rule": "@typescript-eslint/no-unused-vars",
+          "severity": 1
+        },
+        {
+          "line": 149,
+          "rule": "@typescript-eslint/no-unused-vars",
+          "severity": 1
+        }
+      ]
+    },
+    {
+      "file": "cypress.config.ts",
+      "errors": 0,
+      "warnings": 2,
+      "findings": [
+        {
+          "line": 10,
+          "rule": "@typescript-eslint/no-unused-vars",
+          "severity": 1
+        },
+        {
+          "line": 10,
+          "rule": "@typescript-eslint/no-unused-vars",
+          "severity": 1
+        }
+      ]
+    },
+    {
+      "file": "eslint.config.mjs",
+      "errors": 0,
+      "warnings": 1,
+      "findings": [
+        {
+          "line": 3,
+          "rule": "import/no-anonymous-default-export",
+          "severity": 1
+        }
+      ]
+    },
+    {
+      "file": "hooks\\useAuth.tsx",
+      "errors": 0,
+      "warnings": 3,
+      "findings": [
+        {
+          "line": 49,
+          "rule": "@typescript-eslint/no-unused-vars",
+          "severity": 1
+        },
+        {
+          "line": 157,
+          "rule": "react-hooks/exhaustive-deps",
+          "severity": 1
+        },
+        {
+          "line": 192,
+          "rule": "react-hooks/exhaustive-deps",
+          "severity": 1
+        }
+      ]
+    },
+    {
+      "file": "hooks\\useServiceWorker.ts",
+      "errors": 1,
+      "warnings": 1,
+      "findings": [
+        {
+          "line": 25,
+          "rule": "react-hooks/set-state-in-effect",
+          "severity": 2
+        },
+        {
+          "line": 139,
+          "rule": "@typescript-eslint/no-unused-vars",
+          "severity": 1
+        }
+      ]
+    },
+    {
+      "file": "lib\\api.ts",
+      "errors": 0,
+      "warnings": 1,
+      "findings": [
+        {
+          "line": 127,
+          "rule": "@next/next/no-location-assign-relative-destination",
+          "severity": 1
+        }
+      ]
+    }
+  ]
+}

@@ -15,6 +15,8 @@ import { sanitizeForPublic, getPublicDocumentName } from "../utils/shadowTermino
 
 const router = Router();
 
+router.get('/rules/:state/:recoveryType',authMiddleware,asyncHandler(async(req:AuthenticatedRequest,res:Response)=>{const {recoveryJurisdiction}=await import('../services/RecoveryJurisdictionService.js');try{res.json({success:true,data:recoveryJurisdiction(req.params.state,req.params.recoveryType)});}catch{res.status(400).json({success:false,error:'Valid state and recovery type required.'});}}));
+router.get('/coverage',authMiddleware,asyncHandler(async(_req,res)=>{const {recoveryCoverage}=await import('../services/RecoveryJurisdictionService.js');res.json({success:true,data:recoveryCoverage()});}));
 /**
  * Sanitize requirements for non-founders
  * Hides words like "surplus", "excess proceeds", etc.
@@ -26,6 +28,9 @@ function sanitizeRequirements(requirements: CountyRequirements, isFounder: boole
 
   // Clone and sanitize for employees/clients
   return {
+    verificationStatus: requirements.verificationStatus,
+    autoFileAllowed: requirements.autoFileAllowed,
+    sourceReferences: requirements.sourceReferences,
     state: requirements.state,
     county: requirements.county,
     notarizationRequired: requirements.notarizationRequired,

@@ -1,6 +1,6 @@
 // ============================================
 // STATE SURPLUS FUND RULES DATABASE
-// Production-ready legal rules for all 50 states
+// Legacy rule inventory. Source-specific qualification is required before operational use.
 // ============================================
 
 import { DocumentType } from "@prisma/client";
@@ -9,7 +9,7 @@ export interface StateRuleData {
   stateCode: string;
   stateName: string;
   surplusFundLaw: string;
-  claimPeriodDays: number;
+  claimPeriodDays: number | null;
   redemptionPeriodDays: number | null;
   interestRate: number | null;
   requiredDocuments: DocumentType[];
@@ -885,16 +885,16 @@ export const STATE_RULES: StateRuleData[] = [
     stateCode: "TN",
     stateName: "Tennessee",
     surplusFundLaw: "T.C.A. § 67-5-2702. Surplus from tax sale paid to former owner upon petition.",
-    claimPeriodDays: 3650,
-    redemptionPeriodDays: 365,
-    interestRate: 10,
+    claimPeriodDays: null,
+    redemptionPeriodDays: null,
+    interestRate: null,
     requiredDocuments: ["AFFIDAVIT", "LIMITED_POA", "CLIENT_ID", "COVER_LETTER", "MOTION"],
-    filingFee: 10000,
+    filingFee: null,
     filingMethod: "in-person",
     filingAddress: null,
-    deadlineCalculation: "10 years from date of tax sale. Court petition required.",
+    deadlineCalculation: "No fixed sale-date deadline admitted. Review the court file and TCA67-5-2702 for the specific claim.",
     specialRequirements: "Must file petition in Chancery Court or Circuit Court. Interpleader action may be required.",
-    restrictions: "Processing fees may be deducted.",
+    restrictions: "Fee and procedure qualification must distinguish tax-sale, foreclosure and Treasury-held property.",
     sourceUrl: "https://law.justia.com/codes/tennessee/title-67/chapter-5/part-27/",
     feeCapPercent: null,
     feeCapFlatCents: null,
@@ -1079,7 +1079,7 @@ export function getStateRule(stateCode: string): StateRuleData | undefined {
 
 export function calculateDeadline(stateCode: string, saleDate: Date): Date | null {
   const rule = getStateRule(stateCode);
-  if (!rule) return null;
+  if (!rule || rule.claimPeriodDays === null) return null;
 
   const deadline = new Date(saleDate);
   deadline.setDate(deadline.getDate() + rule.claimPeriodDays);

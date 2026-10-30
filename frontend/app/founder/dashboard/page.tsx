@@ -1,33 +1,28 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
-import { api } from "@/lib/api";
-import Link from "next/link";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
+Card,
+CardContent,
+CardDescription,
+CardHeader,
+CardTitle,
 } from "@/components/ui/card";
-import {
-  BarChartComponent,
-  DonutChartComponent,
-  LineChartComponent,
-} from "@/components/ui/charts";
+import { api } from "@/lib/api";
 import { formatCurrency } from "@/lib/utils";
+import { useQuery } from "@tanstack/react-query";
 import {
-  FileText,
-  DollarSign,
-  Users,
-  TrendingUp,
-  TrendingDown,
-  Minus,
-  AlertTriangle,
-  CheckCircle,
-  ArrowRight,
-  BarChart3,
+AlertTriangle,
+ArrowRight,
+BarChart3,
+CheckCircle,
+DollarSign,
+FileText,
+Minus,
+TrendingDown,
+TrendingUp,
+Users,
 } from "lucide-react";
+import Link from "next/link";
 
 export default function FounderDashboard() {
   const { data: stats, isLoading, isError: metricsError } = useQuery({

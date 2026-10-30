@@ -1,55 +1,56 @@
 "use client";
+import { apiFailure } from "@/lib/apiFailure";
 
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
-import { api } from "@/lib/api";
-import Link from "next/link";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Alert,AlertDescription,AlertTitle } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+Card,
+CardContent,
+CardDescription,
+CardHeader,
+CardTitle,
+} from "@/components/ui/card";
+import {
+Dialog,
+DialogContent,
+DialogDescription,
+DialogFooter,
+DialogHeader,
+DialogTitle,
+DialogTrigger,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
+import { api } from "@/lib/api";
+import { formatCurrency,formatDate } from "@/lib/utils";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useMutation,useQuery,useQueryClient } from "@tanstack/react-query";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { toast } from "sonner";
-import { formatCurrency, formatDate } from "@/lib/utils";
-import {
-  Settings,
-  Building2,
-  Palette,
-  CreditCard,
-  ArrowLeft,
-  Save,
-  Loader2,
-  AlertTriangle,
-  Trash2,
-  XCircle,
-  Star,
-  Upload,
-  Globe,
-  Mail,
-  CheckCircle,
-  Sparkles,
+AlertTriangle,
+ArrowLeft,
+Building2,
+CheckCircle,
+CreditCard,
+Globe,
+Loader2,
+Mail,
+Palette,
+Save,
+Settings,
+Sparkles,
+Star,
+Trash2,
+Upload,
+XCircle,
 } from "lucide-react";
+import Link from "next/link";
+import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { toast } from "sonner";
+import * as z from "zod";
 
 // Validation Schemas
 const companySettingsSchema = z.object({
@@ -135,7 +136,8 @@ export default function ChildCompanySettingsPage() {
       toast.success("Settings updated successfully");
       queryClient.invalidateQueries({ queryKey: ["my-child-company"] });
     },
-    onError: (error: any) => {
+    onError: (errorUnknown: unknown) => {
+      const error = apiFailure(errorUnknown);
       toast.error(error.response?.data?.error || "Failed to update settings");
     },
   });
@@ -150,7 +152,8 @@ export default function ChildCompanySettingsPage() {
       toast.success("Plan upgraded successfully!");
       queryClient.invalidateQueries({ queryKey: ["my-child-company"] });
     },
-    onError: (error: any) => {
+    onError: (errorUnknown: unknown) => {
+      const error = apiFailure(errorUnknown);
       toast.error(error.response?.data?.error || "Failed to upgrade plan");
     },
   });
@@ -166,7 +169,8 @@ export default function ChildCompanySettingsPage() {
       setCancelDialogOpen(false);
       queryClient.invalidateQueries({ queryKey: ["my-child-company"] });
     },
-    onError: (error: any) => {
+    onError: (errorUnknown: unknown) => {
+      const error = apiFailure(errorUnknown);
       toast.error(error.response?.data?.error || "Failed to cancel subscription");
     },
   });
@@ -183,7 +187,8 @@ export default function ChildCompanySettingsPage() {
       // Redirect to main child company page
       window.location.href = "/employee/child-company";
     },
-    onError: (error: any) => {
+    onError: (errorUnknown: unknown) => {
+      const error = apiFailure(errorUnknown);
       toast.error(error.response?.data?.error || "Failed to delete company");
     },
   });
@@ -248,7 +253,7 @@ export default function ChildCompanySettingsPage() {
           <Building2 className="h-4 w-4" />
           <AlertTitle>No Company Found</AlertTitle>
           <AlertDescription>
-            You don't have a child company set up yet. Please set up your company first.
+            You don&apos;t have a child company set up yet. Please set up your company first.
           </AlertDescription>
         </Alert>
         <Link href="/employee/child-company">
@@ -306,7 +311,7 @@ export default function ChildCompanySettingsPage() {
             Company Details
           </CardTitle>
           <CardDescription>
-            Update your company's basic information
+            Update your company&apos;s basic information
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -392,7 +397,7 @@ export default function ChildCompanySettingsPage() {
             Branding Settings
           </CardTitle>
           <CardDescription>
-            Customize your company's visual identity
+            Customize your company&apos;s visual identity
             {!canEditBranding && " (Upgrade to White-Label to unlock)"}
           </CardDescription>
         </CardHeader>

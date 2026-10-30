@@ -1,19 +1,29 @@
 'use client'
 
-import { useQuery, useMutation } from '@tanstack/react-query'
-import { motion, AnimatePresence } from 'framer-motion'
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area } from 'recharts'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card,CardContent,CardHeader,CardTitle } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { useQuery } from '@tanstack/react-query'
+import { AnimatePresence,motion } from 'framer-motion'
 import {
-  DollarSign, TrendingUp, Clock, RefreshCw, Loader2,
-  ShieldAlert, ShieldCheck, AlertTriangle, Brain,
-  Activity, Zap, Eye, CheckCircle, XCircle, Bell
+Activity,
+AlertTriangle,
+Bell,
+Brain,
+CheckCircle,
+Clock,
+DollarSign,
+Eye,
+Loader2,
+RefreshCw,
+ShieldAlert,ShieldCheck,
+TrendingUp,
+XCircle,
+Zap
 } from 'lucide-react'
-import { useState, useEffect } from 'react'
+import { useEffect,useState } from 'react'
+import { Area,AreaChart,CartesianGrid,Cell,Pie,PieChart,ResponsiveContainer,Tooltip,XAxis,YAxis } from 'recharts'
 import { toast } from 'sonner'
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6']

@@ -1,0 +1,34 @@
+{
+  "scope": "Actual official publication-index discovery, PDF capture/normalized storage and three actual Metro Nashville parcel queries; no claimant outreach or entitlement proof",
+  "snapshotId": "cmvug1g220024yyb7rnd9d9zs",
+  "recordCount": 41,
+  "observations": [
+    {
+      "recordId": "cmvug1g7y004byyb796gz1opk",
+      "snapshotId": "cmvug2fhl002i3fn0uko1nl3l",
+      "candidateCount": 1,
+      "comparisons": [
+        "CURRENT_OWNER_DIFFERS_OR_UNRESOLVED"
+      ],
+      "responseSha256": "9bd9e7c6106b97c27cfd09f847ee6194ec586e8df74c18bcffe026386faf1de4"
+    },
+    {
+      "recordId": "cmvug1g7r0045yyb7yipy55fp",
+      "snapshotId": "cmvug2fpe002m3fn0feggpubm",
+      "candidateCount": 1,
+      "comparisons": [
+        "CURRENT_OWNER_DIFFERS_OR_UNRESOLVED"
+      ],
+      "responseSha256": "fcd0ab1d0e18ae70e782124508bf25936486b64baccd498e2c695b59ff5512eb"
+    },
+    {
+      "recordId": "cmvug1g64002tyyb7vcrehoo7",
+      "snapshotId": "cmvug2fvn002q3fn0q8a0quyj",
+      "candidateCount": 1,
+      "comparisons": [
+        "CURRENT_OWNER_DIFFERS_OR_UNRESOLVED"
+      ],
+      "responseSha256": "6ccc3514da4ca0633d60ef7d3cc27df7ad702cd72c3fb0b620983ff2a8824b76"
+    }
+  ]
+}

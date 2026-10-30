@@ -6,12 +6,12 @@
  * Phase 14: AI-Enhanced Search & Recommendations
  */
 
-import { useState, useEffect, useRef, useCallback } from "react";
-import { Search, X, FileText, Briefcase, MessageSquare, Loader2 } from "lucide-react";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Briefcase,FileText,Loader2,MessageSquare,Search,X } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useCallback,useEffect,useRef,useState } from "react";
 
 interface SearchResult {
   id: string;
@@ -19,7 +19,7 @@ interface SearchResult {
   title: string;
   snippet: string;
   score: number;
-  metadata: Record<string, any>;
+  metadata: Record<string, unknown>;
 }
 
 interface SearchResponse {
@@ -231,7 +231,7 @@ export function AiSearchBar() {
                         <p className="text-sm text-muted-foreground truncate">
                           {result.snippet}
                         </p>
-                        {result.metadata.status && (
+                        {typeof result.metadata.status === 'string' && (
                           <Badge variant="outline" className="mt-1 text-xs">
                             {result.metadata.status}
                           </Badge>
@@ -244,7 +244,7 @@ export function AiSearchBar() {
             </div>
           ) : query.length >= 2 && !isLoading ? (
             <div className="p-4 text-center text-muted-foreground">
-              No results found for "{query}"
+              No results found for &quot;{query}&quot;
             </div>
           ) : null}
         </Card>

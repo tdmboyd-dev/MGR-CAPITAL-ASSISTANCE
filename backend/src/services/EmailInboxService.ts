@@ -16,7 +16,7 @@
  */
 
 import { ImapFlow } from "imapflow";
-import nodemailer from "nodemailer";
+import nodemailer, { type SendMailOptions, type Transporter } from "nodemailer";
 import { logger } from "../utils/logger.js";
 
 // =============================================================================
@@ -159,7 +159,7 @@ export interface PaginatedResponse<T> {
 export interface EmailInboxStatus {
   configured: boolean;
   connected: boolean;
-  mode: "live" | "demo";
+  mode: "live" | "demo" | "unavailable";
   apiUrl?: string;
   smtpConfigured: boolean;
   lastChecked: string;
@@ -306,10 +306,10 @@ const DEMO_EMAILS: Email[] = [
 // =============================================================================
 
 class EmailInboxService {
-  private smtpTransporter: nodemailer.Transporter | null = null;
+  private smtpTransporter: Transporter | null = null;
 
   constructor() {
-    if (MODOBOA_SMTP_HOST) {
+    if (MODOBOA_SMTP_HOST && MODOBOA_SMTP_USER && MODOBOA_SMTP_PASS) {
       try {
         this.smtpTransporter = nodemailer.createTransport({
           host: MODOBOA_SMTP_HOST,
@@ -344,7 +344,7 @@ class EmailInboxService {
   }
 
   private isDemoMode(): boolean {
-    return !this.isConfigured();
+    return process.env.NODE_ENV === 'test' && process.env.CAPITAL_EMAIL_DEMO === 'true';
   }
 
   private createImapClient(user?: string, pass?: string): ImapFlow {
@@ -358,12 +358,13 @@ class EmailInboxService {
       },
       logger: false,
       tls: {
-        rejectUnauthorized: false,
+        rejectUnauthorized: true,
       },
     });
   }
 
   private async withImap<T>(fn: (client: ImapFlow) => Promise<T>): Promise<T> {
+    if (!this.isConfigured()) throw new Error('IMAP is not configured; no live mailbox is connected.');
     const client = this.createImapClient();
     try {
       await client.connect();
@@ -385,13 +386,13 @@ class EmailInboxService {
     const status: EmailInboxStatus = {
       configured: this.isConfigured(),
       connected: false,
-      mode: this.isDemoMode() ? "demo" : "live",
-      apiUrl: this.isDemoMode() ? undefined : `imaps://${IMAP_HOST}:${IMAP_PORT}`,
+      mode: this.isDemoMode() ? "demo" : this.isConfigured() ? "live" : "unavailable",
+      apiUrl: this.isConfigured() ? `imaps://${IMAP_HOST}:${IMAP_PORT}` : undefined,
       smtpConfigured: !!this.smtpTransporter,
       lastChecked: new Date().toISOString(),
     };
 
-    if (!this.isDemoMode()) {
+    if (this.isConfigured() && !this.isDemoMode()) {
       try {
         await this.withImap(async () => {});
         status.connected = true;
@@ -958,24 +959,13 @@ class EmailInboxService {
   // =============================================================================
 
   async sendEmail(params: SendEmailParams): Promise<{ success: boolean; messageId?: string; error?: string }> {
-    if (this.isDemoMode() && !this.smtpTransporter) {
-      logger.info("[EmailInboxService] Demo mode - email logged but not sent", {
-        from: params.from,
-        to: params.to,
-        subject: params.subject,
-      });
-      return {
-        success: true,
-        messageId: `demo-${Date.now()}@demo.mgrcapital.com`,
-      };
-    }
 
     if (!this.smtpTransporter) {
       return { success: false, error: "SMTP not configured" };
     }
 
     try {
-      const mailOptions: nodemailer.SendMailOptions = {
+      const mailOptions: SendMailOptions = {
         from: params.from,
         to: Array.isArray(params.to) ? params.to.join(", ") : params.to,
         cc: params.cc

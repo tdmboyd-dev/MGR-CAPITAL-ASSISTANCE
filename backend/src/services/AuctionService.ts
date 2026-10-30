@@ -90,7 +90,7 @@ export class AuctionService {
     const auctionId = `auction_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
     // Generate escrow keypair for auction funds
-    const escrowKeypair = Keypair.generate();
+    const escrowKeypair = await Keypair.generate();
 
     const fractions = data.fractions || 100; // Default 100 fractional shares
     const pricePerFraction = data.minimumBid / fractions;
@@ -461,7 +461,7 @@ export class AuctionService {
     try {
       const publicKey = new PublicKey(walletAddress);
       const balance = await connection.getBalance(publicKey);
-      const balanceSOL = balance / LAMPORTS_PER_SOL;
+      const balanceSOL = Number(balance) / Number(LAMPORTS_PER_SOL);
 
       // Assume $100 per SOL for conversion (would use price oracle in production)
       const balanceUSD = balanceSOL * 100;

@@ -8,20 +8,20 @@
  * Allows users to rate features and provide comments.
  */
 
-import { useState, useEffect } from "react";
-import { MessageSquarePlus, Star, X, Send, Loader2, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Textarea } from "@/components/ui/textarea";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+Select,
+SelectContent,
+SelectItem,
+SelectTrigger,
+SelectValue,
 } from "@/components/ui/select";
-import { toast } from "sonner";
+import { Textarea } from "@/components/ui/textarea";
+import { Check,Loader2,MessageSquarePlus,Send,Star,X } from "lucide-react";
 import { usePathname } from "next/navigation";
+import { useEffect,useState } from "react";
+import { toast } from "sonner";
 
 const FEEDBACK_CATEGORIES = [
   { value: "GENERAL", label: "General Feedback" },

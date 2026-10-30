@@ -1,0 +1,11 @@
+{
+  "passed": 5,
+  "checks": [
+    "Original county bytes and41 normalized row hashes survive fresh process",
+    "Accepted SMTP receipt survives with one attempt",
+    "Unknown SMTP outcome remains held after reopening",
+    "Individual recovery work, notes, stage, source history and unresolved outside status survive fresh process",
+    "Actual saved rendered docket bytes/hash and parcel-specific check survive fresh process without certifying payment"
+  ],
+  "proof": "Fresh Node process against isolated PostgreSQL; loopback SMTP is not external delivery"
+}
