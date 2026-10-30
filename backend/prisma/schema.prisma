@@ -2717,7 +2717,7 @@ enum TransferStatus {
 
 model ChildCompany {
   id                  String              @id @default(cuid())
-  tenantId            String?
+  tenantId            String?             @unique
   founderId           String              // MGR Capital founder
   ownerId             String              // Employee who owns this child company
   companyName         String
@@ -2847,6 +2847,7 @@ model ChildCompanyOffer {
 model EmployeeTransfer {
   id                  String              @id @default(cuid())
   employeeId          String
+  initiatedById       String?
   fromTenantId        String?             // null = MGR Capital direct
   toChildCompanyId    String
   toChildCompany      ChildCompany        @relation(fields: [toChildCompanyId], references: [id], onDelete: Cascade)
@@ -2881,6 +2882,40 @@ model EmployeeTransfer {
   @@index([status])
   @@index([toChildCompanyId])
   @@index([fromTenantId])
+}
+
+model CapitalIdentityProfile {
+  id String @id @default(cuid())
+  subjectKind String
+  subjectId String
+  details Json
+  version Int @default(1)
+  attestedById String
+  attestedAt DateTime
+  verificationStatus String @default("SELF_ATTESTED")
+  updatedAt DateTime @updatedAt
+  @@unique([subjectKind, subjectId])
+}
+model CapitalSourceConnection {
+  id String @id @default(cuid())
+  actorId String
+  tenantId String?
+  businessRef String
+  workItemId String?
+  caseId String?
+  adapterId String
+  jurisdictionId String
+  profileVersion Int
+  businessProfileVersion Int?
+  plan Json
+  tokenHash String @unique
+  status String @default("PREPARED")
+  expiresAt DateTime
+  capturedSnapshotId String?
+  result Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([actorId, createdAt])
 }
 
 // ============================================

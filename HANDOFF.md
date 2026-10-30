@@ -1,8 +1,62 @@
 # MGR Capital Assistance — authoritative human and AI handoff
 
-Updated October 30, 2026. Repository: https://github.com/tdmboyd-dev/MGR-CAPITAL-ASSISTANCE . Branch: `repair/bottom-up-capital-2026-10-28`. Baseline for the latest continuation: `e01a964980cfaeda1672753ab4ef6c7eaccc4b8c`. The final commit containing this handoff is the source checkpoint; inspect Git for its exact hash. Original `master` was preserved at `2c5d717d818041880a92e1f1f42a9cbe255549c4` when this cycle began; recheck before continuing.
+Updated October 30, 2026. Repository: https://github.com/tdmboyd-dev/MGR-CAPITAL-ASSISTANCE . Branch: `repair/bottom-up-capital-2026-10-28`. Baseline for the latest continuation: `e4083f163bbc2896492a8e834d04391b7264a2cc`. The final commit containing this handoff is the source checkpoint; inspect Git for its exact hash. Original `master` was preserved at `2c5d717d818041880a92e1f1f42a9cbe255549c4` when this cycle began; recheck before continuing.
 
 This is the single current handoff. Its repair register, evidence and remaining-work register replace stacked old checkpoints and separate repair reports. Historical receipts remain under `docs/full-build/evidence/`; they are supporting proof, not alternative current instructions. WORK-STATE and old setup/TODO entrypoints point here. Do not resume TaxSlayer or Compliance Buddy: the owner explicitly stopped that work and its monitor was deleted.
+
+## Current continuation: connected source window and company hierarchy
+
+October30. Continued from `e4083f163bbc2896492a8e834d04391b7264a2cc`; newer source and master preserved. This section supersedes older browser-only manual-capture and missing hierarchy descriptions where specifically repaired. Whole Capital completion remains **UNASSESSED**. The founder authorized installing the local companion and completed its county human check. No customer exists or was contacted.
+
+### Completed and verified in this continuation
+
+| Outcome | Actual implementation and proof |
+|---|---|
+| Official source window | Capital prepares one saved work file/customer case and operating business; installed Chrome companion opens Davidson in its own popup. First JavaScript menu attempt was blocked by extension CSP. Repaired with the observed ordinary search URL, preserving CSP. Second fresh job navigated the menu, filled case number, selected its exact result and captured the docket without court UI intervention. |
+| Human verification and resume | First job visibly paused at the court challenge and Capital recorded WAITING_HUMAN. Owner completed it; companion resumed and saved actual evidence. No challenge solving/bypass code. Challenges can recur and still require the operator. |
+| Actual public evidence and reopening | Second job `cmvul00xl001ejkguvp09ba5c` saved snapshot `cmvul0gp6001ojkguj6lkyakg`, SHA256 `86eeb9584edc74fad9f43b481aeed54b121ca3136ff2e1aeb4ecbac3dda18a38`. Fresh process verified original bytes/hash,227 dated rows and11 matching recovery work files. Full page reload showed CAPTURED and the same receipt. |
+| Correct county routing | Versioned adapter `US-47037-CHANCERY-CASE-SEARCH-v1`, jurisdiction `US:47:037`. Uses the selected case/work file county and case number, never operator home address. Shelby `US:47:157` is identified but unavailable until live mapping qualification; no nationwide autofill claim. |
+| Legal contact profiles | Separate personal legal name/address/contact and business legal identity/DBA/contact; required complete fields, US state/ZIP/phone validation, explicit attestation, version conflicts and transactional audit. Profiles remain SELF_ATTESTED, not independent identity/license/claimant authority verification. Actual synthetic personal profile saved in Chrome. |
+| Minimum source fields | Davidson public search receives only its court case number. No personal/business contact, claimant identity, SSN, DOB or banking fields are sent. Future claim forms need separately admitted mappings identifying operator/business/claimant/authorized-representative field origins. |
+| Scoped source authorization | Random15minute single-task token; hash only in DB, transient page memory and extension session storage, never URL/localStorage/log. Current account, organization, case and profile rechecked; cancellation/expiry/replay/current-authority guards; one-winner CAPTURING, failed/unknown capture held for reconciliation. No legal claim, payment or agreement submission capability. |
+| Child workspace creation | Offer acceptance creates a separate tenant workspace linked to its actual parent; validates current employee tier/team/offer owner and unambiguous active founder. Actor/offer locks and transaction prevent duplicate acceptance. Existing approved fee formulas preserved; billing remains inactive, no charge. Historical ambiguous companies require explicit migration, not invented affiliation. |
+| Employee transfer | Recorded initiating authority, same-parent/destination checks, five-day cooling, actual tenant membership move, tier reset, cross-company manager removal, refresh-token revocation, derived employee counts and atomic audit; duplicate completion no-op. Prior cases stay with their recorded company. Cancellation no longer available to unrelated users. |
+| Company isolation | Child owner can read owned active-child cases while retaining parent account. Company profile/source operations reject suspended companies. Company management/detail/list routes reject another tenant's founder and scope listings; actual HTTP read/write denial and parent access passed. Full action/role/route matrix remains open. |
+| Child setup screen | Uses actual offer and correct API payload, required domain/plan and saved company response. Removed unsupported percentage/seat promises; actual existing price choices retained. Positive setup-browser journey remains unverified; service/HTTP scope is separate. |
+| Reopening and rendering | Saved connection ID persists in URL without token; refresh reads authorized saved status. Companion timeout and cancellation errors remain visible. Fixed sidebar overlap. Root body alone accepts browser-added hydration attributes; descendant comparisons remain active. Owner's Grammarly body-attribute warning did not recur on final fresh load; no new captured console errors after06:18UTC. This does not certify every extension/route. |
+
+For parcel10803019800 the actual docket still has2 sale-confirmation events,1 unscoped excess-proceeds motion and9 disbursement orders naming OTHER parcels. **Claimed, paid and availability remain unverified.** Saving a court docket is not resolving entitlement, accepted claim or payment.
+
+### Acceptance and evidence
+
+Evidence directory: `docs/full-build/evidence/2026-10-30-source-connections/`.
+
+- Source/hierarchy PostgreSQL + loopback HTTP: **17/17** named checks; includes account/company/current-authority failures, audit rollback, cooling/idempotent transfer, owner/foreign access and company route isolation. Synthetic accounts/case; test payload is previously acquired real public court content.
+- Separate process hierarchy/case-capture reopening: **3/3** named checks. JSONB key reordering initially broke a reconstructed hash; fixed by saving original submitted JSON bytes as a string alongside parsed evidence. Old failed attempt is historical, not current proof.
+- Companion policy tests: **4/4** named checks (origins, source URL, token/run input and narrow manifest). New live browser test separately proved the named Davidson path; no broad extension penetration-test claim.
+- Real browser: two captures; first required manual menu click before owner challenge, second required no court click/fill. Both are real public data through a synthetic local operator; no customer/provider/production acceptance.
+- Existing regressions rerun: vault26, case workflow16, client portal12, auth14; consolidated offline5/parsers6/native27/payout21/payment7 and Jest203passed/16skipped. Case workflow initially failed because a refreshed vault fixture supplied an administrator from another tenant; fixed test to create its own correctly scoped administrator. Product isolation was preserved.
+- Backend compilation and frontend optimized production build passed;99 generation entries. Six changed frontend surfaces lint clean. Last whole frontend snapshot remains157errors/100warnings (previous cycle); not rerun here and not cleared by targeted lint. Production dependency scan0 is the prior unchanged-dependency evidence; five low development findings remain upstream-unpatched.
+
+Publication check: pinned default Gitleaks8.30 found0 leaks in the current51-file changed/new payload and0 exact private runtime-value matches; no added scan exceptions. Scan scope excludes untouched history. Final staged whitespace check and Git remote readback are required before recording publication.
+
+### Installation, custody and remaining work
+
+Installable companion ZIP: `outputs/MGR-Capital-Source-Companion-0.1.0.zip` outside repo; current exact package hash in `companion-package.json`. Source lives in `browser-companion/`. Chrome installed ID provided by owner: `gbclfhkmanmlhkgafgkfffokhflmjhnb` (ID varies across installations). Load unpacked in Chrome Developer mode; update existing extension with Reload after source changes. Permissions: storage, official Davidson portal, api.capitalmgr.com and loopback host; no cookies/history/debugger/all-sites access. Runtime additionally restricts local app17972/API17971. The computer tool cannot load chrome://extensions; owner loaded/reloaded it directly. Do not use another automation surface to bypass that restriction.
+
+Only isolated127.0.0.1:18588/capital_auth_lab schema changed. New migration is atomic and adds profile/source tables, transfer initiator and unique child workspace association. No production deployment/migration or customer data. Exact synthetic browser account plus validated UUID source-hierarchy fixtures were disabled (53accounts),2refresh tokens revoked,17pending synthetic source connections cancelled; saved evidence retained. Owned API/frontend listeners stopped. Owner-created court tabs and the second public result window are preserved. No paid acquisition, email outreach, signing, filing, notarial act or financial transaction ran. TXT mirror remains exact handoff bytes.
+
+Next ordered work, without losing Memphis/Shelby priority:
+
+1. Acquire Shelby's actual official surplus/sale original via permitted download or owner-assisted session; inspect its current search and form fields, version its mapping and run the same source-window/capture/reopening journey. Prior direct source403 remains unresolved; do not bypass it or certify Shelby operational coverage.
+2. Review remaining source semantically, resolve whole frontend lint and all alternative case/document/company/portal writers. Current source ledger marks full vs partial reading; compiler traversal is not a full audit.
+3. Complete company owner action matrix, parent/child UI switching and historical workspace migration with explicit mapping/rollback; qualify actual setup UI, all fee/activation routes and worker-driven transfers. Preserve approved economic terms; fee/settings mutation validation, accounting and positive provisioning remain separate work.
+4. Expand county process registry to historical title, claimant authority, competing claims, current clerk balances and document receipt handling. The current adapter is public case research only. No universal claim-form filling or verified real identity workflow exists yet.
+5. Positive SignMe/filing/notary/outreach/settlement acceptance needs a future actual authorized claimant and provider/government receipts. There are no customers yet: finish pre-customer research acquisition and staff operations independently; never invent a customer to call this complete.
+6. Keep Tennessee first, then qualify state/county-specific rules, fee arrangements, forms and maintenance before enabling each new process. National jurisdiction inventory is not nationwide operational acceptance.
+
+Primary implementation references: official Chrome content-script/session storage/externally-connectable docs; Census Tennessee county FIPS and official county portals. Next hydration guidance https://nextjs.org/docs/messages/react-hydration-error identifies browser extensions as a possible cause and describes one-level suppression as an escape hatch; limited body-attribute treatment is documented rather than suppressing application descendants.
+
 
 ## Current launch build: owned Tennessee data, individual work files and email
 

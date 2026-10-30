@@ -1,0 +1,28 @@
+{
+  "passed": 17,
+  "checks": [
+    "Actual concurrent offer acceptance provisions one separate child workspace under the correct parent, preserves pricing and charges nothing",
+    "Company owner and recorded parent founder can manage the child legal profile; unrelated organization denied; no identity verification invented",
+    "Complete self-attested person profile saves with version control; invalid state, other-person attestation and stale edits rejected",
+    "Actual cooling transfer moves current membership atomically once, resets tier, removes cross-company manager and derives the employee count",
+    "Tenant ORM update uses valid unique constraints and rejects another company; null tenant does not silently grant global database access",
+    "Active child owner can access child cases while retaining the parent account; unrelated company cannot",
+    "Prepared county mapping binds case, operating child company and current operator while omitting unneeded personal/business contact information",
+    "Actual HTTP scoped bridge pauses for human verification without declaring approval, hides tokens, and denies another actor",
+    "Actual previously acquired public docket passes through the authenticated bridge into the child case record; no payment/claim assertion or post-completion replay",
+    "Cancellation and changed legal profile invalidate old bridge authorization",
+    "An accepted offer cannot silently accept changed company details",
+    "Transfer cancellation is limited to the employee, recorded current manager or global founder",
+    "Failed profile audit rolls back legal contact edits and their version",
+    "Disabled account loses both source-window authorization and saved source access",
+    "Suspended company cannot masquerade as an ordinary active tenant or continue its prepared bridge",
+    "Company management scope admits its owner/parent and denies another founder both detail access and list disclosure",
+    "Actual child-company HTTP routes reject foreign founder read/write and filter listings while admitting the recorded parent founder"
+  ],
+  "proof": "Actual isolated PostgreSQL and loopback HTTP, synthetic accounts/case; court payload is an actual previously acquired public docket. Browser-extension runtime and new live county interaction are separate acceptance.",
+  "caseId": "cmvulb58d001bubkotn6t8byt",
+  "runId": "cmvulb5f9001eubkokpi8k7bh",
+  "companyId": "cmvulb4md000jubkopbu700ty",
+  "ownerId": "cmvulb4gc0005ubkolsawu7ve",
+  "employeeId": "cmvulb4ha0009ubko5s348bio"
+}

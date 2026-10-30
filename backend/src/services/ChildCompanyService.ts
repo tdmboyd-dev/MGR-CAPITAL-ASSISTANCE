@@ -17,6 +17,7 @@ import {
   validateChildCompanyEmailPricing,
 } from "../config/emailPricing.js";
 import prisma from "../lib/prisma.js";
+import {acceptChildCompanyOffer,initiateChildTransfer,completeChildTransfer,cancelChildTransfer} from "./CapitalCompanyHierarchy.js";
 
 // Shadow accounting constants
 const HIDDEN_CASE_PERCENTAGE = 50; // 50% hidden off top of every case
@@ -203,100 +204,8 @@ MGR Capital Assistance Team
   // ACCEPT OFFER & CREATE COMPANY
   // ============================================
 
-  async acceptOffer(
-    offerId: string,
-    params: {
-      companyName: string;
-      slug: string;
-      plan: "BRANDED" | "WHITE_LABEL";
-      emailDomainType: "SUBDOMAIN" | "CUSTOM";  // Email domain choice
-      customDomain?: string;                     // Required if CUSTOM
-      logoUrl?: string;
-      primaryColor?: string;
-      secondaryColor?: string;
-      accentColor?: string;
-    }
-  ): Promise<{ success: boolean; childCompanyId?: string; error?: string }> {
-    const offer = await prisma.childCompanyOffer.findUnique({
-      where: { id: offerId },
-    });
-
-    if (!offer) return { success: false, error: "Offer not found" };
-    if (offer.isAccepted) return { success: false, error: "Offer already accepted" };
-    if (offer.isDeclined) return { success: false, error: "Offer was declined" };
-
-    // Verify slug is unique
-    const existingSlug = await prisma.childCompany.findUnique({
-      where: { slug: params.slug },
-    });
-    if (existingSlug) return { success: false, error: "Company slug already taken" };
-
-    // Get founder ID (first FOUNDER user)
-    const founder = await prisma.user.findFirst({
-      where: { role: "FOUNDER" },
-      select: { id: true },
-    });
-
-    if (!founder) return { success: false, error: "System error: No founder found" };
-
-    // Calculate fees based on email domain type
-    const isCustomDomain = params.emailDomainType === "CUSTOM";
-    const annualFee = isCustomDomain ? 60000 : 30000; // $600 custom, $300 subdomain
-    const emailSetupFee = isCustomDomain
-      ? EMAIL_PRICING.childCustom.setupFeeCents       // $30
-      : EMAIL_PRICING.childSubdomain.setupFeeCents;   // $12
-    const emailMonthlyFee = isCustomDomain
-      ? EMAIL_PRICING.childCustom.monthlyFeeCents     // $15
-      : EMAIL_PRICING.childSubdomain.monthlyFeeCents; // $8
-
-    const activationDeadline = new Date();
-    activationDeadline.setDate(activationDeadline.getDate() + ACTIVATION_WINDOW_DAYS);
-
-    // Validate custom domain if provided
-    if (isCustomDomain && !params.customDomain) {
-      return { success: false, error: "Custom domain required for CUSTOM email domain type" };
-    }
-
-    // Create child company with email domain settings
-    // Note: emailDomain* fields are new - run `npx prisma db push` to add them
-    const childCompany = await prisma.childCompany.create({
-      data: {
-        founderId: founder.id,
-        ownerId: offer.employeeId,
-        companyName: params.companyName,
-        slug: params.slug,
-        status: "OFFER_ACCEPTED",
-        plan: params.plan,
-        subdomain: `${params.slug}.capitalmgr.com`,  // Portal subdomain always set
-        customDomain: isCustomDomain ? params.customDomain : null,
-        logoUrl: params.logoUrl,
-        primaryColor: params.primaryColor || "#1a365d",
-        secondaryColor: params.secondaryColor || "#2d3748",
-        accentColor: params.accentColor || "#3182ce",
-        annualFeeCents: annualFee,
-        activationDeadline,
-        // Email domain settings (new fields - run prisma db push)
-        emailDomainType: isCustomDomain ? "CUSTOM" : "SUBDOMAIN",
-        emailDomainLocked: false,
-        emailSetupFeeCents: emailSetupFee,
-        emailMonthlyFeeCents: emailMonthlyFee,
-        employeeEmailSetupCents: 1200,
-        employeeEmailMonthlyCents: 600,
-      } as any, // Type cast needed until prisma client regenerated
-    });
-
-    // Update offer
-    await prisma.childCompanyOffer.update({
-      where: { id: offerId },
-      data: {
-        isAccepted: true,
-        acceptedAt: new Date(),
-        childCompanyId: childCompany.id,
-        selectedPlan: params.plan,
-      },
-    });
-
-    return { success: true, childCompanyId: childCompany.id };
+  async acceptOffer(offerId: string, params: unknown, actorId: string):Promise<{success:boolean;childCompanyId?:string;error?:string}> {
+    return acceptChildCompanyOffer(actorId,offerId,params);
   }
 
   // ============================================
@@ -364,130 +273,16 @@ MGR Capital Assistance Team
   // EMPLOYEE TRANSFER — 5-day cooling period
   // ============================================
 
-  async initiateTransfer(params: {
-    employeeId: string;
-    toChildCompanyId: string;
-  }): Promise<{ success: boolean; transferId?: string; error?: string }> {
-    const employee = await prisma.user.findUnique({
-      where: { id: params.employeeId },
-      select: {
-        id: true,
-        name: true,
-        dateOfBirth: true,
-        ssn4: true,
-        employeeTier: true,
-      },
-    });
-
-    if (!employee) return { success: false, error: "Employee not found" };
-
-    // Identity block: check if already employed elsewhere
-    if (employee.ssn4 && employee.dateOfBirth) {
-      const activeTransfer = await prisma.employeeTransfer.findFirst({
-        where: {
-          employeeSsn4: employee.ssn4,
-          status: { in: ["PENDING", "COOLING_PERIOD"] },
-        },
-      });
-      if (activeTransfer) {
-        return { success: false, error: "Employee already has a pending transfer" };
-      }
-    }
-
-    const coolingStartDate = new Date();
-    const coolingEndDate = new Date();
-    coolingEndDate.setDate(coolingEndDate.getDate() + TRANSFER_COOLING_DAYS);
-
-    // Estimate monthly loss
-    const recentEarnings = await prisma.ledgerEntry.aggregate({
-      where: {
-        userId: params.employeeId,
-        type: "EMPLOYEE_COMMISSION",
-        createdAt: { gte: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000) },
-      },
-      _sum: { amountCents: true },
-    });
-    const estimatedMonthlyLoss = Math.floor((recentEarnings._sum.amountCents || 0) / 3);
-
-    const transfer = await prisma.employeeTransfer.create({
-      data: {
-        employeeId: params.employeeId,
-        toChildCompanyId: params.toChildCompanyId,
-        status: "COOLING_PERIOD",
-        coolingStartDate,
-        coolingEndDate,
-        currentCoolingDay: 1,
-        employeeName: employee.name,
-        employeeDob: employee.dateOfBirth,
-        employeeSsn4: employee.ssn4,
-        tierBeforeTransfer: employee.employeeTier,
-        tierAfterTransfer: "TIER_1_ASSOCIATE",
-        estimatedMonthlyLossCents: estimatedMonthlyLoss,
-      },
-    });
-
-    return { success: true, transferId: transfer.id };
+  async initiateTransfer(params: {employeeId:string;toChildCompanyId:string;actorId:string}):Promise<{success:boolean;transferId?:string;error?:string}> {
+    return initiateChildTransfer(params.actorId,params.employeeId,params.toChildCompanyId);
   }
 
-  async cancelTransfer(transferId: string, reason?: string): Promise<{ success: boolean; error?: string }> {
-    const transfer = await prisma.employeeTransfer.findUnique({
-      where: { id: transferId },
-    });
-
-    if (!transfer) return { success: false, error: "Transfer not found" };
-    if (transfer.status !== "COOLING_PERIOD") {
-      return { success: false, error: "Transfer can only be cancelled during cooling period" };
-    }
-
-    await prisma.employeeTransfer.update({
-      where: { id: transferId },
-      data: {
-        status: "CANCELLED",
-        cancelledAt: new Date(),
-        cancelReason: reason,
-      },
-    });
-
-    return { success: true };
+  async cancelTransfer(transferId:string,reason:unknown,actorId:string):Promise<{success:boolean;error?:string}> {
+    return cancelChildTransfer(actorId,transferId,reason);
   }
 
-  async completeTransfer(transferId: string): Promise<{ success: boolean; error?: string }> {
-    const transfer = await prisma.employeeTransfer.findUnique({
-      where: { id: transferId },
-    });
-
-    if (!transfer) return { success: false, error: "Transfer not found" };
-    if (transfer.status !== "COOLING_PERIOD") {
-      return { success: false, error: "Transfer must be in cooling period" };
-    }
-
-    // Check cooling period has elapsed
-    if (transfer.coolingEndDate && new Date() < transfer.coolingEndDate) {
-      return { success: false, error: "Cooling period has not elapsed yet" };
-    }
-
-    // Reset tier to TIER_1
-    await prisma.user.update({
-      where: { id: transfer.employeeId },
-      data: { employeeTier: "TIER_1_ASSOCIATE" },
-    });
-
-    // Complete transfer
-    await prisma.employeeTransfer.update({
-      where: { id: transferId },
-      data: {
-        status: "COMPLETED",
-        completedAt: new Date(),
-      },
-    });
-
-    // Increment child company employee count
-    await prisma.childCompany.update({
-      where: { id: transfer.toChildCompanyId },
-      data: { employeeCount: { increment: 1 } },
-    });
-
-    return { success: true };
+  async completeTransfer(transferId:string):Promise<{success:boolean;repeated?:boolean;error?:string}> {
+    return completeChildTransfer(transferId);
   }
 
   // ============================================
@@ -513,8 +308,9 @@ MGR Capital Assistance Team
     return company;
   }
 
-  async getAllChildCompanies() {
+  async getAllChildCompanies(where: import("@prisma/client").Prisma.ChildCompanyWhereInput = {}) {
     return prisma.childCompany.findMany({
+      where,
       orderBy: { createdAt: "desc" },
       select: {
         id: true,

@@ -13,6 +13,7 @@ import { Prisma } from "@prisma/client";
 import type { PrismaClient } from "@prisma/client";
 import { AuthenticatedRequest } from "./authMiddleware.js";
 import { logger } from "../utils/logger.js";
+import { AppError } from './errorHandler.js';
 
 // =============================================================================
 // TYPES
@@ -39,8 +40,8 @@ import basePrisma from "../lib/prisma.js";
  * Create a tenant-scoped Prisma client
  * Automatically filters queries by tenantId
  */
-export function createTenantPrisma(tenantId: string | null): PrismaClient {
-  if (!tenantId) {
+export function createTenantPrisma(tenantId: string | null, allowGlobal = false): PrismaClient {
+  if (allowGlobal) {
     // No tenant = super admin, return base client
     return basePrisma;
   }
@@ -56,27 +57,25 @@ export function createTenantPrisma(tenantId: string | null): PrismaClient {
       return query(args);
     },
     async findUnique({ args, query }: any) {
-      // For findUnique, we verify after fetch (can't add AND to unique constraint)
-      const result = await query(args);
-      if (result && result.tenantId !== tenantId) {
-        return null; // Hide cross-tenant data
-      }
-      return result;
+      args.where = { ...args.where, AND: [args.where || {}, { tenantId }] };
+      return query(args);
     },
     async create({ args, query }: any) {
       args.data = { ...args.data, tenantId };
       return query(args);
     },
     async update({ args, query }: any) {
-      args.where = { AND: [args.where || {}, { tenantId }] };
+      args.where = { ...args.where, AND: [args.where || {}, { tenantId }] };
+      args.data = { ...args.data, tenantId };
       return query(args);
     },
     async updateMany({ args, query }: any) {
       args.where = { AND: [args.where || {}, { tenantId }] };
+      args.data = { ...args.data, tenantId };
       return query(args);
     },
     async delete({ args, query }: any) {
-      args.where = { AND: [args.where || {}, { tenantId }] };
+      args.where = { ...args.where, AND: [args.where || {}, { tenantId }] };
       return query(args);
     },
     async deleteMany({ args, query }: any) {
@@ -91,6 +90,12 @@ export function createTenantPrisma(tenantId: string | null): PrismaClient {
       args.where = { AND: [args.where || {}, { tenantId }] };
       return query(args);
     },
+    async upsert({args,query}:any){args.where={...args.where,AND:[args.where||{},{tenantId}]};args.create={...args.create,tenantId};args.update={...args.update,tenantId};return query(args);},
+    async createMany({args,query}:any){args.data=(Array.isArray(args.data)?args.data:[args.data]).map((row:any)=>({...row,tenantId}));return query(args);},
+    async groupBy({args,query}:any){args.where={AND:[args.where||{},{tenantId}]};return query(args);},
+    async findUniqueOrThrow({args,query}:any){args.where={...args.where,AND:[args.where||{},{tenantId}]};return query(args);},
+    async findFirstOrThrow({args,query}:any){args.where={AND:[args.where||{},{tenantId}]};return query(args);},
+    async createManyAndReturn({args,query}:any){args.data=(Array.isArray(args.data)?args.data:[args.data]).map((row:any)=>({...row,tenantId}));return query(args);},
   });
 
   // Create extended client with tenant filtering
@@ -108,10 +113,7 @@ export function createTenantPrisma(tenantId: string | null): PrismaClient {
       trainingModule: {
         async findMany({ args, query }: any) {
           // Training modules can be shared (null tenantId) or tenant-specific
-          args.where = {
-            ...args.where,
-            OR: [{ tenantId }, { tenantId: null }],
-          };
+          args.where = {AND:[args.where||{}, {OR: [{ tenantId }, { tenantId: null }]}]};
           return query(args);
         },
       },
@@ -162,6 +164,7 @@ export async function tenantMiddleware(
         id: true,
         tenantId: true,
         role: true,
+        isActive: true,
         tenant: {
           select: {
             id: true,
@@ -173,15 +176,7 @@ export async function tenantMiddleware(
       },
     });
 
-    if (!user) {
-      req.tenant = {
-        tenantId: null,
-        tenantSlug: null,
-        tenantName: null,
-        isSuperAdmin: false,
-      };
-      return next();
-    }
+    if (!user?.isActive) {res.status(403).json({success:false,error:'Account access is unavailable.'});return;}
 
     // FOUNDER with no tenant = super admin (can access all tenants)
     const isSuperAdmin = user.role === "FOUNDER" && !user.tenantId;
@@ -255,8 +250,9 @@ export function requireSuperAdmin(
  * Get tenant-scoped Prisma client from request
  */
 export function getTenantPrisma(req: TenantRequest): PrismaClient {
+  if(!req.user||!req.tenant)throw new AppError('Organization context missing',403,'Authenticated current organization context required.');
   const tenantId = req.tenant?.isSuperAdmin ? null : req.tenant?.tenantId || null;
-  return createTenantPrisma(tenantId);
+  return createTenantPrisma(tenantId,req.tenant.isSuperAdmin);
 }
 
 // =============================================================================

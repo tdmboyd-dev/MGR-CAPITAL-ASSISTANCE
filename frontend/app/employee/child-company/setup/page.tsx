@@ -1,4 +1,6 @@
 "use client";
+import { z } from "zod";
+import { useAuth } from "@/hooks/useAuth";
 import { apiFailure } from "@/lib/apiFailure";
 
 import { Button } from "@/components/ui/button";
@@ -12,21 +14,21 @@ CardTitle,
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { api } from "@/lib/api";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import {
 ArrowLeft,
 ArrowRight,
 Building2,
 CheckCircle,
 Globe,
-Image,
+Image as ImageIcon,
 Loader2,
 Palette,
 Rocket,
 Star,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect,useState } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 
 function slugify(text: string): string {
@@ -40,12 +42,15 @@ export default function ChildCompanySetupPage() {
   const router = useRouter();
   const [step, setStep] = useState(1);
   const [created, setCreated] = useState(false);
-  const [createdCompany, setCreatedCompany] = useState<any>(null);
+  const {user}=useAuth();
+  const offer=useQuery({queryKey:["child-company-offer",user?.id],enabled:Boolean(user),queryFn:async({signal})=>{const{data}=await api.get("/child-companies/offer",{signal});return z.object({id:z.string()}).nullable().parse(data.data);}});
 
   const [formData, setFormData] = useState({
     companyName: "",
     slug: "",
     plan: "WHITE_LABEL" as "BRANDED" | "WHITE_LABEL",
+    emailDomainType: "SUBDOMAIN" as "SUBDOMAIN" | "CUSTOM",
+    customDomain: "",
     logoUrl: "",
     primaryColor: "#2563eb",
     secondaryColor: "#1e40af",
@@ -54,33 +59,22 @@ export default function ChildCompanySetupPage() {
 
   const [slugManuallyEdited, setSlugManuallyEdited] = useState(false);
 
-  useEffect(() => {
-    if (!slugManuallyEdited && formData.companyName) {
-      setFormData((prev) => ({
-        ...prev,
-        slug: slugify(prev.companyName),
-      }));
-    }
-  }, [formData.companyName, slugManuallyEdited]);
+  const effectiveSlug=slugManuallyEdited?formData.slug:slugify(formData.companyName);
 
   const createMutation = useMutation({
     mutationFn: async () => {
+      if(!offer.data?.id)throw new Error("A current eligible offer is required.");
       const { data } = await api.post("/child-companies/accept", {
-        name: formData.companyName,
-        slug: formData.slug,
-        plan: formData.plan,
-        logoUrl: formData.logoUrl || undefined,
-        branding: {
-          primaryColor: formData.primaryColor,
-          secondaryColor: formData.secondaryColor,
-          accentColor: formData.accentColor,
-        },
+        offerId:offer.data.id,companyName:formData.companyName,slug:effectiveSlug,plan:formData.plan,
+        emailDomainType:formData.emailDomainType,customDomain:formData.emailDomainType==='CUSTOM'?formData.customDomain:undefined,
+        logoUrl:formData.logoUrl||undefined,primaryColor:formData.primaryColor,secondaryColor:formData.secondaryColor,accentColor:formData.accentColor,
       });
+      z.object({success:z.literal(true),data:z.object({childCompanyId:z.string()})}).parse(data);
       return data;
     },
-    onSuccess: (data) => {
+    onSuccess: () => {
       toast.success("Child company created successfully!");
-      setCreatedCompany(data.data || data);
+
       setCreated(true);
     },
     onError: (errorUnknown: unknown) => {
@@ -96,7 +90,7 @@ export default function ChildCompanySetupPage() {
       toast.error("Company name is required");
       return;
     }
-    if (!formData.slug.trim()) {
+    if (!effectiveSlug.trim()) {
       toast.error("Company slug is required");
       return;
     }
@@ -113,7 +107,7 @@ export default function ChildCompanySetupPage() {
           </div>
           <h1 className="text-3xl font-bold">Company Created!</h1>
           <p className="text-muted-foreground mt-2">
-            Your child company has been set up and is ready to go
+            Your company workspace is saved. Activation and legal contact setup remain separate steps.
           </p>
         </div>
 
@@ -131,14 +125,14 @@ export default function ChildCompanySetupPage() {
             </div>
             <div className="flex items-center justify-between p-3 rounded-lg bg-muted">
               <span className="text-muted-foreground">Slug</span>
-              <span className="font-medium">{formData.slug}</span>
+              <span className="font-medium">{effectiveSlug}</span>
             </div>
             <div className="flex items-center justify-between p-3 rounded-lg bg-muted">
               <span className="text-muted-foreground">Plan</span>
               <span className="font-medium">
                 {formData.plan === "WHITE_LABEL"
-                  ? "White-Label ($600/yr)"
-                  : "Branded ($300/yr)"}
+                  ? "White-Label"
+                  : "Branded"}
               </span>
             </div>
             <div className="flex items-center justify-between p-3 rounded-lg bg-muted">
@@ -307,7 +301,7 @@ export default function ChildCompanySetupPage() {
                 <Input
                   id="slug"
                   placeholder="apex-recovery"
-                  value={formData.slug}
+                  value={effectiveSlug}
                   onChange={(e) => {
                     setSlugManuallyEdited(true);
                     setFormData((prev) => ({
@@ -332,6 +326,8 @@ export default function ChildCompanySetupPage() {
         </Card>
       )}
 
+      {offer.isError&&<p role="alert">The current offer could not be loaded.</p>}
+      {offer.data===null&&<p role="alert">An eligible current offer is required before creating a child company.</p>}
       {/* Step 2: Plan Selection */}
       {step === 2 && (
         <div className="max-w-2xl mx-auto space-y-6">
@@ -363,11 +359,10 @@ export default function ChildCompanySetupPage() {
                 <div className="flex-1">
                   <div className="flex items-center justify-between">
                     <p className="font-medium text-lg">Branded Plan</p>
-                    <p className="font-bold text-lg">$300/yr</p>
+                    <p className="text-sm">Domain-based annual fee</p>
                   </div>
                   <p className="text-sm text-muted-foreground mt-1">
-                    Operate under MGR Capital branding with up to 5 employees.
-                    You keep 70% of revenue after the tiered founder cut.
+                    Operate under MGR Capital branding. Case allocation follows the recorded tier and company rules.
                   </p>
                 </div>
               </label>
@@ -397,12 +392,11 @@ export default function ChildCompanySetupPage() {
                         Recommended
                       </span>
                     </div>
-                    <p className="font-bold text-lg">$600/yr</p>
+                    <p className="text-sm">Domain-based annual fee</p>
                   </div>
                   <p className="text-sm text-muted-foreground mt-1">
                     Fully branded as your own company with custom logo, colors,
-                    subdomain, and unlimited employees. You keep 85% of revenue
-                    after the tiered founder cut.
+                    and subdomain. Case allocation follows the recorded tier and company rules.
                   </p>
                 </div>
               </label>
@@ -422,6 +416,7 @@ export default function ChildCompanySetupPage() {
         </div>
       )}
 
+      {step === 2 && <Card className="max-w-2xl mx-auto"><CardHeader><CardTitle>Email domain and recorded fees</CardTitle></CardHeader><CardContent className="space-y-3"><label>Domain choice<select className="block w-full rounded border bg-background p-2" value={formData.emailDomainType} onChange={event=>setFormData(previous=>({...previous,emailDomainType:z.enum(['SUBDOMAIN','CUSTOM']).parse(event.target.value)}))}><option value="SUBDOMAIN">Company subdomain: $300/year, $12 email setup, $8/month email</option><option value="CUSTOM">Custom domain: $600/year, $30 email setup, $15/month email</option></select></label>{formData.emailDomainType==='CUSTOM'&&<label>Existing custom domain<Input value={formData.customDomain} onChange={event=>setFormData(previous=>({...previous,customDomain:event.target.value.trim().toLowerCase()}))} placeholder="your-company.com"/></label>}<p className="text-sm">These are the existing configured fees. Saving the workspace does not purchase a domain, provision mail or charge payment.</p></CardContent></Card>}
       {/* Step 3: Branding */}
       {step === 3 && (
         <div className="max-w-2xl mx-auto space-y-6">
@@ -438,7 +433,7 @@ export default function ChildCompanySetupPage() {
               <div className="space-y-2">
                 <Label htmlFor="logoUrl">Logo URL</Label>
                 <div className="flex items-center gap-2">
-                  <Image className="h-4 w-4 text-muted-foreground" />
+                  <ImageIcon className="h-4 w-4 text-muted-foreground" />
                   <Input
                     id="logoUrl"
                     placeholder="https://example.com/logo.png"
@@ -573,7 +568,7 @@ export default function ChildCompanySetupPage() {
                         {formData.companyName || "Your Company"}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        mgrcapital.com/{formData.slug || "your-company"}
+                        mgrcapital.com/{effectiveSlug || "your-company"}
                       </p>
                     </div>
                   </div>
@@ -617,14 +612,14 @@ export default function ChildCompanySetupPage() {
               </div>
               <div className="flex items-center justify-between p-3 rounded-lg bg-muted">
                 <span className="text-muted-foreground">Slug</span>
-                <span className="font-medium">{formData.slug}</span>
+                <span className="font-medium">{effectiveSlug}</span>
               </div>
               <div className="flex items-center justify-between p-3 rounded-lg bg-muted">
                 <span className="text-muted-foreground">Plan</span>
                 <span className="font-medium">
                   {formData.plan === "WHITE_LABEL"
-                    ? "White-Label ($600/yr)"
-                    : "Branded ($300/yr)"}
+                    ? "White-Label"
+                    : "Branded"}
                 </span>
               </div>
             </CardContent>
@@ -637,7 +632,7 @@ export default function ChildCompanySetupPage() {
             </Button>
             <Button
               onClick={handleSubmit}
-              disabled={createMutation.isPending}
+              disabled={createMutation.isPending||!offer.data?.id}
               size="lg"
             >
               {createMutation.isPending ? (

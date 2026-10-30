@@ -1,0 +1,35 @@
+{
+  "proof": "Fresh process reading the actual Chrome companion live county capture after owner completed verification. Initial menu transition required one manual click; automatic menu repair remains to requalify.",
+  "runId": "cmvukoys60008jkgufiik661k",
+  "workItemId": "cmvuh9v01005n52wqluaae6nq",
+  "status": "CAPTURED",
+  "snapshotId": "cmvukumtf000ljkgulybyie9b",
+  "sha256": "742db2682a8243499c76e52a3cc5121da72812f490bb75ecfe4ae926fd1b423e",
+  "affectedWorkFiles": 11,
+  "signals": {
+    "paidVerified": false,
+    "interpretation": "A motion is not an award; an order is not payment proof. Other parcels cannot establish this parcel's outcome. Unscoped motions need document/claimant/parcel review.",
+    "claimedVerified": false,
+    "availabilityVerified": false,
+    "parcelSpecificEvents": [
+      {
+        "date": "2026-03-02",
+        "kind": "PARCEL_EVENT_REQUIRES_REVIEW",
+        "description": "Order\nFinal Decree Confirming Sale - Map/Parcel: 10803019800"
+      },
+      {
+        "date": "2026-03-06",
+        "kind": "PARCEL_EVENT_REQUIRES_REVIEW",
+        "description": "Order\nAmended Final Decree Confirming Sale - Map/Parcel: 10803019800"
+      }
+    ],
+    "unscopedClaimMotions": [
+      {
+        "date": "2026-09-29",
+        "description": "Motion\nMotion to Claim Excess Proceeds (no hearing date requested)"
+      }
+    ],
+    "otherParcelDisbursements": 9
+  },
+  "personalContactTransmitted": false
+}

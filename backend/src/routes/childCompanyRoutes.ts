@@ -11,6 +11,8 @@ import { roleGuard } from "../middleware/roleGuard.js";
 import { asyncHandler, Errors } from "../middleware/errorHandler.js";
 import { childCompanyService } from "../services/ChildCompanyService.js";
 
+import {childCompanyManagementScope,requireChildCompanyAccess} from '../services/CapitalCompanyHierarchy.js';
+
 const router = Router();
 
 // ============================================
@@ -25,6 +27,7 @@ router.get(
   authMiddleware,
   roleGuard(["EMPLOYEE"]),
   asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    if(req.params.id&&!req.path.startsWith("/transfer/"))await requireChildCompanyAccess(req.user!.id,req.params.id);
     const result = await childCompanyService.checkEligibility(req.user!.id);
     res.json({ success: true, data: result });
   })
@@ -38,6 +41,7 @@ router.get(
   authMiddleware,
   roleGuard(["EMPLOYEE"]),
   asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    if(req.params.id&&!req.path.startsWith("/transfer/"))await requireChildCompanyAccess(req.user!.id,req.params.id);
     const offer = await prisma.childCompanyOffer.findFirst({
       where: {
         employeeId: req.user!.id,
@@ -59,6 +63,7 @@ router.post(
   authMiddleware,
   roleGuard(["EMPLOYEE"]),
   asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    if(req.params.id&&!req.path.startsWith("/transfer/"))await requireChildCompanyAccess(req.user!.id,req.params.id);
     const {
       offerId,
       companyName,
@@ -106,7 +111,7 @@ router.post(
       primaryColor,
       secondaryColor,
       accentColor,
-    });
+    }, req.user!.id);
 
     if (!result.success) {
       throw Errors.badRequest(result.error || "Failed to accept offer");
@@ -124,6 +129,7 @@ router.get(
   authMiddleware,
   roleGuard(["EMPLOYEE"]),
   asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    if(req.params.id&&!req.path.startsWith("/transfer/"))await requireChildCompanyAccess(req.user!.id,req.params.id);
     const company = await prisma.childCompany.findFirst({
       where: { ownerId: req.user!.id },
       include: {
@@ -146,6 +152,7 @@ router.get(
   "/fee-info",
   authMiddleware,
   asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    if(req.params.id&&!req.path.startsWith("/transfer/"))await requireChildCompanyAccess(req.user!.id,req.params.id);
     const feeInfo = childCompanyService.getAllFeeInfo();
 
     res.json({ success: true, data: feeInfo });
@@ -164,7 +171,8 @@ router.get(
   authMiddleware,
   roleGuard(["FOUNDER", "ADMIN"]),
   asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-    const companies = await childCompanyService.getAllChildCompanies();
+    if(req.params.id&&!req.path.startsWith("/transfer/"))await requireChildCompanyAccess(req.user!.id,req.params.id);
+    const companies = await childCompanyService.getAllChildCompanies(await childCompanyManagementScope(req.user!.id));
     res.json({ success: true, data: companies });
   })
 );
@@ -177,6 +185,7 @@ router.get(
   authMiddleware,
   roleGuard(["FOUNDER", "ADMIN"]),
   asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    if(req.params.id&&!req.path.startsWith("/transfer/"))await requireChildCompanyAccess(req.user!.id,req.params.id);
     const company = await prisma.childCompany.findUnique({
       where: { id: req.params.id },
       include: {
@@ -199,6 +208,7 @@ router.get(
   authMiddleware,
   roleGuard(["FOUNDER"]),
   asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    if(req.params.id&&!req.path.startsWith("/transfer/"))await requireChildCompanyAccess(req.user!.id,req.params.id);
     const revenue = await childCompanyService.getFounderChildCompanyRevenue(req.params.id);
     if (!revenue) throw Errors.notFound("Child Company");
 
@@ -232,6 +242,7 @@ router.patch(
   authMiddleware,
   roleGuard(["FOUNDER"]),
   asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    if(req.params.id&&!req.path.startsWith("/transfer/"))await requireChildCompanyAccess(req.user!.id,req.params.id);
     const { id } = req.params;
     const { status, plan, annualFeeCents, parentCutTier1, parentCutTier2, parentCutTier3Plus } = req.body;
 
@@ -260,6 +271,7 @@ router.get(
   authMiddleware,
   roleGuard(["FOUNDER", "ADMIN", "EMPLOYEE"]),
   asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    if(req.params.id&&!req.path.startsWith("/transfer/"))await requireChildCompanyAccess(req.user!.id,req.params.id);
     const company = await prisma.childCompany.findUnique({
       where: { id: req.params.id },
       select: {
@@ -313,6 +325,7 @@ router.patch(
   authMiddleware,
   roleGuard(["EMPLOYEE", "FOUNDER"]),
   asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    if(req.params.id&&!req.path.startsWith("/transfer/"))await requireChildCompanyAccess(req.user!.id,req.params.id);
     const { id } = req.params;
     const { employeeSetupFeeCents, employeeMonthlyFeeCents } = req.body;
 
@@ -350,6 +363,7 @@ router.get(
   authMiddleware,
   roleGuard(["FOUNDER", "EMPLOYEE"]),
   asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    if(req.params.id&&!req.path.startsWith("/transfer/"))await requireChildCompanyAccess(req.user!.id,req.params.id);
     const company = await prisma.childCompany.findUnique({
       where: { id: req.params.id },
       select: { ownerId: true },
@@ -376,13 +390,14 @@ router.post(
   authMiddleware,
   roleGuard(["FOUNDER", "ADMIN"]),
   asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    if(req.params.id&&!req.path.startsWith("/transfer/"))await requireChildCompanyAccess(req.user!.id,req.params.id);
     const { employeeId, toChildCompanyId } = req.body;
 
     if (!employeeId || !toChildCompanyId) {
       throw Errors.badRequest("employeeId and toChildCompanyId required");
     }
 
-    const result = await childCompanyService.initiateTransfer({ employeeId, toChildCompanyId });
+    const result = await childCompanyService.initiateTransfer({ employeeId, toChildCompanyId, actorId:req.user!.id });
 
     if (!result.success) {
       throw Errors.badRequest(result.error || "Failed to initiate transfer");
@@ -399,7 +414,8 @@ router.post(
   "/transfer/:id/cancel",
   authMiddleware,
   asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-    const result = await childCompanyService.cancelTransfer(req.params.id, req.body.reason);
+    if(req.params.id&&!req.path.startsWith("/transfer/"))await requireChildCompanyAccess(req.user!.id,req.params.id);
+    const result = await childCompanyService.cancelTransfer(req.params.id, req.body.reason, req.user!.id);
 
     if (!result.success) {
       throw Errors.badRequest(result.error || "Failed to cancel transfer");
@@ -422,6 +438,7 @@ router.get(
   authMiddleware,
   roleGuard(["FOUNDER", "ADMIN", "EMPLOYEE"]),
   asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    if(req.params.id&&!req.path.startsWith("/transfer/"))await requireChildCompanyAccess(req.user!.id,req.params.id);
     const company = await prisma.childCompany.findUnique({
       where: { id: req.params.id },
       select: { ownerId: true },
@@ -469,6 +486,7 @@ router.patch(
   authMiddleware,
   roleGuard(["EMPLOYEE", "FOUNDER"]),
   asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    if(req.params.id&&!req.path.startsWith("/transfer/"))await requireChildCompanyAccess(req.user!.id,req.params.id);
     const { id } = req.params;
     const {
       platformFeeCents,

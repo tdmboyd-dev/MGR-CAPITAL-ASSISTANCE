@@ -1,5 +1,19 @@
 # Capital Assistance — evidence-based scorecard
 
+## October30 connected-source and hierarchy continuation
+
+| Defined acceptance scope | Passed / applicable | Limit |
+|---|---|---|
+| Source/hierarchy actual PostgreSQL and HTTP |17/17 (100%) |Synthetic operator/case; real public payload; complete role/action matrix excluded |
+| Separate-process hierarchy/case reopening |3/3 (100%) |Exhaustive crash/recovery excluded |
+| Companion policy boundaries |4/4 (100%) |Narrow policy tests; no whole-extension security clearance |
+| Davidson real browser source journey |Final fresh named flow passed |Owner human verification required; first blocked menu attempt preserved; no legal outcome certification |
+| Actual saved source |227rows/11work files; byte hash and UI reload verified |Other parcels and unscoped motions cannot resolve target entitlement |
+| Six changed frontend surfaces |0lint errors/warnings; optimized build99entries passed |Whole frontend prior157errors/100warnings remains open |
+| Whole Capital / national coverage |Unassessed |Shelby mapping/acquisition, full source audit and positive operational/provider outcomes unfinished |
+
+Evidence: evidence/2026-10-30-source-connections/. HANDOFF.md is the sole current narrative and next queue. Earlier dated scope snapshots follow.
+
 ## October30 owned Tennessee launch cycle
 
 | Defined acceptance scope | Passed / applicable | Stage and limits |

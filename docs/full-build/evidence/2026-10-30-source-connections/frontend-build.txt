@@ -1,0 +1,128 @@
+
+> mgr-frontend@1.0.0 build
+> next build --webpack
+
+▲ Next.js 16.4.3 (webpack)
+✓ Running next.config.js took 153ms
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 74s
+  Running TypeScript ...
+  Finished TypeScript in 54s ...
+  Collecting page data using 7 workers ...
+  Generating static pages using 7 workers (0/99) ...
+  Generating static pages using 7 workers (24/99)
+  Generating static pages using 7 workers (49/99)
+  Generating static pages using 7 workers (74/99)
+✓ Generating static pages using 7 workers (99/99) in 6.3s
+  Finalizing page optimization ...
+  Collecting build traces ...
+
+Route (app)
+┌ ○ /
+├ ○ /_not-found
+├ ○ /account/identity
+├ ○ /admin/cases
+├ ƒ /admin/cases/[id]
+├ ○ /admin/comms
+├ ○ /admin/compliance
+├ ○ /admin/dashboard
+├ ○ /admin/hr
+├ ○ /admin/insights
+├ ○ /admin/payouts
+├ ○ /admin/training
+├ ○ /admin/users
+├ ○ /auth/forgot-password
+├ ○ /auth/login
+├ ○ /auth/register
+├ ○ /auth/reset-password
+├ ○ /client/cases
+├ ƒ /client/cases/[id]
+├ ○ /client/dashboard
+├ ○ /client/documents
+├ ○ /client/inbox
+├ ○ /client/messages
+├ ○ /client/notifications
+├ ○ /client/portal
+├ ○ /employee/alerts-chamber
+├ ○ /employee/bots
+├ ○ /employee/cases
+├ ƒ /employee/cases/[id]
+├ ○ /employee/child-company
+├ ○ /employee/child-company/cases
+├ ○ /employee/child-company/employees
+├ ○ /employee/child-company/payouts
+├ ○ /employee/child-company/settings
+├ ○ /employee/child-company/setup
+├ ○ /employee/comms
+├ ○ /employee/compliance
+├ ○ /employee/dashboard
+├ ○ /employee/email
+├ ○ /employee/email/setup
+├ ○ /employee/inbox
+├ ○ /employee/leaderboard
+├ ○ /employee/notary
+├ ○ /employee/payouts
+├ ○ /employee/training
+├ ƒ /employee/training/[id]
+├ ○ /employee/trusts
+├ ○ /founder/ai-bots
+├ ○ /founder/alerts-chamber
+├ ○ /founder/analytics
+├ ○ /founder/auctions
+├ ○ /founder/bots
+├ ○ /founder/cases
+├ ƒ /founder/cases/[id]
+├ ○ /founder/cases/new
+├ ○ /founder/child-companies
+├ ○ /founder/command-center
+├ ○ /founder/comms
+├ ○ /founder/compliance
+├ ○ /founder/config
+├ ○ /founder/dashboard
+├ ○ /founder/deadlines
+├ ○ /founder/documents/assignment
+├ ○ /founder/email-hosting
+├ ○ /founder/email-outbox
+├ ○ /founder/emails
+├ ○ /founder/genealogy
+├ ○ /founder/hr
+├ ○ /founder/inbox
+├ ○ /founder/inbox/compose
+├ ○ /founder/ingestion
+├ ○ /founder/ingestion/autopilot
+├ ○ /founder/ingestion/sources
+├ ○ /founder/insights
+├ ○ /founder/leaderboard
+├ ○ /founder/ledger
+├ ○ /founder/marketplace
+├ ○ /founder/nft
+├ ○ /founder/notary
+├ ○ /founder/office-table
+├ ○ /founder/ops
+├ ○ /founder/ops/dashboard
+├ ○ /founder/payments
+├ ○ /founder/payouts
+├ ○ /founder/phone-bot
+├ ○ /founder/pipeline
+├ ○ /founder/recovery-pipeline
+├ ○ /founder/recovery-rules
+├ ○ /founder/retention
+├ ○ /founder/skip-trace
+├ ○ /founder/source-warehouse
+├ ○ /founder/storage
+├ ○ /founder/training
+├ ○ /founder/trusts
+├ ○ /founder/users
+├ ○ /founder/vr-simulation
+├ ○ /founder/worker-bots
+├ ○ /notifications
+├ ○ /privacy
+├ ○ /settings
+├ ○ /sign-portal
+├ ○ /source-connections
+└ ○ /terms
+
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand

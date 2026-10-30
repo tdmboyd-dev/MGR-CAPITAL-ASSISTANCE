@@ -18,14 +18,14 @@ const app = express(); app.use(express.json()); app.use('/cases', cases); app.us
 const server = app.listen(0, '127.0.0.1'); await new Promise<void>(resolve => server.once('listening', resolve));
 const checks: string[] = [];
 try {
-  const f = JSON.parse(await fs.readFile(path.join(process.env.CAPITAL_LAB_DIR, 'vault-reopen.private.json'), 'utf8'));
   const creation = JSON.parse(await fs.readFile(path.join(process.env.CAPITAL_LAB_DIR, 'case-creation-receipt.json'), 'utf8'));
   const source = await db.case.findUniqueOrThrow({ where: { id: creation.reopenCaseId } });
   const owner = await db.user.findFirstOrThrow({ where: { role: 'FOUNDER', tenantId: null, isActive: true } });
   const employee = await db.user.create({ data: { email: `workflow-${crypto.randomUUID()}@example.invalid`, name: 'Synthetic Workflow Employee', passwordHash: 'unusable-test-hash', role: 'EMPLOYEE', employeeTier: 'TIER_1_ASSOCIATE', tenantId: source.tenantId } });
   const record = await createCapitalCase({ clientId: source.clientId, state: source.state, county: source.county, propertyAddress: 'Synthetic workflow ' + crypto.randomUUID(), assignedEmployeeId: employee.id, surplusAmountCents: 10000, feePercent: 0 }, owner.id);
   const token = async (id: string) => 'Bearer ' + authService.generateAccessToken(await db.user.findUniqueOrThrow({ where: { id } })).token;
-  const staff = await token(employee.id), client = await token(record.clientId), admin = await token(f.adminId), founder = await token(owner.id);
+  const administrator = await db.user.create({data:{email:`workflow-admin-${crypto.randomUUID()}@example.invalid`,name:'Synthetic Workflow Admin',passwordHash:'unusable-test-hash',role:'ADMIN',tenantId:record.tenantId}});
+  const staff = await token(employee.id), client = await token(record.clientId), admin = await token(administrator.id), founder = await token(owner.id);
   const http = request(server);
   const post = (status: string) => http.post(`/cases/my/${record.id}/status`).set('Authorization', staff).send({ status });
   assert.equal((await post('CONTACTED')).status, 200);

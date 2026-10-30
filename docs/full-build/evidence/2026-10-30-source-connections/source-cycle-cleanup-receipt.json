@@ -1,0 +1,6 @@
+{
+  "disabledSyntheticAccounts": 53,
+  "revokedRefreshTokens": 2,
+  "cancelledPendingSyntheticConnections": 17,
+  "scope": "Exact browser email and validated UUID fixture emails with exact source-hierarchy labels and unusable password hash; no deletion or owner accounts"
+}

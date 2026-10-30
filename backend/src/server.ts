@@ -1,4 +1,5 @@
 import capitalEmailRoutes from './routes/capitalEmail.js';
+import sourceConnectionRoutes from './routes/sourceConnections.js';
 /** Capital API application. Importing this module does not open ports. Full product/provider/production qualification remains incomplete. */
 
 import express from "express";
@@ -225,6 +226,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/cases", casesRoutes);
 app.use("/api/employees", employeesRoutes);
 app.use("/api/capital-email", capitalEmailRoutes);
+app.use("/api/source-connections", sourceConnectionRoutes);
 app.use("/api/clients", clientsRoutes);
 app.use("/api/payouts", payoutsRoutes);
 

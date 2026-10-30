@@ -1,0 +1,18 @@
+{
+  "scope": "Actual Express/JWT/PostgreSQL with synthetic client/document records; no external messages, uploads, legal signatures or production proof",
+  "passed": 12,
+  "checks": [
+    "Company-scoped client listing/detail/edit cannot reach another company or non-client staff",
+    "Client creation derives company and commits its audit; forged company fields are rejected",
+    "Actual client audit failure rolls back client creation",
+    "Legacy URL upload and pasted signature cannot create document bytes or signed state",
+    "Founder force-status cannot bypass signature evidence",
+    "Public portal contains only admitted client documents, not internal filing packets",
+    "Possession of a portal link cannot replace the login email",
+    "Inactive account revokes public portal access",
+    "Cross-company portal management, negative expiry and fake sent messages are rejected",
+    "Explicit copy returns a portal link while audit records omit its bearer token",
+    "Portal renewal and audit roll back together; successful response reports the actual renewed expiration",
+    "Alternate public case route excludes deleted documents and revoked client accounts"
+  ]
+}

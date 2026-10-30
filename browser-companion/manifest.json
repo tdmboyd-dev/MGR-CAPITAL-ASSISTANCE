@@ -1,0 +1,12 @@
+{
+  "manifest_version": 3,
+  "name": "MGR Capital Source Companion",
+  "version": "0.1.0",
+  "description": "Owner-assisted county research: pause for human verification, fill the admitted case search and return source evidence to Capital.",
+  "permissions": ["storage"],
+  "host_permissions": ["https://portal-tnnashville.tylertech.cloud/*", "https://api.capitalmgr.com/*", "http://127.0.0.1/*"],
+  "background": { "service_worker": "background.js", "type": "module" },
+  "content_scripts": [{ "matches": ["https://portal-tnnashville.tylertech.cloud/PublicAccess/*"], "js": ["source.js"], "run_at": "document_idle" }],
+  "externally_connectable": { "matches": ["https://capitalmgr.com/*", "https://www.capitalmgr.com/*", "http://127.0.0.1/*"] },
+  "action": { "default_title": "MGR Capital Source Companion", "default_popup": "popup.html" }
+}

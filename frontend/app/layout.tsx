@@ -40,7 +40,9 @@ export default function RootLayout({
       <head>
         <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
       </head>
-      <body className={inter.className}>
+      {/* Browser writing tools add body attributes before hydration. Only this
+          element's attribute comparison is exempt; descendant mismatches remain visible. */}
+      <body className={inter.className} suppressHydrationWarning>
         <Providers>{children}</Providers>
         <Toaster position="top-right" richColors />
         <ClientUtilities />

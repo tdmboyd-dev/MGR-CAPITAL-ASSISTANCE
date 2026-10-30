@@ -1,0 +1,15 @@
+import {Router} from 'express';import {authMiddleware,type AuthRequest} from '../middleware/authMiddleware.js';import {accessFailure} from '../services/CaseDocumentAccess.js';
+import {identityContext,readBusinessProfile,saveIdentityProfile} from '../services/CapitalIdentityProfiles.js';import {prepareSourceConnection,readSourceConnection,cancelSourceConnection,sourceAdapters,sourceBridgeEvent,sourceBridgePlan} from '../services/CapitalSourceConnections.js';
+const router=Router();router.use((_req,res,next)=>{res.setHeader('Cache-Control','private, no-store');next();});
+router.get('/bridge/:id/plan',async(req,res)=>{try{const auth=req.get('Authorization')||'';res.json({success:true,data:await sourceBridgePlan(req.params.id,auth.startsWith('Bearer ')?auth.slice(7):'')});}catch(error){accessFailure(res,error);}});
+router.post('/bridge/:id/events',async(req,res)=>{try{const auth=req.get('Authorization')||'';res.json({success:true,data:await sourceBridgeEvent(req.params.id,auth.startsWith('Bearer ')?auth.slice(7):'',req.body)});}catch(error){accessFailure(res,error);}});
+router.use(authMiddleware);
+router.get('/identity',async(req:AuthRequest,res)=>{try{res.json({success:true,data:await identityContext(req.user!.id)});}catch(error){accessFailure(res,error);}});
+router.put('/identity/person',async(req:AuthRequest,res)=>{try{res.json({success:true,data:await saveIdentityProfile(req.user!.id,'PERSON',req.user!.id,req.body)});}catch(error){accessFailure(res,error);}});
+router.get('/identity/business/:ref',async(req:AuthRequest,res)=>{try{res.json({success:true,data:await readBusinessProfile(req.user!.id,req.params.ref)});}catch(error){accessFailure(res,error);}});
+router.put('/identity/business/:ref',async(req:AuthRequest,res)=>{try{res.json({success:true,data:await saveIdentityProfile(req.user!.id,'BUSINESS',req.params.ref,req.body)});}catch(error){accessFailure(res,error);}});
+router.get('/adapters',(_req,res)=>res.json({success:true,data:sourceAdapters}));
+router.post('/runs',async(req:AuthRequest,res)=>{try{res.status(201).json({success:true,data:await prepareSourceConnection(req.user!.id,req.body)});}catch(error){accessFailure(res,error);}});
+router.get('/runs/:id',async(req:AuthRequest,res)=>{try{res.json({success:true,data:await readSourceConnection(req.user!.id,req.params.id)});}catch(error){accessFailure(res,error);}});
+router.post('/runs/:id/cancel',async(req:AuthRequest,res)=>{try{res.json({success:true,data:await cancelSourceConnection(req.user!.id,req.params.id)});}catch(error){accessFailure(res,error);}});
+export default router;

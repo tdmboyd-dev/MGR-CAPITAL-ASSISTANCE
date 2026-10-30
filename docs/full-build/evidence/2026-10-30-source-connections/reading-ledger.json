@@ -1,0 +1,155 @@
+{
+  "scope": "Authored new source, reviewed specific current implementations and modified call paths; partial legacy files explicitly excluded from whole-file semantic audit. Whole repository reading remains unfinished.",
+  "files": [
+    {
+      "path": "backend/src/services/CapitalCompanyHierarchy.ts",
+      "sha256": "61c9271126d61ddee588459b85fa8c4c48956d8ad3439a7746a06b38c034d3a9",
+      "status": "AUTHORED_OR_FULL_SCOPE_READ"
+    },
+    {
+      "path": "backend/src/services/CapitalIdentityProfiles.ts",
+      "sha256": "4f4e3ac11bd8fffb92088f179af08820bda8134e20a7dd6e14888cb9b8fe2ec3",
+      "status": "AUTHORED_OR_FULL_SCOPE_READ"
+    },
+    {
+      "path": "backend/src/services/CapitalSourceConnections.ts",
+      "sha256": "4243ebadda222a25daac37d2abba18b1b65031ecc6cb3dab50ccf5c28e639936",
+      "status": "AUTHORED_OR_FULL_SCOPE_READ"
+    },
+    {
+      "path": "backend/src/routes/sourceConnections.ts",
+      "sha256": "a0b859d7ce20fbef7d5bfb528cffd696deae7eb79e469e5027f00969d210767e",
+      "status": "AUTHORED_OR_FULL_SCOPE_READ"
+    },
+    {
+      "path": "backend/src/services/CaseDocumentAccess.ts",
+      "sha256": "e33159bb42204b7bd5bd872de8d0648d3793dcdedbfab7a3f1ac569ba4da3b92",
+      "status": "AUTHORED_OR_FULL_SCOPE_READ"
+    },
+    {
+      "path": "backend/src/middleware/tenantMiddleware.ts",
+      "sha256": "b55cf2afa4cdd92c0b3f1a75628b80b8006b177cecd041c0c337e752b613e5ea",
+      "status": "AUTHORED_OR_FULL_SCOPE_READ"
+    },
+    {
+      "path": "backend/src/services/CapitalSourceWarehouse.ts",
+      "sha256": "4ad09e528eacffcfb945fa63461b7eaafb3d73c082fc1cf5cf6493e9a80f7c43",
+      "status": "AUTHORED_OR_FULL_SCOPE_READ"
+    },
+    {
+      "path": "backend/src/services/DavidsonDocketEvidence.ts",
+      "sha256": "8e2840cc6dfc9c2824e37db5b952a4a626d883287cb280c734f33767051665c1",
+      "status": "AUTHORED_OR_FULL_SCOPE_READ"
+    },
+    {
+      "path": "backend/tests/source-connections-hierarchy-postgres.ts",
+      "sha256": "a800a9a73a5d693f8fc2912619fb037e2d0d837b7ed70c980d36f1ab1218f77c",
+      "status": "AUTHORED_OR_FULL_SCOPE_READ"
+    },
+    {
+      "path": "backend/tests/source-connection-reopen.ts",
+      "sha256": "f9aa666d422158eabb53d55b60600b1ec1d6f4e0b7179312da7d88bd68b64c4d",
+      "status": "AUTHORED_OR_FULL_SCOPE_READ"
+    },
+    {
+      "path": "backend/tests/source-browser-live-reopen.ts",
+      "sha256": "69510f6c630b15c6280d9f0df04218ed827e7d67a65c57249fe431a713ee9c90",
+      "status": "AUTHORED_OR_FULL_SCOPE_READ"
+    },
+    {
+      "path": "backend/tests/source-cycle-cleanup.ts",
+      "sha256": "8e10d69058734a66d0b2f8e7de8811d8f5c176b97a84503fa674ac550f44bdb9",
+      "status": "AUTHORED_OR_FULL_SCOPE_READ"
+    },
+    {
+      "path": "browser-companion/background.js",
+      "sha256": "76ed2fe722c222b9982f1a7e8a7f3633ecefed2bf4903ee756e592285672f53c",
+      "status": "AUTHORED_OR_FULL_SCOPE_READ"
+    },
+    {
+      "path": "browser-companion/source.js",
+      "sha256": "e260718dc9b887a9f9dc5cddfd023035809431b68ada25ba4208a992d7728bed",
+      "status": "AUTHORED_OR_FULL_SCOPE_READ"
+    },
+    {
+      "path": "browser-companion/manifest.json",
+      "sha256": "392d356a1846db588c495f9b0fbd194313971368aab3fc7f572a216632593868",
+      "status": "AUTHORED_OR_FULL_SCOPE_READ"
+    },
+    {
+      "path": "browser-companion/popup.html",
+      "sha256": "fd8b8a7af7ffeb041c928cbfd7f10a12864e333eb36964a151ad3b17e5b7d643",
+      "status": "AUTHORED_OR_FULL_SCOPE_READ"
+    },
+    {
+      "path": "browser-companion/tests/security.test.js",
+      "sha256": "cd4a65454bc50ebc864f7f747fd9d1f1edf363640f0d4383689b7a6dc8a36da3",
+      "status": "AUTHORED_OR_FULL_SCOPE_READ"
+    },
+    {
+      "path": "frontend/app/source-connections/page.tsx",
+      "sha256": "4ccbf36bc74bffcbd5dff9f6758df113d23eaf884eeed6ae0d667e1c3f9fa91b",
+      "status": "AUTHORED_OR_FULL_SCOPE_READ"
+    },
+    {
+      "path": "frontend/app/account/identity/page.tsx",
+      "sha256": "89bf9ff5ec97a123fd5b7e0b71cf67b46db878c81cdd5b1d221bb839434141ac",
+      "status": "AUTHORED_OR_FULL_SCOPE_READ"
+    },
+    {
+      "path": "frontend/components/Sidebar.tsx",
+      "sha256": "0efbe3e5aa75f64cb0929921aebb8bcae6f4a7e96c7b5ba2eb3c8185f173e131",
+      "status": "AUTHORED_OR_FULL_SCOPE_READ"
+    },
+    {
+      "path": "frontend/app/layout.tsx",
+      "sha256": "e61f67198c3d2bea844b53a19ab4a0ea640bfab52a82d1afaf624a354b0cd8c9",
+      "status": "AUTHORED_OR_FULL_SCOPE_READ"
+    },
+    {
+      "path": "backend/prisma/migrations/20261030060000_source_connections_hierarchy/migration.sql",
+      "sha256": "8fd4dfa8dca0292f86677a4e47c37caa6b19bad4a3e7780b650e184ba3db5199",
+      "status": "AUTHORED_OR_FULL_SCOPE_READ"
+    },
+    {
+      "path": "backend/src/services/ChildCompanyService.ts",
+      "sha256": "590733c1e8a1aeb28224c0d94be846a5ced3030637c963b1c8b50328b2304ab0",
+      "status": "PARTIAL_MODIFIED_PATHS_ONLY"
+    },
+    {
+      "path": "backend/src/routes/childCompanyRoutes.ts",
+      "sha256": "514202f4543bc4aed196b4d575e2e17050f00dd92d7a4821d17ad432bef55e27",
+      "status": "PARTIAL_MODIFIED_PATHS_ONLY"
+    },
+    {
+      "path": "backend/src/server.ts",
+      "sha256": "a6cabae4c3e35156373d3308e268ac42927048f4a8c9aa58b2bffb949dad7c52",
+      "status": "PARTIAL_MODIFIED_PATHS_ONLY"
+    },
+    {
+      "path": "backend/prisma/schema.prisma",
+      "sha256": "1b0b4cb65bda8f29ee4b637f03f486175468238c797f8d81b3ad38ca2cd5e1a7",
+      "status": "PARTIAL_MODIFIED_PATHS_ONLY"
+    },
+    {
+      "path": "frontend/app/employee/child-company/setup/page.tsx",
+      "sha256": "4afb10ec6533bf4153db6f343182fd4cc893c34dd929a2258adcf700873d0cb3",
+      "status": "PARTIAL_MODIFIED_PATHS_ONLY"
+    },
+    {
+      "path": "frontend/app/founder/recovery-pipeline/page.tsx",
+      "sha256": "bd3d51b6ec8d2fc4b9114d277d8f19a861225090f996c340faebb05dffb3ef77",
+      "status": "PARTIAL_MODIFIED_PATHS_ONLY"
+    },
+    {
+      "path": "backend/tests/case-workflow-postgres.ts",
+      "sha256": "7f0728c9e8a6998e696634d185dcf820a12b037f64666cceacd8d5090f4d006e",
+      "status": "PARTIAL_MODIFIED_PATHS_ONLY"
+    },
+    {
+      "path": "backend/tests/capital-research-browser-server.ts",
+      "sha256": "f9357a3b5ae633198b9818315a281a4a130aadf1cdc18e5e66e1f7ff2cc93687",
+      "status": "PARTIAL_MODIFIED_PATHS_ONLY"
+    }
+  ]
+}

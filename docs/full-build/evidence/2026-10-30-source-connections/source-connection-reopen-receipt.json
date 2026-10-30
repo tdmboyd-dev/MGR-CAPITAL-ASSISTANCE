@@ -1,0 +1,8 @@
+{
+  "passed": 3,
+  "checks": [
+    "Actual saved rendered case docket and hash survive fresh process without payment certification",
+    "Parent owner account and transferred child employee remain in their separate saved workspaces",
+    "Child legal profile survives as self-attested, not independently verified"
+  ]
+}

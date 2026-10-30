@@ -149,6 +149,8 @@ export function Sidebar({ role, tier, isOpen, onClose }: SidebarProps) {
     ];
   }
 
+  links = [...links, {href:"/account/identity",label:"Legal contact profiles",icon:UserCog}, ...(["founder","admin","team_lead","employee"].includes(role.toLowerCase())?[{href:"/source-connections",label:"Source connections",icon:Globe}]:[])];
+
   return (
     <>
       {/* Mobile overlay */}

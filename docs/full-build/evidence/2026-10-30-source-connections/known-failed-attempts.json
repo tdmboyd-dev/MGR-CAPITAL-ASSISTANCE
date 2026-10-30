@@ -1,0 +1,7 @@
+{
+  "initialCompanion": "First real popup menu click targeted a javascript URL and was blocked by Chrome extension CSP. Repaired with observed normal search URL. Second fresh flow completed automatically. Existing extension error card may retain first failure.",
+  "hashReopening": "JSONB key order changed reconstructed JSON hash; repaired by preserving original JSON string and hash. Final3/3reopening passed.",
+  "caseRegression": "Vault fixture regeneration produced a different-tenant administrator from old case creation fixture. Correctly denied404; test now provisions its own same-case-tenant admin. Final16/16passed.",
+  "intermediateFrontend": "Type inference, Lucide import and ref-during-render checks failed during implementation; repaired before final production build/target lint.",
+  "browserBoundary": "chrome://extensions automation denied; owner loaded/reloaded unpacked companion. No alternative automated installation path used."
+}

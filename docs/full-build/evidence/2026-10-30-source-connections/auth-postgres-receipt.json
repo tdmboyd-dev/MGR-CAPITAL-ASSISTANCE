@@ -1,0 +1,20 @@
+{
+  "scope": "Actual generated Prisma client and PostgreSQL; real signed JWTs, Express loopback HTTP middleware. Signing/database outage ports explicitly controlled in named checks. No full server/browser/provider/financial or production proof.",
+  "checks": [
+    "Actual bcrypt/database login denies incorrect password",
+    "Actual bcrypt login persists last-login and issues a signed token resolved to its current principal",
+    "Six real PostgreSQL rotations issue one successor and atomically link the consumed predecessor",
+    "Repeated consumed token cannot create another database successor",
+    "Actual HTTP guard replaces stale founder claims with current database role",
+    "Disabling an actual database account immediately denies existing access and refresh",
+    "Mandatory and optional anonymous HTTP behavior preserved",
+    "A correctly signed JWT without expiry is rejected",
+    "Actual SQL successor failure rolls back predecessor consumption and linkage",
+    "Original refresh remains usable after rolled-back database failure",
+    "Controlled signing failure also rolls back real PostgreSQL successor and predecessor",
+    "Actual HTTP guards fail closed on a controlled database-port failure without exposing its details",
+    "Revoked refresh token cannot create a successor",
+    "Test-owned SQL failure trigger cleaned up"
+  ],
+  "passed": 14
+}
