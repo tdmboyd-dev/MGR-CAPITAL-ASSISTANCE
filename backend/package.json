@@ -25,7 +25,11 @@
     "test:payment-truth": "node --import tsx tests/payment-truth-postgres.ts",
     "test:offline-privacy": "node --test tests/offline-privacy.test.cjs",
     "test:record-boundary": "node --import tsx --test tests/record-parsing-boundary.node.ts",
-    "test:payout-postgres": "node --import tsx tests/payout-planning-postgres.ts"
+    "test:payout-postgres": "node --import tsx tests/payout-planning-postgres.ts",
+    "test:case-creation": "node --import tsx tests/case-creation-postgres.ts",
+    "test:case-workflow": "node --import tsx tests/case-workflow-postgres.ts",
+    "test:case-reopen": "node --import tsx tests/case-workflow-reopen.ts",
+    "test:client-portal": "node --import tsx tests/client-portal-postgres.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

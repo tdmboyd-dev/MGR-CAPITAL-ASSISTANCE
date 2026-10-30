@@ -1,0 +1,12 @@
+{
+  "scope": "CUA browser action corroborated in a separate Node/PostgreSQL process; synthetic records only",
+  "passed": 3,
+  "checks": [
+    "Browser-created case retains zero fee and zero surplus",
+    "Browser status action persists CONTACTED with audit",
+    "Client inbox notification persisted for browser status change"
+  ],
+  "caseId": "cmvubxrcc0007dsup4ck7vl15",
+  "notificationId": "cmvuc45gu0001rmqlsacp41le",
+  "actorId": "cmvubs8ty0000dsupb6irgrs7"
+}

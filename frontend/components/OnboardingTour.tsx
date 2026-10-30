@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Joyride, { Step, CallBackProps, STATUS } from "react-joyride";
+import { Joyride, type Step, type EventData, STATUS } from "react-joyride";
 
 interface OnboardingTourProps {
   role: "FOUNDER" | "ADMIN" | "HR" | "COMPLIANCE" | "TEAM_LEAD" | "EMPLOYEE" | "CLIENT";
@@ -9,6 +9,12 @@ interface OnboardingTourProps {
 }
 
 const TOUR_COMPLETED_KEY = "mgr_onboarding_completed";
+function completedTours(): Record<string, boolean> {
+  try {
+    const parsed: unknown = JSON.parse(localStorage.getItem(TOUR_COMPLETED_KEY) || "{}");
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed as Record<string, boolean> : {};
+  } catch { return {}; }
+}
 
 // Role-specific tour steps
 const getTourSteps = (role: string): Step[] => {
@@ -17,7 +23,7 @@ const getTourSteps = (role: string): Step[] => {
       target: "body",
       content: "Welcome to MGR Capital Assistance! Let's take a quick tour to help you get started.",
       placement: "center",
-      disableBeacon: true,
+      skipBeacon: true,
     },
   ];
 
@@ -180,8 +186,7 @@ export function OnboardingTour({ role, onComplete }: OnboardingTourProps) {
 
   useEffect(() => {
     // Check if tour has been completed
-    const completedRoles = localStorage.getItem(TOUR_COMPLETED_KEY);
-    const completed = completedRoles ? JSON.parse(completedRoles) : {};
+    const completed = completedTours();
 
     if (!completed[role]) {
       // Small delay to let the page render first
@@ -190,13 +195,12 @@ export function OnboardingTour({ role, onComplete }: OnboardingTourProps) {
     }
   }, [role]);
 
-  const handleJoyrideCallback = (data: CallBackProps) => {
+  const handleJoyrideCallback = (data: EventData) => {
     const { status } = data;
 
     if (status === STATUS.FINISHED || status === STATUS.SKIPPED) {
       // Mark tour as completed for this role
-      const completedRoles = localStorage.getItem(TOUR_COMPLETED_KEY);
-      const completed = completedRoles ? JSON.parse(completedRoles) : {};
+      const completed = completedTours();
       completed[role] = true;
       localStorage.setItem(TOUR_COMPLETED_KEY, JSON.stringify(completed));
 
@@ -210,19 +214,14 @@ export function OnboardingTour({ role, onComplete }: OnboardingTourProps) {
       steps={steps}
       run={run}
       continuous
-      showSkipButton
-      showProgress
-      callback={handleJoyrideCallback}
+      options={{ buttons: ["back", "close", "primary", "skip"], showProgress: true, primaryColor: "#2563eb", zIndex: 10000 }}
+      onEvent={handleJoyrideCallback}
       styles={{
-        options: {
-          primaryColor: "#2563eb",
-          zIndex: 10000,
-        },
         tooltip: {
           borderRadius: 8,
           padding: 20,
         },
-        buttonNext: {
+        buttonPrimary: {
           backgroundColor: "#2563eb",
           borderRadius: 6,
           padding: "10px 20px",
@@ -248,16 +247,14 @@ export function OnboardingTour({ role, onComplete }: OnboardingTourProps) {
 // Hook to manually trigger the tour
 export function useOnboardingTour(role: string) {
   const resetTour = () => {
-    const completedRoles = localStorage.getItem(TOUR_COMPLETED_KEY);
-    const completed = completedRoles ? JSON.parse(completedRoles) : {};
+    const completed = completedTours();
     delete completed[role];
     localStorage.setItem(TOUR_COMPLETED_KEY, JSON.stringify(completed));
     window.location.reload();
   };
 
   const isTourCompleted = () => {
-    const completedRoles = localStorage.getItem(TOUR_COMPLETED_KEY);
-    const completed = completedRoles ? JSON.parse(completedRoles) : {};
+    const completed = completedTours();
     return !!completed[role];
   };
 

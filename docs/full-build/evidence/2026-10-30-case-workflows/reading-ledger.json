@@ -1,0 +1,101 @@
+{
+  "date": "2026-10-30",
+  "method": "Named full-file reading and implementation review; no inferred reading from inventory or lexical search",
+  "fullRead": [
+    {
+      "path": "backend/src/services/CaseCreationService.ts",
+      "sha256": "8ae93685acb28ff5af959b49f913656a32e2468c48ea26208baa77bfa11291e5",
+      "lines": 80
+    },
+    {
+      "path": "backend/src/services/CaseWorkflowService.ts",
+      "sha256": "afbc72a0bfefae63d5799ac239fac8c0102ebf23ab2216d366feaebec47cb348",
+      "lines": 62
+    },
+    {
+      "path": "backend/tests/case-creation-postgres.ts",
+      "sha256": "815f3a8500d12758e0cff1d3f2a2ea3648905078665042eba19dba7c563dcdf9",
+      "lines": 92
+    },
+    {
+      "path": "backend/tests/case-workflow-postgres.ts",
+      "sha256": "34e720b087e83d8f8950e45bf2bc57945231e4068af1dfacde0757122f8ad25d",
+      "lines": 103
+    },
+    {
+      "path": "backend/tests/case-workflow-reopen.ts",
+      "sha256": "10ebc67b543523ac4ec5cb7f27add8a8d3f759fdbe16c4a29ab67d096a43444a",
+      "lines": 21
+    },
+    {
+      "path": "backend/tests/client-portal-postgres.ts",
+      "sha256": "47e819cb4299a2ad2114567de214a052d8d836531c0218df1a47d47a61363775",
+      "lines": 96
+    },
+    {
+      "path": "frontend/components/CaseIntakeForm.tsx",
+      "sha256": "9c86266a25360e6343bad7b198bc702a9f61a59cc730cb078b027cf59a135981",
+      "lines": 112
+    },
+    {
+      "path": "frontend/components/ClientUtilities.tsx",
+      "sha256": "5a367adaae7684715a241b28326f6509b01f9fe1671bce1be8c18733f3d92c5c",
+      "lines": 10
+    },
+    {
+      "path": "frontend/app/notifications/page.tsx",
+      "sha256": "170a745b096972a4d96759f600cd21f7b71e62a83de97127413d8dd35ec54d8c",
+      "lines": 63
+    },
+    {
+      "path": "frontend/hooks/useNotifications.ts",
+      "sha256": "3f13b157b823da54d65cac297afcf1041d19203b749a2380829016a7b2855d04",
+      "lines": 67
+    },
+    {
+      "path": "frontend/hooks/useAuth.tsx",
+      "sha256": "4b727c2fd72fcd1f886bbce45d063abb1dd84fad2746355cf6efbd1ed43676f8",
+      "lines": 201
+    },
+    {
+      "path": "frontend/lib/api.ts",
+      "sha256": "3bf99c30e6f06715445928f3be580eabbe7ad5cfbeb6de2757014a08437749ca",
+      "lines": 146
+    },
+    {
+      "path": "frontend/app/admin/cases/[id]/page.tsx",
+      "sha256": "074a190dcba185e3fe2aeaa8f1c90c2fbcd06791d40366e58079caa32b301060",
+      "lines": 451
+    },
+    {
+      "path": "frontend/app/providers.tsx",
+      "sha256": "d913ffec8322790d05a224cc3c496956a8f2b040cf3f1fb2dddbd763de02e564",
+      "lines": 50
+    },
+    {
+      "path": "frontend/next.config.js",
+      "sha256": "8d9030d93910ae1b952fd1d82a9e81ab0659f81ef34c76639b9a6a0585f5d560",
+      "lines": 36
+    },
+    {
+      "path": "frontend/eslint.config.mjs",
+      "sha256": "d998431e4def55b6f1d884a5f00bf8d3202a330f9c7d7707d20a54e94d852fb1",
+      "lines": 3
+    },
+    {
+      "path": "frontend/package.json",
+      "sha256": "9b27a1b98dc92068abd8420c067cbafc58e936bef545dfe016039b1843c6abf5",
+      "lines": 85
+    }
+  ],
+  "partialRead": [
+    "backend/src/routes/cases.ts",
+    "backend/src/routes/clients.ts",
+    "backend/src/routes/notificationRoutes.ts",
+    "backend/src/services/NotificationCenterService.ts",
+    "backend/src/services/IngestionService.ts",
+    "backend/src/services/CaseService.ts",
+    "backend/src/services/ClientService.ts"
+  ],
+  "unread": "Everything outside this named scope and prior explicitly recorded reading remains unassessed; a full semantic source audit is still open."
+}

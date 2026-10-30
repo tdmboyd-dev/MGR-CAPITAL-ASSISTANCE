@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactElement } from "react";
 import { format } from "date-fns";
 import {
   CheckCircle2,
@@ -32,7 +33,7 @@ interface CaseTimelineProps {
   events: TimelineEvent[];
 }
 
-const statusIcons: Record<string, JSX.Element> = {
+const statusIcons: Record<string, ReactElement> = {
   NEW: <Clock className="h-5 w-5 text-blue-500" />,
   CONTACTED: <Phone className="h-5 w-5 text-yellow-500" />,
   DOCS_PENDING: <FileText className="h-5 w-5 text-orange-500" />,

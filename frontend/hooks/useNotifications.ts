@@ -1,111 +1,67 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { useAuth } from "./useAuth";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
+import { useAuth, useAuthStore } from "./useAuth";
+import { api } from "@/lib/api";
 
 interface Notification {
   id: string;
-  type: string;
+  category: string;
   title: string;
   message: string;
-  priority: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+  priority: "low" | "normal" | "high" | "urgent";
   isRead: boolean;
   createdAt: string;
   link?: string;
 }
 
+/** Authenticated polling uses the shared refresh client. No access token is put
+ * into URLs; account changes abort old reads and clear the previous inbox. */
 export function useNotifications() {
   const { user, accessToken } = useAuth();
+  const userId = user?.id;
   const [unreadCount, setUnreadCount] = useState(0);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isConnected, setIsConnected] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const refresh = useCallback(async (signal?: AbortSignal) => {
+    if (!userId) return;
+    const { data } = await api.get('/notifications', { params: { limit: 20 }, signal });
+    if (signal?.aborted || useAuthStore.getState().user?.id !== userId) return;
+    if (!Array.isArray(data.notifications) || !Number.isSafeInteger(data.unreadCount) || data.unreadCount < 0) throw new Error('Invalid notification response');
+    setNotifications(data.notifications);
+    setUnreadCount(data.unreadCount);
+    setIsConnected(true);
+    setError(null);
+  }, [userId]);
 
   useEffect(() => {
-    if (!user || !accessToken) return;
-
-    // Create EventSource for SSE
-    const eventSource = new EventSource(
-      `${API_URL}/api/notifications/events?token=${accessToken}`
-    );
-
-    eventSource.onopen = () => {
-      setIsConnected(true);
+    setNotifications([]); setUnreadCount(0); setIsConnected(false); setError(null);
+    if (!userId || !accessToken) return;
+    const controller = new AbortController();
+    let running = false;
+    const poll = async () => {
+      if (running || controller.signal.aborted) return;
+      running = true;
+      try { await refresh(controller.signal); }
+      catch { if (!controller.signal.aborted) { setIsConnected(false); setError('Notifications unavailable'); } }
+      finally { running = false; }
     };
+    void poll();
+    const timer = setInterval(() => { void poll(); }, 15000);
+    return () => { controller.abort(); clearInterval(timer); };
+  }, [userId, accessToken, refresh]);
 
-    eventSource.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-
-        if (data.type === "unread_count") {
-          setUnreadCount(data.count);
-        } else if (data.type === "new_notification") {
-          setNotifications((prev) => [data.notification, ...prev].slice(0, 20));
-          setUnreadCount((prev) => prev + 1);
-        } else if (data.type === "notifications_list") {
-          setNotifications(data.notifications);
-        }
-      } catch (e) {
-        console.error("Failed to parse SSE data:", e);
-      }
-    };
-
-    eventSource.onerror = () => {
-      setIsConnected(false);
-      // Will automatically try to reconnect
-    };
-
-    return () => {
-      eventSource.close();
-      setIsConnected(false);
-    };
-  }, [user, accessToken]);
-
-  const markAsRead = useCallback(
-    async (notificationId: string) => {
-      try {
-        await fetch(`${API_URL}/api/notifications/${notificationId}/read`, {
-          method: "PATCH",
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
-        });
-        setNotifications((prev) =>
-          prev.map((n) =>
-            n.id === notificationId ? { ...n, isRead: true } : n
-          )
-        );
-        setUnreadCount((prev) => Math.max(0, prev - 1));
-      } catch (e) {
-        console.error("Failed to mark notification as read:", e);
-      }
-    },
-    [accessToken]
-  );
-
+  const markAsRead = useCallback(async (notificationId: string) => {
+    if (!userId || useAuthStore.getState().user?.id !== userId) return;
+    try { await api.patch(`/notifications/${encodeURIComponent(notificationId)}/read`); await refresh(); return true; }
+    catch { setError('Could not mark notification as read'); return false; }
+  }, [userId, refresh]);
   const markAllAsRead = useCallback(async () => {
-    try {
-      await fetch(`${API_URL}/api/notifications/read-all`, {
-        method: "PATCH",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      });
-      setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
-      setUnreadCount(0);
-    } catch (e) {
-      console.error("Failed to mark all as read:", e);
-    }
-  }, [accessToken]);
-
-  return {
-    unreadCount,
-    notifications,
-    isConnected,
-    markAsRead,
-    markAllAsRead,
-  };
+    if (!userId || useAuthStore.getState().user?.id !== userId) return;
+    try { await api.patch('/notifications/mark-read', {}); await refresh(); return true; }
+    catch { setError('Could not mark notifications as read'); return false; }
+  }, [userId, refresh]);
+  return { unreadCount, notifications, isConnected, error, markAsRead, markAllAsRead };
 }
-
 export default useNotifications;

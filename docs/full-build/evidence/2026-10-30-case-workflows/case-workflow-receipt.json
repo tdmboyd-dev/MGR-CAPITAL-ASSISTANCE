@@ -1,0 +1,25 @@
+{
+  "scope": "Actual Express/JWT/PostgreSQL with synthetic status/inbox records; no external delivery or legal-state proof",
+  "passed": 16,
+  "checks": [
+    "Assigned staff status change atomically creates an actual recipient-scoped client inbox entry",
+    "Concurrent duplicate transition creates one audit/notification rather than duplicate side effects",
+    "Actual AuditLog failure rolls back status and all coupled records",
+    "Actual OpsInsight failure rolls back status and all coupled records",
+    "Another same-company account cannot mark a client notification read",
+    "Read state is saved and mapped from actual isRead/readAt fields",
+    "Notification mutations cannot alter unrelated OPS records",
+    "Malformed pagination and tenant-admin global fanout are denied",
+    "Access tokens in notification stream URLs no longer authenticate",
+    "External notification navigation cannot be inserted through the service",
+    "Administrative case edit response preserves financial disclosure restrictions",
+    "Assignment saves its audit and employee inbox, duplicate assignment is a no-op, former assignee loses access",
+    "edit coupled-record failure rolls back actual case changes",
+    "assign coupled-record failure rolls back actual case changes",
+    "Calendar rollover and inactive employee assignment are rejected",
+    "Case assignee selector exposes active company employees and safe fields only"
+  ],
+  "reopenCaseId": "cmvuc57yn0005uaabpsdwm39s",
+  "reopenNotificationId": "cmvuc581y000cuaab0v4gaj4j",
+  "clientId": "cmvtauaby000b11neqigla906"
+}

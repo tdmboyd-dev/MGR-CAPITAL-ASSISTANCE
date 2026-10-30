@@ -26,7 +26,8 @@ const formSchema = z.object({
   notaryRequired: z.boolean().default(false),
 })
 
-type FormData = z.infer<typeof formSchema>
+type FormData = z.output<typeof formSchema>
+type FormInput = z.input<typeof formSchema>
 
 const US_STATES = [
   'AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA',
@@ -45,7 +46,7 @@ export default function AssignmentEditor() {
   const [isDrawing, setIsDrawing] = useState(false)
   const [hasSignature, setHasSignature] = useState(false)
 
-  const form = useForm<FormData>({
+  const form = useForm<FormInput, unknown, FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       assignor: '',

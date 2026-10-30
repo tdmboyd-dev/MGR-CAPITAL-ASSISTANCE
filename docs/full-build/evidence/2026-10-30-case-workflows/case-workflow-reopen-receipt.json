@@ -1,0 +1,9 @@
+{
+  "scope": "Separate fresh Node process using actual saved PostgreSQL records",
+  "passed": 3,
+  "checks": [
+    "Case code, zero fee and creation audit survive process reopening",
+    "Saved workflow status survives process reopening",
+    "Client notification and read timestamp survive process reopening"
+  ]
+}

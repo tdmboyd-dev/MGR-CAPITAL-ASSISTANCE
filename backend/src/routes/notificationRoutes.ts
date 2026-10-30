@@ -18,28 +18,14 @@ const router = express.Router();
  * Real-time notification stream via SSE
  * Query: token (for auth since SSE doesn't support headers easily)
  */
-router.get("/events", async (req, res, next) => {
+router.get("/events", authenticate, async (req, res, next) => {
   try {
-    // Get token from query param (SSE workaround)
-    const token = req.query.token as string;
-    if (!token) {
-      return res.status(401).json({ error: "Token required" });
-    }
-
-    // Verify token manually (since we can't use middleware with SSE easily)
-    const jwt = await import("jsonwebtoken");
-    const decoded = jwt.default.verify(token, process.env.JWT_SECRET || "dev-secret") as any;
-    const userId = decoded.userId;
-
-    if (!userId) {
-      return res.status(401).json({ error: "Invalid token" });
-    }
-
+    const userId = (req as any).user.id;
+    const token = (req as any).token as string;
     // Set SSE headers
     res.setHeader("Content-Type", "text/event-stream");
-    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("Cache-Control", "private, no-store");
     res.setHeader("Connection", "keep-alive");
-    res.setHeader("Access-Control-Allow-Origin", "*");
     res.flushHeaders();
 
     // Send initial unread count
@@ -52,10 +38,13 @@ router.get("/events", async (req, res, next) => {
     // Poll for updates (in production, use Redis pub/sub)
     const interval = setInterval(async () => {
       try {
+        const { authService } = await import("../services/AuthService.js");
+        const actor = await authService.resolveAccessToken(token);
+        if (!actor || actor.userId !== userId) { res.end(); return; }
         const unread = await notificationCenterService.getUnread(userId);
         res.write(`data: ${JSON.stringify({ type: "unread_count", count: unread.length })}\n\n`);
       } catch (err) {
-        console.error("SSE poll error:", err);
+        res.end();
       }
     }, 15000); // Every 15 seconds
 
@@ -224,12 +213,21 @@ router.delete("/:id", async (req: Request, res: Response, next: NextFunction) =>
  */
 router.post(
   "/send",
+  async (req: any, res, next) => {
+    try {
+      const { currentActor } = await import("../services/CaseDocumentAccess.js");
+      const { default: db } = await import("../lib/prisma.js");
+      const actor = await currentActor(db, req.user.id);
+      if (actor.role !== "FOUNDER" || actor.tenantId !== null) return res.status(403).json({ error: "Global founder access required for global notifications" });
+      next();
+    } catch { res.status(503).json({ error: "Notification authority unavailable" }); }
+  },
   authorize(["FOUNDER", "ADMIN"]),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { userIds, title, message, category, priority, link, metadata } = req.body;
 
-      if (!userIds || !Array.isArray(userIds) || userIds.length === 0) {
+      if (!userIds || !Array.isArray(userIds) || userIds.length === 0 || userIds.length > 100) {
         return res.status(400).json({ error: "userIds array required" });
       }
 
@@ -260,6 +258,15 @@ router.post(
  */
 router.post(
   "/send-to-role",
+  async (req: any, res, next) => {
+    try {
+      const { currentActor } = await import("../services/CaseDocumentAccess.js");
+      const { default: db } = await import("../lib/prisma.js");
+      const actor = await currentActor(db, req.user.id);
+      if (actor.role !== "FOUNDER" || actor.tenantId !== null) return res.status(403).json({ error: "Global founder access required for global notifications" });
+      next();
+    } catch { res.status(503).json({ error: "Notification authority unavailable" }); }
+  },
   authorize(["FOUNDER", "ADMIN"]),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -296,6 +303,15 @@ router.post(
  */
 router.post(
   "/system",
+  async (req: any, res, next) => {
+    try {
+      const { currentActor } = await import("../services/CaseDocumentAccess.js");
+      const { default: db } = await import("../lib/prisma.js");
+      const actor = await currentActor(db, req.user.id);
+      if (actor.role !== "FOUNDER" || actor.tenantId !== null) return res.status(403).json({ error: "Global founder access required for global notifications" });
+      next();
+    } catch { res.status(503).json({ error: "Notification authority unavailable" }); }
+  },
   authorize(["FOUNDER"]),
   async (req: Request, res: Response, next: NextFunction) => {
     try {

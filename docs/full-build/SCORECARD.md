@@ -1,3 +1,26 @@
+# Capital Assistance — latest acceptance scorecard
+
+October29 Chicago / October30 UTC. The sole narrative and remaining-work queue are in [HANDOFF.md](../../HANDOFF.md). Latest receipts: `evidence/2026-10-30-case-workflows/`. Earlier rows below are dated history.
+
+| Defined scope | Passed / applicable checks | Remaining in that scope |
+|---|---|---|
+| Case creation/concurrency/atomicity/idempotent retries |10/10 (100% of this set)|All alternate writers, deletion receipts, broad ingestion dedupe|
+| Status/inbox/assignment/field edits |16/16 (100% of this set)|External delivery outbox and all route/browser/account variants|
+| Client and legacy portal boundaries |12/12 (100% of this set)|Positive vault/signing integration; public-profile and settings concurrency|
+| Separate-process case/inbox reopening |3/3 (100% of this set)|Full crash/lost-ack/device lifecycle|
+| Browser action DB corroboration |3/3 (100% of this set)|Mobile, all roles, documents, real county/customer/provider|
+| Frontend dependency scan |0 known findings across production/development|Ongoing advisories, runtime/production acceptance|
+| Backend production dependency scan |70 findings:59 high/7 moderate/4 low/0 critical|Unrepaired advisory chains|
+| Targeted new intake/inbox surfaces lint |Passed|Does not qualify all changed/existing surfaces|
+| Whole frontend lint snapshot |Failed:283 errors/212 warnings|Repair; do not disable rules to claim success|
+| Existing local regression scopes |5/6/27/21/7 named sets passed;Jest203 passed/16 skipped|Excluded positive provider/business journeys|
+| Builds |Latest receipt records actual exit codes|Compilation is not runtime/provider/production proof|
+| Full semantic audit / business readiness |Unassessed / unfinished|Unread source and entire real recovery/settlement flow|
+
+---
+
+## Prior dated scorecards
+
 # Capital Assistance — current acceptance and audit scorecard
 
 October 29, 2026, consolidated continuation. The sole current narrative/queue is [HANDOFF.md](../../HANDOFF.md). Older snapshots below retain original dates and exclusions; their former next steps are superseded by that handoff.

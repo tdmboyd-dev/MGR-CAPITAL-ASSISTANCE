@@ -215,10 +215,11 @@ export class ClientService {
       }>;
     };
   }> {
-    const caseData = await prisma.case.findUnique({
-      where: { publicAccessToken: accessToken },
+    const caseData = await prisma.case.findFirst({
+      where: { publicAccessToken: accessToken, client: { isActive: true }, AND: [{ OR: [{ tenantId: null }, { tenant: { isActive: true } }] }, { OR: [{ portalKeptAlive: true }, { portalExpiresAt: null }, { portalExpiresAt: { gt: new Date() } }] }] },
       include: {
         documents: {
+          where: { deletionStatus: { not: "DELETED" }, type: { in: ["CLIENT_SERVICE_AGREEMENT", "LIMITED_POA", "CLIENT_ID"] }, status: { in: ["PENDING_SIGNATURE", "SIGNED", "SUBMITTED"] } },
           select: {
             id: true,
             type: true,

@@ -2,7 +2,11 @@
 const nextConfig = {
   reactStrictMode: true,
   images: {
-    domains: ['localhost', 'capitalmgr.com', 'api.capitalmgr.com'],
+    remotePatterns: [
+      { protocol: 'http', hostname: 'localhost' },
+      { protocol: 'https', hostname: 'capitalmgr.com' },
+      { protocol: 'https', hostname: 'api.capitalmgr.com' },
+    ],
   },
   async rewrites() {
     const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';

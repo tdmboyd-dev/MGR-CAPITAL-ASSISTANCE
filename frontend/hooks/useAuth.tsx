@@ -2,7 +2,7 @@
 
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { api } from "@/lib/api";
+import { api, clearBrowserAuthentication } from "@/lib/api";
 import { createContext, useContext, useEffect, ReactNode } from "react";
 
 export interface User {
@@ -94,7 +94,7 @@ export const useAuthStore = create<AuthState>()(
         } catch {
           // Ignore logout errors
         }
-        localStorage.removeItem("accessToken");
+        clearBrowserAuthentication();
         set({ user: null, accessToken: null, error: null });
       },
 
@@ -108,6 +108,7 @@ export const useAuthStore = create<AuthState>()(
           }
           return false;
         } catch {
+          clearBrowserAuthentication();
           set({ user: null, accessToken: null });
           return false;
         }
@@ -131,6 +132,14 @@ const AuthContext = createContext<AuthState | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const store = useAuthStore();
+
+  useEffect(() => {
+    const cleared = () => useAuthStore.setState({ user: null, accessToken: null, error: null });
+    const refreshed = (event: Event) => useAuthStore.setState({ accessToken: (event as CustomEvent<string>).detail });
+    window.addEventListener('capital-auth-cleared', cleared);
+    window.addEventListener('capital-auth-refreshed', refreshed);
+    return () => { window.removeEventListener('capital-auth-cleared', cleared); window.removeEventListener('capital-auth-refreshed', refreshed); };
+  }, []);
 
   useEffect(() => {
     const ready=()=>useAuthStore.setState({isHydrated:true});

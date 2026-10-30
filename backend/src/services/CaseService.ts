@@ -3,7 +3,6 @@
 // Case management operations with Prisma
 // ============================================
 
-import { randomBytes } from "node:crypto";
 import { Case, CaseStatus } from "@prisma/client";
 import prisma from "../lib/prisma.js";
 
@@ -125,33 +124,8 @@ export class CaseService {
     assignedEmployeeId?: string;
     source?: string;
   }): Promise<Case> {
-    // Generate internal code
-    const caseCount = await prisma.case.count();
-    const internalCode = `C-${String(caseCount + 1001).padStart(6, "0")}`;
-
-    // Generate public access token
-    const publicAccessToken = this.generateToken();
-
-    const newCase = await prisma.case.create({
-      data: {
-        internalCode,
-        publicAccessToken,
-        clientId: payload.clientId,
-        state: payload.state,
-        county: payload.county,
-        propertyAddress: payload.propertyAddress || "",
-        parcelNumber: payload.parcelNumber,
-        saleDate: payload.saleDate,
-        surplusAmountCents: payload.surplusAmountCents,
-        feePercent: payload.feePercent,
-        assignedEmployeeId: payload.assignedEmployeeId,
-        status: "NEW",
-        priority: payload.surplusAmountCents >= 1000000 ? 100 : 50,
-        source: payload.source || "ingestion",
-      },
-    });
-
-    return newCase;
+    const { createCapitalCase } = await import("./CaseCreationService.js");
+    return createCapitalCase({ ...payload, propertyAddress: payload.propertyAddress || "", source: payload.source || "ingestion" });
   }
 
   /**
@@ -162,27 +136,8 @@ export class CaseService {
     status: CaseStatus,
     userId: string
   ): Promise<Case> {
-    if (status === "PAID") throw new Error("A status edit cannot certify payment settlement");
-    const updatedCase = await prisma.case.update({
-      where: { id: caseId },
-      data: {
-        status,
-        filedAt: status === "FILED" ? new Date() : undefined,
-      },
-    });
-
-    // Log audit
-    await prisma.auditLog.create({
-      data: {
-        userId,
-        action: "STATUS_CHANGED",
-        entityType: "CASE",
-        entityId: caseId,
-        details: { newStatus: status },
-      },
-    });
-
-    return updatedCase;
+    const { transitionCase } = await import("./CaseWorkflowService.js");
+    return (await transitionCase(userId, caseId, status)).record;
   }
 
   /**
@@ -193,23 +148,8 @@ export class CaseService {
     employeeId: string,
     userId: string
   ): Promise<Case> {
-    const updatedCase = await prisma.case.update({
-      where: { id: caseId },
-      data: { assignedEmployeeId: employeeId },
-    });
-
-    // Log audit
-    await prisma.auditLog.create({
-      data: {
-        userId,
-        action: "EMPLOYEE_ASSIGNED",
-        entityType: "CASE",
-        entityId: caseId,
-        details: { employeeId },
-      },
-    });
-
-    return updatedCase;
+    const { assignCaseEmployee } = await import("./CaseWorkflowService.js");
+    return assignCaseEmployee(userId, caseId, employeeId);
   }
 
   /**
@@ -258,12 +198,7 @@ export class CaseService {
     };
   }
 
-  /**
-   * Generate random token for public access
-   */
-  private generateToken(): string {
-    return randomBytes(32).toString("hex");
-  }
+
 }
 
 export const caseService = new CaseService();

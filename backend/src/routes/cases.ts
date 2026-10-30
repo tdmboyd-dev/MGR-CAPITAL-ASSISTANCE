@@ -9,7 +9,7 @@ import { authMiddleware, AuthRequest } from "../middleware/authMiddleware.js";
 import { roleGuard } from "../middleware/roleGuard.js";
 import { asyncHandler, AppError, Errors } from "../middleware/errorHandler.js";
 import { legalService } from "../services/LegalService.js";
-import { enforceStateFeeCap } from "../data/stateRules.js";
+import { recordDate } from "../parsers/RecordValues.js";
 import { notificationCenterService } from "../services/NotificationCenterService.js";
 import { notificationService } from "../services/NotificationService.js";
 import { demoDataService } from "../services/DemoDataService.js";
@@ -117,75 +117,15 @@ router.post("/my/:id/status", caseAuthentication, roleGuard(["EMPLOYEE", "ADMIN"
   const { id } = req.params;
   const { status, notes } = req.body;
 
-  // Employee-allowed transitions
-  const EMPLOYEE_ALLOWED_STATUSES: CaseStatus[] = ["CONTACTED", "DOCS_PENDING"];
-
-  if (!EMPLOYEE_ALLOWED_STATUSES.includes(status)) {
-    throw Errors.forbidden();
-  }
-
-  // Verify case is assigned to this employee
-  const caseData = await prisma.case.findFirst({
-    where: {
-      id,
-      assignedEmployeeId: req.user!.id
-    },
-    select: {
-      id: true,
-      internalCode: true,
-      status: true
-    }
-  });
-
-  if (!caseData) {
-    throw Errors.notFound("Case");
-  }
-
-  const currentStatus = caseData.status as CaseStatus;
-  const newStatus = status as CaseStatus;
-
-  // Validate the transition
-  if (!isValidTransition(currentStatus, newStatus)) {
-    throw Errors.badRequest(
-      `Cannot transition from ${currentStatus} to ${newStatus}. ` +
-      `Valid next statuses: ${getValidNextStatuses(currentStatus).join(", ")}`
-    );
-  }
-
-  // Get auto-update fields
-  const autoFields = getAutoUpdateFields(newStatus);
-
-  const updatedCase = await prisma.case.update({
-    where: { id },
-    data: {
-      status: newStatus,
-      ...autoFields
-    },
-    select: {
-      id: true,
-      internalCode: true,
-      status: true
-    }
-  });
-
-  // Log the change
-  await prisma.auditLog.create({
-    data: {
-      userId: req.user!.id,
-      action: "EMPLOYEE_STATUS_UPDATE",
-      entityType: "CASE",
-      entityId: id,
-      details: {
-        previousStatus: currentStatus,
-        newStatus: newStatus,
-        notes,
-        employeeId: req.user!.id
-      }
-    }
-  });
+  const { transitionCase } = await import("../services/CaseWorkflowService.js");
+  const transition = await transitionCase(req.user!.id, id, status, { employeeOnly: true, notes });
+  const updatedCase = transition.record;
+  const caseData = transition.previous;
+  const currentStatus = caseData.status;
+  const newStatus = updatedCase.status;
 
   // Email notifications on status change
-  try {
+  if (transition.changed) try {
     const fullCase = await prisma.case.findUnique({
       where: { id },
       include: {
@@ -399,6 +339,7 @@ router.get("/client/:token", async (req: Request, res: Response) => {
     const caseData = await prisma.case.findFirst({
       where: {
         publicAccessToken: token,
+        client: { isActive: true, OR: [{ tenantId: null }, { tenant: { isActive: true } }] },
         OR:[{portalKeptAlive:true},{portalExpiresAt:null},{portalExpiresAt:{gt:new Date()}}]
       },
       select: {
@@ -409,7 +350,7 @@ router.get("/client/:token", async (req: Request, res: Response) => {
         state: true,
         documents: {
           where: {
-            status: { in: ["PENDING_SIGNATURE", "SIGNED"] }, type:{in:CLIENT_DOCUMENT_TYPES}
+            status: { in: ["PENDING_SIGNATURE", "SIGNED"] }, deletionStatus: { not: "DELETED" }, type:{in:CLIENT_DOCUMENT_TYPES}
           },
           select: {
             id: true,
@@ -664,6 +605,12 @@ router.get("/deadlines", caseAuthentication, roleGuard(["ADMIN"]), async (req: R
  * GET /api/cases/:id - Get single case details (FOUNDER ONLY)
  * NOTE: This route must come AFTER /my, /my/:id, /client/:token, /stats, /deadlines
  */
+router.get('/:id/assignees', caseAuthentication, roleGuard(['ADMIN']), asyncHandler(async (req: AuthRequest, res: Response) => {
+  const { record } = await requireCase(prisma, req.user!.id, req.params.id, 'manage');
+  const employees = await prisma.user.findMany({ where: { role: 'EMPLOYEE', isActive: true, tenantId: record.tenantId }, select: { id: true, name: true, email: true }, orderBy: { name: 'asc' } });
+  res.json({ success: true, data: employees });
+}));
+
 router.get("/:id", caseAuthentication, roleGuard(["ADMIN"]), async (req: Request, res: Response) => {
   try {
     const caseData = await prisma.case.findUnique({
@@ -711,87 +658,15 @@ router.get("/:id", caseAuthentication, roleGuard(["ADMIN"]), async (req: Request
  */
 router.post("/", caseAuthentication, roleGuard(["ADMIN"]), async (req: AuthRequest, res: Response) => {
   try {
-    const {
-      clientId,
-      state,
-      county,
-      propertyAddress,
-      parcelNumber,
-      saleDate,
-      surplusAmountCents,
-      feePercent,
-      assignedEmployeeId
-    } = req.body;
-
-    // Generate internal code
-    const caseCount = await prisma.case.count();
-    const internalCode = `C-${String(caseCount + 1001).padStart(6, "0")}`;
-
-    // Get state rule for deadline calculation
-    const stateRule = legalService.getStateRules(state);
-
-    // STATE FEE CAP ENFORCEMENT — auto-limit fee per state law
-    const requestedFee = feePercent || 33;
-    const feeCap = state ? enforceStateFeeCap(state, requestedFee, surplusAmountCents || 0) : null;
-    const effectiveFee = feeCap ? feeCap.effectiveFeePercent : requestedFee;
-
-    if (feeCap?.wasCapped) {
-      console.log(`[FEE CAP] ${state}: Requested ${requestedFee}% → Capped to ${effectiveFee}% (${feeCap.capReason})`);
-    }
-
-    const newCase = await prisma.case.create({
-      data: {
-        internalCode,
-        tenantId:(req as any).capitalTenantId,
-        clientId,
-        state,
-        county,
-        propertyAddress,
-        parcelNumber,
-        saleDate: saleDate ? new Date(saleDate) : null,
-        surplusAmountCents: surplusAmountCents || 0,
-        feePercent: effectiveFee,
-        assignedEmployeeId,
-        status: "NEW",
-        priority: surplusAmountCents >= 1000000 ? 100 : 50,
-        source: "manual"
-      },
-      include: {
-        client: {
-          select: { name: true, email: true }
-        }
-      }
-    });
-
-    // Create deadlines if sale date provided
-    if (saleDate && stateRule) {
-      await legalService.createCaseDeadlines(newCase.id, state, new Date(saleDate));
-    }
-
-    // Log audit
-    await prisma.auditLog.create({
-      data: {
-        userId: req.user!.id,
-        action: "CASE_CREATED",
-        entityType: "CASE",
-        entityId: newCase.id,
-        details: { internalCode, state, county }
-      }
-    });
-
-    // Trigger demo data cleanup if real case created
-    // This is async and non-blocking
-    demoDataService.onCaseCreated(newCase.id).catch((err) => {
-      console.error("[Cases] Demo cleanup error (non-fatal):", err);
-    });
+    const { createCapitalCase } = await import("../services/CaseCreationService.js");
+    const newCase = await createCapitalCase(req.body, req.user!.id, req.get('Idempotency-Key'));
 
     res.status(201).json({
       success: true,
       data: safeCase(newCase,req.user!.role)
     });
   } catch (error: any) {
-    console.error("Cases error:", error);
-    res.status(500).json({ success: false, error: "An error occurred. Please try again." });
+    return accessFailure(res, error, "Case creation could not be confirmed");
   }
 });
 
@@ -810,34 +685,16 @@ router.patch("/:id", caseAuthentication, roleGuard(["ADMIN"]), async (req: AuthR
     for(const key of Object.keys(updateData)){
       const value=updateData[key];
       if(financial.includes(key)||key==="priority"){if(!Number.isSafeInteger(value)||value<0||value>(key==="feePercent"?100:2147483647))return res.status(400).json({success:false,error:"Invalid case amount or priority"});}
-      else if(key==="saleDate"){if(value!==null && (typeof value!=="string"||!Number.isFinite(Date.parse(value))))return res.status(400).json({success:false,error:"Invalid sale date"});updateData[key]=value===null?null:new Date(value);}
+      else if(key==="saleDate"){try { if(value!==null && (typeof value!=="string" || !/^\d{4}-\d{2}-\d{2}(?:T00:00:00(?:\.000)?Z)?$/.test(value)))throw Error("Invalid date"); updateData[key]=value===null?null:recordDate(value.slice(0,10)); } catch {return res.status(400).json({success:false,error:"Invalid sale date"});}}
       else if(typeof value!=="string"||value.length>2000)return res.status(400).json({success:false,error:"Invalid case text"});
     }
 
-    const updatedCase = await prisma.case.update({
-      where: { id },
-      data: updateData,
-      include: {
-        client: {
-          select: { name: true, email: true }
-        }
-      }
-    });
-
-    // Log audit
-    await prisma.auditLog.create({
-      data: {
-        userId: req.user!.id,
-        action: "CASE_UPDATED",
-        entityType: "CASE",
-        entityId: id,
-        details: { updatedFields: Object.keys(updateData) }
-      }
-    });
+    const { updateCaseFields } = await import("../services/CaseWorkflowService.js");
+    const updatedCase = await updateCaseFields(req.user!.id, id, updateData);
 
     res.json({
       success: true,
-      data: updatedCase
+      data: safeCase(updatedCase,req.user!.role)
     });
   } catch (error: any) {
     console.error("Cases error:", error);
@@ -852,95 +709,15 @@ router.patch("/:id", caseAuthentication, roleGuard(["ADMIN"]), async (req: AuthR
 router.post("/:id/status", caseAuthentication, roleGuard(["ADMIN"]), asyncHandler(async (req: AuthRequest, res: Response) => {
   const { id } = req.params;
   const { status, notes, forceTransition } = req.body;
-  if (status === "PAID") throw new AppError("Settlement unavailable", 409, "A status edit cannot certify settlement. Complete the qualified payout reconciliation workflow first.");
-
-  const validStatuses: CaseStatus[] = [
-    "NEW", "CONTACTED", "DOCS_PENDING", "DOCS_SIGNED",
-    "FILED", "AWAITING_FUNDS", "PAID", "CLOSED", "REJECTED"
-  ];
-
-  if (!validStatuses.includes(status)) {
-    throw Errors.badRequest(`Invalid status: ${status}`);
-  }
-
-  // Get current case with documents for validation
-  const currentCase = await prisma.case.findUnique({
-    where: { id },
-    include: {
-      documents: {
-        select: { id: true, type: true, status: true }
-      }
-    }
-  });
-
-  if (!currentCase) {
-    throw Errors.notFound("Case");
-  }
-
-  const currentStatus = currentCase.status as CaseStatus;
-  const newStatus = status as CaseStatus;
-
-  // Validate the transition
-  const validation = validateTransition(currentStatus, newStatus, currentCase);
-
-  // If invalid transition and not forcing (FOUNDER only can force)
-  if (!validation.valid) {
-    if (!forceTransition || req.user!.role !== "FOUNDER") {
-      throw Errors.badRequest(
-        `Invalid status transition: ${validation.errors.join(". ")}. ` +
-        `Valid next statuses: ${getValidNextStatuses(currentStatus).join(", ")}`
-      );
-    }
-    // FOUNDER is forcing - log warning but allow
-    console.warn(`[FORCED TRANSITION] User ${req.user!.id} forcing ${currentStatus} -> ${newStatus} for case ${id}`);
-  }
-
-  // Get auto-update fields for this transition
-  const autoFields = getAutoUpdateFields(newStatus);
-
-  // Auto-set portal expiration when case moves to PAID
-  const portalData: any = {};
-  if (newStatus === "PAID") {
-    const caseForPortal = await prisma.case.findUnique({
-      where: { id },
-      select: { portalDissolveAfterDays: true, portalKeptAlive: true }
-    });
-    if (caseForPortal && !caseForPortal.portalKeptAlive) {
-      const expiresAt = new Date();
-      expiresAt.setDate(expiresAt.getDate() + (caseForPortal.portalDissolveAfterDays || 12));
-      portalData.portalExpiresAt = expiresAt;
-    }
-  }
-
-  const updatedCase = await prisma.case.update({
-    where: { id },
-    data: {
-      status: newStatus,
-      ...autoFields,
-      ...portalData
-    }
-  });
-
-  // Log status change with validation warnings
-  await prisma.auditLog.create({
-    data: {
-      userId: req.user!.id,
-      action: "STATUS_CHANGED",
-      entityType: "CASE",
-      entityId: id,
-      details: {
-        previousStatus: currentStatus,
-        newStatus: newStatus,
-        notes,
-        warnings: validation.warnings,
-        forced: !validation.valid && forceTransition,
-        portalExpiresAt: portalData.portalExpiresAt || null
-      }
-    }
-  });
+  const { transitionCase } = await import("../services/CaseWorkflowService.js");
+  const transition = await transitionCase(req.user!.id, id, status, { forceTransition, notes });
+  const updatedCase = transition.record;
+  const currentStatus = transition.previous.status;
+  const newStatus = updatedCase.status;
+  const validation = transition.validation;
 
   // Email notifications on founder status change
-  try {
+  if (transition.changed) try {
     const fullCase = await prisma.case.findUnique({
       where: { id },
       include: {
@@ -1035,62 +812,13 @@ router.patch("/:id/assign", caseAuthentication, roleGuard(["FOUNDER", "ADMIN"]),
       return res.status(400).json({ success: false, error: "assignedEmployeeId required" });
     }
 
-    // Verify employee exists and is active
-    const employee = await prisma.user.findFirst({
-      where: {
-        id: assignedEmployeeId,
-        role: "EMPLOYEE",
-        isActive: true,
-      },
-      select: { id: true, name: true, email: true },
-    });
-
-    if (!employee) {
-      return res.status(400).json({ success: false, error: "Employee not found or inactive" });
-    }
-
-    const updatedCase = await prisma.case.update({
-      where: { id },
-      data: { assignedEmployeeId },
-      include: {
-        client: { select: { name: true } },
-        assignedEmployee: { select: { id: true, name: true, email: true } },
-      },
-    });
-
-    // Create notification for assigned employee
-    try {
-      await notificationCenterService.sendNotification({
-        userId: assignedEmployeeId,
-        category: "case_update",
-        priority: "high",
-        title: "New Case Assignment",
-        message: `You have been assigned to case ${updatedCase.internalCode} - ${updatedCase.client?.name || "Unknown Client"}`,
-        link: `/employee/cases/${id}`,
-      });
-    } catch (notifError) {
-      console.error("Failed to send assignment notification:", notifError);
-    }
-
-    // Log audit
-    await prisma.auditLog.create({
-      data: {
-        userId: req.user!.id,
-        action: "CASE_ASSIGNED",
-        entityType: "CASE",
-        entityId: id,
-        details: {
-          assignedToId: assignedEmployeeId,
-          assignedToName: employee.name,
-          assignedBy: req.user!.id,
-        },
-      },
-    });
+    const { assignCaseEmployee } = await import("../services/CaseWorkflowService.js");
+    const updatedCase = await assignCaseEmployee(req.user!.id, id, assignedEmployeeId);
 
     res.json({
       success: true,
       data: safeCase(updatedCase,req.user!.role),
-      message: `Case assigned to ${employee.name}`,
+      message: "Case assignment saved",
     });
   } catch (error: any) {
     console.error("Case assignment error:", error);

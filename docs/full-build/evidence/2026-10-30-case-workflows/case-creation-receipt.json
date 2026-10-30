@@ -1,0 +1,17 @@
+{
+  "scope": "Actual Express/JWT/PostgreSQL with synthetic cases; deadline consistency only, no current-law/claimant/filing proof",
+  "passed": 10,
+  "checks": [
+    "Anonymous, client and foreign-company creation denied by actual HTTP authority",
+    "Case, derived tenant, zero fee, cryptographic token, deadlines and audit commit together",
+    "Malformed amounts, invalid calendar date and forged server-owned fields create no case",
+    "Concurrent manual and trusted service creators share unique sequential codes",
+    "Deleting a just-created synthetic case does not reuse its issued code",
+    "Concurrent and lost-response retries reuse one durable request receipt; changed input conflicts",
+    "Actual AuditLog failure rolls back case, allocation counter and dependent writes",
+    "Actual Deadline failure rolls back case, allocation counter and dependent writes",
+    "Malformed durable counter fails closed instead of resetting case numbers",
+    "Actual ingestion creator uses the same durable allocator and transactional deadline writer"
+  ],
+  "reopenCaseId": "cmvubsg4o000613xiqyj4vacu"
+}

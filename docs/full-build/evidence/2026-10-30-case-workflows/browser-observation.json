@@ -1,0 +1,21 @@
+{
+  "environment": "Owned loopback API and Next16 frontend; synthetic PostgreSQL lab only",
+  "checks": [
+    "Expired persisted session login loop reproduced; stable login observed after repair",
+    "Case intake saved C-001049 through the real API with zero requested fee",
+    "Actual saved case detail opened and CONTACTED was set through the corrected status endpoint",
+    "Case remained CONTACTED after API restart and browser reload",
+    "Saved founder inbox entry marked read; browser reload showed zero unread and one total"
+  ],
+  "notQualified": [
+    "Mobile layout",
+    "Real claimant",
+    "External provider",
+    "Filing",
+    "Settlement",
+    "Document download browser action",
+    "Full offline migration"
+  ],
+  "screenshot": "capital-inbox-reopened.png",
+  "cleanup": "Test tab closed; two exact synthetic browser founder accounts disabled; owned API/frontend stop requested"
+}

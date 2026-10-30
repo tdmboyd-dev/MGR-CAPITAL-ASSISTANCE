@@ -58,7 +58,6 @@ const STATUSES = [
   "DOCS_SIGNED",
   "FILED",
   "AWAITING_FUNDS",
-  "PAID",
   "CLOSED",
   "REJECTED",
 ];
@@ -70,7 +69,7 @@ export default function AdminCaseDetailPage() {
   const caseId = params.id as string;
   const [isEditingStatus, setIsEditingStatus] = useState(false);
 
-  const { data: caseData, isLoading } = useQuery({
+  const { data: caseData, isLoading, isError: caseError, refetch: reloadCase } = useQuery({
     queryKey: ["admin-case", caseId],
     queryFn: async () => {
       const { data } = await api.get(`/cases/${caseId}`);
@@ -79,16 +78,16 @@ export default function AdminCaseDetailPage() {
   });
 
   const { data: employees } = useQuery({
-    queryKey: ["employees-list"],
+    queryKey: ["case-assignees", caseId],
     queryFn: async () => {
-      const { data } = await api.get("/admin/users?role=EMPLOYEE");
-      return data;
+      const { data } = await api.get(`/cases/${caseId}/assignees`);
+      return data.data as { id: string; name: string; email: string }[];
     },
   });
 
   const updateStatusMutation = useMutation({
     mutationFn: async (status: string) => {
-      const { data } = await api.patch(`/cases/${caseId}`, { status });
+      const { data } = await api.post(`/cases/${caseId}/status`, { status });
       return data;
     },
     onSuccess: () => {
@@ -103,7 +102,7 @@ export default function AdminCaseDetailPage() {
 
   const assignEmployeeMutation = useMutation({
     mutationFn: async (employeeId: string) => {
-      const { data } = await api.patch(`/cases/${caseId}`, { assignedEmployeeId: employeeId });
+      const { data } = await api.patch(`/cases/${caseId}/assign`, { assignedEmployeeId: employeeId });
       return data;
     },
     onSuccess: () => {
@@ -114,6 +113,13 @@ export default function AdminCaseDetailPage() {
       toast.error("Failed to assign employee");
     },
   });
+
+  const downloadDocument = async (id: string, name: string) => {
+    try {
+      const { data } = await api.get(`/documents/${encodeURIComponent(id)}/download`, { responseType: 'blob' });
+      const url = URL.createObjectURL(data); const anchor = document.createElement('a'); anchor.href = url; anchor.download = name || 'document'; anchor.click(); setTimeout(() => URL.revokeObjectURL(url), 10000);
+    } catch { toast.error('Document download failed. Please retry.'); }
+  };
 
   if (isLoading) {
     return (
@@ -132,6 +138,8 @@ export default function AdminCaseDetailPage() {
 
   const caseInfo = caseData?.data || caseData;
 
+  if (caseError) return <div role="alert" className="space-y-3 p-6">Case details are unavailable. <Button onClick={() => { void reloadCase(); }}>Retry</Button></div>;
+
   if (!caseInfo) {
     return (
       <div className="text-center py-12">
@@ -149,7 +157,7 @@ export default function AdminCaseDetailPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => router.back()}>
+          <Button variant="ghost" size="icon" aria-label="Back to cases" onClick={() => router.back()}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div>
@@ -157,10 +165,10 @@ export default function AdminCaseDetailPage() {
               <h1 className="text-3xl font-bold">{caseInfo.internalCode}</h1>
               {isEditingStatus ? (
                 <Select
-                  defaultValue={caseInfo.status}
+                  disabled={updateStatusMutation.isPending} defaultValue={caseInfo.status}
                   onValueChange={(value) => updateStatusMutation.mutate(value)}
                 >
-                  <SelectTrigger className="w-40">
+                  <SelectTrigger aria-label="Case status" className="w-40">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -172,13 +180,10 @@ export default function AdminCaseDetailPage() {
                   </SelectContent>
                 </Select>
               ) : (
-                <Badge
-                  className={`${STATUS_COLORS[caseInfo.status] || "bg-gray-500"} text-white cursor-pointer`}
-                  onClick={() => setIsEditingStatus(true)}
-                >
+                <button type="button" aria-label="Change case status" className={`${STATUS_COLORS[caseInfo.status] || "bg-gray-500"} inline-flex items-center rounded-full px-3 py-1 text-sm text-white`} onClick={() => setIsEditingStatus(true)}>
                   {caseInfo.status.replace(/_/g, " ")}
                   <Edit className="h-3 w-3 ml-1" />
-                </Badge>
+                </button>
               )}
             </div>
             <p className="text-muted-foreground">
@@ -216,10 +221,10 @@ export default function AdminCaseDetailPage() {
                 <p className="font-medium">{caseInfo.parcelNumber || "-"}</p>
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Estimated Value</p>
+                <p className="text-sm text-muted-foreground">Recorded surplus</p>
                 <p className="font-medium text-lg">
-                  {caseInfo.estimatedValueCents
-                    ? formatCurrency(caseInfo.estimatedValueCents)
+                  {Number.isSafeInteger(caseInfo.surplusAmountCents)
+                    ? formatCurrency(caseInfo.surplusAmountCents)
                     : "-"}
                 </p>
               </div>
@@ -316,10 +321,10 @@ export default function AdminCaseDetailPage() {
               <div>
                 <p className="text-sm text-muted-foreground mb-2">Assigned Employee</p>
                 <Select
-                  value={caseInfo.assignedEmployeeId || ""}
+                  disabled={assignEmployeeMutation.isPending} value={caseInfo.assignedEmployeeId || ""}
                   onValueChange={(value) => assignEmployeeMutation.mutate(value)}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger aria-label="Assigned Employee">
                     <SelectValue placeholder="Select employee" />
                   </SelectTrigger>
                   <SelectContent>
@@ -385,7 +390,7 @@ export default function AdminCaseDetailPage() {
                           size="icon"
                           variant="ghost"
                           className="h-8 w-8"
-                          onClick={() => window.open(`/api/documents/${doc.id}/view`, "_blank")}
+                          aria-label="Download document copy" onClick={() => { void downloadDocument(doc.id, doc.fileName); }}
                         >
                           <Eye className="h-4 w-4" />
                         </Button>
@@ -393,7 +398,7 @@ export default function AdminCaseDetailPage() {
                           size="icon"
                           variant="ghost"
                           className="h-8 w-8"
-                          onClick={() => window.open(`/api/documents/${doc.id}/download`, "_blank")}
+                          aria-label="Download document" onClick={() => { void downloadDocument(doc.id, doc.fileName); }}
                         >
                           <Download className="h-4 w-4" />
                         </Button>
@@ -422,10 +427,10 @@ export default function AdminCaseDetailPage() {
                 </Badge>
               </div>
               <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
-                <span className="text-sm text-muted-foreground">Est. Value</span>
+                <span className="text-sm text-muted-foreground">Recorded surplus</span>
                 <span className="font-medium">
-                  {caseInfo.estimatedValueCents
-                    ? formatCurrency(caseInfo.estimatedValueCents)
+                  {Number.isSafeInteger(caseInfo.surplusAmountCents)
+                    ? formatCurrency(caseInfo.surplusAmountCents)
                     : "-"}
                 </span>
               </div>

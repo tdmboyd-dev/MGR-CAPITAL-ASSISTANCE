@@ -75,10 +75,7 @@ export default function FounderCasesPage() {
             Manage and monitor all cases in the system
           </p>
         </div>
-        <Button>
-          <FileText className="h-4 w-4 mr-2" />
-          New Case
-        </Button>
+        <Button asChild><Link href="/founder/cases/new"><FileText className="h-4 w-4 mr-2" />New Case</Link></Button>
       </div>
 
       {/* Filters */}

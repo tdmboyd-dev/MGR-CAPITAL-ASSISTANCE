@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { CaseIntakeForm } from "@/components/CaseIntakeForm";
 import {
   Select,
   SelectContent,
@@ -219,45 +220,6 @@ export default function VoiceCaseCreator() {
     toast.success("Data extracted from voice input");
   };
 
-  const createCase = async () => {
-    if (!extractedData) {
-      toast.error("No case data to submit");
-      return;
-    }
-
-    setProcessing(true);
-
-    try {
-      const response = await fetch("/api/cases", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: extractedData.title,
-          description: extractedData.description,
-          priority: extractedData.priority,
-          propertyAddress: extractedData.propertyAddress,
-          estimatedValue: extractedData.estimatedValue,
-          jurisdiction: extractedData.jurisdiction,
-          source: "VOICE_COMMAND",
-        }),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        toast.success(`Case #${data.id} created successfully!`);
-        setTranscript("");
-        setExtractedData(null);
-      } else {
-        const error = await response.json();
-        toast.error(error.message || "Failed to create case");
-      }
-    } catch (error) {
-      toast.error("Network error - please try again");
-    } finally {
-      setProcessing(false);
-    }
-  };
-
   if (!isSupported) {
     return (
       <Card>
@@ -446,18 +408,8 @@ export default function VoiceCaseCreator() {
               />
             </div>
 
-            <Button
-              onClick={createCase}
-              disabled={processing}
-              className="w-full"
-            >
-              {processing ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <FileText className="h-4 w-4 mr-2" />
-              )}
-              Create Case
-            </Button>
+            <p className="text-sm text-muted-foreground">Review the draft above, then select the client and confirm the actual case fields below.</p>
+            <CaseIntakeForm key={extractedData.propertyAddress || "voice-draft"} initialAddress={extractedData.propertyAddress} source="VOICE_REVIEWED_DRAFT" />
           </div>
         )}
       </CardContent>

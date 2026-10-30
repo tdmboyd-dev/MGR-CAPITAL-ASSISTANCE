@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -15,15 +16,16 @@ import { format } from "date-fns";
 import { motion, AnimatePresence } from "framer-motion";
 
 export function NotificationBadge() {
-  const { unreadCount, notifications, isConnected, markAsRead, markAllAsRead } =
+  const { unreadCount, notifications, isConnected, error, markAsRead, markAllAsRead } =
     useNotifications();
   const [open, setOpen] = useState(false);
+  const router = useRouter();
 
   const priorityColors: Record<string, string> = {
-    LOW: "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300",
-    MEDIUM: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300",
-    HIGH: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300",
-    CRITICAL: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300",
+    low: "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300",
+    normal: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300",
+    high: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300",
+    urgent: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300",
   };
 
   return (
@@ -71,6 +73,7 @@ export function NotificationBadge() {
           )}
         </div>
 
+        {error && <p role="alert" className="px-4 py-2 text-sm text-destructive">{error}</p>}
         <ScrollArea className="h-80">
           {notifications.length === 0 ? (
             <div className="p-8 text-center text-muted-foreground">
@@ -80,20 +83,17 @@ export function NotificationBadge() {
           ) : (
             <div className="divide-y">
               {notifications.map((notification) => (
-                <motion.div
+                <motion.button
+                  type="button"
                   key={notification.id}
                   initial={{ opacity: 0, x: -10 }}
                   animate={{ opacity: 1, x: 0 }}
-                  className={`p-4 cursor-pointer transition-colors hover:bg-muted ${
+                  className={`w-full text-left p-4 cursor-pointer transition-colors hover:bg-muted ${
                     !notification.isRead ? "bg-blue-50/50 dark:bg-blue-950/20" : ""
                   }`}
-                  onClick={() => {
-                    if (!notification.isRead) {
-                      markAsRead(notification.id);
-                    }
-                    if (notification.link) {
-                      window.location.href = notification.link;
-                    }
+                  onClick={async () => {
+                    if (!notification.isRead && !await markAsRead(notification.id)) return;
+                    if (notification.link?.startsWith("/") && !notification.link.startsWith("//") && !notification.link.includes("\\")) router.push(notification.link);
                     setOpen(false);
                   }}
                 >
@@ -123,7 +123,7 @@ export function NotificationBadge() {
                       </div>
                     </div>
                   </div>
-                </motion.div>
+                </motion.button>
               ))}
             </div>
           )}

@@ -1,7 +1,7 @@
 'use client'
 
 import { useTheme } from 'next-themes'
-import { motion } from 'framer-motion'
+import { motion, type Variants } from 'framer-motion'
 import { useEffect, useState } from 'react'
 
 export default function MGRLogo({ size = 'normal' }: { size?: 'small' | 'normal' | 'large' }) {
@@ -15,7 +15,7 @@ export default function MGRLogo({ size = 'normal' }: { size?: 'small' | 'normal'
 
   const currentTheme = mounted ? (resolvedTheme || theme) : 'light'
 
-  const variants = {
+  const variants: Variants = {
     hidden: { opacity: 0, scale: 0.95 },
     visible: { opacity: 1, scale: 1, transition: { duration: 0.6, ease: [0.16, 1, 0.3, 1] } },
     hover: { scale: 1.05, rotate: 2, transition: { duration: 0.3 } },

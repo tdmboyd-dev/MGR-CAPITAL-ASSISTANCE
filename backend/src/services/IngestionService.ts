@@ -1,3 +1,4 @@
+import { allocateCaseCode } from "./CaseCreationService.js";
 // ============================================
 // INGESTION AI SERVICE — MGR CAPITAL ASSISTANCE
 // Production-ready tax sale list and PDF parser
@@ -485,21 +486,10 @@ export class IngestionService {
 
       // Use transaction to ensure atomicity
       const newCase = await prisma.$transaction(async (tx) => {
-        // Generate internal code inside transaction to prevent race conditions
-        // Using MAX + 1 pattern with locking
-        const lastCase = await tx.case.findFirst({
-          orderBy: { createdAt: "desc" },
-          select: { internalCode: true }
-        });
-
-        let nextNumber = 1001;
-        if (lastCase?.internalCode) {
-          const match = lastCase.internalCode.match(/C-(\d+)/);
-          if (match) {
-            nextNumber = parseInt(match[1], 10) + 1;
-          }
-        }
-        const internalCode = `C-${String(nextNumber).padStart(6, "0")}`;
+        await tx.$queryRaw`SELECT id FROM "IngestionRecord" WHERE id = ${recordId} FOR UPDATE`;
+        const sourceRecord = await tx.ingestionRecord.findUniqueOrThrow({ where: { id: recordId } });
+        if (sourceRecord.caseId) return tx.case.findUniqueOrThrow({ where: { id: sourceRecord.caseId } });
+        const internalCode = await allocateCaseCode(tx);
 
         // Create placeholder client
         const client = await tx.user.create({
@@ -555,22 +545,10 @@ export class IngestionService {
           }
         });
 
+        if (parsed.saleDate && parsed.state) await legalService.createCaseDeadlines(createdCase.id, parsed.state, parsed.saleDate, tx);
         return createdCase;
       });
 
-      // Create deadline tracking for the new case (outside transaction)
-      if (parsed.saleDate && parsed.state) {
-        try {
-          await legalService.createCaseDeadlines(
-            newCase.id,
-            parsed.state,
-            parsed.saleDate
-          );
-        } catch (deadlineError) {
-          // Log error but don't fail case creation
-          console.error(`Failed to create deadlines for case ${newCase.id}:`, deadlineError);
-        }
-      }
 
       return true;
     } catch (error) {

@@ -1,6 +1,6 @@
 // ============================================
 // CLIENTS API ROUTES — MGR CAPITAL ASSISTANCE
-// Production-ready client portal endpoints
+// Client portal endpoints; actual qualification and remaining work are in HANDOFF.md
 // ============================================
 
 import { Router, Request, Response } from "express";
@@ -19,8 +19,30 @@ import {
 } from "../utils/documentLifecycle.js";
 
 import prisma from "../lib/prisma.js";
+import { AppError } from "../middleware/errorHandler.js";
+import { currentActor, caseScope, requireCase } from "../services/CaseDocumentAccess.js";
+import { z } from "zod";
+const clientInput = z.object({
+  email: z.string().trim().toLowerCase().email().max(254), name: z.string().trim().min(1).max(200),
+  phone: z.string().max(50).optional(), address: z.string().max(2000).optional(), city: z.string().max(200).optional(), state: z.string().max(100).optional(), zipCode: z.string().max(20).optional(),
+  dateOfBirth: z.string().optional(), ssn4: z.string().regex(/^\d{4}$/).optional(),
+}).strict();
 
 const router = Router();
+const clientAuthentication = (req: AuthRequest, res: Response, next: import("express").NextFunction) => authMiddleware(req, res, () => {
+  void (async () => {
+    const { currentActor, requireCase, requireDocument } = await import("../services/CaseDocumentAccess.js");
+    const actor = await currentActor(prisma, req.user!.id);
+    (req as any).capitalActor = actor;
+    if (req.params.id && !await prisma.user.findFirst({ where: { id: req.params.id, role: "CLIENT", ...(actor.role === "FOUNDER" && actor.tenantId === null ? {} : { tenantId: actor.tenantId }) }, select: { id: true } })) return res.status(404).json({ error: "Client not found" });
+    if (req.params.caseId) await requireCase(prisma, actor.id, req.params.caseId, "manage");
+    if (req.params.documentId) await requireDocument(prisma, actor.id, req.params.documentId, "verify");
+    next();
+  })().catch(async error => { const { accessFailure } = await import("../services/CaseDocumentAccess.js"); accessFailure(res, error); });
+});
+// URL assertions and pasted images cannot stand in for saved bytes or signed evidence.
+router.post('/portal/:token/id-upload', (_req, res) => res.status(409).json({ success: false, error: 'Sign in and upload the actual file through the document vault. A file URL alone is not an upload.' }));
+router.post('/portal/:token/sign/:documentId', (_req, res) => res.status(503).json({ success: false, error: 'Signature evidence integration is unavailable. No document was signed.' }));
 
 // ============================================
 // FOUNDER/ADMIN ROUTES — Full Access
@@ -29,11 +51,12 @@ const router = Router();
 /**
  * GET /api/clients - List all clients (FOUNDER ONLY)
  */
-router.get("/", authMiddleware, roleGuard(["ADMIN"]), async (_req: Request, res: Response) => {
+router.get("/", clientAuthentication, roleGuard(["ADMIN"]), async (req: Request, res: Response) => {
   try {
     const clients = await prisma.user.findMany({
-      where: { role: "CLIENT" },
+      where: { role: "CLIENT", ...((req as any).capitalActor.role === "FOUNDER" && (req as any).capitalActor.tenantId === null ? {} : { tenantId: (req as any).capitalActor.tenantId }) },
       select: {
+        isActive: true,
         id: true,
         email: true,
         name: true,
@@ -64,15 +87,17 @@ router.get("/", authMiddleware, roleGuard(["ADMIN"]), async (_req: Request, res:
 /**
  * GET /api/clients/:id - Get client details (FOUNDER ONLY)
  */
-router.get("/:id", authMiddleware, roleGuard(["ADMIN"]), async (req: Request, res: Response) => {
+router.get("/:id", clientAuthentication, roleGuard(["ADMIN"]), async (req: Request, res: Response) => {
   try {
     const client = await prisma.user.findFirst({
       where: {
         id: req.params.id,
         role: "CLIENT"
       },
-      include: {
+      select: {
+        id: true, name: true, email: true, phone: true, address: true, city: true, state: true, zipCode: true, isActive: true, createdAt: true, dateOfBirth: true, ssn4: true,
         clientCases: {
+          where: caseScope((req as any).capitalActor),
           select: {
             id: true,
             internalCode: true,
@@ -122,53 +147,23 @@ router.get("/:id", authMiddleware, roleGuard(["ADMIN"]), async (req: Request, re
 /**
  * POST /api/clients - Create new client (FOUNDER ONLY)
  */
-router.post("/", authMiddleware, roleGuard(["ADMIN"]), async (req: AuthRequest, res: Response) => {
+router.post("/", clientAuthentication, roleGuard(["ADMIN"]), async (req: AuthRequest, res: Response) => {
   try {
-    const { email, name, phone, address, city, state, zipCode, dateOfBirth, ssn4 } = req.body;
-
-    // Check if email exists
-    const existing = await prisma.user.findUnique({ where: { email } });
-    if (existing) {
-      return res.status(400).json({ success: false, error: "Email already in use" });
+    const parsed = clientInput.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ success: false, error: "Invalid client fields" });
+    const { email, name, phone, address, city, state, zipCode, dateOfBirth, ssn4 } = parsed.data;
+    let dob: Date | null = null;
+    if (dateOfBirth) {
+      try { const { recordDate } = await import("../parsers/RecordValues.js"); dob = recordDate(dateOfBirth); }
+      catch { return res.status(400).json({ error: "Invalid birth date" }); }
+      if (dob && dob > new Date()) return res.status(400).json({ error: "Invalid birth date" });
     }
-
-    const client = await prisma.user.create({
-      data: {
-        email,
-        name,
-        phone,
-        address,
-        city,
-        state,
-        zipCode,
-        dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : null,
-        ssn4,
-        role: "CLIENT",
-        passwordHash: "", // Clients don't login with password
-        isActive: true
-      },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        phone: true,
-        address: true,
-        city: true,
-        state: true,
-        zipCode: true,
-        createdAt: true
-      }
-    });
-
-    // Log audit
-    await prisma.auditLog.create({
-      data: {
-        userId: req.user!.id,
-        action: "CLIENT_CREATED",
-        entityType: "USER",
-        entityId: client.id,
-        details: { email, name }
-      }
+    const client = await prisma.$transaction(async tx => {
+      const actor = await currentActor(tx, req.user!.id);
+      if (!["FOUNDER", "ADMIN"].includes(actor.role)) throw new AppError("Forbidden", 403, "Client management access required.");
+      const created = await tx.user.create({ data: { email, name, phone, address, city, state, zipCode, dateOfBirth: dob, ssn4, role: "CLIENT", tenantId: actor.tenantId, passwordHash: "", isActive: true }, select: { id: true, email: true, name: true, phone: true, address: true, city: true, state: true, zipCode: true, createdAt: true } });
+      await tx.auditLog.create({ data: { userId: actor.id, tenantId: actor.tenantId, action: "CLIENT_CREATED", entityType: "USER", entityId: created.id, details: { updatedFields: Object.keys(parsed.data) } } });
+      return created;
     });
 
     // Send welcome email to client
@@ -199,7 +194,7 @@ router.post("/", authMiddleware, roleGuard(["ADMIN"]), async (req: AuthRequest, 
  * POST /api/clients/documents/:documentId/status - Update document status (FOUNDER ONLY)
  * Uses document lifecycle state machine
  */
-router.post("/documents/:documentId/status", authMiddleware, roleGuard(["ADMIN"]), asyncHandler(async (req: AuthRequest, res: Response) => {
+router.post("/documents/:documentId/status", clientAuthentication, roleGuard(["ADMIN"]), asyncHandler(async (req: AuthRequest, res: Response) => {
   const { documentId } = req.params;
   const { status, notes, forceTransition } = req.body;
 
@@ -207,6 +202,7 @@ router.post("/documents/:documentId/status", authMiddleware, roleGuard(["ADMIN"]
     "DRAFT", "PENDING_SIGNATURE", "SIGNED", "SUBMITTED", "APPROVED", "REJECTED"
   ];
 
+  if (status === "SIGNED") throw new AppError("Signature evidence unavailable", 409, "A status edit cannot certify a document signature.");
   if (!validStatuses.includes(status)) {
     throw Errors.badRequest(`Invalid status: ${status}`);
   }
@@ -279,44 +275,26 @@ router.post("/documents/:documentId/status", authMiddleware, roleGuard(["ADMIN"]
 /**
  * PATCH /api/clients/:id - Update client (FOUNDER ONLY)
  */
-router.patch("/:id", authMiddleware, roleGuard(["ADMIN"]), async (req: AuthRequest, res: Response) => {
+router.patch("/:id", clientAuthentication, roleGuard(["ADMIN"]), async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
-    const { name, phone, address, city, state, zipCode, dateOfBirth, ssn4 } = req.body;
-
-    const client = await prisma.user.update({
-      where: { id },
-      data: {
-        name,
-        phone,
-        address,
-        city,
-        state,
-        zipCode,
-        dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : undefined,
-        ssn4
-      },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        phone: true,
-        address: true,
-        city: true,
-        state: true,
-        zipCode: true
-      }
-    });
-
-    // Log audit
-    await prisma.auditLog.create({
-      data: {
-        userId: req.user!.id,
-        action: "CLIENT_UPDATED",
-        entityType: "USER",
-        entityId: id,
-        details: { updatedFields: Object.keys(req.body) }
-      }
+    const parsed = clientInput.omit({ email: true }).partial().safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ success: false, error: "Invalid client fields" });
+    const { dateOfBirth, ...fields } = parsed.data;
+    let dob: Date | undefined;
+    if (dateOfBirth) {
+      try { const { recordDate } = await import("../parsers/RecordValues.js"); dob = recordDate(dateOfBirth) ?? undefined; }
+      catch { return res.status(400).json({ error: "Invalid birth date" }); }
+      if (dob && dob > new Date()) return res.status(400).json({ error: "Invalid birth date" });
+    }
+    const client = await prisma.$transaction(async tx => {
+      const actor = await currentActor(tx, req.user!.id);
+      if (!["FOUNDER", "ADMIN"].includes(actor.role)) throw new AppError("Forbidden", 403, "Client management access required.");
+      const target = await tx.user.findFirst({ where: { id, role: "CLIENT", ...(actor.role === "FOUNDER" && actor.tenantId === null ? {} : { tenantId: actor.tenantId }) }, select: { tenantId: true } });
+      if (!target) throw new AppError("Client missing", 404, "Client not found.");
+      const updated = await tx.user.update({ where: { id }, data: { ...fields, dateOfBirth: dob }, select: { id: true, email: true, name: true, phone: true, address: true, city: true, state: true, zipCode: true } });
+      await tx.auditLog.create({ data: { userId: actor.id, tenantId: target.tenantId, action: "CLIENT_UPDATED", entityType: "USER", entityId: id, details: { updatedFields: Object.keys(parsed.data) } } });
+      return updated;
     });
 
     res.json({
@@ -336,65 +314,34 @@ router.patch("/:id", authMiddleware, roleGuard(["ADMIN"]), async (req: AuthReque
 /**
  * POST /api/clients/portal-link/:caseId - Generate and optionally send portal link (ADMIN/FOUNDER)
  */
-router.post("/portal-link/:caseId", authMiddleware, roleGuard(["ADMIN"]), asyncHandler(async (req: AuthRequest, res: Response) => {
+router.post("/portal-link/:caseId", clientAuthentication, roleGuard(["ADMIN"]), asyncHandler(async (req: AuthRequest, res: Response) => {
   const { caseId } = req.params;
-  const { action, email, phone } = req.body; // action: "copy" | "email" | "sms"
+  const { action } = req.body; // action: "copy" | "email" | "sms"
+  if (action === "email" || action === "sms") return res.status(503).json({ success: false, error: "Portal delivery integration unavailable. No message was sent." });
+  if (action !== "copy") throw new AppError("Invalid action", 400, "Choose copy to obtain a portal link.");
 
-  const caseData = await prisma.case.findUnique({
-    where: { id: caseId },
-    include: {
-      client: { select: { name: true, email: true, phone: true } }
+  const frontend = new URL(process.env.FRONTEND_URL || (process.env.NODE_ENV === 'production' ? 'https://capitalmgr.com' : 'http://localhost:3011'));
+  if (!['http:', 'https:'].includes(frontend.protocol) || frontend.username || frontend.password) throw new AppError('Invalid frontend', 503, 'Portal frontend URL is unavailable.');
+  const caseData = await prisma.$transaction(async tx => {
+    await tx.$queryRaw`SELECT id FROM "Case" WHERE id = ${caseId} FOR UPDATE`;
+    await requireCase(tx, req.user!.id, caseId, 'manage');
+    let record = await tx.case.findUniqueOrThrow({ where: { id: caseId }, include: { client: { select: { name: true, email: true, phone: true } } } });
+    if (record.portalExpiresAt && new Date() > record.portalExpiresAt && !record.portalKeptAlive) {
+      const days = record.portalDissolveAfterDays;
+      if (!Number.isSafeInteger(days) || days < 1 || days > 3650) throw new AppError('Invalid expiration', 409, 'Portal expiration requires review.');
+      record = await tx.case.update({ where: { id: caseId }, data: { portalExpiresAt: new Date(Date.now() + days * 86400000) }, include: { client: { select: { name: true, email: true, phone: true } } } });
     }
+    await tx.auditLog.create({ data: { userId: req.user!.id, tenantId: record.tenantId, action: 'PORTAL_LINK_GENERATED', entityType: 'CASE', entityId: caseId, details: { action, caseId } } });
+    return record;
   });
-
-  if (!caseData) {
-    throw Errors.notFound("Case");
-  }
-
-  const portalUrl = `${process.env.API_BASE_URL?.replace(':4000', ':3011') || 'http://localhost:3011'}/client/portal?token=${caseData.publicAccessToken}`;
-  const signPortalUrl = `${process.env.API_BASE_URL?.replace(':4000', ':3011') || 'http://localhost:3011'}/client/sign-portal?token=${caseData.publicAccessToken}`;
-
-  // If portal is expired and not kept alive, re-activate it
-  if (caseData.portalExpiresAt && new Date() > caseData.portalExpiresAt && !caseData.portalKeptAlive) {
-    // Sending a new link resets the expiration
-    const newExpiry = new Date();
-    newExpiry.setDate(newExpiry.getDate() + caseData.portalDissolveAfterDays);
-    await prisma.case.update({
-      where: { id: caseId },
-      data: { portalExpiresAt: newExpiry }
-    });
-  }
-
-  // Log the portal link action
-  await prisma.auditLog.create({
-    data: {
-      userId: req.user!.id,
-      action: "PORTAL_LINK_GENERATED",
-      entityType: "CASE",
-      entityId: caseId,
-      details: { action, portalUrl, signPortalUrl }
-    }
-  });
-
-  // Log communication if sending
-  if (action === "email" || action === "sms") {
-    await prisma.communication.create({
-      data: {
-        caseId: caseData.id,
-        userId: req.user!.id,
-        type: action === "email" ? "EMAIL" : "TEXT",
-        direction: "OUTBOUND",
-        content: `Portal link sent to client: ${portalUrl}`,
-        toAddress: action === "email" ? (email || caseData.client.email) : (phone || caseData.client.phone || "")
-      }
-    });
-  }
+  const portalUrl = new URL('/client/portal', frontend); portalUrl.searchParams.set('token', caseData.publicAccessToken);
+  const signPortalUrl = new URL('/sign-portal', frontend); signPortalUrl.searchParams.set('token', caseData.publicAccessToken);
 
   res.json({
     success: true,
     data: {
-      portalUrl,
-      signPortalUrl,
+      portalUrl: portalUrl.toString(),
+      signPortalUrl: signPortalUrl.toString(),
       token: caseData.publicAccessToken,
       clientName: caseData.client.name,
       clientEmail: caseData.client.email,
@@ -407,10 +354,11 @@ router.post("/portal-link/:caseId", authMiddleware, roleGuard(["ADMIN"]), asyncH
 /**
  * PATCH /api/clients/portal-settings/:caseId - Update portal expiration settings (ADMIN/FOUNDER)
  */
-router.patch("/portal-settings/:caseId", authMiddleware, roleGuard(["ADMIN"]), asyncHandler(async (req: AuthRequest, res: Response) => {
+router.patch("/portal-settings/:caseId", clientAuthentication, roleGuard(["ADMIN"]), asyncHandler(async (req: AuthRequest, res: Response) => {
   const { caseId } = req.params;
   const { portalKeptAlive, portalDissolveAfterDays, portalExpiresAt } = req.body;
 
+  if ((portalDissolveAfterDays !== undefined && (!Number.isInteger(portalDissolveAfterDays) || portalDissolveAfterDays < 1 || portalDissolveAfterDays > 3650)) || (portalExpiresAt !== undefined && (typeof portalExpiresAt !== "string" || !Number.isFinite(Date.parse(portalExpiresAt))))) throw new AppError("Invalid expiration", 400, "Invalid portal expiration settings.");
   const updateData: any = {};
   if (typeof portalKeptAlive === "boolean") updateData.portalKeptAlive = portalKeptAlive;
   if (typeof portalDissolveAfterDays === "number") updateData.portalDissolveAfterDays = portalDissolveAfterDays;
@@ -444,10 +392,11 @@ router.patch("/portal-settings/:caseId", authMiddleware, roleGuard(["ADMIN"]), a
  * POST /api/clients/auto-expire-portals - Auto-expire portals 12 days after PAID (SYSTEM/FOUNDER)
  * Can be called by cron or manually by founder
  */
-router.post("/auto-expire-portals", authMiddleware, roleGuard(["ADMIN"]), asyncHandler(async (_req: AuthRequest, res: Response) => {
+router.post("/auto-expire-portals", clientAuthentication, roleGuard(["ADMIN"]), asyncHandler(async (req: AuthRequest, res: Response) => {
   // Find all PAID cases without expiration set and not kept alive
   const paidCases = await prisma.case.findMany({
     where: {
+      ...((req as any).capitalActor.role === "FOUNDER" && (req as any).capitalActor.tenantId === null ? {} : { tenantId: (req as any).capitalActor.tenantId }),
       status: "PAID",
       portalExpiresAt: null,
       portalKeptAlive: false,
@@ -488,13 +437,15 @@ async function checkPortalExpiration(token: string, res: Response): Promise<any 
     where: { publicAccessToken: token },
     select: {
       id: true,
+      client: { select: { isActive: true } },
+      tenant: { select: { isActive: true } },
       portalExpiresAt: true,
       portalKeptAlive: true,
       status: true
     }
   });
 
-  if (!caseData) {
+  if (!caseData || !caseData.client.isActive || caseData.tenant?.isActive === false) {
     res.status(404).json({
       success: false,
       error: "We couldn't find your case. Please check your link or contact us for help."
@@ -540,7 +491,9 @@ router.get("/portal/:token", async (req: Request, res: Response) => {
         },
         documents: {
           where: {
-            status: { in: ["PENDING_SIGNATURE", "SIGNED", "SUBMITTED"] }
+            status: { in: ["PENDING_SIGNATURE", "SIGNED", "SUBMITTED"] },
+            type: { in: ["CLIENT_SERVICE_AGREEMENT", "LIMITED_POA", "CLIENT_ID"] },
+            deletionStatus: { not: "DELETED" },
           },
           select: {
             id: true,
@@ -616,6 +569,8 @@ router.patch("/portal/:token/info", async (req: Request, res: Response) => {
       });
     }
 
+    if (email !== undefined) return res.status(400).json({ success: false, error: "Change login email through your authenticated account settings." });
+    if (Object.entries({ name, phone, address, city, state, zipCode }).some(([, value]) => value !== undefined && (typeof value !== "string" || value.length > 2000))) return res.status(400).json({ success: false, error: "Invalid contact fields" });
     // Update client
     await prisma.user.update({
       where: { id: caseData.clientId },
@@ -644,182 +599,12 @@ router.patch("/portal/:token/info", async (req: Request, res: Response) => {
 /**
  * POST /api/clients/portal/:token/id-upload - Upload ID document (CLIENT)
  */
-router.post("/portal/:token/id-upload", async (req: Request, res: Response) => {
-  try {
-    const { token } = req.params;
-    const { fileName, fileUrl, fileSize, mimeType } = req.body;
 
-    // Check expiration
-    const expirationCheck = await checkPortalExpiration(token, res);
-    if (!expirationCheck) return;
-
-    // Find case
-    const caseData = await prisma.case.findFirst({
-      where: { publicAccessToken: token },
-      select: { id: true, clientId: true }
-    });
-
-    if (!caseData) {
-      return res.status(404).json({
-        success: false,
-        error: "We couldn't find your case."
-      });
-    }
-
-    // Validate ID document
-    const validation = legalService.validateIdDocument({ mimeType, fileSize });
-    if (!validation.valid) {
-      return res.status(400).json({
-        success: false,
-        error: validation.errors.join(" ")
-      });
-    }
-
-    // Create document record
-    await prisma.document.create({
-      data: {
-        caseId: caseData.id,
-        type: "CLIENT_ID",
-        status: "SUBMITTED",
-        fileName,
-        fileUrl,
-        fileSize,
-        mimeType,
-        signatureRequired: false,
-        uploadedById: caseData.clientId
-      }
-    });
-
-    res.json({
-      success: true,
-      message: "Your ID has been uploaded successfully. Thank you!"
-    });
-  } catch (error: any) {
-    if (!res.headersSent) {
-      res.status(500).json({ success: false, error: "Something went wrong. Please try again." });
-    }
-  }
-});
 
 /**
  * POST /api/clients/portal/:token/sign/:documentId - Sign a document (CLIENT)
  */
-router.post("/portal/:token/sign/:documentId", async (req: Request, res: Response) => {
-  try {
-    const { token, documentId } = req.params;
-    const { signatureData } = req.body;
 
-    if (!signatureData) {
-      return res.status(400).json({
-        success: false,
-        error: "Signature data is required."
-      });
-    }
-
-    // Check expiration
-    const expirationCheck = await checkPortalExpiration(token, res);
-    if (!expirationCheck) return;
-
-    // Verify case and document
-    const caseData = await prisma.case.findFirst({
-      where: { publicAccessToken: token },
-      select: { id: true, clientId: true }
-    });
-
-    if (!caseData) {
-      return res.status(404).json({
-        success: false,
-        error: "We couldn't find your case."
-      });
-    }
-
-    const document = await prisma.document.findFirst({
-      where: {
-        id: documentId,
-        caseId: caseData.id,
-        signatureRequired: true,
-        signedAt: null
-      }
-    });
-
-    if (!document) {
-      return res.status(404).json({
-        success: false,
-        error: "This document is not available for signing."
-      });
-    }
-
-    // Validate the transition using lifecycle
-    const currentStatus = document.status as DocumentStatus;
-    const newStatus: DocumentStatus = "SIGNED";
-
-    if (!isValidDocumentTransition(currentStatus, newStatus)) {
-      return res.status(400).json({
-        success: false,
-        error: `This document cannot be signed in its current state.`
-      });
-    }
-
-    // Record signature with auto-update fields
-    const autoFields = getDocumentAutoUpdateFields(newStatus);
-
-    await prisma.document.update({
-      where: { id: documentId },
-      data: {
-        status: newStatus,
-        signatureUrl: signatureData,
-        ...autoFields
-      }
-    });
-
-    // Log the signing action
-    await prisma.auditLog.create({
-      data: {
-        userId: caseData.clientId,
-        action: "DOCUMENT_SIGNED",
-        entityType: "DOCUMENT",
-        entityId: documentId,
-        details: { documentType: document.type, caseId: caseData.id }
-      }
-    });
-
-    // Check if all documents are signed
-    const pendingDocs = await prisma.document.count({
-      where: {
-        caseId: caseData.id,
-        signatureRequired: true,
-        signedAt: null
-      }
-    });
-
-    // Update case status if all docs signed
-    if (pendingDocs === 0) {
-      await prisma.case.update({
-        where: { id: caseData.id },
-        data: { status: "DOCS_SIGNED" }
-      });
-
-      await prisma.auditLog.create({
-        data: {
-          userId: caseData.clientId,
-          action: "ALL_DOCUMENTS_SIGNED",
-          entityType: "CASE",
-          entityId: caseData.id,
-          details: { autoTransitioned: true }
-        }
-      });
-    }
-
-    res.json({
-      success: true,
-      message: "Document signed successfully. Thank you!"
-    });
-  } catch (error: any) {
-    if (!res.headersSent) {
-      res.status(500).json({ success: false, error: "Something went wrong. Please try again." });
-    }
-  }
-});
 
 /**
  * GET /api/clients/portal/:token/faq - Get FAQ answers (CLIENT)
@@ -869,6 +654,7 @@ router.post("/portal/:token/contact", async (req: Request, res: Response) => {
   try {
     const { token } = req.params;
     const { message } = req.body;
+    if (typeof message !== "string" || !message.trim() || message.length > 4000) return res.status(400).json({ success: false, error: "A message of 1–4000 characters is required." });
 
     // Check expiration
     const expirationCheck = await checkPortalExpiration(token, res);
@@ -924,9 +710,8 @@ function getOnboardingSteps(caseData: any): OnboardingStep[] {
   const hasInfo = caseData.client.name && caseData.client.phone;
   const hasId = caseData.documents.some((d: any) => d.type === "CLIENT_ID");
   const hasSignedDocs = caseData.documents.some((d: any) => d.signedAt);
-  const allDocsSigned = caseData.documents
-    .filter((d: any) => d.signatureRequired)
-    .every((d: any) => d.signedAt);
+  const required = caseData.documents.filter((d: any) => d.signatureRequired);
+  const allDocsSigned = required.length > 0 && required.every((d: any) => d.status === "SIGNED" && d.signedAt);
 
   return [
     {

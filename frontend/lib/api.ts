@@ -26,6 +26,16 @@ function getApiBaseUrl(): string {
 
 const API_BASE_URL = getApiBaseUrl();
 
+export function clearBrowserAuthentication() {
+  if (typeof window === 'undefined') return;
+  localStorage.removeItem('accessToken');
+  try {
+    const raw = localStorage.getItem('auth-storage');
+    if (raw) { const saved = JSON.parse(raw); saved.state = { ...saved.state, user: null, accessToken: null }; localStorage.setItem('auth-storage', JSON.stringify(saved)); }
+  } catch { localStorage.removeItem('auth-storage'); }
+  window.dispatchEvent(new Event('capital-auth-cleared'));
+}
+
 const api = axios.create({
   baseURL: API_BASE_URL,
   timeout: 30000,
@@ -75,7 +85,7 @@ api.interceptors.response.use(
     };
 
     // Handle 401 - try refresh token
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    if (error.response?.status === 401 && originalRequest && !originalRequest._retry && !/\/auth\/(login|refresh|logout)(?:$|\?)/.test(originalRequest.url || '')) {
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject });
@@ -99,7 +109,9 @@ api.interceptors.response.use(
         });
 
         const newToken = data.accessToken;
+        if (!data.success || typeof newToken !== 'string' || !newToken) throw new Error('Refresh not confirmed');
         localStorage.setItem("accessToken", newToken);
+        window.dispatchEvent(new CustomEvent('capital-auth-refreshed', { detail: newToken }));
 
         if (originalRequest.headers) {
           originalRequest.headers.Authorization = `Bearer ${newToken}`;
@@ -110,7 +122,7 @@ api.interceptors.response.use(
       } catch (refreshError) {
         processQueue(refreshError as Error, null);
         // Clear auth state and redirect to login
-        localStorage.removeItem("accessToken");
+        clearBrowserAuthentication();
         if (typeof window !== "undefined") {
           window.location.href = "/auth/login";
         }
@@ -132,4 +144,3 @@ api.interceptors.response.use(
 
 export { api };
 export default api;
-// Trigger redeploy Wed, Feb  4, 2026  4:38:14 AM

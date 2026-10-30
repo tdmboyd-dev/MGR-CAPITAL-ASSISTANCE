@@ -1,3 +1,5 @@
+import type { Prisma } from "@prisma/client";
+import { AppError } from "../middleware/errorHandler.js";
 /**
  * NotificationCenterService.ts — MGR CAPITAL ASSISTANCE
  * In-app notification center for real-time alerts and messages
@@ -75,31 +77,27 @@ class NotificationCenterService {
   /**
    * Send a notification to a user
    */
-  async sendNotification(input: NotificationCreateInput): Promise<InAppNotification> {
+  async sendNotification(input: NotificationCreateInput, db: Prisma.TransactionClient = prisma): Promise<InAppNotification> {
     const { userId, category, priority = "normal", title, message, link, metadata } = input;
 
     logger.info("Sending notification", { userId, category, title });
 
-    // Check user notification preferences (if they exist)
-    const userPrefs = await this.getUserPreferences(userId);
-    if (userPrefs && !userPrefs.inAppEnabled) {
-      logger.debug("User has in-app notifications disabled", { userId });
-      // Still create the notification but don't show it prominently
-    }
-
-    // Create the notification in database
-    // Using OpsInsight as a proxy since we don't have a dedicated table
-    // In production, you'd want a dedicated Notification model
-    const notification = await prisma.opsInsight.create({
+    if (typeof title !== "string" || !title.trim() || title.length > 200 || typeof message !== "string" || !message.trim() || message.length > 5000 || !["low", "normal", "high", "urgent"].includes(priority) || !["alert", "message", "insight", "system", "case_update", "deadline", "compliance", "training"].includes(category)) throw new AppError("Invalid notification", 400, "Invalid notification content.");
+    if (link && (!link.startsWith("/") || link.startsWith("//") || link.includes("\\") || link.length > 2000)) throw new AppError("Invalid link", 400, "Notification links must remain inside Capital.");
+    const recipient = await db.user.findFirst({ where: { id: userId, isActive: true }, select: { tenantId: true, tenant: { select: { isActive: true } } } });
+    if (!recipient || recipient.tenant?.isActive === false) throw new AppError("Recipient unavailable", 404, "Notification recipient not found.");
+    // Keep the existing notification storage contract, using an admitted enum and recipient scope.
+    const notification = await db.opsInsight.create({
       data: {
-        type: "NOTIFICATION" as any,
+        type: category === "case_update" ? "CASE_RECOMMENDATION" : "SYSTEM_HEALTH",
+        tenantId: recipient.tenantId,
         priority: priority === "urgent" ? "URGENT" : priority === "high" ? "HIGH" : "NORMAL",
         title,
         summary: message,
         details: {
+          ...metadata,
           category,
           link,
-          ...metadata,
           isNotification: true,
         },
         plainEnglish: message,
@@ -193,6 +191,7 @@ class NotificationCenterService {
     options: { page?: number; limit?: number; unreadOnly?: boolean } = {}
   ): Promise<{ notifications: InAppNotification[]; total: number; unreadCount: number }> {
     const { page = 1, limit = 20, unreadOnly = false } = options;
+    if (!Number.isSafeInteger(page) || page < 1 || page > 1000000 || !Number.isSafeInteger(limit) || limit < 1 || limit > 100) throw new AppError("Invalid pagination", 400, "Invalid notification pagination.");
 
     const where: any = {
       relatedUserIds: { has: userId },
@@ -249,14 +248,11 @@ class NotificationCenterService {
    * Mark a notification as read
    */
   async markAsRead(notificationId: string, userId: string): Promise<void> {
-    await prisma.opsInsight.update({
-      where: { id: notificationId },
-      data: {
-        isRead: true,
-        readAt: new Date(),
-        actionNotes: userId,
-      },
+    const changed = await prisma.opsInsight.updateMany({
+      where: { id: notificationId, relatedUserIds: { has: userId }, details: { path: ["isNotification"], equals: true } },
+      data: { isRead: true, readAt: new Date(), actionNotes: userId },
     });
+    if (!changed.count) throw new AppError("Notification missing", 404, "Notification not found.");
   }
 
   /**
@@ -267,6 +263,7 @@ class NotificationCenterService {
       where: {
         id: { in: notificationIds },
         relatedUserIds: { has: userId },
+        details: { path: ["isNotification"], equals: true },
       },
       data: {
         isRead: true,
@@ -305,17 +302,8 @@ class NotificationCenterService {
    * Delete a notification
    */
   async deleteNotification(notificationId: string, userId: string): Promise<boolean> {
-    const notification = await prisma.opsInsight.findFirst({
-      where: {
-        id: notificationId,
-        relatedUserIds: { has: userId },
-      },
-    });
-
-    if (!notification) return false;
-
-    await prisma.opsInsight.delete({ where: { id: notificationId } });
-    return true;
+    const result = await prisma.opsInsight.deleteMany({ where: { id: notificationId, relatedUserIds: { has: userId }, details: { path: ["isNotification"], equals: true } } });
+    return result.count === 1;
   }
 
   /**
@@ -484,8 +472,8 @@ class NotificationCenterService {
       message: record.summary || record.plainEnglish || "",
       link: details?.link,
       metadata: details,
-      isRead: !!record.acknowledgedAt,
-      readAt: record.acknowledgedAt,
+      isRead: record.isRead,
+      readAt: record.readAt,
       createdAt: record.createdAt,
     };
   }

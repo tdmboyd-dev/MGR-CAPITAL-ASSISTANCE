@@ -1,0 +1,20 @@
+{
+  "backendBuild": {
+    "command": "npm run build",
+    "exitCode": 0
+  },
+  "frontendBuild": {
+    "command": "npm run build (next build --webpack)",
+    "exitCode": 0,
+    "staticPages": 93
+  },
+  "newSurfacesLint": {
+    "exitCode": 0
+  },
+  "fullFrontendLint": {
+    "exitCode": 1,
+    "errors": 283,
+    "warnings": 212,
+    "scope": "Initial whole-frontend snapshot before final detail/auth changes; not suppressed"
+  }
+}

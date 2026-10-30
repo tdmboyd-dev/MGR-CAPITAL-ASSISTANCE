@@ -138,7 +138,7 @@ export class LegalService {
   /**
    * Create deadline records for a case
    */
-  async createCaseDeadlines(caseId: string, stateCode: string, saleDate: Date): Promise<void> {
+  async createCaseDeadlines(caseId: string, stateCode: string, saleDate: Date, db: import('@prisma/client').Prisma.TransactionClient = prisma): Promise<void> {
     const deadlines = this.calculateDeadlines(stateCode, saleDate);
 
     const deadlineRecords = [];
@@ -173,7 +173,7 @@ export class LegalService {
       });
     }
 
-    await prisma.deadline.createMany({
+    await db.deadline.createMany({
       data: deadlineRecords
     });
   }
