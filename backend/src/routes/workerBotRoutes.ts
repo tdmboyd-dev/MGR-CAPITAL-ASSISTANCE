@@ -60,17 +60,6 @@ router.post(
 // INDIVIDUAL BOT MANAGEMENT
 // ============================================
 
-/** GET /:codename — Get specific bot details */
-router.get(
-  "/:codename",
-  ...founderOnly,
-  asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-    const bot = await workerBotEngine.getBotDetails(req.params.codename);
-    if (!bot) throw Errors.notFound("Worker bot");
-    res.json({ success: true, data: bot });
-  })
-);
-
 /** POST /:codename/deploy — Deploy specific bot */
 router.post(
   "/:codename/deploy",
@@ -335,6 +324,17 @@ router.get(
     const lineage = await workerBotSpawner.getLineage(req.params.codename);
     if (!lineage) throw Errors.notFound("Bot lineage");
     res.json({ success: true, data: lineage });
+  })
+);
+
+/** GET /:codename — Get specific bot details */
+router.get(
+  "/:codename",
+  ...founderOnly,
+  asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    const bot = await workerBotEngine.getBotDetails(req.params.codename);
+    if (!bot) throw Errors.notFound("Worker bot");
+    res.json({ success: true, data: bot });
   })
 );
 

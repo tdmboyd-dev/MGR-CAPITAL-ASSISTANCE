@@ -1,0 +1,8 @@
+{
+  "source": "Reconstructed safe outcome from observed tool output; not an original retained raw log",
+  "initialAssertionsPassed": 13,
+  "cleanupExit": "FAILED",
+  "error": "Prisma user.updateMany rejected nonexistent tokenVersion field",
+  "correction": "Disable exact synthetic users using isActive:false; rerun checks; separate exact-three-account recovery receipt",
+  "rerunPassed": 14
+}

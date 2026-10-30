@@ -1,5 +1,22 @@
 # Capital Assistance — evidence-based scorecard
 
+## October 30 audit map, critical repairs and handbook
+
+| Defined scope | Passed / applicable | What remains unverified |
+|---|---|---|
+| New actor/routing/legal/draft/error privacy acceptance |14/14 local DB/HTTP checks (100% of these named checks) |Worker report computation stubbed; no live provider or full screen acceptance |
+| Existing HTTP/DB regression |17/17 named checks rerun |All other routes/roles remain separate |
+| Current source syntax/map |All admitted code files parsed; exact denominator in CAPITAL-AUDIT-MAP.json;0parse errors |Structural coverage only; semantic whole-source review OPEN |
+| Compiler / optimized frontend / whole lint |3/3commands passed; lint0errors/0warnings |Loopback build; no deployment or new full browser qualification |
+| Handbook / capability navigation |21capability families, all inventoried routers/pages and actual how-to procedures authored |Unverified integration procedures explicitly withheld/marked |
+| Source work preservation |194historical recovery files retained; exact failed-cleanup actors disabled |No current balances/claimant entitlement certified |
+| Fresh dependency registry audit |Backend production0; frontend complete0; backend complete5low/0high/0critical |Development Jest/deepmerge has no published patch; no unsafe major downgrade |
+| Current Jest regression |202passed,16skipped,0failed |Skipped tests and provider/business outcomes remain open |
+| Whole Capital audit / production |Unassessed; required semantic and lifecycle checks remain open |No fabricated overall completion percentage |
+
+Current evidence: `evidence/2026-10-30-audit-handbook/`. Current narrative/repair queue: HANDOFF.md. Earlier dated scorecards below remain historical evidence.
+
+
 ## October30 frontend reliability and payable accounting
 
 | Product feature / defined checks | Actual evidence | Remaining boundary |

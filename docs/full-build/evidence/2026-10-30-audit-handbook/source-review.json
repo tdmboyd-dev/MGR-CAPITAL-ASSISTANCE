@@ -1,0 +1,138 @@
+{
+  "scope": "Current working-tree bytes; authored/full selected implementations plus explicit partial inspection. AST/import parsing is not semantic reading. Older ledgers remain dated evidence; whole source audit unfinished.",
+  "wholeSemanticAudit": "OPEN",
+  "fullOrAuthored": [
+    {
+      "path": "backend/src/server.ts",
+      "sha256": "670de4083b75fa7e7641fff67c192eb1d0263e38671383dfebea52db0ddd55ef"
+    },
+    {
+      "path": "backend/src/routes/opsInsights.ts",
+      "sha256": "b5ea32276323f103aa7351315cf37c099e76350f91c604733a874ac3fc4f7630"
+    },
+    {
+      "path": "backend/src/routes/workerBotRoutes.ts",
+      "sha256": "b6328449fcd6176346c3809da590db7f4c6c0b9b91dede9840aec83425b5e7dd"
+    },
+    {
+      "path": "backend/src/routes/legalRoutes.ts",
+      "sha256": "9c196f488e850838ff84809aa560eacfad86f2f6f1c6f11dc12aeef89cfd2c96"
+    },
+    {
+      "path": "backend/src/services/LegalAuditorService.ts",
+      "sha256": "d7f760330c2b34e8e62fe942cca0f50a99ed93c58ffffcaf8fb7e6631dad8adb"
+    },
+    {
+      "path": "backend/src/middleware/errorHandler.ts",
+      "sha256": "21b487370ed22448ffada51559eef5824e3030ed090728b77b9a7fcd318351f2"
+    },
+    {
+      "path": "backend/scripts/capital-audit-map.cjs",
+      "sha256": "0fce013f49f5fb05119f5780d95ebba137e461caa7dd9f7a6dcd507d01613321"
+    },
+    {
+      "path": "backend/tests/audit-handbook-postgres.ts",
+      "sha256": "e5f0ba339ae7c96435ee271f630d419c0fa02a24c094be7877302094e10aed44"
+    },
+    {
+      "path": "frontend/app/founder/insights/page.tsx",
+      "sha256": "b4a37fdef605dd7fc841d7d424a12eb093402995e7e44dbe5009ae51e485d602"
+    },
+    {
+      "path": "frontend/app/founder/recovery-pipeline/page.tsx",
+      "sha256": "d38a8cae1142fa51bf375985f83302bd07bb272fc0f4476b6622c1666c7d32bc"
+    },
+    {
+      "path": "frontend/app/founder/source-warehouse/page.tsx",
+      "sha256": "53592b23a04b010654c11d18d9030ff9274fe579286b9f173609a0c4363b33f0"
+    },
+    {
+      "path": "frontend/app/source-connections/page.tsx",
+      "sha256": "39e2da38cafc7d757bf83ada2d4456a1f5f7f90a776e7e6625639be95d1ef4ee"
+    },
+    {
+      "path": "frontend/app/founder/email-outbox/page.tsx",
+      "sha256": "838312af12bd5e510ca8485cb65bf621ce0fd93208dc24a4d370df6ec640251c"
+    },
+    {
+      "path": "frontend/app/founder/recovery-rules/page.tsx",
+      "sha256": "bbd5d281cc2103a6a78d2c2dca4f02b3285c849ed5c87eac59f8b61d141142e3"
+    },
+    {
+      "path": "frontend/app/employee/payouts/page.tsx",
+      "sha256": "ff792c8e7f12768c72f8eb17c0a02dc270e34bbb30708ad3ce7ca86fb6927f3e"
+    },
+    {
+      "path": "backend/package.json",
+      "sha256": "3af9b3961c3ea6bb3ac8e51b75fbf34f57dcdb322728bfd612ae6c57ccd1dd19"
+    },
+    {
+      "path": "frontend/package.json",
+      "sha256": "9b27a1b98dc92068abd8420c067cbafc58e936bef545dfe016039b1843c6abf5"
+    }
+  ],
+  "partial": [
+    {
+      "path": "backend/src/services/EmailInboxService.ts",
+      "sha256": "106b8156d0f39befeecc545b02884a423154e30979f76ee5c22eb37b08a08898"
+    },
+    {
+      "path": "backend/src/routes/emailInboxRoutes.ts",
+      "sha256": "7bc580cb821dd9bb38a9bc0b12fc856851bb2b9462dbff0225ddde3fea07e494"
+    },
+    {
+      "path": "backend/src/services/OpsMetricsService.ts",
+      "sha256": "58941d7a5b811171fe700a6dfc5a737769ffa88c3634d6d61e66122161197fc2"
+    },
+    {
+      "path": "backend/src/routes/opsMetrics.ts",
+      "sha256": "ab3eb11aa66e445dea973d2254fa11fca82b31f65bec7df203b17070a6611275"
+    },
+    {
+      "path": "frontend/components/LegalAuditorUI.tsx",
+      "sha256": "b6b82313c5e0d1ffe8f15baf6ead176451eba16a3c15a5635db060a2f5b62e7b"
+    },
+    {
+      "path": "frontend/components/EmailComposer.tsx",
+      "sha256": "fc29174c7c60d1a90f07e1f665b09801d281b937103cd7a54827cafc06e5c94b"
+    },
+    {
+      "path": "frontend/app/founder/inbox/compose/page.tsx",
+      "sha256": "c4262beb1a15d0e00a703fd514a69b226e5ef0c42759472df1cc8dd667380b2f"
+    },
+    {
+      "path": "frontend/app/founder/dashboard/page.tsx",
+      "sha256": "fb3076e6cf3ef54494e37276a720264ed1633236fcfcbf40c132ee2b5a47cd46"
+    },
+    {
+      "path": "backend/src/services/CaseDocumentAccess.ts",
+      "sha256": "e33159bb42204b7bd5bd872de8d0648d3793dcdedbfab7a3f1ac569ba4da3b92"
+    },
+    {
+      "path": "backend/src/middleware/authMiddleware.ts",
+      "sha256": "49b3c99b23b8cf7512bc7aa16269ec909de33f510f38fca3645feaf4286d8224"
+    },
+    {
+      "path": "backend/src/cron/scheduler.ts",
+      "sha256": "82594750e6788fa53be3280b8e1d5640eac5848c8acb9c5b4e23e49abc17137c"
+    },
+    {
+      "path": "backend/src/routes/childCompanyRoutes.ts",
+      "sha256": "514202f4543bc4aed196b4d575e2e17050f00dd92d7a4821d17ad432bef55e27"
+    },
+    {
+      "path": "backend/src/routes/deadlines.ts",
+      "sha256": "d1f3403e7f9f985b2b75c7184b5fa4993d36cf5c11a1ca214c90bee5d9e57137"
+    },
+    {
+      "path": "backend/src/routes/documentGeneration.ts",
+      "sha256": "91405706e5e3ae2a899f6ef1713c776f85263d6b51684666aaefeef823da06af"
+    },
+    {
+      "path": "backend/src/middleware/auditLogger.ts",
+      "sha256": "878eae4bf18e9bfc81b0efdacc7021e137f7c2579e5a4c646226e8d07667376b"
+    }
+  ],
+  "otherFiles": "Inventoried/hash-bound in CAPITAL-AUDIT-MAP.json; semantic status not upgraded by parsing",
+  "priorEvidence": "../2026-10-30-frontend-reliability/source-scope.json and earlier reading-ledger.json files"
+}

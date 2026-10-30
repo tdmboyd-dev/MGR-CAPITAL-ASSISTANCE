@@ -1,0 +1,20 @@
+{
+  "passed": 14,
+  "checks": [
+    "Anonymous insights/legal/fleet/inbox denied over real HTTP",
+    "Current company founder and employee cannot read global operator surfaces or shared IMAP credentials",
+    "Saved focus item returned through actual DB/HTTP with compatible data envelope",
+    "Unbounded, malformed and repeated insight limits denied",
+    "Unsupported read state does not fabricate read receipts",
+    "Focus storage failure reports unavailable, not empty success",
+    "Four literal worker reports reach their own handlers, not codename lookup (report computation stubbed)",
+    "Missing AI provider cannot produce a document compliance score",
+    "Malformed document-review input denied",
+    "Batch document review bounded to five inputs",
+    "Generic preparation checklist explicitly unqualified",
+    "Disconnected draft persistence cannot acknowledge a saved draft",
+    "Raw document/error/body/query/path values excluded from global error response and metadata logs",
+    "Existing token loses global read access after current role changes"
+  ],
+  "proof": "Local actual PostgreSQL/current actors/HTTP; report computation explicitly stubbed; no live AI or business outcome"
+}

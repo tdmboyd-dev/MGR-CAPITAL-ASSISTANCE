@@ -1,0 +1,7 @@
+{
+  "firstRunCleanupFailure": "Nonexistent tokenVersion field; original failed log retained",
+  "recoveredExactSyntheticAccounts": 3,
+  "remainingActive": 0,
+  "workItems": 194,
+  "productionTouched": false
+}

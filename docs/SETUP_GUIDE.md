@@ -1,3 +1,5 @@
+> **Historical setup reference.** Start with [the current operating handbook](CAPITAL-HANDBOOK.md#setup-and-recovery). Do not use the old REQUIRED labels or quoted prices below to enroll, purchase, rotate keys or select a provider. These January instructions have not been requalified. Existing provider secrets previously present in other documentation require account-side rotation before production reuse; see HANDOFF.md. The owned warehouse/outbox/research path can run independently of paid tracing and payment services.
+
 # MGR CAPITAL ASSISTANCE — Plain English Setup Guide
 
 **Last Updated:** 2026-01-28 (Session 31)

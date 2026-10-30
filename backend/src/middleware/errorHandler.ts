@@ -36,45 +36,18 @@ export const Errors = {
   internal: (details: string) => new AppError(details, 500, "An internal error occurred. Please try again later."),
 };
 
-// Determine if user should see full error details (FOUNDER only)
-function canSeeFullErrors(req: Request): boolean {
-  const user = (req as any).user;
-  return user?.role === "FOUNDER";
-}
-
-// Format error for logging
+// Error payloads, stacks and database/provider messages can contain submitted
+// documents or credentials. Log allowlisted metadata, never the request body,
+// query values, headers, raw URL, arbitrary error message or stack.
 function formatErrorLog(error: Error, req: Request): object {
   return {
     timestamp: new Date().toISOString(),
     method: req.method,
-    path: req.path,
+    routePattern: typeof req.route?.path === "string" ? req.route.path : "unresolved",
     userId: (req as any).user?.id || "anonymous",
-    userRole: (req as any).user?.role || "none",
-    ip: req.ip || req.socket.remoteAddress,
-    userAgent: req.headers["user-agent"],
-    errorName: error.name,
-    errorMessage: error.message,
-    stack: error.stack,
-    body: sanitizeRequestBody(req.body),
-    query: req.query,
-    params: req.params,
+    statusCode: getStatusCode(error),
+    category: error instanceof AppError ? "APPLICATION" : error instanceof Prisma.PrismaClientKnownRequestError ? "DATABASE" : "UNEXPECTED",
   };
-}
-
-// Remove sensitive fields from request body for logging
-function sanitizeRequestBody(body: any): any {
-  if (!body || typeof body !== "object") return body;
-
-  const sanitized = { ...body };
-  const sensitiveFields = ["password", "token", "secret", "apiKey", "creditCard"];
-
-  for (const field of sensitiveFields) {
-    if (sanitized[field]) {
-      sanitized[field] = "[REDACTED]";
-    }
-  }
-
-  return sanitized;
 }
 
 // Get safe error message based on error type
@@ -159,7 +132,7 @@ export function globalErrorHandler(
   res: Response,
   _next: NextFunction
 ): void {
-  // Log full error details (private)
+  // Log only bounded operational metadata
   const errorLog = formatErrorLog(error, req);
   console.error("=== ERROR LOG ===");
   console.error(JSON.stringify(errorLog, null, 2));
@@ -168,30 +141,9 @@ export function globalErrorHandler(
   // Determine status code
   const statusCode = getStatusCode(error);
 
-  // Determine what message to show
-  const isFounder = canSeeFullErrors(req);
-  let publicMessage: string;
-
-  if (isFounder) {
-    // Founder sees full error details
-    publicMessage = error.message;
-  } else {
-    // Everyone else sees safe message
-    publicMessage = getSafeErrorMessage(error);
-  }
-
-  // Send response in standard API format
-  res.status(statusCode).json({
-    success: false,
-    error: publicMessage,
-    ...(isFounder && {
-      _debug: {
-        name: error.name,
-        stack: error.stack?.split("\n").slice(0, 5),
-        code: error instanceof Prisma.PrismaClientKnownRequestError ? error.code : undefined,
-      },
-    }),
-  });
+  // A founder role is not permission to disclose another tenant's raw SQL,
+  // provider payload or credentials through a public error response.
+  res.status(statusCode).json({success:false,error:getSafeErrorMessage(error)});
 }
 
 // Async handler wrapper to catch errors and pass to next()

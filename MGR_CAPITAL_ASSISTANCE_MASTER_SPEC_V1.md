@@ -1,3 +1,5 @@
+> **Historical January 2026 design baseline — not current implementation authority.** Read [HANDOFF.md](HANDOFF.md) and [the operating handbook](docs/CAPITAL-HANDBOOK.md) first. The owner superseded inflated employee displays on October 30, 2026: show actual payable earnings; preserve existing payout percentages and private company margins. The current frontend is Next.js 16 / React 19, not Vite. Unverified provider, legal and completion claims below are historical requirements, not acceptance evidence.
+
 # MGR CAPITAL ASSISTANCE — MASTER SPECIFICATION V1 FINAL
 
 **Version:** 1.0.0-FINAL

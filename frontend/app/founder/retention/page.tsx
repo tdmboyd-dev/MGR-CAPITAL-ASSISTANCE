@@ -121,14 +121,14 @@ export default function RetentionPage() {
   const { data: markedData, isLoading: markedLoading } = useQuery({
     queryKey: ["retention-marked", page],
     queryFn: () =>
-      api.get(`/api/retention/marked?page=${page}&limit=25`).then((r) => r.data),
+      api.get(`/retention/marked?page=${page}&limit=25`).then((r) => r.data),
     enabled: activeTab === "marked",
   });
 
   const { data: holdData, isLoading: holdLoading } = useQuery({
     queryKey: ["retention-hold", page],
     queryFn: () =>
-      api.get(`/api/retention/hold?page=${page}&limit=25`).then((r) => r.data),
+      api.get(`/retention/hold?page=${page}&limit=25`).then((r) => r.data),
     enabled: activeTab === "hold",
   });
 

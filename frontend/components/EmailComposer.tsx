@@ -97,7 +97,7 @@ function EmailComposerSession({
   // Send email mutation
   const sendMutation = useMutation({
     mutationFn: async (formData: FormData) => {
-      const { data } = await api.post("/api/inbox/emails/send", formData, {
+      const { data } = await api.post("/inbox/emails/send", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
       return data;
@@ -117,7 +117,7 @@ function EmailComposerSession({
   // Save draft mutation
   const saveDraftMutation = useMutation({
     mutationFn: async (draftData: object) => {
-      const { data } = await api.post("/api/inbox/emails/draft", draftData);
+      const { data } = await api.post("/inbox/emails/draft", draftData);
       return data;
     },
     onSuccess: () => {

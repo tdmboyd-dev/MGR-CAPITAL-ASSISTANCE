@@ -1,0 +1,12 @@
+{
+  "sourceFilesScanned": 873,
+  "privateRuntimeValueMatches": 0,
+  "gitleaksExitCode": 0,
+  "scope": "Entire current distributable source snapshot, default8.30rules; not Git history, runtime stores or excluded seal archive",
+  "excluded": [
+    {
+      "path": "FOUNDER NOTARY STAMPS.zip",
+      "reason": "Existing private seal archive; preserved in repository, excluded from distributable source package"
+    }
+  ]
+}

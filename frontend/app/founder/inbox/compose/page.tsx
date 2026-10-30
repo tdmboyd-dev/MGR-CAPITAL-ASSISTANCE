@@ -62,7 +62,7 @@ export default function ComposeEmailPage() {
     queryFn: async () => {
       const id = replyToId || forwardId;
       if (!id) return null;
-      const { data } = await api.get(`/api/inbox/emails/${id}`);
+      const { data } = await api.get(`/inbox/emails/${id}`);
       return data.data;
     },
     enabled: !!(replyToId || forwardId),

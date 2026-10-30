@@ -1,0 +1,17 @@
+{
+  "checks": [
+    {
+      "check": "backend-build",
+      "exitCode": 0
+    },
+    {
+      "check": "frontend-build",
+      "exitCode": 0
+    },
+    {
+      "check": "frontend-lint",
+      "exitCode": 0
+    }
+  ],
+  "frontendRuntimeTarget": "Loopback17971 acceptance build only; rebuild for deployment environment"
+}

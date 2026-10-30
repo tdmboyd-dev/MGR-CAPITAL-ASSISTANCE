@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input'
 import { motion } from 'framer-motion'
 import { AlertCircle,CheckCircle,FileText,Loader2,Scale,Shield } from 'lucide-react'
 import { useState } from 'react'
+import { api } from '@/lib/api'
 
 interface AuditResult {
   errors: string[]
@@ -25,6 +26,7 @@ export default function LegalAuditorUI() {
   const [type, setType] = useState('assignment_of_interest')
   const [audit, setAudit] = useState<AuditResult | null>(null)
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const runAudit = async () => {
     if (!docText.trim() || !state.trim()) {
@@ -33,57 +35,14 @@ export default function LegalAuditorUI() {
     }
 
     setLoading(true)
+    setAudit(null)
+    setError(null)
     try {
-      const res = await fetch('/api/legal/audit', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ docText, state, type })
-      })
-
-      if (res.ok) {
-        const data = await res.json()
-        setAudit(data)
-      } else {
-        // Demo audit for testing
-        setAudit({
-          errors: [
-            'Missing notarization acknowledgment section',
-            'Property legal description incomplete (no parcel number)',
-            'Assignor signature block missing witness line'
-          ],
-          suggestions: [
-            'Add full legal property description with APN/Parcel number',
-            'Include county recording fee information',
-            `Add ${state} specific disclosure language for surplus claims`,
-            'Consider adding a severability clause'
-          ],
-          score: 68,
-          compliance: {
-            state: state.toUpperCase(),
-            type,
-            isCompliant: false,
-            issues: [
-              `${state.toUpperCase()} requires notarized signatures on assignment documents`,
-              'Missing required surplus funds disclosure statement',
-              'Deadline reference should cite specific state statute'
-            ]
-          }
-        })
-      }
-    } catch (err) {
-      console.error('Audit error:', err)
-      // Return mock for demo
-      setAudit({
-        errors: ['Unable to connect to AI auditor - showing demo results'],
-        suggestions: ['Verify backend API is running'],
-        score: 50,
-        compliance: {
-          state: state.toUpperCase(),
-          type,
-          isCompliant: false,
-          issues: ['Demo mode - actual compliance check unavailable']
-        }
-      })
+      const { data } = await api.post('/legal-audit/audit', {docText,state,type})
+      if (data.assessment !== 'AI_SUGGESTIONS_ONLY' || !Array.isArray(data.errors) || !Array.isArray(data.suggestions) || !Array.isArray(data.compliance?.issues) || typeof data.score !== 'number') throw new Error('Invalid review response')
+      setAudit(data)
+    } catch {
+      setError('Document review is unavailable. No compliance result was produced. Your document remains in the form.')
     } finally {
       setLoading(false)
     }
@@ -114,7 +73,7 @@ export default function LegalAuditorUI() {
             AI Legal Document Auditor
           </CardTitle>
           <CardDescription className="text-slate-400">
-            GPT-4 powered compliance checking for surplus recovery documents
+            AI suggestions for document preparation. A score does not certify compliance, deadlines, eligibility or filing acceptance.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -163,7 +122,7 @@ export default function LegalAuditorUI() {
             {loading ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                Analyzing with GPT-4...
+                Reviewing document...
               </>
             ) : (
               <>
@@ -174,6 +133,8 @@ export default function LegalAuditorUI() {
           </Button>
         </CardContent>
       </Card>
+
+      {error && <p role="alert" className="text-red-400">{error}</p>}
 
       {audit && (
         <motion.div
@@ -186,7 +147,7 @@ export default function LegalAuditorUI() {
             <CardContent className="pt-6">
               <div className="flex items-center justify-between mb-4">
                 <div>
-                  <h3 className="text-lg font-medium text-white">Compliance Score</h3>
+                  <h3 className="text-lg font-medium text-white">AI Review Score</h3>
                   <p className="text-sm text-slate-400">{audit.compliance.state} - {type.replace(/_/g, ' ')}</p>
                 </div>
                 <div className={`text-4xl font-bold ${getScoreColor(audit.score)}`}>
@@ -206,12 +167,12 @@ export default function LegalAuditorUI() {
                 {audit.compliance.isCompliant ? (
                   <div className="flex items-center gap-2 text-green-400">
                     <Shield className="h-5 w-5" />
-                    <span>Document is compliant with {audit.compliance.state} requirements</span>
+                    <span>AI suggested no issues for {audit.compliance.state}; legal qualification remains unverified</span>
                   </div>
                 ) : (
                   <div className="flex items-center gap-2 text-amber-400">
                     <AlertCircle className="h-5 w-5" />
-                    <span>Document needs revisions for {audit.compliance.state} compliance</span>
+                    <span>AI suggests revisions for {audit.compliance.state}; verify against current county requirements</span>
                   </div>
                 )}
               </div>

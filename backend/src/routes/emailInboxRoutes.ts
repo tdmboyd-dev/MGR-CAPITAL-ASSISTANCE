@@ -13,8 +13,18 @@ import prisma from "../lib/prisma.js";
 import { roleGuard, ROLE_GROUPS } from "../middleware/roleGuard.js";
 import { asyncHandler, Errors } from "../middleware/errorHandler.js";
 import { emailInboxService } from "../services/EmailInboxService.js";
+import { currentActor, accessFailure } from '../services/CaseDocumentAccess.js';
 
 const router = Router();
+// The legacy service uses one configured IMAP credential for every mailbox ID.
+// Keep it with the global founder until per-mailbox isolation is implemented.
+router.use(authMiddleware, (req: AuthRequest, res, next) => {
+  res.setHeader('Cache-Control','private, no-store');
+  void currentActor(prisma,req.user!.id).then(actor => {
+    if (actor.role !== 'FOUNDER' || actor.tenantId !== null) return res.status(403).json({success:false,error:'Legacy inbox is limited to the global founder until individual mailbox isolation is connected'});
+    next();
+  }).catch(error=>accessFailure(res,error,'Mailbox authority unavailable'));
+});
 
 // System mailbox IDs mapped to actual email addresses
 const SYSTEM_MAILBOXES = {
@@ -338,12 +348,7 @@ router.post(
   "/emails/draft",
   authMiddleware,
   asyncHandler(async (req: AuthRequest, res: Response) => {
-    // For now, just acknowledge - draft saving would need DB storage
-    res.status(201).json({
-      success: true,
-      data: { draftId: `draft_${Date.now()}` },
-      message: "Draft saved",
-    });
+    res.status(503).json({ success: false, code: "DRAFT_STORAGE_UNAVAILABLE", error: "Draft storage is not connected. Keep your message open; no draft was saved." });
   })
 );
 

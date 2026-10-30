@@ -1,10 +1,20 @@
 import { Router, Request, Response } from 'express';
+import { authMiddleware, type AuthRequest } from '../middleware/authMiddleware.js';
+import { currentActor, accessFailure } from '../services/CaseDocumentAccess.js';
+import prisma from '../lib/prisma.js';
 import { legalAuditorService } from '../services/LegalAuditorService.js';
 
 const router = Router();
+router.use(authMiddleware, (req: AuthRequest, res, next) => {
+  res.setHeader('Cache-Control','private, no-store');
+  void currentActor(prisma,req.user!.id).then(actor => {
+    if (actor.role !== 'FOUNDER' || actor.tenantId !== null) return res.status(403).json({success:false,error:'Global founder document review access required'});
+    next();
+  }).catch(error=>accessFailure(res,error,'Document review authority unavailable'));
+});
 
 /**
- * POST /api/legal/audit
+ * POST /api/legal-audit/audit
  * Audit a legal document for compliance
  */
 router.post('/audit', async (req: Request, res: Response) => {
@@ -21,13 +31,12 @@ router.post('/audit', async (req: Request, res: Response) => {
 
     res.json(result);
   } catch (error) {
-    console.error('Legal audit error:', error);
-    res.status(500).json({ error: 'Failed to audit document' });
+    return accessFailure(res,error,'Document review unavailable');
   }
 });
 
 /**
- * GET /api/legal/requirements/:state/:type
+ * GET /api/legal-audit/requirements/:state/:type
  * Get document requirements for a state and document type
  */
 router.get('/requirements/:state/:type', async (req: Request, res: Response) => {
@@ -39,7 +48,9 @@ router.get('/requirements/:state/:type', async (req: Request, res: Response) => 
     res.json({
       state,
       type,
-      requirements
+      requirements,
+      status: "GENERIC_CHECKLIST_UNVERIFIED",
+      warning: "Preparation checklist only; no state or county legal qualification"
     });
   } catch (error) {
     console.error('Requirements error:', error);
@@ -48,14 +59,14 @@ router.get('/requirements/:state/:type', async (req: Request, res: Response) => 
 });
 
 /**
- * POST /api/legal/batch-audit
+ * POST /api/legal-audit/batch-audit
  * Audit multiple documents at once
  */
 router.post('/batch-audit', async (req: Request, res: Response) => {
   try {
     const { documents } = req.body;
 
-    if (!documents || !Array.isArray(documents)) {
+    if (!documents || !Array.isArray(documents) || documents.length < 1 || documents.length > 5 || documents.some(doc => !doc || typeof doc.text !== "string" || typeof doc.state !== "string" || typeof doc.type !== "string")) {
       return res.status(400).json({
         error: 'Documents array required'
       });
@@ -68,8 +79,7 @@ router.post('/batch-audit', async (req: Request, res: Response) => {
       results
     });
   } catch (error) {
-    console.error('Batch audit error:', error);
-    res.status(500).json({ error: 'Failed to batch audit documents' });
+    return accessFailure(res,error,'Batch document review unavailable');
   }
 });
 

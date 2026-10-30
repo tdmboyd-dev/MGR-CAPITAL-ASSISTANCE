@@ -28,6 +28,7 @@ import documentsRoutes from "./routes/documents.js";
 
 // OPS Layer routes (FOUNDER ONLY)
 import opsMetricsRoutes from "./routes/opsMetrics.js";
+import opsInsightsRoutes from "./routes/opsInsights.js";
 import opsWatchRoutes from "./routes/opsWatch.js";
 
 // Role-specific management panels
@@ -246,37 +247,8 @@ app.use("/api/settings/master", masterSettingsRoutes);
 app.use("/api/ops/metrics", opsMetricsRoutes);
 app.use("/api/ops/watch", opsWatchRoutes);
 
-// OPS Insights endpoint (FOUNDER ONLY)
-app.get("/api/ops/insights", authMiddleware, roleGuard(["FOUNDER"]), async (req, res) => {
-  try {
-    const isRead = req.query.isRead === "true";
-    const limit = parseInt(req.query.limit as string) || 10;
-
-    // Return focus feed items as insights
-    const { opsMetricsService } = await import("./services/OpsMetricsService.js");
-    const feed = await opsMetricsService.getFounderFocusFeed(limit);
-
-    const insights = (feed.items || []).map((item: any) => ({
-      id: item.id,
-      type: item.type,
-      priority: item.priority,
-      title: item.title,
-      message: item.summary,
-      isRead: item.isDismissed || isRead,
-      createdAt: item.createdAt,
-      link: item.relatedCaseId ? `/founder/cases/${item.relatedCaseId}` : null,
-    }));
-
-    res.json({
-      success: true,
-      insights,
-      count: feed.unreadCount || insights.filter((i: any) => !i.isRead).length
-    });
-  } catch (error: any) {
-    console.error("Insights fetch error:", error);
-    res.status(503).json({ success: false, error: "Insights unavailable" });
-  }
-});
+// Insights use the same fresh global-founder boundary as the metrics router.
+app.use("/api/ops/insights", opsInsightsRoutes);
 
 // Role-specific management panels
 app.use("/api/hr", hrRoutes);
@@ -393,7 +365,7 @@ app.use("/api/trusts", trustRoutes);
 // NOTE: Using "recovery" not "surplus" in URL for shadow compliance
 app.use("/api/recovery-requirements", surplusRequirementsRoutes);
 
-// Client Tipping (Shadow Cut - employees see full tip, get 50%)
+// Client Tipping (employees see their actual net allocation)
 app.use("/api/tips", tippingRoutes);
 
 // Activity Tracking & Violations (3 days/week, 2-day case inactivity)

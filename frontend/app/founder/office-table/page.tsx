@@ -183,7 +183,7 @@ export default function OfficeTablePage() {
       notes?: string;
       adjustedSeverity?: string;
     }) => {
-      const { data } = await api.post(`/api/office-table/violations/${id}/review`, {
+      const { data } = await api.post(`/office-table/violations/${id}/review`, {
         confirmed,
         notes,
         adjustedSeverity,
@@ -206,7 +206,7 @@ export default function OfficeTablePage() {
   // Review appeal mutation
   const appealMutation = useMutation({
     mutationFn: async ({ id, approved }: { id: string; approved: boolean }) => {
-      const { data } = await api.post(`/api/office-table/bans/${id}/review-appeal`, { approved });
+      const { data } = await api.post(`/office-table/bans/${id}/review-appeal`, { approved });
       return data;
     },
     onSuccess: (_, variables) => {

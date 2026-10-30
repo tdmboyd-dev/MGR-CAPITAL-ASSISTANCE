@@ -203,5 +203,116 @@
         "next": "Current handoff ordered engineering queue"
       }
     ]
+  },
+  "auditHandbook20261030": {
+    "authority": "HANDOFF.md",
+    "wholeSemanticAuditComplete": false,
+    "handbook": "docs/CAPITAL-HANDBOOK.md",
+    "featureCatalog": "docs/full-build/CAPITAL-FEATURE-CATALOG.md",
+    "structuralMap": "docs/full-build/CAPITAL-AUDIT-MAP.json",
+    "findings": [
+      {
+        "id": "CAP-AUDIT-001",
+        "finding": "Four GET worker reports shadowed by terminal codename route",
+        "status": "REPAIRED_LOCAL_ROUTE_VERIFIED",
+        "nextActionOrEvidence": "Move codename route after static reports; real HTTP dispatch test with stubbed downstream computations."
+      },
+      {
+        "id": "CAP-AUDIT-002",
+        "finding": "Global insights lacked fresh global-company guard and bounded limit",
+        "status": "REPAIRED_LOCAL_DB_HTTP_VERIFIED",
+        "nextActionOrEvidence": "New guarded route, bounds, no-store, actual focus data and stale/current-role negative tests."
+      },
+      {
+        "id": "CAP-AUDIT-003",
+        "finding": "Insights response envelope disagreed with consumers; old screen fabricated zeros and health",
+        "status": "REPAIRED_BUILD_VERIFIED",
+        "nextActionOrEvidence": "Compatible data envelope and real focus-only UI. Browser acceptance and all metrics formulas remain open."
+      },
+      {
+        "id": "CAP-AUDIT-004",
+        "finding": "Legal audit unauthenticated and returned canned compliance when provider missing/failed",
+        "status": "REPAIRED_NEGATIVE_DB_HTTP_VERIFIED",
+        "nextActionOrEvidence": "Fresh global-founder gate; input bounds; provider response schema; no fake result; suggestions-only UI. Positive provider/malformed model response proof open."
+      },
+      {
+        "id": "CAP-AUDIT-005",
+        "finding": "Legacy inbox treats mailbox IDs as separation while using one IMAP identity",
+        "status": "CONTAINED_NEGATIVE_HTTP_VERIFIED",
+        "nextActionOrEvidence": "Global-founder only. Implement isolated account credentials and tenant/action receipts before restoring other actors."
+      },
+      {
+        "id": "CAP-AUDIT-006",
+        "finding": "Legacy draft endpoint acknowledges nonexistent persistence",
+        "status": "CONTAINED_HTTP_VERIFIED",
+        "nextActionOrEvidence": "503 DRAFT_STORAGE_UNAVAILABLE; durable draft implementation remains open."
+      },
+      {
+        "id": "CAP-AUDIT-007",
+        "finding": "Shared API clients duplicated /api in inbox, retention and Office Table URLs",
+        "status": "REPAIRED_BUILD_VERIFIED",
+        "nextActionOrEvidence": "Remove duplicate prefix; screen-specific functional journeys remain open. Composer also needs multipart/attachment repair."
+      },
+      {
+        "id": "CAP-AUDIT-008",
+        "finding": "Tracked query-users utility has invalid syntax and dumps user identities without scope",
+        "status": "RETIRED_PARSE_VERIFIED",
+        "nextActionOrEvidence": "Retire unused utility; use authenticated scoped administration path."
+      },
+      {
+        "id": "CAP-AUDIT-009",
+        "finding": "Master spec and setup guide conflict with newer payable/stack/provider decisions",
+        "status": "DOCUMENTED_SUPERSEDED",
+        "nextActionOrEvidence": "Prominent historical notices; handbook/current handoff govern. Other stale docs remain subject to review."
+      },
+      {
+        "id": "CAP-AUDIT-010",
+        "finding": "Child-company management/invite/payout/settings pages reference absent contracts",
+        "status": "OPEN_ENGINEERING",
+        "nextActionOrEvidence": "Implement scoped service/API contracts or remove actions; actual cross-company negative tests and save/reopen proof required."
+      },
+      {
+        "id": "CAP-AUDIT-011",
+        "finding": "Admin users, founder config, training create, deadlines/assignment/notary consumer contracts unresolved",
+        "status": "OPEN_ENGINEERING",
+        "nextActionOrEvidence": "Manually resolve AST candidates including response/method/auth; avoid adding aliases without underlying domain operations."
+      },
+      {
+        "id": "CAP-AUDIT-012",
+        "finding": "Historical accounting writers and status/paid-field inconsistencies unresolved",
+        "status": "OPEN_ENGINEERING",
+        "nextActionOrEvidence": "Trace each writer, reconcile without rewriting history, receipt-backed settlement and exception UI; retain approved percentages."
+      },
+      {
+        "id": "CAP-AUDIT-013",
+        "finding": "Full source semantic audit, role/action matrix and unvisited paths remain open",
+        "status": "OPEN_REVIEW",
+        "nextActionOrEvidence": "Hash-bound per-file review; route/import inventory is structural only; never report it as whole-source review."
+      },
+      {
+        "id": "CAP-AUDIT-014",
+        "finding": "Shelby original visual corrections/current claims/balances incomplete",
+        "status": "OPEN_SOURCE_ACCESS_AND_REVIEW",
+        "nextActionOrEvidence": "175-page reconciliation and authorized current county source; do not bypass commercial restriction."
+      },
+      {
+        "id": "CAP-AUDIT-015",
+        "finding": "Positive signing/notary/outreach/filing/settlement and deployed restore proof missing",
+        "status": "OPEN_EXTERNAL_AND_ENGINEERING",
+        "nextActionOrEvidence": "Qualify integrations independently; no customers yet, so never invent a customer outcome."
+      },
+      {
+        "id": "CAP-AUDIT-016",
+        "finding": "Provider credential rotation/history exposure unresolved",
+        "status": "OPEN_OWNER_ACCOUNT_ACTION",
+        "nextActionOrEvidence": "Current docs sanitized earlier; rotate through accounts before reuse, preserve encryption decryptability; no secret values in artifacts."
+      },
+      {
+        "id": "CAP-AUDIT-017",
+        "finding": "Global error logging and founder debug could expose document/credential/provider values",
+        "status": "REPAIRED_NEGATIVE_HTTP_VERIFIED",
+        "nextActionOrEvidence": "Global handler logs allowlisted metadata and returns safe errors to all roles; sensitive marker HTTP test passed. Other service/request/audit loggers remain a separate review scope."
+      }
+    ]
   }
 }

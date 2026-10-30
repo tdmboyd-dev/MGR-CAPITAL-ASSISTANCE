@@ -38,6 +38,7 @@ export default function FounderDashboard() {
     queryKey: ["insights-unread"],
     queryFn: async () => {
       const { data } = await api.get("/ops/insights?isRead=false&limit=5");
+      if (!data.success || !Array.isArray(data.data)) throw new Error("Insights contract unavailable");
       return data;
     },
   });
